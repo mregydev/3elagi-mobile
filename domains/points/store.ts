@@ -1,0 +1,64 @@
+import { create } from "zustand";
+import { on } from "@/utils/eventBus";
+import { AUTH_EVENTS } from "@/domains/auth";
+import { CHAT_EVENTS } from "@/domains/chat";
+import type { AuthLogoutPayload } from "@/domains/auth";
+import type { ChatMessageSentPayload } from "@/domains/chat";
+import { addMessagePoints, fetchPointsBalance, type PointsSummary } from "./api";
+
+interface PointsState {
+  summary: PointsSummary | null;
+  loading: boolean;
+  loadPoints: (token: string | null) => Promise<void>;
+  applySummary: (summary: PointsSummary) => void;
+  addPoints: (token: string, amount: number) => Promise<PointsSummary>;
+  clear: () => void;
+}
+
+const EMPTY: PointsSummary = {
+  message_points: 0,
+  points_spent_total: 0,
+  points_purchased_total: 0,
+};
+
+export const usePointsStore = create<PointsState>((set, get) => ({
+  summary: null,
+  loading: false,
+
+  loadPoints: async (token) => {
+    if (!token) {
+      set({ summary: null, loading: false });
+      return;
+    }
+    set({ loading: true });
+    try {
+      const summary = await fetchPointsBalance(token);
+      set({ summary, loading: false });
+    } catch {
+      set({ summary: get().summary ?? EMPTY, loading: false });
+    }
+  },
+
+  applySummary: (summary) => set({ summary }),
+
+  addPoints: async (token, amount) => {
+    const summary = await addMessagePoints(token, amount);
+    set({ summary });
+    return summary;
+  },
+
+  clear: () => set({ summary: null, loading: false }),
+}));
+
+export function selectPointsBalance(summary: PointsSummary | null): number {
+  return summary?.message_points ?? 0;
+}
+
+// Cross-domain subscriptions (module load time)
+on<ChatMessageSentPayload>(CHAT_EVENTS.MESSAGE_SENT, ({ token }) => {
+  void usePointsStore.getState().loadPoints(token);
+});
+
+on<AuthLogoutPayload>(AUTH_EVENTS.LOGOUT, () => {
+  usePointsStore.getState().clear();
+});

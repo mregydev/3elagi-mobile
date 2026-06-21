@@ -2,9 +2,8 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { LOGO_HEIGHT } from "@/constants/brand";
 import { useColors } from "@/hooks/useColors";
-import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
   /** Optional content rendered below the brand row (e.g. a search bar). */
@@ -16,7 +15,7 @@ interface Props {
 export function AppHeader({ children, surface = "background" }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { isRTL } = useI18n();
+
   return (
     <View
       style={[
@@ -28,14 +27,8 @@ export function AppHeader({ children, surface = "background" }: Props) {
         },
       ]}
     >
-      <View
-        style={[
-          styles.brandRow,
-          { flexDirection: isRTL ? "row-reverse" : "row" },
-        ]}
-      >
-        <Logo3elagi height={32} />
-        <LanguageSwitch />
+      <View style={styles.brandRow}>
+        <Logo3elagi height={LOGO_HEIGHT.header} />
       </View>
       {children ? <View style={styles.below}>{children}</View> : null}
     </View>
@@ -51,7 +44,7 @@ const styles = StyleSheet.create({
   },
   brandRow: {
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
   below: { marginTop: 4 },
 });

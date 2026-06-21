@@ -5,13 +5,13 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "3elagi-mobile",
+    "scheme": "threelagi",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f7f7f7"
+      "image": "./assets/images/splash-logo.png",
+      "backgroundColor": "#f5f7fa",
+      "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": false,
@@ -19,6 +19,9 @@
     },
     "android": {
       "package": "com.threelagi.mobile",
+      "googleServicesFile": "./google-services.json",
+      "permissions": ["POST_NOTIFICATIONS"],
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#3057F2"
@@ -28,13 +31,51 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
+      "./plugins/withAndroidLaunchBackground.js",
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "react-native-document-scanner-plugin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow 3elagi to access your photos for lab results and X-rays.",
+          "cameraPermission": "Allow 3elagi to use the camera for lab results and X-rays."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow 3elagi to record voice messages."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-logo.png",
+          "backgroundColor": "#f5f7fa",
+          "imageWidth": 280,
+          "android": {
+            "image": "./assets/images/splash-logo.png",
+            "backgroundColor": "#f5f7fa",
+            "imageWidth": 280,
+            "resizeMode": "contain"
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c4d6c5d2-8664-4a92-b30a-2205f11532b5"
+      }
     }
   }
 }

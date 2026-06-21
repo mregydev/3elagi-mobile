@@ -1,0 +1,100 @@
+import { useEffect } from "react";
+import { Platform } from "react-native";
+import { useAuthStore } from "@/domains/auth/store";
+import {
+  announcePresenceLogin,
+  announcePresenceLogout,
+  connectPresenceSocket,
+  disconnectPresenceSocket,
+} from "@/domains/presence/socket";
+import type { LoggedInUser } from "@/domains/presence/types";
+
+function buildLoggedInUser(
+  profile: { id: string; name: string; email: string; avatarUrl?: string },
+  role: string | null,
+  specialty: string | null,
+  specialityId: string | null,
+  doctorId: string | null,
+): LoggedInUser {
+  const isDoctor = role?.toLowerCase() === "doctor";
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    role: role ?? "patient",
+    photo_url: profile.avatarUrl ?? null,
+    specialty: isDoctor ? specialty : null,
+    speciality_id: isDoctor ? specialityId : null,
+    doctor_id: isDoctor ? doctorId : null,
+  };
+}
+
+export function PresenceSocket() {
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const profile = useAuthStore((s) => s.profile);
+  const role = useAuthStore((s) => s.role);
+  const specialty = useAuthStore((s) => s.specialty);
+  const specialityId = useAuthStore((s) => s.specialityId);
+  const doctorId = useAuthStore((s) => s.doctorId);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!profile || !accessToken) {
+      disconnectPresenceSocket();
+      return;
+    }
+
+    const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
+    connectPresenceSocket(user, accessToken);
+
+    return () => {
+      disconnectPresenceSocket(profile.id);
+    };
+  }, [
+    hydrated,
+    profile?.id,
+    profile?.name,
+    profile?.email,
+    profile?.avatarUrl,
+    role,
+    specialty,
+    specialityId,
+    doctorId,
+    accessToken,
+  ]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    if (!hydrated || !profile || !accessToken) return;
+    if (role?.toLowerCase() !== "doctor") return;
+    if (typeof document === "undefined") return;
+
+    const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        announcePresenceLogout(profile.id);
+      } else {
+        announcePresenceLogin(user, accessToken);
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [
+    hydrated,
+    profile?.id,
+    profile?.name,
+    profile?.email,
+    profile?.avatarUrl,
+    role,
+    specialty,
+    specialityId,
+    doctorId,
+    accessToken,
+  ]);
+
+  return null;
+}

@@ -1,21 +1,35 @@
 import React from "react";
+import { View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 
 interface Props {
   height?: number;
   dark?: boolean;
+  /** Icon mark only (no "3elagi" wordmark). */
+  markOnly?: boolean;
+  /** When true, wraps SVG in a full-width centered container (fixes visual offset). */
+  centered?: boolean;
+  style?: ViewStyle;
 }
 
-export function Logo3elagi({ height = 44, dark = false }: Props) {
+export function Logo3elagi({
+  height = 44,
+  dark = false,
+  markOnly = false,
+  centered = false,
+  style,
+}: Props) {
   const stroke = dark ? "#ffffff" : "#3057F2";
   const fill = dark ? "rgba(255,255,255,0.12)" : "rgba(48,87,242,0.08)";
-  const ratio = 360 / 90;
+  const ratio = markOnly ? 1 : 360 / 90;
   const width = height * ratio;
-  return (
+  const viewBox = markOnly ? "0 0 90 90" : "0 0 360 90";
+
+  const svg = (
     <Svg
       width={width}
       height={height}
-      viewBox="0 0 360 90"
+      viewBox={viewBox}
       fill="none"
       accessibilityLabel="3elagi"
     >
@@ -50,16 +64,26 @@ export function Logo3elagi({ height = 44, dark = false }: Props) {
       />
       <Circle cx={45} cy={65} r={7} stroke={stroke} strokeWidth={4} fill="none" />
       <Circle cx={45} cy={65} r={2.5} fill={stroke} />
-      <SvgText
-        x={98}
-        y={62}
-        fontFamily="System"
-        fontWeight="800"
-        fontSize={58}
-        fill={stroke}
-      >
-        3elagi
-      </SvgText>
+      {!markOnly ? (
+        <SvgText
+          x={98}
+          y={62}
+          fontFamily="System"
+          fontWeight="800"
+          fontSize={58}
+          fill={stroke}
+        >
+          3elagi
+        </SvgText>
+      ) : null}
     </Svg>
+  );
+
+  if (!centered) return svg;
+
+  return (
+    <View style={[{ width: "100%", alignItems: "center", justifyContent: "center" }, style]}>
+      {svg}
+    </View>
   );
 }

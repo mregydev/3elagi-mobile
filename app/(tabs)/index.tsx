@@ -1,266 +1,221 @@
-import { router } from "expo-router";
-import { Search } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { Redirect, router } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  FlatList,
+  ActivityIndicator,
   Pressable,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { Avatar } from "@/components/Avatar";
+import { AdvertisementCarousel } from "@/components/AdvertisementCarousel";
+import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard";
 import { AppHeader } from "@/components/AppHeader";
-import { useChatStore } from "@/domains/chat/store";
-import type { Conversation } from "@/domains/chat/types";
+import { DoctorChatRoster } from "@/components/DoctorChatRoster";
+import { SpecialityGrid } from "@/components/SpecialityBrowse";
+import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
+import {
+  fetchAdvertisements,
+  fetchDoctorsBySpeciality,
+  fetchSpecialities,
+  mergeDoctorIntoRoster,
+  type Advertisement,
+  type Speciality,
+  type SpecialityDoctor,
+  type SpecialityDoctorRow,
+} from "@/domains/home/api";
+import { onDoctorRegistered } from "@/domains/presence/socket";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
-function timeAgo(iso?: string): string {
-  if (!iso) return "";
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  return `${d}d`;
+function ChatsHomeBrowse() {
+  const colors = useColors();
+  const { isRTL } = useI18n();
+  const [ads, setAds] = useState<Advertisement[]>([]);
+  const [specialities, setSpecialities] = useState<Speciality[]>([]);
+  const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
+    null,
+  );
+  const [doctors, setDoctors] = useState<SpecialityDoctor[]>([]);
+  const [loadingHome, setLoadingHome] = useState(true);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadHome = useCallback(async () => {
+    setLoadingHome(true);
+    setError(null);
+    try {
+      const [adRows, specRows] = await Promise.all([
+        fetchAdvertisements(),
+        fetchSpecialities(),
+      ]);
+      setAds(adRows);
+      setSpecialities(specRows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load home data");
+    } finally {
+      setLoadingHome(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHome();
+  }, [loadHome]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!selectedSpeciality) void loadHome();
+    }, [loadHome, selectedSpeciality]),
+  );
+
+  const openSpeciality = useCallback(async (speciality: Speciality) => {
+    setSelectedSpeciality(speciality);
+    setLoadingDoctors(true);
+    setDoctors([]);
+    setError(null);
+    try {
+      const rows = await fetchDoctorsBySpeciality(speciality.id);
+      setDoctors(rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load doctors");
+    } finally {
+      setLoadingDoctors(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSpeciality) return;
+
+    onDoctorRegistered((payload: SpecialityDoctorRow) => {
+      setDoctors((current) =>
+        mergeDoctorIntoRoster(current, payload, selectedSpeciality.id),
+      );
+      setLoadingDoctors(false);
+    });
+
+    return () => onDoctorRegistered(null);
+  }, [selectedSpeciality?.id]);
+
+  const openDoctorProfile = useCallback(
+    (doctorUserId: string, doctorEntityId?: string) => {
+      if (!doctorEntityId) {
+        router.push(`/chat/${doctorUserId}`);
+        return;
+      }
+      router.push({
+        pathname: "/doctor/[doctorId]",
+        params: { doctorId: doctorEntityId, userId: doctorUserId },
+      });
+    },
+    [],
+  );
+
+  if (loadingHome && specialities.length === 0) {
+    return (
+      <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+    );
+  }
+
+  if (error && specialities.length === 0 && !selectedSpeciality) {
+    return (
+      <View style={styles.empty}>
+        <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
+          {error}
+        </Text>
+        <Pressable
+          onPress={() => void loadHome()}
+          style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 12 }]}
+        >
+          <Text style={{ color: colors.primary, fontWeight: "700" }}>
+            {isRTL ? "إعادة المحاولة" : "Retry"}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (selectedSpeciality) {
+    return (
+      <DoctorChatRoster
+        speciality={selectedSpeciality}
+        doctors={doctors}
+        loading={loadingDoctors}
+        isRTL={isRTL}
+        onBack={() => {
+          setSelectedSpeciality(null);
+          setDoctors([]);
+          setError(null);
+        }}
+        onSelectDoctor={openDoctorProfile}
+      />
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      refreshControl={
+        <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
+      }
+    >
+      <AiAssistantHomeCard />
+      <AdvertisementCarousel items={ads} isRTL={isRTL} />
+      {error ? (
+        <View style={styles.empty}>
+          <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
+            {error}
+          </Text>
+          <Pressable
+            onPress={() => void loadHome()}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 12 }]}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>
+              {isRTL ? "إعادة المحاولة" : "Retry"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {specialities.length === 0 && !loadingHome && !error ? (
+        <View style={styles.empty}>
+          <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
+            {isRTL ? "لا توجد تخصصات متاحة" : "No specialities available"}
+          </Text>
+        </View>
+      ) : (
+        <SpecialityGrid
+          specialities={specialities}
+          isRTL={isRTL}
+          onSelect={(s) => void openSpeciality(s)}
+        />
+      )}
+    </ScrollView>
+  );
 }
 
 export default function ChatsTab() {
   const colors = useColors();
-  const { t, isRTL } = useI18n();
-  const conversations = useChatStore((s) => s.conversations);
-  const loadConversations = useChatStore((s) => s.loadConversations);
-  const [query, setQuery] = useState("");
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
 
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
-
-  const online = useMemo(
-    () => conversations.filter((c) => c.user.presence === "online"),
-    [conversations],
-  );
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => c.user.name.toLowerCase().includes(q));
-  }, [conversations, query]);
-
-  const dir = isRTL ? "row-reverse" : "row";
+  if (!isSignedIn(profile, accessToken) || !role) {
+    return <Redirect href="/welcome" />;
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader>
-        <View
-          style={[
-            styles.searchBar,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              flexDirection: dir,
-            },
-          ]}
-        >
-          <Search size={16} color={colors.mutedForeground} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t.common.search}
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.searchInput,
-              { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-            ]}
-          />
-        </View>
-      </AppHeader>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListHeaderComponent={
-          online.length ? (
-            <View style={styles.onlineSection}>
-              <Text
-                style={[
-                  styles.sectionLabel,
-                  { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                ]}
-              >
-                {isRTL ? "متصلون الآن" : "Active now"}
-              </Text>
-              <FlatList
-                horizontal
-                inverted={isRTL}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
-                data={online}
-                keyExtractor={(c) => `o-${c.id}`}
-                renderItem={({ item }) => (
-                  <Pressable
-                    onPress={() => router.push(`/chat/${item.id}`)}
-                    style={styles.onlineItem}
-                  >
-                    <Avatar
-                      uri={item.user.avatarUrl}
-                      size={58}
-                      presence={item.user.presence}
-                    />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.onlineName, { color: colors.foreground }]}
-                    >
-                      {item.user.name.split(" ").slice(-1)[0]}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-            </View>
-          ) : null
-        }
-        ItemSeparatorComponent={() => (
-          <View
-            style={[
-              styles.divider,
-              { backgroundColor: colors.border },
-              isRTL ? { marginRight: 84, marginLeft: 0 } : { marginLeft: 84, marginRight: 0 },
-            ]}
-          />
-        )}
-        renderItem={({ item }) => (
-          <ConversationRow item={item} colors={colors} isRTL={isRTL} />
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={{ color: colors.mutedForeground }}>
-              {isRTL ? "لا توجد محادثات" : "No conversations"}
-            </Text>
-          </View>
-        }
-      />
+      <AppHeader />
+      <ChatsHomeBrowse />
     </View>
-  );
-}
-
-function ConversationRow({
-  item,
-  colors,
-  isRTL,
-}: {
-  item: Conversation;
-  colors: ReturnType<typeof useColors>;
-  isRTL: boolean;
-}) {
-  const dir = isRTL ? "row-reverse" : "row";
-
-  return (
-    <Pressable
-      onPress={() => router.push(`/chat/${item.id}`)}
-      style={({ pressed }) => [
-        styles.row,
-        { flexDirection: dir },
-        pressed && { backgroundColor: colors.muted },
-      ]}
-    >
-      <Avatar uri={item.user.avatarUrl} size={56} presence={item.user.presence} />
-
-      <View style={{ flex: 1 }}>
-        {/* Name + time */}
-        <View style={[styles.rowTop, { flexDirection: dir }]}>
-          <Text
-            style={[
-              styles.name,
-              { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-            ]}
-            numberOfLines={1}
-          >
-            {item.user.name}
-          </Text>
-          <Text style={[styles.time, { color: colors.mutedForeground }]}>
-            {timeAgo(item.lastMessage?.createdAt)}
-          </Text>
-        </View>
-
-        {/* Preview + unread badge */}
-        <View style={[styles.rowBottom, { flexDirection: dir }]}>
-          <Text
-            style={[
-              styles.preview,
-              {
-                color: item.unreadCount > 0 ? colors.foreground : colors.mutedForeground,
-                fontWeight: item.unreadCount > 0 ? "700" : "400",
-                textAlign: isRTL ? "right" : "left",
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {item.lastMessage?.text || (isRTL ? "قل مرحبا 👋" : "Say hello 👋")}
-          </Text>
-          {item.unreadCount > 0 ? (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>{item.unreadCount}</Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  searchBar: {
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  searchInput: { flex: 1, fontSize: 14, padding: 0 },
-  onlineSection: { paddingTop: 14, paddingBottom: 6 },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  onlineItem: { alignItems: "center", width: 64, gap: 6 },
-  onlineName: { fontSize: 12, fontWeight: "500", textAlign: "center" },
-  row: {
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  rowTop: {
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rowBottom: {
-    alignItems: "center",
-    marginTop: 4,
-    gap: 8,
-  },
-  name: { fontSize: 16, fontWeight: "600", flex: 1 },
-  time: { fontSize: 12 },
-  preview: { fontSize: 14, flex: 1 },
-  badge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    paddingHorizontal: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  divider: { height: StyleSheet.hairlineWidth },
+  scroll: { flex: 1 },
   empty: { alignItems: "center", paddingVertical: 60 },
 });

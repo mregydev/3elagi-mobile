@@ -4,69 +4,103 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
+import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { t, isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const login = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
-  const [email, setEmail] = useState("demo@3elagi.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const hideIntro = Platform.OS === "web" && isDesktop;
+  const hideWebTopBar = Platform.OS === "web";
 
   const submit = async () => {
     try {
       await login({ email, password });
-      router.back();
+      router.replace("/(tabs)");
     } catch (e) {
-      Alert.alert("Login failed", (e as Error).message);
+      if ((e as Error).message === "__UNSUPPORTED_ROLE__") {
+        Alert.alert(t.auth.unsupportedAccount, t.auth.unsupportedAccountMsg, [
+          { text: t.common.ok },
+        ]);
+      } else {
+        Alert.alert(t.auth.loginFailed, (e as Error).message);
+      }
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: Platform.OS === "web" ? "transparent" : colors.background },
+        Platform.OS === "web" && styles.screenWeb,
+      ]}
     >
-      <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 12 }}>
-        <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
-          <ArrowLeft size={22} color={colors.foreground} />
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Welcome back
-        </Text>
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Sign in to continue to 3elagi
-        </Text>
+      {!hideWebTopBar ? (
+        <View
+          style={[
+            styles.topBar,
+            {
+              paddingTop: Platform.OS === "web" ? 16 : insets.top + 8,
+              flexDirection: isRTL ? "row-reverse" : "row",
+            },
+          ]}
+        >
+          <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
+            <ArrowLeft size={22} color={colors.foreground} />
+          </Pressable>
+          <AuthLanguageField />
+        </View>
+      ) : null}
+      <KeyboardSafeScrollView style={styles.flex} contentContainerStyle={styles.body} bottomOffset={32}>
+        {!hideIntro ? (
+          <>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              {t.auth.welcomeBack}
+            </Text>
+            <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+              {t.auth.signInSubtitle}
+            </Text>
+          </>
+        ) : null}
 
-        <View style={{ width: "100%", gap: 12, marginTop: 28 }}>
+        <View style={{ width: "100%", gap: 12, marginTop: hideIntro ? 0 : 28 }}>
           <Field
-            label="Email"
+            label={t.auth.email}
             value={email}
             onChange={setEmail}
+            placeholder={t.auth.emailPlaceholder}
             autoCapitalize="none"
             keyboardType="email-address"
             colors={colors}
+            isRTL={isRTL}
           />
           <Field
-            label="Password"
+            label={t.auth.password}
             value={password}
             onChange={setPassword}
+            placeholder={t.auth.passwordPlaceholder}
             secure
             colors={colors}
+            isRTL={isRTL}
           />
           <Pressable
             onPress={submit}
@@ -84,7 +118,7 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.btnText}>Log in</Text>
+              <Text style={styles.btnText}>{t.auth.logIn}</Text>
             )}
           </Pressable>
           <Pressable
@@ -92,22 +126,12 @@ export default function LoginScreen() {
             style={{ paddingVertical: 8, alignItems: "center" }}
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
-              Don't have an account? Sign up
+              {t.auth.noAccountSignUp}
             </Text>
           </Pressable>
-          <Text
-            style={{
-              color: colors.mutedForeground,
-              fontSize: 12,
-              textAlign: "center",
-              marginTop: 12,
-            }}
-          >
-            Demo: demo@3elagi.com · demo1234
-          </Text>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardSafeScrollView>
+    </View>
   );
 }
 
@@ -117,6 +141,8 @@ function Field({
   onChange,
   secure,
   colors,
+  isRTL,
+  placeholder,
   ...rest
 }: {
   label: string;
@@ -124,6 +150,8 @@ function Field({
   onChange: (v: string) => void;
   secure?: boolean;
   colors: ReturnType<typeof useColors>;
+  isRTL: boolean;
+  placeholder?: string;
   autoCapitalize?: "none" | "sentences";
   keyboardType?: "default" | "email-address" | "phone-pad";
 }) {
@@ -134,12 +162,14 @@ function Field({
         value={value}
         onChangeText={onChange}
         secureTextEntry={secure}
+        placeholder={placeholder}
         style={[
           styles.input,
           {
             backgroundColor: colors.card,
             borderColor: colors.border,
             color: colors.foreground,
+            textAlign: isRTL ? "right" : "left",
           },
         ]}
         placeholderTextColor={colors.mutedForeground}
@@ -150,7 +180,15 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 24, alignItems: "center" },
+  screen: { flex: 1 },
+  flex: { flex: 1 },
+  screenWeb: { flex: 0, width: "100%", height: "auto" },
+  topBar: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+  },
+  body: { padding: 24, alignItems: "center", paddingBottom: Platform.OS === "web" ? 32 : 24 },
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
   label: { fontSize: 13, fontWeight: "700" },
