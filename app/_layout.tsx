@@ -15,6 +15,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { usePointsStore } from "@/domains/points/store";
+import { useRemindersStore } from "@/domains/reminders/store";
 
 function MedicalDataLoader() {
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -50,6 +51,18 @@ function MedicalDataLoader() {
       cancelled = true;
     };
   }, [hydrated, profile?.id, accessToken, loadOwnRecords, role, setRecordsFromApi, clear]);
+
+  return null;
+}
+
+function RemindersBootstrap() {
+  const init = useRemindersStore((s) => s.init);
+  const hydrated = useAuthStore((s) => s.hydrated);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void init();
+  }, [hydrated, init]);
 
   return null;
 }
@@ -91,6 +104,7 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <MedicalDataLoader />
           <PointsDataLoader />
+          <RemindersBootstrap />
           <FirebaseBootstrap />
           <PresenceSocket />
           <PresenceChatSync />

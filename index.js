@@ -1,6 +1,7 @@
-import * as SplashScreen from "expo-splash-screen";
+const { Platform } = require("react-native");
 
-// Keep the native splash visible until AppSplash paints (must run before expo-router boot).
-SplashScreen.preventAutoHideAsync().catch(() => {});
+if (Platform.OS !== "web") {
+  require("expo-splash-screen").preventAutoHideAsync().catch(() => {});
+}
 
-import "expo-router/entry";
+require("expo-router/entry");

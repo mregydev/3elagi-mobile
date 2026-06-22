@@ -1,7 +1,8 @@
 import { create } from "zustand";
-import { on } from "@/utils/eventBus";
+import { on, emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "@/domains/auth";
 import { medicalRepository } from "./repository";
+import { MEDICAL_EVENTS } from "./events";
 import type { MedicalCategory, MedicalRecord } from "./types";
 
 function sortByDate(records: MedicalRecord[]): MedicalRecord[] {
@@ -67,11 +68,16 @@ export const useMedicalStore = create<MedicalState>((set, get) => ({
       const rest = state.records.filter((r) => r.id !== record.id);
       return { records: sortByDate([record, ...rest]) };
     }),
-  upsertPrescription: (record) =>
+  upsertPrescription: (record) => {
     set((state) => {
       const rest = state.records.filter((r) => r.id !== record.id);
       return { records: sortByDate([record, ...rest]) };
-    }),
+    });
+    emit(MEDICAL_EVENTS.PRESCRIPTION_UPSERTED, {
+      prescriptionId: record.id,
+      ownerId: record.ownerId,
+    });
+  },
   upsertDocument: (record) =>
     set((state) => {
       const rest = state.records.filter((r) => r.id !== record.id);

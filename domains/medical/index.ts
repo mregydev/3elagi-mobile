@@ -1,6 +1,7 @@
 export { useMedicalStore } from './store'
 export { medicalRepository } from './repository'
 export { MEDICAL_EVENTS } from './events'
+export type { MedicalClearedPayload, MedicalPrescriptionUpsertedPayload } from './events'
 export { filterMedicalRecords, hasActiveFilters, EMPTY_MEDICAL_FILTERS } from './search'
 export { canEditDiagnosis, canAddDiagnosisSymptom, canDeleteMedicalRecord } from './permissions'
 export type { MedicalRecord, MedicalCategory, DiagnosisSymptom, PrescriptionMedication } from './types'

@@ -23,6 +23,7 @@ import {
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import type { PrescriptionMedication } from "@/domains/medical/types";
+import { useReminderScheduler } from "@/domains/reminders/hooks/useReminderScheduler";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -51,6 +52,7 @@ export default function AddPrescriptionScreen() {
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const upsertPrescription = useMedicalStore((s) => s.upsertPrescription);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
+  const { schedule: scheduleReminder } = useReminderScheduler();
 
   const patientUserId =
     patientUserIdParam?.trim() || (role?.toLowerCase() === "patient" ? profile?.id : "") || "";
@@ -225,6 +227,7 @@ export default function AddPrescriptionScreen() {
         accessToken,
       );
       upsertPrescription(saved);
+      scheduleReminder(saved);
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);
