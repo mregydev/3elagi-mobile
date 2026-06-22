@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import { on } from "@/utils/eventBus";
-import { AUTH_EVENTS } from "@/domains/auth";
-import { CHAT_EVENTS } from "@/domains/chat";
-import type { AuthLogoutPayload } from "@/domains/auth";
-import type { ChatMessageSentPayload } from "@/domains/chat";
+import { AUTH_EVENTS } from "@/domains/auth/events";
+import { CHAT_EVENTS } from "@/domains/chat/events";
+import type { AuthLogoutPayload } from "@/domains/auth/events";
+import type { ChatMessageSentPayload } from "@/domains/chat/events";
 import { addMessagePoints, fetchPointsBalance, type PointsSummary } from "./api";
 
 interface PointsState {

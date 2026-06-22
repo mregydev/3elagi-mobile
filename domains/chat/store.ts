@@ -15,7 +15,7 @@ import { applyLivePresence } from "./presence";
 import { applyPresenceToConversations } from "./presenceConversations";
 import { emit, on } from "@/utils/eventBus";
 import { CHAT_EVENTS } from "./events";
-import { AUTH_EVENTS } from "@/domains/auth";
+import { AUTH_EVENTS } from "@/domains/auth/events";
 import { chatRepository } from "./repository";
 import type { MessageEmotionItem } from "@/domains/emotions";
 import type {

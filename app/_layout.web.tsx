@@ -105,6 +105,8 @@ export default function RootLayout() {
             <Stack.Screen name="doctor/[doctorId]" />
             <Stack.Screen name="patients/[userId]" />
             <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />
+            <Stack.Screen name="medical/prescription/add" />
+            <Stack.Screen name="medical/[id]" />
           </Stack>
         </View>
       </KeyboardProvider>

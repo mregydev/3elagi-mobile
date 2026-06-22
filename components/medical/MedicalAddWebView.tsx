@@ -1,14 +1,13 @@
 import {
   ArrowLeft,
   ArrowRight,
-  Camera,
   FileText,
-  Image as ImageIcon,
   Plus,
+  Upload,
   X,
   ZoomIn,
 } from "lucide-react-native";
-import React from "react";
+import React, { useRef } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -121,6 +120,7 @@ export function MedicalAddWebView() {
   const colors = useColors();
   const { isDesktop, isTablet } = useWebLayout();
   const form = useMedicalAddForm();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const {
     isRTL,
     category,
@@ -148,14 +148,22 @@ export function MedicalAddWebView() {
     isDiagnosis,
     isLabOrXray,
     isImage,
-    pickFromCamera,
-    pickFromGallery,
-    pickFromFiles,
     submit,
     pageTitle,
     pageSubtitle,
     goBack,
   } = form;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttached({ uri: reader.result as string, name: file.name, mimeType: file.type || "application/octet-stream" });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -333,29 +341,21 @@ export function MedicalAddWebView() {
         </View>
       ) : (
         <>
-          <View style={[styles.pickRow, { flexDirection: dir }]}>
-            <Pressable
-              onPress={() => void pickFromCamera()}
-              style={[styles.pickBtn, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: dir }]}
-            >
-              <Camera size={18} color={colors.primary} />
-              <Text style={{ color: colors.foreground, fontWeight: "600" }}>
-                {isRTL ? "كاميرا" : "Camera"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void pickFromGallery()}
-              style={[styles.pickBtn, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: dir }]}
-            >
-              <ImageIcon size={18} color={colors.primary} />
-              <Text style={{ color: colors.foreground, fontWeight: "600" }}>
-                {isRTL ? "المعرض" : "Gallery"}
-              </Text>
-            </Pressable>
-          </View>
-          <Pressable onPress={() => void pickFromFiles()}>
-            <Text style={{ color: colors.primary, fontWeight: "600" }}>
-              {isRTL ? "أو اختر ملف PDF" : "Or pick a PDF / file"}
+          {/* ponytail: native <input type="file"> — no dep, works on all web browsers */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+          <Pressable
+            onPress={() => fileInputRef.current?.click()}
+            style={[styles.uploadBtn, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: dir }]}
+          >
+            <Upload size={18} color={colors.primary} />
+            <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+              {isRTL ? "رفع ملف (صورة أو PDF)" : "Upload file (image or PDF)"}
             </Text>
           </Pressable>
         </>
@@ -398,7 +398,6 @@ export function MedicalAddWebView() {
                 {pageSubtitle}
               </Text>
             </View>
-            {saveButton}
           </View>
 
           {!hasCategoryParam ? (
@@ -658,6 +657,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     minWidth: 0,
+  },
+  uploadBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
   },
   previewCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   thumbnailWrap: { position: "relative" },

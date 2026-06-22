@@ -1,13 +1,10 @@
-import { Coins, Plus, TrendingDown, TrendingUp, Zap } from "lucide-react-native";
-import React, { useState } from "react";
+import { Coins, TrendingDown, TrendingUp, Zap } from "lucide-react-native";
+import React from "react";
 import {
   ActivityIndicator,
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type ViewStyle,
 } from "react-native";
@@ -17,8 +14,6 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { usePointsPage } from "@/hooks/usePointsPage";
 import { useWebLayout } from "@/hooks/useWebLayout";
-
-const QUICK_AMOUNTS = [10, 25, 50, 100];
 
 function gridColumns(isWide: boolean, isDesktop: boolean, isTablet: boolean) {
   if (isWide) return 3;
@@ -78,25 +73,9 @@ export function PointsWebView() {
 
   const {
     loading,
-    saving,
     displaySummary,
-    amountText,
-    setAmountText,
-    submitAdd,
     summary,
   } = usePointsPage(isRTL);
-
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const handleQuickAdd = async (amount: number) => {
-    const ok = await submitAdd(amount);
-    if (ok) setModalOpen(false);
-  };
-
-  const handleSubmit = async () => {
-    const ok = await submitAdd();
-    if (ok) setModalOpen(false);
-  };
 
   const chartSize = isWide ? 280 : isDesktop ? 252 : 220;
   const containerGap = useSplitLayout ? 28 : 20;
@@ -253,202 +232,10 @@ export function PointsWebView() {
                   />
                 </View>
               </View>
-
-              <View style={styles.sectionBlock}>
-                <DashboardCard
-                  testID="points-add-card"
-                  style={[
-                    styles.addCard,
-                    {
-                      backgroundColor: `${colors.primary}06`,
-                      borderColor: `${colors.primary}55`,
-                    },
-                  ]}
-                >
-                  <View style={[styles.addHeader, { flexDirection: dir }]}>
-                    <View style={[styles.addIconWrap, { backgroundColor: colors.primary }]}>
-                      <Plus size={20} color="#fff" />
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[styles.addTitle, { color: colors.foreground, textAlign }]}>
-                        {isRTL ? "إضافة نقاط" : "Add points"}
-                      </Text>
-                      <Text
-                        style={[styles.addSubtitle, { color: colors.mutedForeground, textAlign }]}
-                      >
-                        {isRTL
-                          ? "اشحن رصيدك فورًا للاستمرار في المحادثات."
-                          : "Top up instantly so you never miss a conversation."}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {useSplitLayout ? (
-                    <View
-                      style={[
-                        styles.addFormRow,
-                        { flexDirection: dir, maxWidth: isWide ? 720 : undefined },
-                      ]}
-                    >
-                      <TextInput
-                        value={amountText}
-                        onChangeText={setAmountText}
-                        keyboardType="number-pad"
-                        placeholder={isRTL ? "عدد النقاط" : "Points amount"}
-                        placeholderTextColor={colors.mutedForeground}
-                        style={[
-                          styles.addInput,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.foreground,
-                            textAlign: isRTL ? "right" : "left",
-                          },
-                        ]}
-                      />
-                      <Pressable
-                        testID="points-add-btn"
-                        onPress={() => void handleSubmit()}
-                        disabled={saving}
-                        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                          styles.addSubmitBtn,
-                          {
-                            backgroundColor: colors.primary,
-                            opacity: saving ? 0.7 : pressed ? 0.9 : 1,
-                            transform: hovered && !saving ? [{ translateY: -1 }] : undefined,
-                          },
-                        ]}
-                      >
-                        {saving ? (
-                          <ActivityIndicator color="#fff" />
-                        ) : (
-                          <Text style={styles.addSubmitText}>
-                            {isRTL ? "إضافة نقاط" : "Add points"}
-                          </Text>
-                        )}
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <Pressable
-                      testID="points-add-btn"
-                      onPress={() => setModalOpen(true)}
-                      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                        styles.addSubmitBtn,
-                        styles.addSubmitBtnFull,
-                        {
-                          backgroundColor: colors.primary,
-                          opacity: pressed ? 0.9 : 1,
-                          transform: hovered ? [{ translateY: -1 }] : undefined,
-                        },
-                      ]}
-                    >
-                      <Plus size={18} color="#fff" />
-                      <Text style={styles.addSubmitText}>
-                        {isRTL ? "إضافة نقاط" : "Add points"}
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  <View style={[styles.quickRow, { flexDirection: dir }]}>
-                    <Text style={[styles.quickLabel, { color: colors.mutedForeground }]}>
-                      {isRTL ? "إضافة سريعة:" : "Quick add:"}
-                    </Text>
-                    {QUICK_AMOUNTS.map((amount) => (
-                      <Pressable
-                        key={amount}
-                        testID="points-quick-chip"
-                        disabled={saving}
-                        onPress={() => void handleQuickAdd(amount)}
-                        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                          styles.quickChip,
-                          {
-                            borderColor: hovered ? colors.primary : colors.border,
-                            backgroundColor: hovered
-                              ? `${colors.primary}10`
-                              : colors.card,
-                            opacity: pressed ? 0.85 : 1,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.quickChipText, { color: colors.foreground }]}>
-                          +{amount}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </DashboardCard>
-              </View>
             </>
           )}
         </View>
       </ScrollView>
-
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => !saving && setModalOpen(false)}>
-          <Pressable
-            style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              {isRTL ? "إضافة نقاط" : "Add points"}
-            </Text>
-            <TextInput
-              value={amountText}
-              onChangeText={setAmountText}
-              keyboardType="number-pad"
-              placeholder={isRTL ? "مثال: 50" : "e.g. 50"}
-              placeholderTextColor={colors.mutedForeground}
-              style={[
-                styles.addInput,
-                {
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  color: colors.foreground,
-                  textAlign: isRTL ? "right" : "left",
-                },
-              ]}
-            />
-            <View style={[styles.modalActions, { flexDirection: dir }]}>
-              <Pressable
-                onPress={() => setModalOpen(false)}
-                disabled={saving}
-                style={({ hovered }: { pressed: boolean; hovered?: boolean }) => [
-                  styles.modalBtn,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: hovered ? colors.muted : "transparent",
-                  },
-                ]}
-              >
-                <Text style={{ color: colors.foreground, fontWeight: "700" }}>
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </Text>
-              </Pressable>
-              <Pressable
-                testID="points-add-btn"
-                onPress={() => void handleSubmit()}
-                disabled={saving}
-                style={({ hovered }: { pressed: boolean; hovered?: boolean }) => [
-                  styles.modalBtn,
-                  {
-                    backgroundColor: colors.primary,
-                    borderColor: colors.primary,
-                    opacity: saving ? 0.7 : hovered ? 0.92 : 1,
-                  },
-                ]}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={{ color: "#fff", fontWeight: "700" }}>
-                    {isRTL ? "إضافة" : "Add"}
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -674,119 +461,5 @@ const styles = StyleSheet.create({
   },
   statValueWide: {
     fontSize: 34,
-  },
-  addCard: {
-    padding: 28,
-    gap: 20,
-  },
-  addHeader: {
-    alignItems: "flex-start",
-    gap: 16,
-  },
-  addIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  addSubtitle: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 4,
-  },
-  addFormRow: {
-    gap: 12,
-    alignItems: "stretch",
-    alignSelf: "flex-start",
-    width: "100%",
-  },
-  addInput: {
-    flex: 1,
-    minWidth: 180,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  addSubmitBtn: {
-    minWidth: 160,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-    cursor: "pointer" as "auto",
-  },
-  addSubmitBtnFull: {
-    alignSelf: "stretch",
-  },
-  addSubmitText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  quickRow: {
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 10,
-    paddingTop: 4,
-  },
-  quickLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  quickChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 999,
-    borderWidth: 1,
-    cursor: "pointer" as "auto",
-  },
-  quickChipText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-    gap: 14,
-    maxWidth: 420,
-    alignSelf: "center",
-    width: "100%",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  modalActions: {
-    gap: 10,
-    marginTop: 4,
-  },
-  modalBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 46,
-    cursor: "pointer" as "auto",
   },
 });

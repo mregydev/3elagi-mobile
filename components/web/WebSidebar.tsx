@@ -6,6 +6,7 @@ import {
   History,
   Home,
   LogOut,
+  Star,
   User,
 } from "lucide-react-native";
 import React from "react";
@@ -24,6 +25,7 @@ type NavItem = {
   labelKey: keyof Translations["tabs"];
   match: (path: string) => boolean;
   Icon: typeof Home;
+  doctorOnly?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -46,9 +48,16 @@ const NAV_ITEMS: NavItem[] = [
     Icon: History,
   },
   {
+    href: "/(tabs)/reviews",
+    labelKey: "reviews",
+    match: (path) => path.includes("reviews"),
+    Icon: Star,
+    doctorOnly: true,
+  },
+  {
     href: "/(tabs)/records",
     labelKey: "records",
-    match: (path) => path.includes("records"),
+    match: (path) => path.includes("records") || path.includes("/medical"),
     Icon: ClipboardList,
   },
   {
@@ -99,11 +108,14 @@ export function WebSidebar() {
     router.replace("/welcome");
   };
 
-  const items = NAV_ITEMS.map((item) => ({
-    ...item,
-    active:
-      item.Icon === Home ? isHomePath(pathname) : item.match(pathname),
-  }));
+  const isDoctor = role?.toLowerCase() === "doctor";
+
+  const items = NAV_ITEMS.filter((item) => !item.doctorOnly || isDoctor).map(
+    (item) => ({
+      ...item,
+      active: item.Icon === Home ? isHomePath(pathname) : item.match(pathname),
+    }),
+  );
 
   return (
     <View

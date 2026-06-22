@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { on, emit } from "@/utils/eventBus";
-import { AUTH_EVENTS } from "@/domains/auth";
+import { AUTH_EVENTS } from "@/domains/auth/events";
 import { medicalRepository } from "./repository";
 import { MEDICAL_EVENTS } from "./events";
 import type { MedicalCategory, MedicalRecord } from "./types";

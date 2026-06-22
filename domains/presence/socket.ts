@@ -1,8 +1,8 @@
 import { io, type Socket } from "socket.io-client";
 import { SOCKET_BASE } from "@/constants/api";
 import { on } from "@/utils/eventBus";
-import { AUTH_EVENTS } from "@/domains/auth";
-import type { AuthLogoutPayload } from "@/domains/auth";
+import { AUTH_EVENTS } from "@/domains/auth/events";
+import type { AuthLogoutPayload } from "@/domains/auth/events";
 import type { DoctorPatientAccessStatus, MessageRow } from "@/domains/chat";
 import { usePresenceStore } from "./store";
 import type { LoggedInUser } from "./types";

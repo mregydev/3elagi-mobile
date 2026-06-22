@@ -96,23 +96,25 @@ export function ChatMessageBubble({
   const isAccessAction = item.type === "access_action";
   const isImage = item.type === "image" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
-  const medicalTitle = item.medicalLink?.title?.trim() ?? "";
-  const medicalNote =
-    item.medicalLink?.note?.trim() ||
-    (item.text?.trim() && item.text.trim() !== medicalTitle ? item.text.trim() : "");
-  const medicalHasNote = isMedicalLink && !!medicalNote;
+  const medicalBubbleWidth = Math.min(300, maxBubbleWidth);
 
   const bubbleColors = isImage
     ? { backgroundColor: "transparent" }
-    : mine
-      ? { backgroundColor: colors.primary }
-      : {
+    : isMedicalLink
+      ? {
           backgroundColor: colors.card,
           borderColor: colors.border,
           borderWidth: 1,
-        };
+        }
+      : mine
+        ? { backgroundColor: colors.primary }
+        : {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderWidth: 1,
+          };
 
-  const textColor = mine ? "#fff" : colors.foreground;
+  const textColor = isMedicalLink ? colors.foreground : mine ? "#fff" : colors.foreground;
   const imageUri = item.localAttachmentUrl ?? item.attachmentUrl;
 
   let body: React.ReactNode = (
@@ -287,23 +289,28 @@ export function ChatMessageBubble({
           delayLongPress={400}
           style={({ pressed }) => [
             styles.medicalCard,
-            { flexDirection: rowDir, opacity: pressed ? 0.85 : 1 },
+            {
+              flexDirection: rowDir,
+              opacity: pressed ? 0.85 : 1,
+              backgroundColor: `${colors.primary}08`,
+              borderColor: `${colors.primary}22`,
+            },
           ]}
         >
         <View
           style={[
             styles.medicalIconWrap,
-            { backgroundColor: mine ? "rgba(255,255,255,0.2)" : `${colors.primary}15` },
+            { backgroundColor: `${colors.primary}15` },
           ]}
         >
-          <RecordIcon size={20} color={mine ? "#fff" : colors.primary} />
+          <RecordIcon size={20} color={colors.primary} />
         </View>
 
         <View style={styles.medicalTextWrap}>
           <Text
             style={[
               styles.medicalType,
-              { color: mine ? "rgba(255,255,255,0.85)" : colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+              { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
             ]}
           >
             {typeLabel}
@@ -311,7 +318,7 @@ export function ChatMessageBubble({
           <Text
             style={[
               styles.medicalTitle,
-              { color: textColor, textAlign: isRTL ? "right" : "left" },
+              { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
             ]}
             numberOfLines={2}
           >
@@ -320,19 +327,19 @@ export function ChatMessageBubble({
           <Text
             style={[
               styles.medicalHint,
-              { color: mine ? "rgba(255,255,255,0.7)" : colors.primary, textAlign: isRTL ? "right" : "left" },
+              { color: colors.primary, textAlign: isRTL ? "right" : "left" },
             ]}
           >
             {isRTL ? "اضغط للعرض" : "Tap to view"}
           </Text>
         </View>
 
-        <ChevronRight size={18} color={mine ? "#fff" : colors.primary} />
+        <ChevronRight size={18} color={colors.primary} />
         </Pressable>
         {item.editedAt ? (
           <Text
             style={{
-              color: mine ? "rgba(255,255,255,0.65)" : colors.mutedForeground,
+              color: colors.mutedForeground,
               fontSize: 10,
               fontStyle: "italic",
               textAlign: isRTL ? "right" : "left",
@@ -393,10 +400,7 @@ export function ChatMessageBubble({
           isImage && styles.imageBubble,
           isMedicalLink && styles.medicalBubble,
           bubbleColors,
-          isMedicalLink &&
-            (medicalHasNote
-              ? { width: maxBubbleWidth }
-              : { width: Math.min(260, maxBubbleWidth) }),
+          isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" },
           highlighted && {
             borderWidth: 2,
             borderColor: colors.primary,
@@ -476,6 +480,9 @@ const styles = StyleSheet.create({
   medicalCard: {
     alignItems: "center",
     gap: 10,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   medicalIconWrap: {
     width: 40,

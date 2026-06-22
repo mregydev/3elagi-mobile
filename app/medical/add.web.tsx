@@ -1,14 +1,19 @@
-import AddMedicalScreen from "./add.tsx";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { MedicalAddWebView } from "@/components/medical/MedicalAddWebView";
 import { WebDesktopShell } from "@/components/web/WebDesktopShell";
-import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function AddMedicalScreenWeb() {
-  const { isDesktop } = useWebLayout();
+  const { category, patientUserId } = useLocalSearchParams<{ category?: string; patientUserId?: string }>();
 
-  if (!isDesktop) {
-    return <AddMedicalScreen />;
-  }
+  useEffect(() => {
+    if (category === "prescription") {
+      const params = patientUserId ? `?patientUserId=${patientUserId}` : "";
+      router.replace(`/medical/prescription/add${params}` as never);
+    }
+  }, [category, patientUserId]);
+
+  if (category === "prescription") return null;
 
   return (
     <WebDesktopShell>
