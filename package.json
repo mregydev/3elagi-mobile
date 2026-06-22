@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "main": "index.js",
+  "engines": {
+    "node": ">=20.19.4"
+  },
   "scripts": {
     "start": "expo start",
     "android": "node scripts/generate-splash-logo.js && node scripts/patch-android-splash.js && bash scripts/android-env.sh expo run:android --app-id com.threelagi.mobile",
     "android:build": "node scripts/generate-splash-logo.js && node scripts/patch-android-splash.js && bash scripts/android-env.sh bash -lc 'cd android && ./gradlew assembleDebug'",
     "android:setup": "bash scripts/setup-android.sh",
     "ios": "expo run:ios",
-    "web": "expo start --web",
+    "web": "bash scripts/expo-web.sh",
     "build:web": "expo export --platform web --output-dir dist",
     "vercel-build": "npm run build:web",
     "typecheck": "tsc -p tsconfig.json --noEmit"

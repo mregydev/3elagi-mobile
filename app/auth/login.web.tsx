@@ -8,6 +8,7 @@ export default function LoginScreenWeb() {
 
   return (
     <WebAuthFrame
+      backgroundVariant="login-hero"
       eyebrow={t.auth.signInEyebrow}
       headline={t.auth.signInHeadline}
       description={t.auth.signInDescription}

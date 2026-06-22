@@ -21,6 +21,8 @@ interface Props {
   description?: string;
   /** Scroll inside the form column only (viewport-height cap). Used on signup. */
   scrollForm?: boolean;
+  backgroundVariant?: "gradient" | "login-hero";
+  heroOverlayOpacity?: number;
 }
 
 export function WebAuthFrame({
@@ -29,6 +31,8 @@ export function WebAuthFrame({
   headline,
   description,
   scrollForm = false,
+  backgroundVariant = "gradient",
+  heroOverlayOpacity = 0.22,
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
@@ -44,7 +48,7 @@ export function WebAuthFrame({
         : "100%";
 
   return (
-    <WebAuthBackground>
+    <WebAuthBackground variant={backgroundVariant} heroOverlayOpacity={heroOverlayOpacity}>
       <View style={[styles.page, scrollForm && styles.pageForm]}>
         <View style={[styles.scrollBody, scrollForm && styles.scrollBodyForm]}>
         <View

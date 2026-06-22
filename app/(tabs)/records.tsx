@@ -1,7 +1,6 @@
 import { Redirect } from "expo-router";
 import React from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import * as Notifications from "expo-notifications";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AppHeader } from "@/components/AppHeader";
 import { MedicalHistoryTimeline } from "@/components/records/MedicalHistoryTimeline";
@@ -11,28 +10,6 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useRecordsPage } from "@/hooks/useRecordsPage";
 import { alignText } from "@/utils/rtl";
-
-async function sendTestReminder() {
-  const { status } = await Notifications.requestPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert("Permission denied", "Enable notifications in Settings to test reminders.");
-    return;
-  }
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "💊 Amoxicillin 500mg",
-      body: "Time to take your dose: 1 capsule",
-      data: { prescriptionId: "test" },
-      sound: "default",
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 5,
-      repeats: false,
-    },
-  });
-  Alert.alert("Test reminder scheduled", "You'll get a notification in 5 seconds — background the app to see it.");
-}
 
 export default function RecordsTab() {
   const colors = useColors();
@@ -56,11 +33,6 @@ export default function RecordsTab() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
           {t.records.subtitle}
         </Text>
-        {__DEV__ && (
-          <TouchableOpacity onPress={sendTestReminder} style={styles.devBtn}>
-            <Text style={styles.devBtnText}>🔔 Test Reminder (dev)</Text>
-          </TouchableOpacity>
-        )}
       </View>
       <MedicalHistoryTimeline
         records={records}
@@ -88,18 +60,5 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  devBtn: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#f59e0b",
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  devBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#000",
   },
 });

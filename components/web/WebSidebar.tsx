@@ -57,7 +57,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/(tabs)/records",
     labelKey: "records",
-    match: (path) => path.includes("records") || path.includes("/medical"),
+    match: (path) =>
+      path.includes("records") || path.includes("/medical") || path.includes("/patients"),
     Icon: ClipboardList,
   },
   {

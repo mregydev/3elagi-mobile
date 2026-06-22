@@ -107,10 +107,6 @@ export default function TabsLayoutWeb() {
     </Tabs>
   );
 
-  if (!isDesktop) {
-    return tabs;
-  }
-
   return (
     <View
       style={[

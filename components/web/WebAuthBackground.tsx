@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { AuthHeroBackground } from "@/components/auth/AuthHeroBackground.web";
 import { useColors } from "@/hooks/useColors";
 
 export const WEB_AUTH_GRADIENT = {
@@ -10,11 +11,26 @@ export const WEB_AUTH_GRADIENT = {
 
 interface Props {
   children: React.ReactNode;
+  variant?: "gradient" | "login-hero";
+  /** White wash over hero image; use 0 on welcome for a crisp artwork. */
+  heroOverlayOpacity?: number;
 }
 
 /** Shared welcome / auth gradient shell for web marketing pages. */
-export function WebAuthBackground({ children }: Props) {
+export function WebAuthBackground({
+  children,
+  variant = "gradient",
+  heroOverlayOpacity,
+}: Props) {
   const colors = useColors();
+
+  if (variant === "login-hero") {
+    return (
+      <AuthHeroBackground overlayOpacity={heroOverlayOpacity}>
+        {children}
+      </AuthHeroBackground>
+    );
+  }
 
   return (
     <View style={styles.page}>

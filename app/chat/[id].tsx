@@ -32,6 +32,7 @@ import {
 } from "@/domains/chat/presence";
 import { useChatStore } from "@/domains/chat/store";
 import {
+  canDoctorViewPatientRecords,
   fetchDoctorPatientAccess,
   type AccessActionType,
   type DoctorPatientAccessStatus,
@@ -127,13 +128,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const canOpenPatientRecord =
     isDoctor &&
     peer?.role === "patient" &&
-    !!accessStatus?.records_allowed &&
-    !accessStatus?.is_blocked;
+    canDoctorViewPatientRecords(accessStatus);
   const isDoctorPatientChat =
     (isDoctor && peer?.role === "patient") || (isPatient && peer?.role === "doctor");
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
-  const canUseDiagnosisTemplates =
-    canOpenPatientRecord && !!accessStatus?.records_allowed && !accessStatus?.is_blocked;
+  const canUseDiagnosisTemplates = canOpenPatientRecord;
   const chatBlocked = !!accessStatus?.is_blocked;
   const messageCost = peer?.role === "doctor" ? (peer.messagePrice ?? 1) : 1;
   const patientUserIdForLinks =
@@ -229,7 +228,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
   const openPatientRecord = () => {
     if (!id || !isDoctor || peer?.role !== "patient") return;
-    if (!accessStatus?.records_allowed || accessStatus.is_blocked) {
+    if (!canDoctorViewPatientRecords(accessStatus)) {
       Alert.alert(
         isRTL ? "لا يوجد صلاحية" : "No access",
         isRTL
@@ -701,22 +700,39 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   ? ` · ${messageCost} نقطة/رسالة`
                   : ` · ${messageCost} pt/msg`
                 : ""}
-              {!peerTyping && canOpenPatientRecord
+              {!peerTyping && canOpenDoctorProfile
                 ? isRTL
-                  ? " · اضغط لعرض السجل"
-                  : " · tap for record"
-                : !peerTyping && canOpenDoctorProfile
-                  ? isRTL
-                    ? " · اضغط لعرض الملف"
-                    : " · tap for profile"
-                  : ""}
+                  ? " · اضغط لعرض الملف"
+                  : " · tap for profile"
+                : ""}
             </Text>
           </View>
         </Pressable>
 
         {canOpenPatientRecord ? (
-          <Pressable onPress={openPatientRecord} style={styles.recordBtn} hitSlop={8}>
-            <FileText size={20} color={colors.primary} />
+          <Pressable
+            onPress={openPatientRecord}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "عرض السجل" : "View Record"}
+            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+              styles.viewRecordBtn,
+              {
+                borderColor: colors.primary,
+                backgroundColor:
+                  pressed || hovered ? `${colors.primary}14` : colors.card,
+              },
+            ]}
+            hitSlop={8}
+          >
+            <View style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}>
+              <FileText size={16} color={colors.primary} />
+              <Text
+                style={[styles.viewRecordBtnText, { color: colors.primary }]}
+                numberOfLines={1}
+              >
+                {isRTL ? "عرض السجل" : "View Record"}
+              </Text>
+            </View>
           </Pressable>
         ) : null}
       </View>
@@ -1007,6 +1023,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
+    overflow: "visible",
   },
   headerDesktop: {
     paddingHorizontal: 20,
@@ -1017,8 +1034,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   backBtn: { padding: 4 },
-  peerInfo: { flex: 1, alignItems: "center", gap: 10 },
-  recordBtn: { padding: 6 },
+  peerInfo: { flex: 1, alignItems: "center", gap: 10, minWidth: 0 },
+  viewRecordBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    flexShrink: 0,
+    maxWidth: "42%",
+  },
+  viewRecordBtnInner: {
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  viewRecordBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    flexShrink: 0,
+  },
   peerName: { fontSize: 16, fontWeight: "700" },
   presence: { fontSize: 12, marginTop: 1 },
   bubbleRow: {

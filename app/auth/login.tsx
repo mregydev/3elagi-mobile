@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
+import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -46,11 +47,11 @@ export default function LoginScreen() {
     }
   };
 
-  return (
+  const screen = (
     <View
       style={[
         styles.screen,
-        { backgroundColor: Platform.OS === "web" ? "transparent" : colors.background },
+        { backgroundColor: "transparent" },
         Platform.OS === "web" && styles.screenWeb,
       ]}
     >
@@ -133,6 +134,12 @@ export default function LoginScreen() {
       </KeyboardSafeScrollView>
     </View>
   );
+
+  if (Platform.OS === "web") {
+    return screen;
+  }
+
+  return <AuthLoginBackground>{screen}</AuthLoginBackground>;
 }
 
 function Field({
