@@ -2,14 +2,15 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { EXPO_EAS_PROJECT_ID, EXPO_PUSH_CHANNEL_ID } from "@/constants/expoPush";
 
-export const CHAT_PUSH_CHANNEL_ID = "chat-messages";
+export const CHAT_PUSH_CHANNEL_ID = EXPO_PUSH_CHANNEL_ID;
 
-function resolveExpoProjectId(): string | undefined {
+function resolveExpoProjectId(): string {
   return (
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId ??
-    undefined
+    EXPO_EAS_PROJECT_ID
   );
 }
 
@@ -33,7 +34,13 @@ export async function requestPushPermission(): Promise<boolean> {
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === "granted") return true;
 
-  const { status } = await Notifications.requestPermissionsAsync();
+  const { status } = await Notifications.requestPermissionsAsync({
+    ios: {
+      allowAlert: true,
+      allowBadge: true,
+      allowSound: true,
+    },
+  });
   return status === "granted";
 }
 
@@ -42,22 +49,25 @@ export async function getExpoPushToken(): Promise<string | null> {
   if (Platform.OS === "web" || !Device.isDevice) return null;
 
   const projectId = resolveExpoProjectId();
-  if (!projectId) {
-    if (__DEV__) console.warn("[push] Missing EAS projectId in app.json extra.eas");
-    return null;
+  if (__DEV__) {
+    console.log(`[push] Resolving Expo token (projectId=${projectId})`);
   }
 
   await ensureChatPushChannel();
   const granted = await requestPushPermission();
-  if (!granted) return null;
+  if (!granted) {
+    if (__DEV__) console.warn("[push] Notification permission denied");
+    return null;
+  }
 
   try {
     const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (__DEV__) {
+      console.log(`[push] Expo token: ${token.data.slice(0, 28)}...`);
+    }
     return token.data;
   } catch (error) {
-    if (__DEV__) {
-      console.warn("[push] getExpoPushTokenAsync failed:", (error as Error).message);
-    }
+    console.warn("[push] getExpoPushTokenAsync failed:", (error as Error).message);
     return null;
   }
 }

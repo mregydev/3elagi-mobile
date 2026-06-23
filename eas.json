@@ -1,20 +1,32 @@
 {
-  "cli": { "version": ">= 7.8.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 7.8.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "googleServicesFile": "./google-services.json"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk",
+        "googleServicesFile": "./google-services.json"
+      },
       "env": {
         "EXPO_PUBLIC_API_HOST": "https://service-3elagi-q45gskkjsa-ew.a.run.app",
         "EXPO_PUBLIC_API_URL": "https://service-3elagi-q45gskkjsa-ew.a.run.app/3eyadahub-api"
       }
     },
     "production": {
-      "android": { "buildType": "app-bundle" },
+      "android": {
+        "buildType": "app-bundle",
+        "googleServicesFile": "./google-services.json"
+      },
       "env": {
         "EXPO_PUBLIC_API_HOST": "https://service-3elagi-q45gskkjsa-ew.a.run.app",
         "EXPO_PUBLIC_API_URL": "https://service-3elagi-q45gskkjsa-ew.a.run.app/3eyadahub-api"

@@ -35,15 +35,29 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
 export async function getFcmToken(): Promise<string | null> {
   try {
-    return await messaging().getToken();
-  } catch {
+    if (Platform.OS === "ios") {
+      const registered = messaging().isDeviceRegisteredForRemoteMessages;
+      if (!registered) {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+    }
+    const token = await messaging().getToken();
+    if (__DEV__ && token) {
+      console.log("[push] FCM token acquired via Firebase Messaging");
+    }
+    return token;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[push] messaging().getToken() failed:", (error as Error).message);
+    }
     return null;
   }
 }
 
 export async function initFirebaseMessaging(): Promise<string | null> {
   await ensureChatNotificationChannel();
-  await requestNotificationPermission();
+  const granted = await requestNotificationPermission();
+  if (!granted) return null;
   return getFcmToken();
 }
 
@@ -63,21 +77,27 @@ export function subscribeToForegroundFcm(
 ): () => void {
   return messaging().onMessage(async (remoteMessage) => {
     const data = remoteMessage.data ?? {};
-    if (data.type !== "chat" || !data.peer_id) return;
+    const peerId = data.chatId ?? data.chat_id ?? data.peer_id;
+    if (data.type !== "chat" || !peerId) return;
 
     const senderName =
-      typeof data.sender_name === "string"
-        ? data.sender_name
-        : typeof data.title === "string"
-          ? data.title.replace(/ sends a new message$/, "")
-          : "Someone";
-    const preview = typeof data.body === "string" ? data.body : "New message";
+      typeof remoteMessage.notification?.title === "string"
+        ? remoteMessage.notification.title
+        : typeof data.sender_name === "string"
+          ? data.sender_name
+          : "New message";
+    const preview =
+      typeof remoteMessage.notification?.body === "string"
+        ? remoteMessage.notification.body
+        : typeof data.body === "string"
+          ? data.body
+          : "New message";
 
     onMessage({
-      peerId: String(data.peer_id),
+      peerId: String(peerId),
       senderName,
       preview,
-      messageId: String(data.message_id ?? ""),
+      messageId: String(data.messageId ?? data.message_id ?? ""),
     });
   });
 }
@@ -85,15 +105,18 @@ export function subscribeToForegroundFcm(
 export function subscribeToNotificationOpen(
   onOpen: (peerId: string) => void,
 ): () => void {
+  const readPeerId = (data: Record<string, string | undefined> | undefined) =>
+    data?.chatId ?? data?.chat_id ?? data?.peer_id;
+
   const unsubOpened = messaging().onNotificationOpenedApp((remoteMessage) => {
-    const peerId = remoteMessage.data?.peer_id;
+    const peerId = readPeerId(remoteMessage.data);
     if (peerId) onOpen(String(peerId));
   });
 
   void messaging()
     .getInitialNotification()
     .then((remoteMessage) => {
-      const peerId = remoteMessage?.data?.peer_id;
+      const peerId = readPeerId(remoteMessage?.data);
       if (peerId) onOpen(String(peerId));
     });
 

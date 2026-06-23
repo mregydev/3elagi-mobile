@@ -39,3 +39,6 @@ yarn-error.*
 .vercel
 
 .env
+
+# Firebase admin keys — server only, never ship in the mobile app
+*firebase-adminsdk*.json
