@@ -11,6 +11,7 @@ export interface AdminDoctorRow {
   photo_url?: string | null;
   graduation_cert_url?: string | null;
   work_permit_url?: string | null;
+  digital_signature_url?: string | null;
   approval_status: ApprovalStatus;
   created_at: string;
   speciality?: { id: string; name_en: string; name_ar: string } | null;
@@ -53,5 +54,11 @@ export async function setDoctorApproval(
   await authJson(`/admin/doctors/${doctorId}/approval`, token, {
     method: "PATCH",
     body: JSON.stringify({ status }),
+  });
+}
+
+export async function deleteDoctor(token: string, doctorId: string): Promise<void> {
+  await authJson(`/admin/doctors/${doctorId}`, token, {
+    method: "DELETE",
   });
 }

@@ -30,7 +30,6 @@ const CATEGORY_OPTIONS: { key: MedicalCategory; labelEn: string; labelAr: string
   { key: "diagnosis", labelEn: "Diagnosis", labelAr: "تشخيص" },
   { key: "lab", labelEn: "Lab result", labelAr: "مختبر" },
   { key: "xray", labelEn: "X-ray / scan", labelAr: "أشعة" },
-  { key: "intake", labelEn: "Intake exam", labelAr: "فحص استقبال" },
 ];
 
 function gridStyle(columns: number): ViewStyle {

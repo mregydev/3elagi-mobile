@@ -3,6 +3,7 @@ import { on, emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "@/domains/auth/events";
 import { medicalRepository } from "./repository";
 import { MEDICAL_EVENTS } from "./events";
+import { SHOW_INTAKE_RECORDS } from "@/components/records/medicalRecordCategories";
 import type { MedicalCategory, MedicalRecord } from "./types";
 
 function sortByDate(records: MedicalRecord[]): MedicalRecord[] {
@@ -48,7 +49,7 @@ export const useMedicalStore = create<MedicalState>((set, get) => ({
   },
   setRecordsFromApi: (apiRecords, ownerId) =>
     set(() => {
-      const intake = medicalRepository.listIntake(ownerId);
+      const intake = SHOW_INTAKE_RECORDS ? medicalRepository.listIntake(ownerId) : [];
       return { records: sortByDate([...apiRecords, ...intake]) };
     }),
   mergeApiDocuments: (docs) =>

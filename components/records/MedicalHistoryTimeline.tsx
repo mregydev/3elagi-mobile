@@ -15,11 +15,14 @@ import {
 } from "@/components/records/MedicalRecordAddBar";
 import {
   getCategoryMeta,
+  getDisplayMedicalRecordCategories,
   getLocalizedCategoryLabel,
   getRecordSubtitle,
   getRecordTimestamp,
   groupRecordsByMonth,
   MEDICAL_RECORD_CATEGORIES,
+  SHOW_INTAKE_RECORDS,
+  withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -48,7 +51,7 @@ export function MedicalHistoryTimeline({
   patientUserId,
   canAdd = true,
   doctorView = false,
-  showIntake = true,
+  showIntake = SHOW_INTAKE_RECORDS,
   contentPaddingBottom = 40,
 }: MedicalHistoryTimelineProps) {
   const colors = useColors();
@@ -60,16 +63,22 @@ export function MedicalHistoryTimeline({
   const textAlign = alignText(isRTL);
   const dateLocale = localeTag(isRTL);
 
-  const visibleCategories = showIntake
-    ? MEDICAL_RECORD_CATEGORIES
-    : MEDICAL_RECORD_CATEGORIES.filter((c) => c.key !== "intake");
+  const visibleCategories =
+    showIntake && SHOW_INTAKE_RECORDS
+      ? MEDICAL_RECORD_CATEGORIES
+      : getDisplayMedicalRecordCategories();
+
+  const displayRecords = useMemo(
+    () => (showIntake ? records : withoutIntakeRecords(records)),
+    [records, showIntake],
+  );
 
   const filteredRecords = useMemo(() => {
-    const filtered = filterMedicalRecords(records, filters);
+    const filtered = filterMedicalRecords(displayRecords, filters);
     const scoped =
       categoryFilter === "all" ? filtered : filtered.filter((r) => r.category === categoryFilter);
     return [...scoped].sort((a, b) => getRecordTimestamp(b) - getRecordTimestamp(a));
-  }, [records, filters, categoryFilter]);
+  }, [displayRecords, filters, categoryFilter]);
 
   const timelineGroups = useMemo(
     () => groupRecordsByMonth(filteredRecords, dateLocale),
@@ -166,10 +175,10 @@ export function MedicalHistoryTimeline({
         <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <ClipboardList size={28} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign }]}>
-            {records.length === 0 ? t.records.emptyTitle : t.records.emptyFilteredTitle}
+            {displayRecords.length === 0 ? t.records.emptyTitle : t.records.emptyFilteredTitle}
           </Text>
           <Text style={[styles.emptyBody, { color: colors.mutedForeground, textAlign }]}>
-            {records.length === 0 ? t.records.emptyBody : t.records.emptyFilteredBody}
+            {displayRecords.length === 0 ? t.records.emptyBody : t.records.emptyFilteredBody}
           </Text>
         </View>
       ) : (

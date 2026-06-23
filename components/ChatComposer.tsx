@@ -97,6 +97,7 @@ export function ChatComposer({
   const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const sendInFlightRef = useRef(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const rowDir = chatFlexRow();
 
@@ -183,11 +184,14 @@ export function ChatComposer({
     webFile?: File | Blob,
     caption?: string,
   ) => {
+    if (sendInFlightRef.current || sending || uploading) return;
+
     const tempId =
       type === "image" || type === "voice" || type === "video"
         ? createPending(type, type === "voice" ? undefined : uri, caption)
         : undefined;
 
+    sendInFlightRef.current = true;
     setUploading(true);
     try {
       const uploaded = await uploadFile(uri, mimeType, fileName, accessToken, webFile);
@@ -207,6 +211,7 @@ export function ChatComposer({
         e instanceof Error ? e.message : isRTL ? "تعذر إرسال الملف" : "Failed to send attachment",
       );
     } finally {
+      sendInFlightRef.current = false;
       setUploading(false);
     }
   };
@@ -405,7 +410,7 @@ export function ChatComposer({
 
   const sendText = async () => {
     const t = text.trim();
-    if (!t || sending || uploading) return;
+    if (!t || sending || uploading || sendInFlightRef.current) return;
     stopTyping();
 
     if (editingMessage && onEdit) {
@@ -415,6 +420,7 @@ export function ChatComposer({
       return;
     }
 
+    sendInFlightRef.current = true;
     setText("");
     const tempId = createPending("text", undefined, t);
 
@@ -422,10 +428,13 @@ export function ChatComposer({
       await onSend({ recipientId: peerId, type: "text", content: t }, tempId);
     } catch {
       setText(t);
+    } finally {
+      sendInFlightRef.current = false;
     }
   };
 
   const sendMessage = async () => {
+    if (sendInFlightRef.current || sending || uploading) return;
     if (pendingAttachment) {
       await sendPendingAttachment();
       return;

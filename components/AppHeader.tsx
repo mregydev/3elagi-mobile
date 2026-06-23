@@ -10,6 +10,8 @@ interface Props {
   children?: React.ReactNode;
   /** When true, header background uses `card` instead of `background`. */
   surface?: "background" | "card";
+  borderless?: boolean;
+  title?: string;
 }
 
 export function AppHeader({ children, surface = "background" }: Props) {

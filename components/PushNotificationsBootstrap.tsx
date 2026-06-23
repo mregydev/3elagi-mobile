@@ -3,16 +3,17 @@ import { AppState, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { useAuthStore } from "@/domains/auth/store";
+import { AUTH_EVENTS } from "@/domains/auth/events";
 import { CHAT_EVENTS, type ChatMessageReceivedPayload } from "@/domains/chat/events";
 import { unregisterPushToken } from "@/domains/push/api";
-import { getExpoPushToken } from "@/domains/push/expoPush";
+import { ensureChatPushChannel } from "@/domains/push/expoPush";
 import { navigateFromPushNotification } from "@/domains/push/navigation";
 import {
   clearPushTokenRegistrationCache,
   registerPushToken,
 } from "@/domains/push/registerPushToken";
 import { parsePushNotificationData } from "@/domains/push/types";
-import { emit } from "@/utils/eventBus";
+import { emit, on } from "@/utils/eventBus";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,6 +24,8 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+void ensureChatPushChannel();
 
 function handleNotificationOpen(
   router: ReturnType<typeof useRouter>,
@@ -41,19 +44,24 @@ export function PushNotificationsBootstrap() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const tokenRef = useRef<string | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
 
   useEffect(() => {
     if (Platform.OS === "web" || !hydrated || !accessToken) return;
 
-    void registerPushToken(accessToken).catch((error) => {
-      if (__DEV__) {
-        console.warn("[push] Token registration failed:", (error as Error).message);
-      }
-    });
-
-    void getExpoPushToken().then((token) => {
-      tokenRef.current = token;
-    });
+    void registerPushToken(accessToken)
+      .then((token) => {
+        if (token) tokenRef.current = token;
+      })
+      .catch((error) => {
+        if (__DEV__) {
+          console.warn("[push] Token registration failed:", (error as Error).message);
+        }
+      });
   }, [hydrated, accessToken]);
 
   useEffect(() => {
@@ -61,12 +69,29 @@ export function PushNotificationsBootstrap() {
 
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
-        void registerPushToken(accessToken).catch(() => {});
+        void registerPushToken(accessToken)
+          .then((token) => {
+            if (token) tokenRef.current = token;
+          })
+          .catch(() => {});
       }
     });
 
     return () => sub.remove();
   }, [hydrated, accessToken]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    const tokenSub = Notifications.addPushTokenListener(({ data: token }) => {
+      tokenRef.current = token;
+      const currentAccessToken = accessTokenRef.current;
+      if (!currentAccessToken) return;
+      void registerPushToken(currentAccessToken).catch(() => {});
+    });
+
+    return () => tokenSub.remove();
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === "web" || !accessToken) return;
@@ -110,17 +135,19 @@ export function PushNotificationsBootstrap() {
 
   useEffect(() => {
     if (Platform.OS === "web") return;
-    return () => clearPushTokenRegistrationCache();
-  }, []);
 
-  useEffect(() => {
-    if (Platform.OS === "web" || !accessToken) return;
-    return () => {
+    const unsubscribe = on(AUTH_EVENTS.LOGOUT, () => {
       const token = tokenRef.current;
-      if (!token) return;
-      void unregisterPushToken(token, accessToken).catch(() => {});
-    };
-  }, [accessToken]);
+      const sessionToken = accessTokenRef.current;
+      tokenRef.current = null;
+      accessTokenRef.current = null;
+      clearPushTokenRegistrationCache();
+      if (!token || !sessionToken) return;
+      void unregisterPushToken(token, sessionToken).catch(() => {});
+    });
+
+    return unsubscribe;
+  }, []);
 
   return null;
 }

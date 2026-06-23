@@ -25,11 +25,12 @@ import {
 } from "@/components/records/MedicalRecordAddBar";
 import {
   getCategoryMeta,
+  getDisplayMedicalRecordCategories,
   getLocalizedCategoryLabel,
   getRecordSubtitle,
   getRecordTimestamp,
   groupRecordsByMonth,
-  MEDICAL_RECORD_CATEGORIES,
+  withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -79,12 +80,15 @@ export function RecordsWebView() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const displayRecords = useMemo(() => withoutIntakeRecords(records), [records]);
+  const visibleCategories = getDisplayMedicalRecordCategories();
+
   const filteredRecords = useMemo(() => {
-    const filtered = filterMedicalRecords(records, filters);
+    const filtered = filterMedicalRecords(displayRecords, filters);
     const scoped =
       categoryFilter === "all" ? filtered : filtered.filter((r) => r.category === categoryFilter);
     return [...scoped].sort((a, b) => getRecordTimestamp(b) - getRecordTimestamp(a));
-  }, [records, filters, categoryFilter]);
+  }, [displayRecords, filters, categoryFilter]);
 
   const timelineGroups = useMemo(
     () => groupRecordsByMonth(filteredRecords, dateLocale),
@@ -186,7 +190,7 @@ export function RecordsWebView() {
                 colors={colors}
                 activeColor={colors.primary}
               />
-              {MEDICAL_RECORD_CATEGORIES.map(({ key, color }) => (
+              {visibleCategories.map(({ key, color }) => (
                 <CategoryChip
                   key={key}
                   label={getLocalizedCategoryLabel(key, t)}
@@ -325,10 +329,10 @@ export function RecordsWebView() {
             <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <ClipboardList size={32} color={colors.mutedForeground} />
               <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign }]}>
-                {records.length === 0 ? t.records.emptyTitle : t.records.emptyFilteredTitle}
+                {displayRecords.length === 0 ? t.records.emptyTitle : t.records.emptyFilteredTitle}
               </Text>
               <Text style={[styles.emptyBody, { color: colors.mutedForeground, textAlign }]}>
-                {records.length === 0 ? t.records.emptyBody : t.records.emptyFilteredBody}
+                {displayRecords.length === 0 ? t.records.emptyBody : t.records.emptyFilteredBody}
               </Text>
             </View>
           ) : (

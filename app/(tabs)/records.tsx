@@ -38,7 +38,6 @@ export default function RecordsTab() {
         records={records}
         patientUserId={profile!.id}
         canAdd
-        showIntake
         contentPaddingBottom={16}
       />
     </View>

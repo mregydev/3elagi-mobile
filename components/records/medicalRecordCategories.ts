@@ -25,6 +25,19 @@ export const MEDICAL_RECORD_CATEGORIES: MedicalRecordCategoryMeta[] = [
   { key: "intake", labelEn: "Intake", labelAr: "فحص الاستقبال", Icon: ClipboardList, color: "#3057F2" },
 ];
 
+/** Temporarily hide intake exam records from medical history UI. */
+export const SHOW_INTAKE_RECORDS = false;
+
+export function getDisplayMedicalRecordCategories(): MedicalRecordCategoryMeta[] {
+  return SHOW_INTAKE_RECORDS
+    ? MEDICAL_RECORD_CATEGORIES
+    : MEDICAL_RECORD_CATEGORIES.filter((c) => c.key !== "intake");
+}
+
+export function withoutIntakeRecords(records: MedicalRecord[]): MedicalRecord[] {
+  return SHOW_INTAKE_RECORDS ? records : records.filter((r) => r.category !== "intake");
+}
+
 export const ADD_MEDICAL_CATEGORIES = MEDICAL_RECORD_CATEGORIES.filter((c) => c.key !== "intake");
 
 /** Patients cannot add diagnoses — only doctors can. */

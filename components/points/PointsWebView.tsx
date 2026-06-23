@@ -65,6 +65,139 @@ function DashboardCard({
   );
 }
 
+const QUICK_POINT_AMOUNTS = [10, 25, 50, 100] as const;
+
+function AddPointsCard({
+  amountText,
+  setAmountText,
+  parseAmount,
+  colors,
+  isRTL,
+  useSplitLayout,
+}: {
+  amountText: string;
+  setAmountText: (value: string) => void;
+  parseAmount: () => number | null;
+  colors: ReturnType<typeof useColors>;
+  isRTL: boolean;
+  useSplitLayout: boolean;
+}) {
+  const dir = isRTL ? "row-reverse" : "row";
+  const textAlign = isRTL ? "right" : "left";
+
+  const handleContinue = () => {
+    const amount = parseAmount();
+    if (!amount) return;
+    router.push(`/points/checkout?amount=${amount}`);
+  };
+
+  return (
+    <DashboardCard
+      testID="points-add-card"
+      style={[
+        styles.addCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.addCardInner,
+          useSplitLayout && [styles.addCardInnerSplit, { flexDirection: dir }],
+        ]}
+      >
+        <View style={styles.addCardIntro}>
+          <View style={[styles.addCardTitleRow, { flexDirection: dir }]}>
+            <View style={[styles.addCardIcon, { backgroundColor: `${colors.primary}14` }]}>
+              <Plus size={18} color={colors.primary} />
+            </View>
+            <Text style={[styles.addCardTitle, { color: colors.foreground, textAlign }]}>
+              {isRTL ? "إضافة نقاط" : "Add points"}
+            </Text>
+          </View>
+          <Text style={[styles.addCardHint, { color: colors.mutedForeground, textAlign }]}>
+            {isRTL
+              ? "اختر مبلغًا سريعًا أو أدخل عدد النقاط، ثم تابع إلى صفحة الدفع."
+              : "Pick a quick amount or enter a custom value, then continue to checkout."}
+          </Text>
+
+          <View style={[styles.quickAmountRow, { flexDirection: dir }]}>
+            {QUICK_POINT_AMOUNTS.map((amount) => {
+              const selected = amountText === String(amount);
+              return (
+                <Pressable
+                  key={amount}
+                  onPress={() => setAmountText(String(amount))}
+                  style={[
+                    styles.quickAmountChip,
+                    {
+                      backgroundColor: selected ? `${colors.primary}14` : colors.background,
+                      borderColor: selected ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: selected ? colors.primary : colors.foreground,
+                      fontWeight: "700",
+                      fontSize: 14,
+                    }}
+                  >
+                    {amount}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.addCardForm, useSplitLayout && styles.addCardFormSplit]}>
+          <View style={styles.addFieldBlock}>
+            <Text style={[styles.addFieldLabel, { color: colors.foreground, textAlign }]}>
+              {isRTL ? "عدد النقاط" : "Points amount"}
+            </Text>
+            <TextInput
+              value={amountText}
+              onChangeText={setAmountText}
+              keyboardType="number-pad"
+              placeholder={isRTL ? "مثال: 50" : "e.g. 50"}
+              placeholderTextColor={colors.mutedForeground}
+              style={[
+                styles.addInput,
+                {
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                  backgroundColor: colors.background,
+                  textAlign,
+                },
+              ]}
+            />
+          </View>
+
+          <Pressable
+            onPress={handleContinue}
+            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+              styles.addSubmitBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.92 : hovered ? 0.96 : 1,
+                flexDirection: dir,
+              },
+            ]}
+          >
+            <Plus size={18} color="#fff" />
+            <Text style={styles.addSubmitText}>
+              {isRTL ? "متابعة للدفع" : "Continue to checkout"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </DashboardCard>
+  );
+}
+
 export function PointsWebView() {
   const colors = useColors();
   const { isRTL } = useI18n();
@@ -119,8 +252,8 @@ export function PointsWebView() {
                 </Text>
                 <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign }]}>
                   {isRTL
-                    ? "كل رسالة تستهلك نقطة واحدة. أضف نقاطًا لمواصلة المحادثة مع الأطباء."
-                    : "Each message costs 1 point. Top up your balance to keep chatting with doctors."}
+                    ? "كل رسالة للمساعد الذكي تستهلك نقطة واحدة. أضف نقاطًا لمواصلة استخدام المساعد."
+                    : "Each AI assistant message costs 1 point. Top up your balance to keep using the assistant."}
                 </Text>
               </View>
             </View>
@@ -178,7 +311,7 @@ export function PointsWebView() {
                       <View style={[styles.metaPill, { backgroundColor: `${colors.primary}10` }]}>
                         <Zap size={14} color={colors.primary} />
                         <Text style={[styles.metaPillText, { color: colors.primary }]}>
-                          {isRTL ? "1 نقطة / رسالة" : "1 point / message"}
+                          {isRTL ? "1 نقطة / رسالة AI" : "1 point / AI message"}
                         </Text>
                       </View>
                     </View>
@@ -228,7 +361,7 @@ export function PointsWebView() {
                   <StatCard
                     testID="points-stat-card"
                     icon={Zap}
-                    label={isRTL ? "تكلفة الرسالة" : "Per message"}
+                    label={isRTL ? "تكلفة رسالة AI" : "Per AI message"}
                     value={1}
                     suffix={isRTL ? "نقطة" : "pt"}
                     accent={colors.primary}
@@ -239,64 +372,18 @@ export function PointsWebView() {
                 </View>
               </View>
 
-              <View style={styles.sectionBlock}>
+              <View style={[styles.sectionBlock, styles.addSectionBlock]}>
                 <SectionLabel textAlign={textAlign} color={colors.mutedForeground}>
                   {isRTL ? "إضافة نقاط" : "Add points"}
                 </SectionLabel>
-                <DashboardCard
-                  testID="points-add-card"
-                  style={{
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    gap: 12,
-                  }}
-                >
-                  <Text style={{ color: colors.mutedForeground, textAlign }}>
-                    {isRTL
-                      ? "أدخل عدد النقاط ثم تابع إلى صفحة الدفع."
-                      : "Enter how many points you want, then continue to checkout."}
-                  </Text>
-                  <TextInput
-                    value={amountText}
-                    onChangeText={setAmountText}
-                    keyboardType="number-pad"
-                    placeholder={isRTL ? "مثال: 50" : "e.g. 50"}
-                    placeholderTextColor={colors.mutedForeground}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      borderRadius: 12,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                      fontSize: 16,
-                      fontWeight: "600",
-                      color: colors.foreground,
-                      backgroundColor: colors.background,
-                      textAlign,
-                    }}
-                  />
-                  <Pressable
-                    onPress={() => {
-                      const amount = parseAmount();
-                      if (!amount) return;
-                      router.push(`/points/checkout?amount=${amount}`);
-                    }}
-                    style={{
-                      backgroundColor: colors.primary,
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      alignItems: "center",
-                      flexDirection: dir,
-                      justifyContent: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <Plus size={18} color="#fff" />
-                    <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
-                      {isRTL ? "متابعة للدفع" : "Continue to checkout"}
-                    </Text>
-                  </Pressable>
-                </DashboardCard>
+                <AddPointsCard
+                  amountText={amountText}
+                  setAmountText={setAmountText}
+                  parseAmount={parseAmount}
+                  colors={colors}
+                  isRTL={isRTL}
+                  useSplitLayout={useSplitLayout}
+                />
               </View>
             </>
           )}
@@ -416,7 +503,11 @@ const styles = StyleSheet.create({
     maxWidth: 720,
   },
   sectionBlock: {
-    gap: 14,
+    gap: 16,
+  },
+  addSectionBlock: {
+    marginTop: 8,
+    paddingTop: 8,
   },
   sectionLabel: {
     fontSize: 12,
@@ -527,5 +618,96 @@ const styles = StyleSheet.create({
   },
   statValueWide: {
     fontSize: 34,
+  },
+  addCard: {
+    padding: 0,
+    overflow: "hidden",
+  },
+  addCardInner: {
+    padding: 28,
+    gap: 24,
+  },
+  addCardInnerSplit: {
+    alignItems: "stretch",
+    gap: 32,
+  },
+  addCardIntro: {
+    flex: 1,
+    gap: 16,
+    minWidth: 0,
+  },
+  addCardTitleRow: {
+    alignItems: "center",
+    gap: 12,
+  },
+  addCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addCardTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  addCardHint: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  quickAmountRow: {
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
+  },
+  quickAmountChip: {
+    minWidth: 64,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer" as "auto",
+  },
+  addCardForm: {
+    gap: 16,
+  },
+  addCardFormSplit: {
+    flex: 1,
+    minWidth: 280,
+    maxWidth: 360,
+    justifyContent: "center",
+  },
+  addFieldBlock: {
+    gap: 8,
+  },
+  addFieldLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  addInput: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 18,
+    fontWeight: "700",
+    minHeight: 52,
+  },
+  addSubmitBtn: {
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    cursor: "pointer" as "auto",
+  },
+  addSubmitText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 15,
   },
 });

@@ -18,19 +18,9 @@ function remindersSupported(): boolean {
   return Platform.OS === 'ios' || Platform.OS === 'android'
 }
 
-/** One-time setup: configure notification handler and Android channel. */
+/** One-time setup: Android channel for prescription reminders. */
 export async function initRemindersChannel(): Promise<void> {
   if (!remindersSupported()) return
-
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  })
 
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
     name: 'Prescription Reminders',

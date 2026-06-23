@@ -1,6 +1,7 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { PointsCheckoutView } from "@/components/points/PointsCheckoutView";
+import { WebDesktopShell } from "@/components/web/WebDesktopShell";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 
@@ -18,5 +19,9 @@ export default function PointsCheckoutWebScreen() {
     return <Redirect href="/(tabs)/points" />;
   }
 
-  return <PointsCheckoutView amount={Math.floor(amount)} />;
+  return (
+    <WebDesktopShell>
+      <PointsCheckoutView amount={Math.floor(amount)} desktopLayout />
+    </WebDesktopShell>
+  );
 }

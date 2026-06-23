@@ -14,12 +14,14 @@ import { showErrorToast } from "@/utils/toast";
 
 interface PointsCheckoutViewProps {
   amount: number;
+  desktopLayout?: boolean;
 }
 
-export function PointsCheckoutView({ amount }: PointsCheckoutViewProps) {
+export function PointsCheckoutView({ amount, desktopLayout = false }: PointsCheckoutViewProps) {
   const colors = useColors();
   const { isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
+  const useWideLayout = desktopLayout || isDesktop;
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
@@ -57,8 +59,19 @@ export function PointsCheckoutView({ amount }: PointsCheckoutViewProps) {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={[styles.container, { maxWidth: isDesktop ? WEB_MAX_WIDTH.content : 560 }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          useWideLayout && styles.scrollDesktop,
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View
+          style={[
+            styles.container,
+            { maxWidth: useWideLayout ? WEB_MAX_WIDTH.content : 560 },
+          ]}
+        >
           <Pressable
             onPress={() => router.back()}
             style={[styles.backRow, { flexDirection: dir }]}
@@ -113,14 +126,20 @@ export function PointsCheckoutView({ amount }: PointsCheckoutViewProps) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, minHeight: 0 },
   scroll: {
     padding: 20,
     alignItems: "center",
+    flexGrow: 1,
+  },
+  scrollDesktop: {
+    paddingHorizontal: 32,
+    paddingTop: 24,
+    paddingBottom: 48,
   },
   container: {
     width: "100%",
-    gap: 16,
+    gap: 20,
   },
   backRow: {
     alignItems: "center",
@@ -130,8 +149,8 @@ const styles = StyleSheet.create({
   summaryCard: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 18,
-    gap: 14,
+    padding: 22,
+    gap: 16,
   },
   summaryHeader: {
     alignItems: "center",
@@ -165,6 +184,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   methods: {
-    gap: 12,
+    gap: 14,
   },
 });

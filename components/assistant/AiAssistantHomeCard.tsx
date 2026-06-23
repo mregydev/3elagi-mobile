@@ -48,6 +48,7 @@ export function AiAssistantHomeCard() {
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 16,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,

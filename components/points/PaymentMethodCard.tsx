@@ -1,7 +1,8 @@
-import { CreditCard } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { PaymentProviderLogo } from "@/components/points/PaymentProviderLogo";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
 
 export type PaymentMethodId = "vodafone_cash" | "fawry" | "credit_card";
 
@@ -12,55 +13,32 @@ interface PaymentMethodCardProps {
   onPress: () => void;
 }
 
-function VodafoneLogo() {
-  return (
-    <View style={[styles.logo, { backgroundColor: "#e60000" }]}>
-      <Text style={styles.logoText}>VF</Text>
-    </View>
-  );
-}
-
-function FawryLogo() {
-  return (
-    <View style={[styles.logo, { backgroundColor: "#ffb800" }]}>
-      <Text style={[styles.logoText, { color: "#1a1a1a" }]}>F</Text>
-    </View>
-  );
-}
-
-function CreditLogo() {
-  return (
-    <View style={[styles.logo, { backgroundColor: "#3057F2" }]}>
-      <CreditCard size={22} color="#fff" />
-    </View>
-  );
-}
-
 export function PaymentMethodCard({ id, label, subtitle, onPress }: PaymentMethodCardProps) {
   const colors = useColors();
+  const { isRTL } = useI18n();
+  const dir = isRTL ? "row-reverse" : "row";
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
         styles.card,
         {
+          flexDirection: dir,
           backgroundColor: colors.card,
           borderColor: colors.border,
-          opacity: pressed ? 0.92 : 1,
+          opacity: pressed ? 0.92 : hovered ? 0.98 : 1,
         },
       ]}
     >
-      {id === "vodafone_cash" ? (
-        <VodafoneLogo />
-      ) : id === "fawry" ? (
-        <FawryLogo />
-      ) : (
-        <CreditLogo />
-      )}
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+      <PaymentProviderLogo id={id} />
+      <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+        <Text style={[styles.label, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
+          {label}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+          {subtitle}
+        </Text>
       </View>
     </Pressable>
   );
@@ -68,25 +46,14 @@ export function PaymentMethodCard({ id, label, subtitle, onPress }: PaymentMetho
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 16,
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
-  logo: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 18,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    cursor: "pointer" as "auto",
   },
   label: { fontSize: 16, fontWeight: "800" },
-  subtitle: { fontSize: 13 },
+  subtitle: { fontSize: 13, lineHeight: 18 },
 });

@@ -22,7 +22,6 @@ import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
-import { PointsLowBanner } from "@/components/PointsLowBanner";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -43,7 +42,6 @@ import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
-import { selectPointsBalance, usePointsStore } from "@/domains/points/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -57,11 +55,6 @@ const EMPTY_MESSAGES: ChatMessage[] = [];
 
 function canReactToMessage(message: ChatMessage): boolean {
   return !message.pending && !message.failed && !message.id.startsWith("pending-");
-}
-
-function isBillableMessage(input: SendMessageInput | string): boolean {
-  if (typeof input === "string") return true;
-  return input.type !== "access_action";
 }
 
 interface ChatScreenProps {
@@ -116,12 +109,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [accessLoading, setAccessLoading] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatBodyRef = useRef<View>(null);
+  const sendingRef = useRef(false);
   const messageAnchorsRef = useRef<Map<string, View>>(new Map());
   const stickToBottomRef = useRef(true);
   const lastMessageTokenRef = useRef("");
   const onlineUsers = usePresenceStore((s) => s.users);
-  const pointsSummary = usePointsStore((s) => s.summary);
-  const pointsBalance = selectPointsBalance(pointsSummary);
 
   const peer = useMemo(() => {
     if (!id) return undefined;
@@ -140,7 +132,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
   const canUseDiagnosisTemplates = canOpenPatientRecord;
   const chatBlocked = !!accessStatus?.is_blocked;
-  const messageCost = peer?.role === "doctor" ? (peer.messagePrice ?? 1) : 1;
   const patientUserIdForLinks =
     isDoctor && peer?.role === "patient" && accessStatus?.records_allowed
       ? peer.id
@@ -373,63 +364,29 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
   };
 
-  const confirmLowBalanceSend = (balance: number, cost: number): Promise<boolean> => {
-    if (balance >= 10) return Promise.resolve(true);
-    return new Promise((resolve) => {
-      Alert.alert(
-        isRTL ? "رصيد منخفض" : "Low balance",
-        isRTL
-          ? `لديك ${balance} نقطة فقط. كل رسالة تستهلك ${cost} نقطة. هل تريد الإرسال؟`
-          : `You have only ${balance} points left. Each message costs ${cost} point${cost === 1 ? "" : "s"}. Continue sending?`,
-        [
-          { text: isRTL ? "إلغاء" : "Cancel", style: "cancel", onPress: () => resolve(false) },
-          { text: isRTL ? "إرسال" : "Send", onPress: () => resolve(true) },
-        ],
-      );
-    });
-  };
-
   const handleSend = async (input: SendMessageInput, replaceTempId?: string) => {
     const abortSend = () => {
       if (replaceTempId && id) failPendingMessage(id, replaceTempId);
       throw new Error("SEND_ABORTED");
     };
 
-    if (!id || !accessToken || !profile?.id || sending) abortSend();
+    if (!id || !accessToken || !profile?.id || sending || sendingRef.current) abortSend();
 
-    if (isBillableMessage(input)) {
-      if (pointsBalance < messageCost) {
-        Alert.alert(
-          isRTL ? "لا توجد نقاط" : "No points",
-          isRTL
-            ? "ليس لديك نقاط كافية لإرسال رسالة. أضف نقاطًا من تبويب النقاط."
-            : "You do not have enough points to send a message. Add points from the Points tab.",
-          [
-            { text: isRTL ? "حسنًا" : "OK" },
-            {
-              text: isRTL ? "إضافة نقاط" : "Add points",
-              onPress: () => router.push("/(tabs)/points"),
-            },
-          ],
-        );
-        abortSend();
-      }
-
-      const proceed = await confirmLowBalanceSend(pointsBalance, messageCost);
-      if (!proceed) abortSend();
-    }
-
+    sendingRef.current = true;
     setSending(true);
     try {
       await sendMessage(id, input, accessToken, profile.id, role, replaceTempId);
     } catch (e) {
       if (replaceTempId) failPendingMessage(id, replaceTempId);
-      Alert.alert(
-        isRTL ? "خطأ" : "Error",
-        e instanceof Error ? e.message : isRTL ? "تعذر إرسال الرسالة" : "Failed to send message",
-      );
+      if ((e as Error).message !== "SEND_ABORTED") {
+        Alert.alert(
+          isRTL ? "خطأ" : "Error",
+          e instanceof Error ? e.message : isRTL ? "تعذر إرسال الرسالة" : "Failed to send message",
+        );
+      }
       throw e;
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
@@ -729,11 +686,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   : "typing…"
                 : formatPresenceLabel(peer, isRTL)}
               {!peerTyping && peer.specialty ? ` · ${peer.specialty}` : ""}
-              {!peerTyping && peer.role === "doctor" && messageCost > 0
-                ? isRTL
-                  ? ` · ${messageCost} نقطة/رسالة`
-                  : ` · ${messageCost} pt/msg`
-                : ""}
               {!peerTyping && canOpenDoctorProfile
                 ? isRTL
                   ? " · اضغط لعرض الملف"
@@ -773,10 +725,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
       {isDoctorPatientChat && !accessLoading ? (
         <ChatAccessBanner isRTL={isRTL} isDoctor={isDoctor} access={accessStatus} />
-      ) : null}
-
-      {!chatBlocked ? (
-        <PointsLowBanner isRTL={isRTL} balance={pointsBalance} messageCost={messageCost} />
       ) : null}
 
       <KeyboardAvoidingView
@@ -950,7 +898,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         editingMessage={editingMessage}
         onCancelEdit={() => setEditingMessage(null)}
         onEdit={handleEditMessage}
-        disabled={chatBlocked || pointsBalance < messageCost}
+        disabled={chatBlocked}
         disabledHint={
           chatBlocked
             ? isDoctor && accessStatus?.blocked_by_doctor
@@ -964,11 +912,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                 : isRTL
                   ? "هذه المحادثة محظورة"
                   : "This chat is blocked"
-            : pointsBalance < messageCost
-              ? isRTL
-                ? `تحتاج ${messageCost} نقطة لإرسال رسالة. أضف نقاطًا من تبويب النقاط.`
-                : `You need ${messageCost} point${messageCost === 1 ? "" : "s"} to send a message. Add credits from the Points tab.`
-              : undefined
+            : undefined
         }
       />
       </View>

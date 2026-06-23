@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
+  deleteDoctor,
   fetchAdminDoctors,
   setDoctorApproval,
   type AdminDoctorRow,
@@ -25,6 +26,27 @@ function statusColor(status: string): string {
   if (status === "approved") return "#10b981";
   if (status === "rejected") return "#ef4444";
   return "#f59e0b";
+}
+
+type DoctorDocument = {
+  label: string;
+  url: string | null | undefined;
+};
+
+function getDoctorDocuments(doctor: AdminDoctorRow): DoctorDocument[] {
+  return [
+    { label: "Profile photo", url: doctor.photo_url },
+    { label: "Graduation certificate", url: doctor.graduation_cert_url },
+    { label: "Work permit", url: doctor.work_permit_url },
+    { label: "Digital signature", url: doctor.digital_signature_url },
+  ];
+}
+
+function confirmAction(message: string): boolean {
+  if (typeof window !== "undefined" && window.confirm) {
+    return window.confirm(message);
+  }
+  return true;
 }
 
 export default function AdminPanelWeb() {
@@ -70,20 +92,66 @@ export default function AdminPanelWeb() {
   const handleApproval = async (
     doctorId: string,
     status: "approved" | "rejected",
+    successLabel: string,
   ) => {
     if (!accessToken) return;
     setActingId(doctorId);
     try {
       await setDoctorApproval(accessToken, doctorId, status);
-      showSuccessToast(
-        status === "approved" ? "Doctor approved" : "Doctor rejected",
-      );
+      showSuccessToast(successLabel);
       await load();
     } catch (e) {
       showErrorToast("Action failed", (e as Error).message);
     } finally {
       setActingId(null);
     }
+  };
+
+  const handleDelete = async (doctor: AdminDoctorRow) => {
+    if (!accessToken) return;
+    const ok = confirmAction(
+      `Delete doctor "${doctor.name}" (${doctor.email})?\n\nThis permanently removes the doctor account, user account, and related chat messages.`,
+    );
+    if (!ok) return;
+
+    setActingId(doctor.id);
+    try {
+      await deleteDoctor(accessToken, doctor.id);
+      showSuccessToast("Doctor deleted");
+      await load();
+    } catch (e) {
+      showErrorToast("Delete failed", (e as Error).message);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const renderDocuments = (doctor: AdminDoctorRow) => {
+    const docs = getDoctorDocuments(doctor);
+    const available = docs.filter((doc) => !!doc.url);
+
+    return (
+      <View style={styles.docSection}>
+        <Text style={[styles.docSectionTitle, { color: colors.foreground }]}>Documents</Text>
+        {available.length ? (
+          <View style={styles.docLinks}>
+            {available.map((doc) => (
+              <Pressable
+                key={doc.label}
+                onPress={() => void Linking.openURL(doc.url!)}
+                style={[styles.docChip, { borderColor: colors.border, backgroundColor: colors.muted }]}
+              >
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+                  {doc.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>No documents uploaded.</Text>
+        )}
+      </View>
+    );
   };
 
   const renderDoctor = (doctor: AdminDoctorRow) => {
@@ -114,24 +182,15 @@ export default function AdminPanelWeb() {
           </View>
         </View>
 
-        <View style={styles.docLinks}>
-          {doctor.graduation_cert_url ? (
-            <Pressable onPress={() => void Linking.openURL(doctor.graduation_cert_url!)}>
-              <Text style={{ color: colors.primary, fontWeight: "600" }}>Graduation cert</Text>
-            </Pressable>
-          ) : null}
-          {doctor.work_permit_url ? (
-            <Pressable onPress={() => void Linking.openURL(doctor.work_permit_url!)}>
-              <Text style={{ color: colors.primary, fontWeight: "600" }}>Work permit</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {renderDocuments(doctor)}
 
         {doctor.approval_status === "pending" ? (
           <View style={styles.actions}>
             <Pressable
               disabled={busy}
-              onPress={() => void handleApproval(doctor.id, "approved")}
+              onPress={() =>
+                void handleApproval(doctor.id, "approved", "Doctor approved")
+              }
               style={[styles.approveBtn, { opacity: busy ? 0.6 : 1 }]}
             >
               {busy ? (
@@ -142,13 +201,57 @@ export default function AdminPanelWeb() {
             </Pressable>
             <Pressable
               disabled={busy}
-              onPress={() => void handleApproval(doctor.id, "rejected")}
+              onPress={() =>
+                void handleApproval(doctor.id, "rejected", "Doctor rejected")
+              }
               style={[styles.rejectBtn, { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 }]}
             >
               <Text style={{ color: "#ef4444", fontWeight: "700" }}>Reject</Text>
             </Pressable>
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.actions}>
+            {doctor.approval_status === "approved" ? (
+              <Pressable
+                disabled={busy}
+                onPress={() => {
+                  if (
+                    !confirmAction(
+                      `Block doctor "${doctor.name}"? They will be hidden from the patient roster.`,
+                    )
+                  ) {
+                    return;
+                  }
+                  void handleApproval(doctor.id, "rejected", "Doctor blocked");
+                }}
+                style={[styles.rejectBtn, { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 }]}
+              >
+                <Text style={{ color: "#ef4444", fontWeight: "700" }}>Block</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                disabled={busy}
+                onPress={() =>
+                  void handleApproval(doctor.id, "approved", "Doctor unblocked")
+                }
+                style={[styles.approveBtn, { opacity: busy ? 0.6 : 1 }]}
+              >
+                <Text style={styles.approveText}>Unblock</Text>
+              </Pressable>
+            )}
+            <Pressable
+              disabled={busy}
+              onPress={() => void handleDelete(doctor)}
+              style={[styles.deleteBtn, { opacity: busy ? 0.6 : 1 }]}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.deleteText}>Delete</Text>
+              )}
+            </Pressable>
+          </View>
+        )}
       </View>
     );
   };
@@ -156,7 +259,7 @@ export default function AdminPanelWeb() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Admin — Doctor approvals</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>Admin — Doctors</Text>
         <Pressable
           onPress={() => {
             logout();
@@ -217,7 +320,15 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   avatar: { width: 56, height: 56, borderRadius: 28 },
   name: { fontSize: 17, fontWeight: "800" },
-  docLinks: { flexDirection: "row", gap: 16 },
+  docSection: { gap: 8 },
+  docSectionTitle: { fontSize: 14, fontWeight: "800" },
+  docLinks: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  docChip: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   actions: { flexDirection: "row", gap: 10 },
   approveBtn: {
     flex: 1,
@@ -236,4 +347,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 42,
   },
+  deleteBtn: {
+    flex: 1,
+    backgroundColor: "#ef4444",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 42,
+  },
+  deleteText: { color: "#fff", fontWeight: "800" },
 });

@@ -114,6 +114,58 @@ interface ChatState {
 
 let baseConversations: Conversation[] = [];
 
+function dedupeMessagesById(messages: ChatMessage[]): ChatMessage[] {
+  const byId = new Map<string, ChatMessage>();
+  for (const message of messages) byId.set(message.id, message);
+  return Array.from(byId.values()).sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  );
+}
+
+function isSameOutboundDraft(pending: ChatMessage, confirmed: ChatMessage): boolean {
+  if (pending.senderId !== "me" || confirmed.senderId !== "me") return false;
+  if (pending.type !== confirmed.type) return false;
+  if (confirmed.type === "text") {
+    return pending.text.trim() === confirmed.text.trim();
+  }
+  if (confirmed.type === "medical_link") {
+    return pending.medicalLink?.record_id === confirmed.medicalLink?.record_id;
+  }
+  return !!pending.localAttachmentUrl || pending.text.trim() === confirmed.text.trim();
+}
+
+function applyConfirmedOutboundMessage(
+  thread: ChatMessage[],
+  confirmed: ChatMessage,
+  replaceTempId?: string,
+): ChatMessage[] {
+  let next = [...thread];
+
+  if (replaceTempId) {
+    const tempIdx = next.findIndex((m) => m.id === replaceTempId);
+    if (tempIdx >= 0) next[tempIdx] = confirmed;
+  }
+
+  if (!next.some((m) => m.id === confirmed.id)) {
+    const pendingIdx = next.findIndex(
+      (m) => m.pending && m.senderId === "me" && isSameOutboundDraft(m, confirmed),
+    );
+    if (pendingIdx >= 0) {
+      next[pendingIdx] = confirmed;
+    } else {
+      next.push(confirmed);
+    }
+  }
+
+  next = next.filter(
+    (m) =>
+      m.id === confirmed.id ||
+      !(m.pending && m.senderId === "me" && isSameOutboundDraft(m, confirmed)),
+  );
+
+  return dedupeMessagesById(next);
+}
+
 function mergeMessagesById(
   live: ChatMessage[],
   fetched: ChatMessage[],
@@ -121,7 +173,14 @@ function mergeMessagesById(
   const byId = new Map<string, ChatMessage>();
   for (const message of fetched) byId.set(message.id, message);
   for (const message of live) {
-    if (!byId.has(message.id)) byId.set(message.id, message);
+    if (byId.has(message.id)) continue;
+    if (message.pending && message.senderId === "me") {
+      const confirmed = fetched.find(
+        (row) => row.senderId === "me" && isSameOutboundDraft(message, row),
+      );
+      if (confirmed) continue;
+    }
+    byId.set(message.id, message);
   }
   return Array.from(byId.values()).sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
@@ -198,8 +257,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [peerId]: (s.messages[peerId] || []).map((m) =>
-          m.id === tempId ? message : m,
+        [peerId]: applyConfirmedOutboundMessage(
+          s.messages[peerId] || [],
+          message,
+          tempId,
         ),
       },
     })),
@@ -356,9 +417,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [peerId]: replaceTempId
-          ? (s.messages[peerId] || []).map((m) => (m.id === replaceTempId ? msg : m))
-          : [...(s.messages[peerId] || []), msg],
+        [peerId]: applyConfirmedOutboundMessage(
+          s.messages[peerId] || [],
+          msg,
+          replaceTempId,
+        ),
       },
       conversations: applyPresenceToConversations(baseConversations),
       peerTyping: Object.fromEntries(
@@ -580,7 +643,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     if (isOwnMessage) {
-      appendMessage();
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [peerId]: applyConfirmedOutboundMessage(s.messages[peerId] || [], msg),
+        },
+      }));
       upsertConversation(peerId, peer, msg, false, peerNameHint);
       set({ conversations: applyPresenceToConversations(baseConversations) });
       return;

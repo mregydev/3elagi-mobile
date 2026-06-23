@@ -26,6 +26,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
 import {
+  SHOW_INTAKE_RECORDS,
+  withoutIntakeRecords,
+} from "@/components/records/medicalRecordCategories";
+import {
   EMPTY_MEDICAL_FILTERS,
   filterMedicalRecords,
   hasActiveFilters,
@@ -66,7 +70,7 @@ export function MedicalHistoryList({
   patientUserId,
   canAdd = true,
   doctorView = false,
-  showIntake = true,
+  showIntake = SHOW_INTAKE_RECORDS,
 }: MedicalHistoryListProps) {
   const colors = useColors();
   const { isRTL } = useI18n();
@@ -80,6 +84,11 @@ export function MedicalHistoryList({
     ? CATEGORIES
     : CATEGORIES.filter((c) => c.key !== "intake");
 
+  const displayRecords = useMemo(
+    () => (showIntake ? records : withoutIntakeRecords(records)),
+    [records, showIntake],
+  );
+
   const grouped = useMemo(() => {
     const out: Record<MedicalCategory, MedicalRecord[]> = {
       diagnosis: [],
@@ -88,9 +97,9 @@ export function MedicalHistoryList({
       prescription: [],
       intake: [],
     };
-    for (const r of records) out[r.category]?.push(r);
+    for (const r of displayRecords) out[r.category]?.push(r);
     return out;
-  }, [records]);
+  }, [displayRecords]);
 
   const filteredGrouped = useMemo(() => {
     const out = { ...grouped };

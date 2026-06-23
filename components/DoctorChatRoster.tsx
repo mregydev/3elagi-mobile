@@ -83,6 +83,7 @@ interface Props {
   isRTL: boolean;
   onBack: () => void;
   onSelectDoctor: (doctorUserId: string, doctorEntityId?: string) => void;
+  hideHeaderBorder?: boolean;
 }
 
 export function DoctorChatRoster({
@@ -92,6 +93,7 @@ export function DoctorChatRoster({
   isRTL,
   onBack,
   onSelectDoctor,
+  hideHeaderBorder = false,
 }: Props) {
   const colors = useColors();
   const onlineUsers = usePresenceStore((s) => s.users);
@@ -106,7 +108,12 @@ export function DoctorChatRoster({
 
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          hideHeaderBorder && styles.headerBorderless,
+        ]}
+      >
         <Pressable
           onPress={onBack}
           style={[styles.backRow, { flexDirection: dir }]}
@@ -179,6 +186,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(0,0,0,0.08)",
+  },
+  headerBorderless: {
+    borderBottomWidth: 0,
   },
   backRow: {
     alignItems: "flex-start",

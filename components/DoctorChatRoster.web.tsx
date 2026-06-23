@@ -26,7 +26,7 @@ export function DoctorChatRoster(props: Props) {
           },
         ]}
       >
-        <NativeDoctorChatRoster {...props} />
+        <NativeDoctorChatRoster {...props} hideHeaderBorder />
       </View>
     </View>
   );

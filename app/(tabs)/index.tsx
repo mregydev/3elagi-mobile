@@ -3,6 +3,7 @@ import { Redirect, router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -30,6 +31,7 @@ import {
 import { onDoctorRegistered } from "@/domains/presence/socket";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 
 function ChatsHomeBrowse() {
   const colors = useColors();
@@ -198,9 +200,11 @@ function ChatsHomeBrowse() {
 
 export default function ChatsTab() {
   const colors = useColors();
+  const { isDesktop } = useWebLayout();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
+  const showHeader = Platform.OS !== "web" || !isDesktop;
 
   if (!isSignedIn(profile, accessToken) || !role) {
     return <Redirect href="/welcome" />;
@@ -208,7 +212,7 @@ export default function ChatsTab() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader />
+      {showHeader ? <AppHeader /> : null}
       <ChatsHomeBrowse />
     </View>
   );

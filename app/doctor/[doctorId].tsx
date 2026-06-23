@@ -157,7 +157,7 @@ export default function DoctorProfileScreen() {
     } finally {
       setSubmitting(false);
     }
-  };<div data-expoimage="true" class="css-view-g5y9jx" style="overflow: hidden; border-width: 1px; width: 96px; height: 96px; border-radius: 48px; border-color: rgb(217, 226, 237); background-color: rgb(234, 239, 245);"></div>
+  };
 
   if (!isSignedIn(profile, accessToken)) {
     router.replace("/welcome");
