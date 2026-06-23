@@ -1,9 +1,8 @@
-import { Audio } from "expo-av";
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import { ClipboardList, Mic, Paperclip, Send, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   Platform,
   Pressable,
@@ -12,6 +11,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { ChatAttachMenu } from "@/components/chat/ChatAttachMenu";
+import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
+import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { uploadFile } from "@/domains/medical/api";
 import type { ChatMessage, SendMessageInput } from "@/domains/chat/types";
 import {
@@ -20,6 +23,10 @@ import {
 } from "@/domains/presence/socket";
 import { useColors } from "@/hooks/useColors";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
+import {
+  CHAT_VIDEO_PICKER_OPTIONS,
+  getChatVideoLimitViolation,
+} from "@/utils/chatVideoLimits";
 import { chatFlexRow } from "@/utils/rtl";
 
 interface Props {
@@ -42,10 +49,17 @@ interface Props {
   disabledHint?: string;
 }
 
+type PendingAttachment = {
+  uri: string;
+  mimeType: string;
+  fileName: string;
+  type: "image" | "video";
+  webFile?: File | Blob;
+};
+
 function mimeFromUri(uri: string, fallback: string): string {
   const ext = uri.split(".").pop()?.toLowerCase();
   if (ext === "m4a") return "audio/m4a";
-  if (ext === "mp4") return "audio/mp4";
   if (ext === "caf") return "audio/x-caf";
   if (ext === "3gp") return "audio/3gpp";
   if (ext === "aac") return "audio/aac";
@@ -77,15 +91,27 @@ export function ChatComposer({
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [attachMenuVisible, setAttachMenuVisible] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
   const rowDir = chatFlexRow();
+
+  useEffect(() => {
+    recordingRef.current = recording;
+  }, [recording]);
 
   useEffect(() => {
     return () => {
       if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
       if (isTypingRef.current) {
         emitChatStopTyping(peerId, selfId);
+      }
+      if (recordingRef.current) {
+        void recordingRef.current.stopAndUnloadAsync().catch(() => undefined);
       }
     };
   }, [peerId, selfId]);
@@ -117,16 +143,30 @@ export function ChatComposer({
     }
   };
 
+  const openAttachMenu = () => {
+    setAttachMenuVisible(true);
+  };
+
   const createPending = (
     type: ChatMessage["type"],
     localAttachmentUrl?: string,
+    caption?: string,
   ): string => {
     const tempId = `pending-${Date.now()}`;
+    const defaultLabel =
+      type === "image"
+        ? "Photo"
+        : type === "voice"
+          ? "Voice message"
+          : type === "video"
+            ? "Video"
+            : "";
+    const label = caption?.trim() || defaultLabel;
     onAddPending({
       id: tempId,
       conversationId: peerId,
       senderId: "me",
-      text: type === "image" ? "Photo" : type === "voice" ? "Voice message" : "",
+      text: label,
       createdAt: new Date().toISOString(),
       type,
       localAttachmentUrl: localAttachmentUrl ?? null,
@@ -140,20 +180,22 @@ export function ChatComposer({
     mimeType: string,
     fileName: string,
     type: "image" | "video" | "voice",
-    label?: string,
+    webFile?: File | Blob,
+    caption?: string,
   ) => {
-    const tempId = type === "image" || type === "voice"
-      ? createPending(type, type === "image" ? uri : undefined)
-      : undefined;
+    const tempId =
+      type === "image" || type === "voice" || type === "video"
+        ? createPending(type, type === "voice" ? undefined : uri, caption)
+        : undefined;
 
     setUploading(true);
     try {
-      const uploaded = await uploadFile(uri, mimeType, fileName, accessToken);
+      const uploaded = await uploadFile(uri, mimeType, fileName, accessToken, webFile);
       await onSend(
         {
           recipientId: peerId,
           type,
-          content: label,
+          content: caption?.trim() || undefined,
           attachmentUrl: uploaded.url,
         },
         tempId,
@@ -169,85 +211,132 @@ export function ChatComposer({
     }
   };
 
-  const pickGallery = async (media: "image" | "video") => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        isRTL ? "إذن مطلوب" : "Permission required",
-        isRTL ? "يرجى السماح بالوصول إلى المعرض" : "Please allow gallery access.",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: media === "image" ? ["images"] : ["videos"],
-      quality: 0.85,
+  const queueAttachment = (
+    asset: ImagePicker.ImagePickerAsset,
+    media: "image" | "video",
+  ) => {
+    setPendingAttachment({
+      uri: asset.uri,
+      mimeType: asset.mimeType ?? (media === "image" ? "image/jpeg" : "video/mp4"),
+      fileName:
+        asset.fileName ?? `${media}-${Date.now()}.${media === "video" ? "mp4" : "jpg"}`,
+      type: media,
+      webFile: asset.file,
     });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    await uploadAndSend(
-      asset.uri,
-      asset.mimeType ?? (media === "image" ? "image/jpeg" : "video/mp4"),
-      asset.fileName ?? `${media}-${Date.now()}`,
-      media,
-    );
+  };
+
+  const sendPendingAttachment = async () => {
+    if (!pendingAttachment || sending || uploading) return;
+    const caption = text.trim();
+    const { uri, mimeType, fileName, type, webFile } = pendingAttachment;
+    stopTyping();
+    setPendingAttachment(null);
+    setText("");
+    await uploadAndSend(uri, mimeType, fileName, type, webFile, caption);
+  };
+
+  const pickGallery = async (media: "image" | "video") => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          isRTL ? "إذن مطلوب" : "Permission required",
+          isRTL ? "يرجى السماح بالوصول إلى المعرض" : "Please allow gallery access.",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: media === "image" ? ["images"] : ["videos"],
+        quality: media === "image" ? 0.85 : CHAT_VIDEO_PICKER_OPTIONS.quality,
+        allowsEditing: media === "image",
+        ...(media === "video" ? CHAT_VIDEO_PICKER_OPTIONS : {}),
+      });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      if (media === "video") {
+        const violation = await getChatVideoLimitViolation(
+          asset.duration ?? null,
+          asset.uri,
+          isRTL,
+          asset.fileSize ?? null,
+        );
+        if (violation) {
+          Alert.alert(violation.title, violation.body);
+          return;
+        }
+      }
+      queueAttachment(asset, media);
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error ? e.message : isRTL ? "تعذر فتح المعرض" : "Could not open gallery.",
+      );
+    }
   };
 
   const pickCamera = async (media: "image" | "video") => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          isRTL ? "إذن مطلوب" : "Permission required",
+          isRTL ? "يرجى السماح بالوصول إلى الكاميرا" : "Please allow camera access.",
+        );
+        return;
+      }
+
+      if (media === "video" && Platform.OS !== "web") {
+        const mic = await Audio.requestPermissionsAsync();
+        if (mic.status !== "granted") {
+          Alert.alert(
+            isRTL ? "إذن مطلوب" : "Permission required",
+            isRTL
+              ? "يرجى السماح بالوصول إلى الميكروفون لتسجيل الفيديو"
+              : "Please allow microphone access to record video.",
+          );
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: media === "image" ? ["images"] : ["videos"],
+        quality: media === "image" ? 0.85 : CHAT_VIDEO_PICKER_OPTIONS.quality,
+        allowsEditing: media === "image",
+        ...(media === "video" ? CHAT_VIDEO_PICKER_OPTIONS : {}),
+      });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      if (media === "video") {
+        const violation = await getChatVideoLimitViolation(
+          asset.duration ?? null,
+          asset.uri,
+          isRTL,
+          asset.fileSize ?? null,
+        );
+        if (violation) {
+          Alert.alert(violation.title, violation.body);
+          return;
+        }
+      }
+      queueAttachment(asset, media);
+    } catch (e) {
       Alert.alert(
-        isRTL ? "إذن مطلوب" : "Permission required",
-        isRTL ? "يرجى السماح بالوصول إلى الكاميرا" : "Please allow camera access.",
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error ? e.message : isRTL ? "تعذر فتح الكاميرا" : "Could not open camera.",
       );
-      return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: media === "image" ? ["images"] : ["videos"],
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    await uploadAndSend(
-      asset.uri,
-      asset.mimeType ?? (media === "image" ? "image/jpeg" : "video/mp4"),
-      asset.fileName ?? `camera-${Date.now()}`,
-      media,
-    );
   };
 
-  const showAttachMenu = () => {
-    const options = [
-      isRTL ? "صورة من المعرض" : "Photo from gallery",
-      isRTL ? "فيديو من المعرض" : "Video from gallery",
-      isRTL ? "التقاط صورة" : "Take photo",
-      isRTL ? "تسجيل فيديو" : "Record video",
-      isRTL ? "إلغاء" : "Cancel",
-    ];
-    const cancelIndex = options.length - 1;
-
-    const handle = (index: number) => {
-      if (index === 0) void pickGallery("image");
-      else if (index === 1) void pickGallery("video");
-      else if (index === 2) void pickCamera("image");
-      else if (index === 3) void pickCamera("video");
-    };
-
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: cancelIndex },
-        (index) => {
-          if (index !== undefined && index !== cancelIndex) handle(index);
-        },
-      );
-    } else {
-      Alert.alert(isRTL ? "إرفاق" : "Attach", undefined, [
-        { text: options[0], onPress: () => handle(0) },
-        { text: options[1], onPress: () => handle(1) },
-        { text: options[2], onPress: () => handle(2) },
-        { text: options[3], onPress: () => handle(3) },
-        { text: options[cancelIndex], style: "cancel" },
-      ]);
-    }
+  const prepareAudioMode = async () => {
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+      staysActiveInBackground: false,
+    });
   };
 
   const toggleRecording = async () => {
@@ -258,6 +347,7 @@ export function ChatComposer({
         const uri = recording.getURI();
         setRecording(null);
         setRecordingStartedAt(null);
+        await prepareAudioMode();
 
         const durationMs = Date.now() - startedAt;
         if (!uri) {
@@ -296,10 +386,7 @@ export function ChatComposer({
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+      await prepareAudioMode();
 
       const { recording: rec } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY,
@@ -328,12 +415,28 @@ export function ChatComposer({
       return;
     }
 
-    await onSend({ recipientId: peerId, type: "text", content: t });
     setText("");
+    const tempId = createPending("text", undefined, t);
+
+    try {
+      await onSend({ recipientId: peerId, type: "text", content: t }, tempId);
+    } catch {
+      setText(t);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (pendingAttachment) {
+      await sendPendingAttachment();
+      return;
+    }
+    await sendText();
   };
 
   const busy = sending || uploading || disabled;
   const isEditing = !!editingMessage;
+  const controlsDisabled = busy || !!recording || isEditing;
+  const canSend = !!text.trim() || !!pendingAttachment;
 
   if (disabled && !isEditing) {
     return (
@@ -357,6 +460,16 @@ export function ChatComposer({
 
   return (
     <View style={styles.footer}>
+      <ChatAttachMenu
+        visible={attachMenuVisible}
+        isRTL={isRTL}
+        onClose={() => setAttachMenuVisible(false)}
+        onPhotoGallery={() => void pickGallery("image")}
+        onPhotoCamera={() => void pickCamera("image")}
+        onVideoGallery={() => void pickGallery("video")}
+        onVideoCamera={() => void pickCamera("video")}
+      />
+
       {isEditing ? (
         <View
           style={[
@@ -385,6 +498,30 @@ export function ChatComposer({
           </Pressable>
         </View>
       ) : null}
+
+      {pendingAttachment && !isEditing ? (
+        <ChatAttachmentPreview
+          attachment={{
+            uri: pendingAttachment.uri,
+            type: pendingAttachment.type,
+          }}
+          isRTL={isRTL}
+          onRemove={() => setPendingAttachment(null)}
+          onReplace={openAttachMenu}
+          onExpandImage={setPreviewImageUri}
+          onExpandVideo={setPreviewVideoUri}
+        />
+      ) : null}
+
+      <FullscreenImageViewer
+        uri={previewImageUri}
+        onClose={() => setPreviewImageUri(null)}
+      />
+      <FullscreenVideoViewer
+        uri={previewVideoUri}
+        onClose={() => setPreviewVideoUri(null)}
+      />
+
       <View
         style={[
           styles.composer,
@@ -396,34 +533,42 @@ export function ChatComposer({
           },
         ]}
       >
-        <Pressable
-          onPress={showAttachMenu}
-          disabled={busy || !!recording || isEditing}
-          style={({ pressed }) => [
-            styles.iconBtn,
-            { backgroundColor: pressed ? colors.border : colors.muted, opacity: busy || recording || isEditing ? 0.5 : 1 },
-          ]}
-          hitSlop={6}
-        >
-          <Paperclip size={18} color={colors.mutedForeground} />
-        </Pressable>
+        {!isEditing ? (
+          <View style={[styles.composerActions, { flexDirection: rowDir }]}>
+            <Pressable
+              onPress={openAttachMenu}
+              disabled={controlsDisabled}
+              accessibilityLabel={isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video"}
+              style={[
+                styles.iconBtn,
+                {
+                  backgroundColor: colors.muted,
+                  opacity: controlsDisabled ? 0.45 : 1,
+                },
+              ]}
+              hitSlop={6}
+            >
+              <Paperclip size={18} color={colors.mutedForeground} />
+            </Pressable>
 
-        {isPatient ? (
-          <Pressable
-            onPress={onPickMedical}
-            disabled={busy || !!recording || isEditing}
-            accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
-            style={({ pressed }) => [
-              styles.iconBtn,
-              {
-                backgroundColor: pressed ? colors.primary : `${colors.primary}18`,
-                opacity: busy || recording || isEditing ? 0.5 : 1,
-              },
-            ]}
-            hitSlop={6}
-          >
-            <ClipboardList size={18} color={colors.primary} />
-          </Pressable>
+            {isPatient ? (
+              <Pressable
+                onPress={onPickMedical}
+                disabled={controlsDisabled}
+                accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
+                style={[
+                  styles.iconBtn,
+                  {
+                    backgroundColor: colors.muted,
+                    opacity: controlsDisabled ? 0.45 : 1,
+                  },
+                ]}
+                hitSlop={6}
+              >
+                <ClipboardList size={18} color={colors.mutedForeground} />
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
 
         <TextInput
@@ -435,7 +580,15 @@ export function ChatComposer({
           }}
           onFocus={onComposerFocus}
           onBlur={stopTyping}
-          placeholder={isRTL ? "اكتب رسالة…" : "Type a message…"}
+          placeholder={
+            pendingAttachment
+              ? isRTL
+                ? "أضف تعليقاً (اختياري)…"
+                : "Add a caption (optional)…"
+              : isRTL
+                ? "اكتب رسالة…"
+                : "Type a message…"
+          }
           placeholderTextColor={colors.mutedForeground}
           style={[
             styles.input,
@@ -446,14 +599,14 @@ export function ChatComposer({
             },
           ]}
           multiline
-          editable={!busy && !recording}
+          editable={!uploading && !disabled && !recording}
           blurOnSubmit={false}
-          onKeyPress={(e) => handleEnterToSendMessage(e, sendText)}
+          onKeyPress={(e) => handleEnterToSendMessage(e, sendMessage)}
         />
 
-        {text.trim() ? (
+        {canSend ? (
           <Pressable
-            onPress={sendText}
+            onPress={() => void sendMessage()}
             disabled={busy}
             style={[styles.iconBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
           >
@@ -461,24 +614,37 @@ export function ChatComposer({
           </Pressable>
         ) : isEditing ? null : (
           <Pressable
-            onPress={toggleRecording}
-            disabled={busy && !recording}
+            onPress={() => void toggleRecording()}
+            disabled={uploading || sending || isEditing || !!pendingAttachment}
             style={[
               styles.iconBtn,
               {
                 backgroundColor: recording ? "#ef4444" : colors.muted,
-                opacity: busy && !recording ? 0.5 : 1,
+                opacity: uploading || sending || isEditing || pendingAttachment ? 0.45 : 1,
               },
             ]}
             hitSlop={6}
+            accessibilityLabel={isRTL ? "رسالة صوتية" : "Voice message"}
           >
             <Mic size={18} color={recording ? "#fff" : colors.mutedForeground} />
           </Pressable>
         )}
       </View>
+
       {recording ? (
         <Text style={{ textAlign: "center", color: "#ef4444", paddingBottom: 8, fontSize: 12 }}>
           {isRTL ? "جاري التسجيل… اضغط الميكروفون للإرسال" : "Recording… tap mic to send"}
+        </Text>
+      ) : uploading ? (
+        <Text
+          style={{
+            textAlign: "center",
+            color: colors.mutedForeground,
+            paddingBottom: 8,
+            fontSize: 12,
+          }}
+        >
+          {isRTL ? "جاري رفع الملف…" : "Uploading attachment…"}
         </Text>
       ) : null}
     </View>
@@ -500,9 +666,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 8,
     paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 8,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  composerActions: {
+    alignItems: "center",
+    gap: 4,
   },
   input: {
     flex: 1,

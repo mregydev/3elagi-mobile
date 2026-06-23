@@ -1,6 +1,6 @@
 import { API_BASE } from "@/constants/api";
 import { uploadFile } from "@/domains/medical";
-import type { AuthSession, Credentials, SignupInput, SignupFile } from "./types";
+import type { AuthSession, Credentials, DoctorApprovalStatus, SignupInput, SignupFile } from "./types";
 
 async function post<T>(path: string, body: object): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -65,6 +65,16 @@ function doctorSpecialtyFromProfile(profile: Record<string, unknown>): {
     specialty: specialty || undefined,
     specialityId,
   };
+}
+
+function readDoctorApprovalStatus(
+  profile: Record<string, unknown>,
+): DoctorApprovalStatus | null {
+  const status = profile.approval_status;
+  if (status === "pending" || status === "approved" || status === "rejected") {
+    return status;
+  }
+  return null;
 }
 
 function normalizeProfile(
@@ -133,6 +143,7 @@ export const authRepository = {
     });
     const profile = raw.profile ?? {};
     const isDoctor = raw.role?.toLowerCase() === "doctor";
+    const isAdmin = raw.role?.toLowerCase() === "admin";
     const { specialty, specialityId } = isDoctor
       ? doctorSpecialtyFromProfile(profile)
       : {};
@@ -143,8 +154,14 @@ export const authRepository = {
       doctorId: isDoctor ? String(profile.id ?? "") : undefined,
       specialty,
       specialityId,
+      doctorApprovalStatus: isDoctor ? readDoctorApprovalStatus(profile) : null,
       profile: normalizeProfile(
-        { ...profile, user_id: isDoctor ? raw.user_id : profile.user_id ?? raw.user_id },
+        {
+          ...profile,
+          user_id: isDoctor || isAdmin ? raw.user_id : profile.user_id ?? raw.user_id,
+          name: isAdmin ? "Admin" : profile.name,
+          email: isAdmin ? creds.email : profile.email,
+        },
         creds.email,
       ),
     };
@@ -192,6 +209,7 @@ export const authRepository = {
       doctorId: isDoctorRole ? String(profileRaw.id ?? "") : undefined,
       specialty,
       specialityId,
+      doctorApprovalStatus: isDoctorRole ? readDoctorApprovalStatus(profileRaw) : null,
       profile: normalizeProfile(
         {
           ...profileRaw,

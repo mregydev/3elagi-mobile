@@ -5,8 +5,12 @@ import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppSplash } from "@/components/SplashScreen";
+import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
+import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
+import { ChatNotifications } from "@/components/ChatNotifications";
+import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
 import { PresenceSocket } from "@/components/PresenceSocket";
 import { useAuthStore } from "@/domains/auth/store";
@@ -94,7 +98,10 @@ export default function RootLayout() {
           <PresenceSocket />
           <PresenceChatSync />
           <ChatMessageSync />
+          <ChatNotifications />
+          <WebChatNotificationsBootstrap />
           <AuthRedirect />
+          <WebLogoutRedirect />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="welcome" />
@@ -107,7 +114,11 @@ export default function RootLayout() {
             <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />
             <Stack.Screen name="medical/prescription/add" />
             <Stack.Screen name="medical/[id]" />
+            <Stack.Screen name="admin/index" />
+            <Stack.Screen name="doctor-pending" />
+            <Stack.Screen name="points/checkout" />
           </Stack>
+          <AppToast />
         </View>
       </KeyboardProvider>
     </SafeAreaProvider>

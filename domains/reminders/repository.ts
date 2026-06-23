@@ -8,12 +8,19 @@
  * This file is the only place in the codebase that imports expo-notifications.
  */
 import * as Notifications from 'expo-notifications'
+import { Platform } from 'react-native'
 import type { MedicationReminder } from './types'
 
 const ANDROID_CHANNEL_ID = '3elagi-prescription-reminders'
 
+function remindersSupported(): boolean {
+  return Platform.OS === 'ios' || Platform.OS === 'android'
+}
+
 /** One-time setup: configure notification handler and Android channel. */
 export async function initRemindersChannel(): Promise<void> {
+  if (!remindersSupported()) return
+
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -33,6 +40,8 @@ export async function initRemindersChannel(): Promise<void> {
 
 /** Request notification permissions. Returns true if granted. */
 export async function requestRemindersPermission(): Promise<boolean> {
+  if (!remindersSupported()) return false
+
   const { status } = await Notifications.requestPermissionsAsync()
   return status === 'granted'
 }
@@ -52,6 +61,8 @@ interface ScheduleInput {
 export async function scheduleMedicationReminder(
   input: ScheduleInput,
 ): Promise<string> {
+  if (!remindersSupported()) return ''
+
   const { prescriptionId, medicationName, dose, intervalHours } = input
   const intervalSeconds = intervalHours * 60 * 60
 
@@ -77,6 +88,8 @@ export async function scheduleMedicationReminder(
 export async function cancelPrescriptionReminders(
   reminders: MedicationReminder[],
 ): Promise<void> {
+  if (!remindersSupported() || reminders.length === 0) return
+
   await Promise.all(
     reminders.map((r) => Notifications.cancelScheduledNotificationAsync(r.notificationId)),
   )
@@ -84,5 +97,7 @@ export async function cancelPrescriptionReminders(
 
 /** Cancel every scheduled notification (used on logout). */
 export async function cancelAllReminders(): Promise<void> {
+  if (!remindersSupported()) return
+
   await Notifications.cancelAllScheduledNotificationsAsync()
 }

@@ -100,6 +100,22 @@ export async function fetchChatContacts(token: string): Promise<ChatUser[]> {
   return data.map(mapContact);
 }
 
+export async function fetchContactById(
+  token: string,
+  userId: string,
+): Promise<ChatUser> {
+  const res = await fetch(`${API_BASE}/users/contacts/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as ChatContactRow & {
+    message?: string;
+  };
+  if (!res.ok) {
+    throw new Error(data.message ?? `Failed to load contact (${res.status})`);
+  }
+  return mapContact(data);
+}
+
 export async function fetchConversations(
   token: string,
   selfId: string,

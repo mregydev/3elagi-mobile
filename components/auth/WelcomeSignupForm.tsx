@@ -2,7 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { Camera, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,9 +14,15 @@ import {
   View,
 } from "react-native";
 import { MessagePricePicker } from "@/components/MessagePricePicker";
+import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
+import {
+  hasFieldErrors,
+  validateSignupFields,
+  type SignupFieldErrors,
+} from "@/domains/auth/validation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
@@ -46,6 +52,11 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
   const [messagePrice, setMessagePrice] = useState(1);
+  const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const emailRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const isDoctor = role === "doctor";
 
@@ -61,6 +72,28 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
 
   const pickPhoto = () => {
     Alert.alert(t.auth.profilePhoto, t.auth.chooseSource, [
+      {
+        text: t.auth.camera,
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== "granted") return;
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            setPhotoPreview(asset.uri);
+            setPhoto({
+              uri: asset.uri,
+              mimeType: asset.mimeType ?? "image/jpeg",
+              fileName: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+            });
+          }
+        },
+      },
       {
         text: t.auth.gallery,
         onPress: async () => {
@@ -132,20 +165,25 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   };
 
   const submit = async () => {
-    if (!name.trim() || !email.trim() || password.length < 6) {
-      Alert.alert(t.auth.missingInfo, t.auth.missingInfoMsg);
+    const errors = validateSignupFields(
+      { name, email, phone, password, isDoctor, specialityId },
+      t.auth,
+    );
+    if (hasFieldErrors(errors)) {
+      setFieldErrors(errors);
+      setFormError(null);
       return;
     }
-    if (isDoctor && !specialityId) {
-      Alert.alert(t.auth.specialityRequired, t.auth.specialityRequiredMsg);
-      return;
-    }
+
+    setFieldErrors({});
+    setFormError(null);
+
     try {
       await signup({
         role,
-        name,
-        email,
-        phone,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         password,
         photo: photo ?? undefined,
         graduationCert: isDoctor ? graduationCert ?? undefined : undefined,
@@ -153,9 +191,9 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         specialityId: isDoctor ? specialityId : undefined,
         messagePrice: isDoctor ? messagePrice : undefined,
       });
-      router.replace("/(tabs)");
+      router.replace(isDoctor ? "/doctor-pending" : "/(tabs)");
     } catch (e) {
-      Alert.alert(t.auth.signupFailed, (e as Error).message);
+      setFormError((e as Error).message || t.auth.genericError);
     }
   };
 
@@ -191,39 +229,77 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         </View>
       </Pressable>
 
-      <Field
+      {formError ? <AuthFormError message={formError} colors={colors} /> : null}
+
+      <AuthFormField
         label={t.auth.name}
         value={name}
-        onChange={setName}
+        onChange={(value) => {
+          setName(value);
+          if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+          if (formError) setFormError(null);
+        }}
+        error={fieldErrors.name}
         placeholder={t.auth.namePlaceholder}
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => emailRef.current?.focus()}
         colors={colors}
         isRTL={isRTL}
       />
-      <Field
+      <AuthFormField
+        ref={emailRef}
         label={t.auth.email}
         value={email}
-        onChange={setEmail}
+        onChange={(value) => {
+          setEmail(value);
+          if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+          if (formError) setFormError(null);
+        }}
+        error={fieldErrors.email}
         placeholder={t.auth.emailPlaceholder}
         autoCapitalize="none"
         keyboardType="email-address"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => phoneRef.current?.focus()}
         colors={colors}
         isRTL={isRTL}
       />
-      <Field
+      <AuthFormField
+        ref={phoneRef}
         label={t.auth.phone}
         value={phone}
-        onChange={setPhone}
+        onChange={(value) => {
+          setPhone(value);
+          if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+          if (formError) setFormError(null);
+        }}
+        error={fieldErrors.phone}
         placeholder={t.auth.phonePlaceholder}
         keyboardType="phone-pad"
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => passwordRef.current?.focus()}
         colors={colors}
         isRTL={isRTL}
       />
-      <Field
+      <AuthFormField
+        ref={passwordRef}
         label={t.auth.password}
         value={password}
-        onChange={setPassword}
+        onChange={(value) => {
+          setPassword(value);
+          if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+          if (formError) setFormError(null);
+        }}
+        error={fieldErrors.password}
         placeholder={t.auth.passwordMinPlaceholder}
         secure
+        returnKeyType="go"
+        onSubmitEditing={() => {
+          if (!loading) void submit();
+        }}
         colors={colors}
         isRTL={isRTL}
       />
@@ -240,7 +316,12 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
               return (
                 <Pressable
                   key={spec.id}
-                  onPress={() => setSpecialityId(spec.id)}
+                  onPress={() => {
+                    setSpecialityId(spec.id);
+                    if (fieldErrors.specialityId) {
+                      setFieldErrors((prev) => ({ ...prev, specialityId: undefined }));
+                    }
+                  }}
                   style={[
                     styles.specialityChip,
                     {
@@ -262,6 +343,11 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
               );
             })}
           </View>
+          {fieldErrors.specialityId ? (
+            <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
+              {fieldErrors.specialityId}
+            </Text>
+          ) : null}
           <MessagePricePicker
             value={messagePrice}
             onChange={setMessagePrice}
@@ -400,55 +486,10 @@ function DocUploadRow({
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  secure,
-  colors,
-  isRTL,
-  placeholder,
-  ...rest
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  secure?: boolean;
-  colors: ReturnType<typeof useColors>;
-  isRTL: boolean;
-  placeholder?: string;
-  autoCapitalize?: "none" | "sentences";
-  keyboardType?: "default" | "email-address" | "phone-pad";
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        secureTextEntry={secure}
-        placeholder={placeholder}
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            color: colors.foreground,
-            textAlign: isRTL ? "right" : "left",
-          },
-        ]}
-        placeholderTextColor={colors.mutedForeground}
-        {...rest}
-      />
-    </View>
-  );
-}
-
 const AVATAR_SIZE = 80;
 
 const styles = StyleSheet.create({
   form: { width: "100%", gap: 12, alignItems: "center" },
-  field: { gap: 6, width: "100%" },
   roleRow: { gap: 10, width: "100%" },
   roleChip: {
     flex: 1,
@@ -459,7 +500,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    cursor: "pointer" as "auto",
   },
   avatarWrap: {
     width: AVATAR_SIZE,
@@ -493,7 +533,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1.5,
-    cursor: "pointer" as "auto",
   },
   docRow: {
     alignItems: "center",
@@ -516,12 +555,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
-    cursor: "pointer" as "auto",
   },
   btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   switchLink: {
     paddingVertical: 8,
     alignItems: "center",
-    cursor: "pointer" as "auto",
   },
 });

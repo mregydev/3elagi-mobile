@@ -372,6 +372,52 @@ export function MedicalRecordWebView() {
     return null;
   };
 
+  const renderLinkedDiagnoses = () => {
+    if (!isLabOrXray) return null;
+    if (!record.linkedDiagnoses?.length) return null;
+
+    return (
+      <SectionCard
+        testID="medical-record-linked-diagnoses"
+        title={isRTL ? "تشخيصات مرتبطة" : "Linked diagnoses"}
+        icon={<Activity size={18} color="#ef4444" />}
+        accent="#ef4444"
+        colors={colors}
+        textAlign={textAlign}
+        dir={dir}
+      >
+        <View style={styles.linkedList}>
+          {record.linkedDiagnoses.map((diag) => (
+            <Pressable
+              key={diag.id}
+              testID="medical-record-linked-diagnosis-row"
+              onPress={() => openLinkedDoc(diag.id)}
+              style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
+            >
+              <View
+                style={[
+                  styles.linkedThumb,
+                  styles.linkedThumbPlaceholder,
+                  { backgroundColor: "#ef444422" },
+                ]}
+              >
+                <Activity size={22} color="#ef4444" />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text
+                  style={{ color: colors.foreground, fontWeight: "700", textAlign }}
+                  numberOfLines={3}
+                >
+                  {diag.title}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </SectionCard>
+    );
+  };
+
   const renderSymptoms = () => {
     if (!isDiagnosis) return null;
 
@@ -730,6 +776,7 @@ export function MedicalRecordWebView() {
           <View style={styles.sections}>
             {renderDiagnosisEdit()}
             {renderLinkedDocs()}
+            {renderLinkedDiagnoses()}
             {renderSymptoms()}
             {renderMedications()}
           </View>

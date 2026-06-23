@@ -52,6 +52,13 @@ export function PresenceSocket() {
     return () => {
       disconnectPresenceSocket(profile.id);
     };
+  }, [hydrated, profile?.id, accessToken]);
+
+  useEffect(() => {
+    if (!hydrated || !profile || !accessToken) return;
+
+    const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
+    announcePresenceLogin(user, accessToken);
   }, [
     hydrated,
     profile?.id,
@@ -68,7 +75,6 @@ export function PresenceSocket() {
   useEffect(() => {
     if (Platform.OS !== "web") return;
     if (!hydrated || !profile || !accessToken) return;
-    if (role?.toLowerCase() !== "doctor") return;
     if (typeof document === "undefined") return;
 
     const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
@@ -81,8 +87,16 @@ export function PresenceSocket() {
       }
     };
 
+    const onWindowFocus = () => {
+      announcePresenceLogin(user, accessToken);
+    };
+
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onWindowFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onWindowFocus);
+    };
   }, [
     hydrated,
     profile?.id,

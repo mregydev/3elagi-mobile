@@ -1,12 +1,13 @@
-import { Redirect, Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Bot, ClipboardList, Coins, History, Home, Star, User, Users } from "lucide-react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebContentColumn } from "@/components/web/WebContentColumn";
 import { WebSidebar } from "@/components/web/WebSidebar";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -14,6 +15,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 export default function TabsLayoutWeb() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
   const profile = useAuthStore((s) => s.profile);
@@ -24,8 +26,15 @@ export default function TabsLayoutWeb() {
   const isDoctor = role?.toLowerCase() === "doctor";
   const bottomGap = Math.max(insets.bottom, 8);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!signedIn) {
+      navigateToWelcome(router);
+    }
+  }, [hydrated, signedIn, router]);
+
   if (!hydrated) return null;
-  if (!signedIn) return <Redirect href="/welcome" />;
+  if (!signedIn) return null;
 
   const tabs = (
     <Tabs

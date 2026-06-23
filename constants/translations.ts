@@ -133,6 +133,9 @@ const en = {
     healthcareHubDesc:
       "Connect with doctors, manage medical records, and chat securely from any device.",
     genericError: "An error occurred, please try again",
+    fieldRequired: "This field is required",
+    invalidEmail: "Enter a valid email address",
+    passwordTooShort: "Password must be at least 6 characters",
     invalidCredentials: "Invalid email or password",
     networkError: "Network error, check your connection",
     switchToEnglish: "English",
@@ -443,6 +446,9 @@ const ar: typeof en = {
     healthcareHubDesc:
       "تواصل مع الأطباء، وأدر سجلاتك الطبية، وتابع محادثاتك بأمان.",
     genericError: "حدث خطأ، يرجى المحاولة مجدداً",
+    fieldRequired: "هذا الحقل مطلوب",
+    invalidEmail: "أدخل بريدًا إلكترونيًا صالحًا",
+    passwordTooShort: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
     invalidCredentials: "بريد إلكتروني أو كلمة مرور غير صحيحة",
     networkError: "خطأ في الشبكة، تحقق من اتصالك",
     switchToEnglish: "English",

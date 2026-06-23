@@ -554,6 +554,60 @@ export default function MedicalRecordDetail() {
           </View>
         )}
 
+        {isLabOrXray && record.linkedDiagnoses && record.linkedDiagnoses.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.cardHeader, { flexDirection: dir }]}>
+              <View style={[styles.cardIconWrap, { backgroundColor: "#ef444418" }]}>
+                <Activity size={18} color="#ef4444" />
+              </View>
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
+                {isRTL ? "تشخيصات مرتبطة" : "Linked diagnoses"}
+              </Text>
+            </View>
+            {record.linkedDiagnoses.map((diag) => (
+              <Pressable
+                key={diag.id}
+                onPress={() => {
+                  if (isDoctorView && patientUserId) {
+                    router.push({
+                      pathname: "/medical/[id]",
+                      params: {
+                        id: diag.id,
+                        doctorView: "1",
+                        patientUserId,
+                      },
+                    });
+                  } else {
+                    router.push(`/medical/${diag.id}`);
+                  }
+                }}
+                style={[
+                  styles.linkedDocRow,
+                  { borderColor: colors.border, flexDirection: dir },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.linkedThumb,
+                    styles.linkedThumbPlaceholder,
+                    { backgroundColor: "#ef444422" },
+                  ]}
+                >
+                  <Activity size={22} color="#ef4444" />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text
+                    style={{ color: colors.foreground, fontWeight: "700", textAlign }}
+                    numberOfLines={3}
+                  >
+                    {diag.title}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         {isDiagnosis && record.linkedDocuments && record.linkedDocuments.length > 0 ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.cardHeader, { flexDirection: dir }]}>

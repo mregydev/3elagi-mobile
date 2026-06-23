@@ -1,16 +1,21 @@
 import { Image } from "expo-image";
+import { useFocusEffect } from "@react-navigation/native";
 import { ArrowLeft } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
-import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm.web";
-import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm.web";
+import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
+import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { WEB_BREAKPOINTS } from "@/constants/webLayout";
+import { AUTH_EVENTS } from "@/domains/auth/events";
+import { isSignedIn } from "@/domains/auth/session";
+import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { on } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
 
 const WELCOME_HERO_LEFT = require("@/assets/images/welcome-hero-left.jpg");
@@ -26,6 +31,23 @@ export default function WelcomeScreenWeb() {
   const stackVertical = width < WEB_BREAKPOINTS.tablet;
   const [panel, setPanel] = useState<WelcomePanel>("home");
   const showForm = panel !== "home";
+
+  const showHomePanel = useCallback(() => {
+    setPanel("home");
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const { profile, accessToken } = useAuthStore.getState();
+      if (!isSignedIn(profile, accessToken)) {
+        showHomePanel();
+      }
+    }, [showHomePanel]),
+  );
+
+  useEffect(() => {
+    return on(AUTH_EVENTS.LOGOUT, showHomePanel);
+  }, [showHomePanel]);
 
   const formTitle =
     panel === "login" ? t.auth.logIn : panel === "signup" ? t.auth.register : "";

@@ -2,13 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { useAuthStore } from "@/domains/auth/store";
 import { fetchAiHistory, deleteAiConversation } from "@/domains/ai/api";
-import { formatAiChatError } from "@/domains/ai/errors";
+import { AI_INSUFFICIENT_POINTS_MESSAGE_AR, AI_INSUFFICIENT_POINTS_MESSAGE_EN, formatAiChatError } from "@/domains/ai/errors";
+import { AI_EVENTS } from "@/domains/ai/events";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionItem, type MessageEmotionType, type AiFeedbackType } from "@/domains/emotions/types";
 import { requestAiHistory, sendAiMessageViaSocket } from "@/domains/ai/socket";
 import { getPresenceSocket, onMessageEmotionUpdated } from "@/domains/presence/socket";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
+import { selectPointsBalance, usePointsStore } from "@/domains/points/store";
 import { useI18n } from "@/hooks/useI18n";
+import { emit } from "@/utils/eventBus";
+
+const AI_MESSAGE_COST = 1;
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -61,6 +66,8 @@ function mapConversationEmotions(conversation: AiConversation): AiConversation {
 export function useAiAssistant() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const selfUserId = useAuthStore((s) => s.profile?.id ?? null);
+  const pointsSummary = usePointsStore((s) => s.summary);
+  const pointsBalance = selectPointsBalance(pointsSummary);
   const { isRTL } = useI18n();
   const [conversations, setConversations] = useState<AiConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -138,6 +145,16 @@ export function useAiAssistant() {
     async (text: string, patientUserId?: string) => {
       if (!accessToken || !text.trim()) return;
       const question = text.trim();
+
+      if (pointsBalance < AI_MESSAGE_COST) {
+        setChatError(
+          isRTL ? AI_INSUFFICIENT_POINTS_MESSAGE_AR : AI_INSUFFICIENT_POINTS_MESSAGE_EN,
+        );
+        setRateLimitReached(false);
+        setCanRetry(false);
+        return;
+      }
+
       setLastQuestion(question);
       setChatError(null);
       setRateLimitReached(false);
@@ -203,6 +220,7 @@ export function useAiAssistant() {
             if (event.type === "ack" && event.conversationId) {
               ackReceived = true;
               resolvedConversationId = event.conversationId;
+              emit(AI_EVENTS.MESSAGE_SENT, { token: accessToken });
               setConversations((prev) =>
                 prev.map((c) =>
                   c.id === conversationKey || c.id === event.conversationId
@@ -251,6 +269,7 @@ export function useAiAssistant() {
                 event.code,
                 isRTL,
               );
+              setChatError(formatted.message);
               setRateLimitReached(formatted.isRateLimit);
               setCanRetry(formatted.canRetry);
             }
@@ -320,7 +339,7 @@ export function useAiAssistant() {
         setStreaming(false);
       }
     },
-    [accessToken, activeId, isRTL],
+    [accessToken, activeId, isRTL, pointsBalance],
   );
 
   useEffect(() => {

@@ -1,6 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "react-native";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import {
   fetchAccountProfile,
@@ -9,6 +8,7 @@ import {
 } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
 import { uploadFile } from "@/domains/medical/api";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 interface Options {
   accessToken: string;
@@ -49,7 +49,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhotoUri(null);
       setPhotoDirty(false);
     } catch (e) {
-      Alert.alert(isRTL ? "خطأ" : "Error", (e as Error).message);
+      showErrorToast(isRTL ? "خطأ" : "Error", (e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
+      showErrorToast(
         isRTL ? "الإذن مطلوب" : "Permission required",
         isRTL ? "يرجى السماح بالوصول إلى الصور." : "Please allow photo library access.",
       );
@@ -89,11 +89,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
 
   const save = async () => {
     if (!name.trim()) {
-      Alert.alert(isRTL ? "الاسم مطلوب" : "Name required");
+      showErrorToast(isRTL ? "الاسم مطلوب" : "Name required");
       return false;
     }
     if (isDoctor && !specialityId) {
-      Alert.alert(
+      showErrorToast(
         isRTL ? "التخصص مطلوب" : "Speciality required",
         isRTL ? "اختر تخصصك الطبي." : "Please select your medical speciality.",
       );
@@ -126,10 +126,13 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhotoUrl(updated.avatarUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
-      Alert.alert(isRTL ? "تم الحفظ" : "Saved", isRTL ? "تم تحديث ملفك." : "Profile updated.");
+      showSuccessToast(
+        isRTL ? "تم الحفظ" : "Saved",
+        isRTL ? "تم تحديث ملفك." : "Profile updated.",
+      );
       return true;
     } catch (e) {
-      Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+      showErrorToast(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
       return false;
     } finally {
       setSaving(false);

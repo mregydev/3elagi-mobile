@@ -2,7 +2,6 @@ import { Plus } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { router } from "expo-router";
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { PointsPieChart } from "@/components/PointsPieChart";
@@ -32,11 +32,10 @@ export default function PointsTab() {
 
   const {
     loading,
-    saving,
     displaySummary,
     amountText,
     setAmountText,
-    submitAdd,
+    parseAmount,
     summary,
   } = usePointsPage(isRTL);
 
@@ -46,9 +45,11 @@ export default function PointsTab() {
     return <Redirect href="/welcome" />;
   }
 
-  const handleSubmit = async () => {
-    const ok = await submitAdd();
-    if (ok) setModalOpen(false);
+  const handleSubmit = () => {
+    const amount = parseAmount();
+    if (!amount) return;
+    setModalOpen(false);
+    router.push(`/points/checkout?amount=${amount}`);
   };
 
   return (
@@ -108,7 +109,7 @@ export default function PointsTab() {
       </KeyboardSafeScrollView>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => !saving && setModalOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setModalOpen(false)}>
           <Pressable
             style={[styles.modalCard, { backgroundColor: colors.card }]}
             onPress={(e) => e.stopPropagation()}
@@ -137,7 +138,6 @@ export default function PointsTab() {
             <View style={[styles.modalActions, { flexDirection: dir }]}>
               <Pressable
                 onPress={() => setModalOpen(false)}
-                disabled={saving}
                 style={[styles.modalBtn, { borderColor: colors.border }]}
               >
                 <Text style={{ color: colors.foreground, fontWeight: "700" }}>
@@ -145,17 +145,12 @@ export default function PointsTab() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => void handleSubmit()}
-                disabled={saving}
+                onPress={handleSubmit}
                 style={[styles.modalBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
               >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={{ color: "#fff", fontWeight: "700" }}>
-                    {isRTL ? "إضافة" : "Add"}
-                  </Text>
-                )}
+                <Text style={{ color: "#fff", fontWeight: "700" }}>
+                  {isRTL ? "متابعة" : "Continue"}
+                </Text>
               </Pressable>
             </View>
           </Pressable>

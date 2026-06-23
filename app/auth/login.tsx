@@ -1,9 +1,8 @@
 import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,7 +14,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
+import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { useAuthStore } from "@/domains/auth/store";
+import { getPostAuthRoute } from "@/domains/auth/navigation";
+import {
+  hasFieldErrors,
+  validateLoginFields,
+  type LoginFieldErrors,
+} from "@/domains/auth/validation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -29,20 +35,33 @@ export default function LoginScreen() {
   const loading = useAuthStore((s) => s.loading);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const passwordRef = useRef<TextInput>(null);
   const hideIntro = Platform.OS === "web" && isDesktop;
   const hideWebTopBar = Platform.OS === "web";
 
   const submit = async () => {
+    const errors = validateLoginFields(email, password, t.auth);
+    if (hasFieldErrors(errors)) {
+      setFieldErrors(errors);
+      setFormError(null);
+      return;
+    }
+
+    setFieldErrors({});
+    setFormError(null);
+
     try {
-      await login({ email, password });
-      router.replace("/(tabs)");
+      await login({ email: email.trim(), password });
+      const { role, doctorApprovalStatus } = useAuthStore.getState();
+      router.replace(getPostAuthRoute(role, doctorApprovalStatus));
     } catch (e) {
-      if ((e as Error).message === "__UNSUPPORTED_ROLE__") {
-        Alert.alert(t.auth.unsupportedAccount, t.auth.unsupportedAccountMsg, [
-          { text: t.common.ok },
-        ]);
+      const message = (e as Error).message;
+      if (message === "__UNSUPPORTED_ROLE__") {
+        setFormError(t.auth.unsupportedAccountMsg);
       } else {
-        Alert.alert(t.auth.loginFailed, (e as Error).message);
+        setFormError(message || t.auth.invalidCredentials);
       }
     }
   };
@@ -84,22 +103,41 @@ export default function LoginScreen() {
         ) : null}
 
         <View style={{ width: "100%", gap: 12, marginTop: hideIntro ? 0 : 28 }}>
-          <Field
+          {formError ? <AuthFormError message={formError} colors={colors} /> : null}
+          <AuthFormField
             label={t.auth.email}
             value={email}
-            onChange={setEmail}
+            onChange={(value) => {
+              setEmail(value);
+              if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+              if (formError) setFormError(null);
+            }}
+            error={fieldErrors.email}
             placeholder={t.auth.emailPlaceholder}
             autoCapitalize="none"
             keyboardType="email-address"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => passwordRef.current?.focus()}
             colors={colors}
             isRTL={isRTL}
           />
-          <Field
+          <AuthFormField
+            ref={passwordRef}
             label={t.auth.password}
             value={password}
-            onChange={setPassword}
+            onChange={(value) => {
+              setPassword(value);
+              if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+              if (formError) setFormError(null);
+            }}
+            error={fieldErrors.password}
             placeholder={t.auth.passwordPlaceholder}
             secure
+            returnKeyType="go"
+            onSubmitEditing={() => {
+              if (!loading) void submit();
+            }}
             colors={colors}
             isRTL={isRTL}
           />
@@ -142,50 +180,6 @@ export default function LoginScreen() {
   return <AuthLoginBackground>{screen}</AuthLoginBackground>;
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  secure,
-  colors,
-  isRTL,
-  placeholder,
-  ...rest
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  secure?: boolean;
-  colors: ReturnType<typeof useColors>;
-  isRTL: boolean;
-  placeholder?: string;
-  autoCapitalize?: "none" | "sentences";
-  keyboardType?: "default" | "email-address" | "phone-pad";
-}) {
-  return (
-    <View style={{ gap: 6 }}>
-      <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        secureTextEntry={secure}
-        placeholder={placeholder}
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            color: colors.foreground,
-            textAlign: isRTL ? "right" : "left",
-          },
-        ]}
-        placeholderTextColor={colors.mutedForeground}
-        {...rest}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
@@ -198,14 +192,6 @@ const styles = StyleSheet.create({
   body: { padding: 24, alignItems: "center", paddingBottom: Platform.OS === "web" ? 32 : 24 },
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
-  label: { fontSize: 13, fontWeight: "700" },
-  input: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
   btn: {
     paddingVertical: 14,
     borderRadius: 14,

@@ -1,13 +1,16 @@
-import { Coins, TrendingDown, TrendingUp, Zap } from "lucide-react-native";
-import React from "react";
+import { Coins, Plus, TrendingDown, TrendingUp, Zap } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type ViewStyle,
 } from "react-native";
+import { router } from "expo-router";
 import { PointsPieChart } from "@/components/PointsPieChart";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
@@ -75,6 +78,9 @@ export function PointsWebView() {
     loading,
     displaySummary,
     summary,
+    amountText,
+    setAmountText,
+    parseAmount,
   } = usePointsPage(isRTL);
 
   const chartSize = isWide ? 280 : isDesktop ? 252 : 220;
@@ -231,6 +237,66 @@ export function PointsWebView() {
                     isWide={isWide}
                   />
                 </View>
+              </View>
+
+              <View style={styles.sectionBlock}>
+                <SectionLabel textAlign={textAlign} color={colors.mutedForeground}>
+                  {isRTL ? "إضافة نقاط" : "Add points"}
+                </SectionLabel>
+                <DashboardCard
+                  testID="points-add-card"
+                  style={{
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    gap: 12,
+                  }}
+                >
+                  <Text style={{ color: colors.mutedForeground, textAlign }}>
+                    {isRTL
+                      ? "أدخل عدد النقاط ثم تابع إلى صفحة الدفع."
+                      : "Enter how many points you want, then continue to checkout."}
+                  </Text>
+                  <TextInput
+                    value={amountText}
+                    onChangeText={setAmountText}
+                    keyboardType="number-pad"
+                    placeholder={isRTL ? "مثال: 50" : "e.g. 50"}
+                    placeholderTextColor={colors.mutedForeground}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: colors.foreground,
+                      backgroundColor: colors.background,
+                      textAlign,
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => {
+                      const amount = parseAmount();
+                      if (!amount) return;
+                      router.push(`/points/checkout?amount=${amount}`);
+                    }}
+                    style={{
+                      backgroundColor: colors.primary,
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      alignItems: "center",
+                      flexDirection: dir,
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Plus size={18} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+                      {isRTL ? "متابعة للدفع" : "Continue to checkout"}
+                    </Text>
+                  </Pressable>
+                </DashboardCard>
               </View>
             </>
           )}

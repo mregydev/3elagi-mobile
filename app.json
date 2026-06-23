@@ -20,7 +20,13 @@
     "android": {
       "package": "com.threelagi.mobile",
       "googleServicesFile": "./google-services.json",
-      "permissions": ["POST_NOTIFICATIONS"],
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ],
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
@@ -39,14 +45,21 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow 3elagi to access your photos for lab results and X-rays.",
-          "cameraPermission": "Allow 3elagi to use the camera for lab results and X-rays."
+          "photosPermission": "Allow 3elagi to access your photos and videos for chat and medical records.",
+          "cameraPermission": "Allow 3elagi to use the camera for photos, videos, and medical records."
         }
       ],
       [
         "expo-av",
         {
           "microphonePermission": "Allow 3elagi to record voice messages."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "chat-messages",
+          "color": "#3057F2"
         }
       ],
       "@react-native-community/datetimepicker",

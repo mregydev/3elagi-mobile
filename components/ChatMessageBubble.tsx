@@ -6,7 +6,7 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import type { ChatMessage } from "@/domains/chat/types";
 import type { MessageEmotionType } from "@/domains/emotions/types";
+import { ChatInlineVideo } from "@/components/chat/ChatInlineVideo";
 import { MessageEmotionsBar } from "@/components/MessageEmotionsBar";
 import { useColors } from "@/hooks/useColors";
 
@@ -26,6 +27,7 @@ interface Props {
   patientUserId?: string;
   canOpenMedicalLink?: boolean;
   onImagePress?: (uri: string) => void;
+  onVideoPress?: (uri: string) => void;
   onLongPress?: () => void;
   onEmotionToggle?: (emotion: MessageEmotionType) => void;
   selfUserId?: string | null;
@@ -40,6 +42,7 @@ export function ChatMessageBubble({
   patientUserId,
   canOpenMedicalLink = true,
   onImagePress,
+  onVideoPress,
   onLongPress,
   onEmotionToggle,
   selfUserId,
@@ -95,12 +98,38 @@ export function ChatMessageBubble({
 
   const isAccessAction = item.type === "access_action";
   const isImage = item.type === "image" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
+  const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
   const medicalBubbleWidth = Math.min(300, maxBubbleWidth);
+  const videoWidth = imageWidth;
+  const videoHeight = Math.round(imageWidth * 0.75);
+  const responsiveMediaWidth = useMemo(() => {
+    if (Platform.OS !== "web") return videoWidth;
+    const columnCap = Math.round(maxBubbleWidth * 0.82);
+    return Math.min(videoWidth, columnCap, screenWidth - 80);
+  }, [maxBubbleWidth, screenWidth, videoWidth]);
 
-  const bubbleColors = isImage
-    ? { backgroundColor: "transparent" }
-    : isMedicalLink
+  const mediaCaption =
+    (isImage || isVideo) && item.text?.trim()
+      ? (() => {
+          const t = item.text.trim();
+          if (t === "Photo" || t === "Video" || t === "Voice message") return null;
+          return t;
+        })()
+      : null;
+
+  const bubbleColors =
+    isImage || isVideo
+      ? mediaCaption
+        ? mine
+          ? { backgroundColor: colors.primary }
+          : {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderWidth: 1,
+            }
+        : { backgroundColor: "transparent" }
+      : isMedicalLink
       ? {
           backgroundColor: colors.card,
           borderColor: colors.border,
@@ -148,74 +177,97 @@ export function ChatMessageBubble({
   if (isImage && imageUri) {
     const showLoader = item.pending || !imageLoaded;
     body = (
-      <Pressable
-        onPress={() => {
-          const fullUri = item.attachmentUrl ?? item.localAttachmentUrl;
-          if (!fullUri || item.pending) return;
-          onImagePress?.(fullUri);
-        }}
-        onLongPress={onLongPress}
-        delayLongPress={400}
-        disabled={item.pending || !(item.attachmentUrl ?? item.localAttachmentUrl)}
-        style={{ width: imageWidth, height: imageHeight }}
-      >
-        <View style={[styles.mediaWrap, { width: imageWidth, height: imageHeight }]}>
-          {!imageLoaded ? (
-            <View
+      <View>
+        <Pressable
+          onPress={() => {
+            const fullUri = item.attachmentUrl ?? item.localAttachmentUrl;
+            if (!fullUri) return;
+            onImagePress?.(fullUri);
+          }}
+          onLongPress={onLongPress}
+          delayLongPress={400}
+          disabled={!(item.attachmentUrl ?? item.localAttachmentUrl)}
+          style={{ width: imageWidth, height: imageHeight }}
+        >
+          <View style={[styles.mediaWrap, { width: imageWidth, height: imageHeight }]}>
+            {!imageLoaded ? (
+              <View
+                style={[
+                  styles.mediaPlaceholder,
+                  { backgroundColor: "#111" },
+                ]}
+              >
+                <ImageIcon size={28} color={colors.mutedForeground} />
+              </View>
+            ) : null}
+            <Image
+              source={{ uri: imageUri }}
               style={[
-                styles.mediaPlaceholder,
-                { backgroundColor: colors.muted },
+                styles.media,
+                { width: imageWidth, height: imageHeight },
+                !imageLoaded && styles.mediaHidden,
               ]}
-            >
-              <ImageIcon size={28} color={colors.mutedForeground} />
-            </View>
-          ) : null}
-          <Image
-            source={{ uri: imageUri }}
-            style={[
-              styles.media,
-              { width: imageWidth, height: imageHeight },
-              !imageLoaded && styles.mediaHidden,
-            ]}
-            contentFit="cover"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoaded(true)}
-          />
-          {showLoader ? (
-            <View style={styles.mediaOverlay}>
-              <ActivityIndicator color={colors.primary} />
-              <Text style={{ color: "#fff", fontSize: 12, marginTop: 6 }}>
-                {item.pending
-                  ? isRTL
-                    ? "جاري الإرسال…"
-                    : "Sending…"
-                  : isRTL
-                    ? "جاري التحميل…"
-                    : "Loading…"}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </Pressable>
+              contentFit="cover"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageLoaded(true)}
+            />
+            {showLoader ? (
+              <View style={styles.mediaOverlay}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={{ color: "#fff", fontSize: 12, marginTop: 6 }}>
+                  {item.pending
+                    ? isRTL
+                      ? "جاري الإرسال…"
+                      : "Sending…"
+                    : isRTL
+                      ? "جاري التحميل…"
+                      : "Loading…"}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </Pressable>
+        {mediaCaption ? (
+          <Text
+            style={{
+              color: textColor,
+              fontSize: 14,
+              lineHeight: 20,
+              marginTop: 8,
+              textAlign: isRTL ? "right" : "left",
+            }}
+          >
+            {mediaCaption}
+          </Text>
+        ) : null}
+      </View>
     );
-  } else if (item.type === "video" && item.attachmentUrl) {
+  } else if (isVideo && imageUri) {
     body = (
-      <Pressable
-        onPress={() => Linking.openURL(item.attachmentUrl!)}
-        onLongPress={onLongPress}
-        delayLongPress={400}
-        disabled={item.pending}
-      >
-        <Text style={{ color: textColor, fontWeight: "600" }}>
-          {item.pending
-            ? isRTL
-              ? "جاري إرسال الفيديو…"
-              : "Sending video…"
-            : isRTL
-              ? "▶ تشغيل الفيديو"
-              : "▶ Play video"}
-        </Text>
-      </Pressable>
+      <View style={Platform.OS === "web" ? styles.webMediaFrame : undefined}>
+        <ChatInlineVideo
+          uri={imageUri}
+          width={responsiveMediaWidth}
+          height={Math.round(responsiveMediaWidth * 0.75)}
+          isRTL={isRTL}
+          pending={item.pending}
+          onExpand={(uri) => onVideoPress?.(uri)}
+          onLongPress={onLongPress}
+        />
+        {mediaCaption ? (
+          <Text
+            style={{
+              color: textColor,
+              fontSize: 14,
+              lineHeight: 20,
+              marginTop: 8,
+              textAlign: isRTL ? "right" : "left",
+            }}
+          >
+            {mediaCaption}
+          </Text>
+        ) : null}
+      </View>
     );
   } else if (item.type === "voice") {
     body = (
@@ -398,6 +450,7 @@ export function ChatMessageBubble({
         style={({ pressed }) => [
           styles.bubble,
           isImage && styles.imageBubble,
+          isVideo && styles.imageBubble,
           isMedicalLink && styles.medicalBubble,
           bubbleColors,
           isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" },
@@ -440,9 +493,15 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 0,
   },
+  webMediaFrame: {
+    width: "100%",
+    maxWidth: "100%",
+    alignSelf: "stretch",
+  },
   mediaWrap: {
     borderRadius: 12,
     overflow: "hidden",
+    backgroundColor: "#000",
   },
   mediaPlaceholder: {
     ...StyleSheet.absoluteFillObject,

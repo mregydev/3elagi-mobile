@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
+import { chatRepository } from "@/domains/chat/repository";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -122,7 +123,21 @@ export default function DoctorProfileScreen() {
 
   const openChat = () => {
     const chatUserId = userId ?? doctor?.userId;
-    if (!chatUserId) return;
+    if (!chatUserId || !doctor) return;
+    chatRepository.cacheUsers([
+      {
+        id: chatUserId,
+        name: doctor.name,
+        photoUrl: doctor.photoUrl,
+        presence: "offline",
+        role: "doctor",
+        specialty: doctor.specialty ?? doctor.professionalTitle ?? undefined,
+        rating: doctor.ratingAverage,
+        ratingTotal: doctor.ratingTotal,
+        messagePrice: doctor.messagePrice,
+        doctorEntityId: doctor.id,
+      },
+    ]);
     router.push(`/chat/${chatUserId}`);
   };
 

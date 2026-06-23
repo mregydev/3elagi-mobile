@@ -3,6 +3,7 @@ import { mapEmotionRows } from "@/domains/emotions/types";
 import { useAuthStore } from "@/domains/auth/store";
 import { useChatStore } from "@/domains/chat/store";
 import {
+  getPresenceSocket,
   onChatMessageDeleted,
   onChatMessageNew,
   onChatMessageUpdated,
@@ -22,25 +23,30 @@ export function ChatMessageSync() {
   const setPeerTyping = useChatStore((s) => s.setPeerTyping);
 
   useEffect(() => {
-    onChatMessageNew((payload) => {
-      handleIncomingMessage(payload, accessToken, selfId);
-    });
-    return () => onChatMessageNew(null);
-  }, [accessToken, selfId, handleIncomingMessage]);
+    if (!accessToken || !selfId) return;
 
-  useEffect(() => {
-    onChatMessageDeleted((payload) => {
-      handleIncomingMessageDelete(payload, accessToken, selfId);
-    });
-    return () => onChatMessageDeleted(null);
-  }, [accessToken, selfId, handleIncomingMessageDelete]);
+    const attachMessageHandlers = () => {
+      onChatMessageNew((payload) => {
+        handleIncomingMessage(payload, accessToken, selfId);
+      });
+      onChatMessageDeleted((payload) => {
+        handleIncomingMessageDelete(payload, accessToken, selfId);
+      });
+      onChatMessageUpdated((payload) => {
+        handleIncomingMessageUpdate(payload, accessToken, selfId);
+      });
+    };
 
-  useEffect(() => {
-    onChatMessageUpdated((payload) => {
-      handleIncomingMessageUpdate(payload, accessToken, selfId);
-    });
-    return () => onChatMessageUpdated(null);
-  }, [accessToken, selfId, handleIncomingMessageUpdate]);
+    attachMessageHandlers();
+
+    const socket = getPresenceSocket();
+    const onConnect = () => attachMessageHandlers();
+    socket?.on("connect", onConnect);
+
+    return () => {
+      socket?.off("connect", onConnect);
+    };
+  }, [accessToken, selfId, handleIncomingMessage, handleIncomingMessageDelete, handleIncomingMessageUpdate]);
 
   useEffect(() => {
     onMessageEmotionUpdated((payload) => {

@@ -81,9 +81,12 @@ export function Logo3elagi({
 
   if (!centered) return svg;
 
+  // Mark + wordmark sit left of the viewBox center; nudge right for optical centering.
+  const opticalOffsetX = markOnly ? 0 : width / 6;
+
   return (
     <View style={[{ width: "100%", alignItems: "center", justifyContent: "center" }, style]}>
-      {svg}
+      <View style={{ transform: [{ translateX: opticalOffsetX }] }}>{svg}</View>
     </View>
   );
 }

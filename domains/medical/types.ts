@@ -14,6 +14,11 @@ export interface DiagnosisSymptom {
   createdAt: string;
 }
 
+export interface LinkedDiagnosisSummary {
+  id: string;
+  title: string;
+}
+
 export interface MedicalRecord {
   id: string;
   ownerId: string;
@@ -35,7 +40,9 @@ export interface MedicalRecord {
   doctorId?: string | null;
   /** Lab / X-ray records linked to this diagnosis */
   linkedDocuments?: MedicalRecord[];
-  /** Set on lab/xray when already linked to a diagnosis */
+  /** Diagnoses linked to this lab/xray record */
+  linkedDiagnoses?: LinkedDiagnosisSummary[];
+  /** @deprecated Use linkedDiagnoses — kept for older API responses */
   diagnosisId?: string | null;
   /** Medication rows when category is prescription */
   medications?: PrescriptionMedication[];

@@ -84,7 +84,7 @@ export function useMedicalAddForm() {
     Promise.resolve(load)
       .then((docs) => {
         if (cancelled) return;
-        setLinkableDocs(docs.filter((d) => !d.diagnosisId));
+        setLinkableDocs(docs.filter((d) => d.category === "lab" || d.category === "xray"));
       })
       .catch(() => {
         if (!cancelled) setLinkableDocs([]);

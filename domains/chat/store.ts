@@ -5,6 +5,7 @@ import {
   editChatMessage,
   fetchChatContacts,
   fetchConversations,
+  fetchContactById,
   fetchMessagesWithPeer,
   mapMessageRow,
   markMessagesRead,
@@ -14,7 +15,8 @@ import {
 import { applyLivePresence } from "./presence";
 import { applyPresenceToConversations } from "./presenceConversations";
 import { emit, on } from "@/utils/eventBus";
-import { CHAT_EVENTS } from "./events";
+import { CHAT_EVENTS, type ChatMessageReceivedPayload } from "./events";
+import { chatMessagePreview, chatNotificationTitle } from "@/utils/chatNotifications";
 import { AUTH_EVENTS } from "@/domains/auth/events";
 import { chatRepository } from "./repository";
 import type { MessageEmotionItem } from "@/domains/emotions";
@@ -42,6 +44,7 @@ interface ChatState {
   ) => Promise<void>;
   syncPresence: () => void;
   ensureContacts: (token: string) => Promise<void>;
+  ensurePeer: (peerId: string, token: string) => Promise<ChatUser | undefined>;
   resolvePeer: (peerId: string) => ChatUser | undefined;
   loadMessages: (
     peerId: string,
@@ -58,7 +61,7 @@ interface ChatState {
   ) => Promise<void>;
   markRead: (peerId: string, token: string | null) => Promise<void>;
   handleIncomingMessage: (
-    payload: { message: MessageRow; peer_id: string },
+    payload: { message: MessageRow; peer_id: string; peer_name?: string },
     token: string | null,
     selfId: string | null,
   ) => void;
@@ -111,12 +114,37 @@ interface ChatState {
 
 let baseConversations: Conversation[] = [];
 
+function mergeMessagesById(
+  live: ChatMessage[],
+  fetched: ChatMessage[],
+): ChatMessage[] {
+  const byId = new Map<string, ChatMessage>();
+  for (const message of fetched) byId.set(message.id, message);
+  for (const message of live) {
+    if (!byId.has(message.id)) byId.set(message.id, message);
+  }
+  return Array.from(byId.values()).sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  );
+}
+
+function peerFromHint(peerId: string, name?: string): ChatUser {
+  const trimmed = name?.trim();
+  return {
+    id: peerId,
+    name: trimmed || "…",
+    presence: "offline",
+  };
+}
+
 function upsertConversation(
   peerId: string,
   user: ChatUser | undefined,
   lastMessage: ChatMessage,
   incrementUnread: boolean,
+  nameHint?: string,
 ) {
+  const resolvedUser = user ?? peerFromHint(peerId, nameHint);
   const idx = baseConversations.findIndex((c) => c.id === peerId);
   if (idx >= 0) {
     const existing = baseConversations[idx];
@@ -126,10 +154,10 @@ function upsertConversation(
       lastMessage,
       unreadCount: incrementUnread ? existing.unreadCount + 1 : existing.unreadCount,
     };
-  } else if (user) {
+  } else {
     baseConversations.unshift({
       id: peerId,
-      user,
+      user: resolvedUser,
       lastMessage,
       unreadCount: incrementUnread ? 1 : 0,
     });
@@ -259,6 +287,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     chatRepository.cacheUsers(users);
   },
 
+  ensurePeer: async (peerId, token) => {
+    const existing = get().resolvePeer(peerId);
+    if (existing) return existing;
+    try {
+      const user = await fetchContactById(token, peerId);
+      chatRepository.cacheUsers([user]);
+      return user;
+    } catch {
+      return undefined;
+    }
+  },
+
   resolvePeer: (peerId) => {
     const fromConversation = get().conversations.find((c) => c.id === peerId)?.user;
     if (fromConversation) return fromConversation;
@@ -273,16 +313,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
 
     set((s) => ({
-      messages: { ...s.messages, [peerId]: [] },
       messagesLoading: { ...s.messagesLoading, [peerId]: true },
     }));
 
     try {
       const msgs = await fetchMessagesWithPeer(token, peerId, selfId);
-      set((s) => ({
-        messages: { ...s.messages, [peerId]: msgs },
-        messagesLoading: { ...s.messagesLoading, [peerId]: false },
-      }));
+      set((s) => {
+        const live = s.messages[peerId] ?? [];
+        return {
+          messages: {
+            ...s.messages,
+            [peerId]: mergeMessagesById(live, msgs),
+          },
+          messagesLoading: { ...s.messagesLoading, [peerId]: false },
+        };
+      });
     } catch {
       set((s) => ({
         messages: { ...s.messages, [peerId]: [] },
@@ -321,7 +366,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ),
     }));
 
-    await get().loadConversations(token, selfId, selfRole);
+    void get().loadConversations(token, selfId, selfRole);
   },
 
   markRead: async (peerId, token) => {
@@ -495,38 +540,79 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const peer = get().resolvePeer(peerId);
     upsertConversation(peerId, peer, msg, false);
     set({ conversations: applyPresenceToConversations(baseConversations) });
-
-    if (token) {
-      void get().loadConversations(token, selfId, null);
-    }
   },
 
   handleIncomingMessage: (payload, token, selfId) => {
     if (!selfId) return;
     const peerId = payload.peer_id;
+    const peerNameHint =
+      typeof (payload as { peer_name?: string }).peer_name === "string"
+        ? (payload as { peer_name?: string }).peer_name
+        : undefined;
     const msg = mapMessageRow(payload.message, peerId, selfId);
+    const isOwnMessage = msg.senderId === "me";
+
     const active = get().activeChatPeerId;
     const isViewing = active === peerId;
-    const peer = get().resolvePeer(peerId) ?? chatRepository.getUser(peerId);
+    let peer = get().resolvePeer(peerId) ?? chatRepository.getUser(peerId);
 
-    if (isViewing) {
-      set((s) => ({
-        messages: {
-          ...s.messages,
-          [peerId]: [...(s.messages[peerId] || []), msg],
-        },
-        peerTyping: Object.fromEntries(
-          Object.entries(s.peerTyping).filter(([id]) => id !== peerId),
-        ),
-      }));
-      if (token) void get().markRead(peerId, token);
-    } else {
-      upsertConversation(peerId, peer, msg, true);
-      set({ conversations: applyPresenceToConversations(baseConversations) });
+    if (!peer && peerNameHint) {
+      peer = peerFromHint(peerId, peerNameHint);
+      chatRepository.cacheUsers([peer]);
     }
 
-    if (token) {
-      void get().loadConversations(token, selfId, null);
+    const appendMessage = () => {
+      set((s) => {
+        const thread = s.messages[peerId] || [];
+        if (thread.some((m) => m.id === msg.id)) return s;
+        return {
+          messages: {
+            ...s.messages,
+            [peerId]: [...thread, msg],
+          },
+          peerTyping: isViewing
+            ? Object.fromEntries(
+                Object.entries(s.peerTyping).filter(([id]) => id !== peerId),
+              )
+            : s.peerTyping,
+        };
+      });
+    };
+
+    if (isOwnMessage) {
+      appendMessage();
+      upsertConversation(peerId, peer, msg, false, peerNameHint);
+      set({ conversations: applyPresenceToConversations(baseConversations) });
+      return;
+    }
+
+    if (isViewing) {
+      appendMessage();
+      if (token) void get().markRead(peerId, token);
+    } else {
+      appendMessage();
+      upsertConversation(peerId, peer, msg, true, peerNameHint);
+      set({ conversations: applyPresenceToConversations(baseConversations) });
+
+      if ((!peer || peer.name === "…") && token) {
+        void get()
+          .ensurePeer(peerId, token)
+          .then((resolved) => {
+            if (!resolved) return;
+            upsertConversation(peerId, resolved, msg, false);
+            set({ conversations: applyPresenceToConversations(baseConversations) });
+          })
+          .catch(() => undefined);
+      }
+
+      const senderName = peer?.name ?? peerNameHint ?? "…";
+      const notice: ChatMessageReceivedPayload = {
+        peerId,
+        senderName,
+        preview: chatMessagePreview(msg),
+        messageId: msg.id,
+      };
+      emit(CHAT_EVENTS.MESSAGE_RECEIVED, notice);
     }
   },
 

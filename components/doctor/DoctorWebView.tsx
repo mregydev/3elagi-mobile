@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { DoctorProfilePhoto } from "@/components/doctor/DoctorProfilePhoto";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { chatRepository } from "@/domains/chat/repository";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -151,7 +152,21 @@ export function DoctorWebView() {
 
   const openChat = () => {
     const chatUserId = userId ?? doctor?.userId;
-    if (!chatUserId) return;
+    if (!chatUserId || !doctor) return;
+    chatRepository.cacheUsers([
+      {
+        id: chatUserId,
+        name: doctor.name,
+        photoUrl: doctor.photoUrl,
+        presence: "offline",
+        role: "doctor",
+        specialty: doctor.specialty ?? doctor.professionalTitle ?? undefined,
+        rating: doctor.ratingAverage,
+        ratingTotal: doctor.ratingTotal,
+        messagePrice: doctor.messagePrice,
+        doctorEntityId: doctor.id,
+      },
+    ]);
     router.push(`/chat/${chatUserId}`);
   };
 

@@ -246,8 +246,8 @@ export function MedicalAddWebView() {
       ) : linkableDocs.length === 0 ? (
         <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
           {isRTL
-            ? "لا توجد نتائج مختبر أو أشعة غير مرتبطة."
-            : "No unlinked lab results or X-rays available."}
+            ? "لا توجد نتائج مختبر أو أشعة متاحة."
+            : "No lab results or X-rays available."}
         </Text>
       ) : (
         <View style={gridStyle(twoCol ? 2 : 1)}>
@@ -297,6 +297,13 @@ export function MedicalAddWebView() {
                   <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
                     {catLabel}
                   </Text>
+                  {doc.linkedDiagnoses && doc.linkedDiagnoses.length > 0 ? (
+                    <Text style={{ color: colors.mutedForeground, fontSize: 11, textAlign }}>
+                      {isRTL
+                        ? `مرتبط بـ ${doc.linkedDiagnoses.length} تشخيص`
+                        : `Linked to ${doc.linkedDiagnoses.length} diagnosis${doc.linkedDiagnoses.length === 1 ? "" : "es"}`}
+                    </Text>
+                  ) : null}
                 </View>
               </Pressable>
             );

@@ -101,7 +101,7 @@ export default function AddMedicalScreen() {
     Promise.resolve(load)
       .then((docs) => {
         if (cancelled) return;
-        const available = docs.filter((d) => !d.diagnosisId);
+        const available = docs.filter((d) => d.category === "lab" || d.category === "xray");
         setLinkableDocs(available);
       })
       .catch(() => {
@@ -469,7 +469,7 @@ export default function AddMedicalScreen() {
               <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign }}>
                 {isRTL
                   ? "لا توجد نتائج مختبر أو أشعة غير مرتبطة."
-                  : "No unlinked lab results or X-rays available."}
+                  : "No lab results or X-rays available."}
               </Text>
             ) : (
               <View style={{ gap: 8 }}>

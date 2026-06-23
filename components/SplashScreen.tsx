@@ -33,6 +33,10 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
   }, []);
 
   useEffect(() => {
+    hideNativeSplash();
+  }, [hideNativeSplash]);
+
+  useEffect(() => {
     Animated.sequence([
       Animated.spring(logoScale, {
         toValue: 1.06,

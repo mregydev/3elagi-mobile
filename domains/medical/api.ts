@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
 import type { DiagnosisSymptom, MedicalRecord, PrescriptionMedication } from "./types";
 
@@ -90,9 +91,17 @@ interface RawDocument {
   notes: string | null;
   created_at: string;
   diagnosis_id?: string | null;
+  linked_diagnoses?: Array<{ id: string; desc: string }>;
+}
+
+function mapLinkedDiagnoses(
+  raw: Array<{ id: string; desc: string }> | undefined,
+): import("./types").LinkedDiagnosisSummary[] {
+  return (raw ?? []).map((item) => ({ id: item.id, title: item.desc }));
 }
 
 function mapDocument(doc: RawDocument): MedicalRecord {
+  const linkedDiagnoses = mapLinkedDiagnoses(doc.linked_diagnoses);
   return {
     id: doc.id,
     ownerId: doc.patient_id,
@@ -103,7 +112,8 @@ function mapDocument(doc: RawDocument): MedicalRecord {
     fileName: doc.file_name,
     date: doc.created_at,
     createdAt: doc.created_at,
-    diagnosisId: doc.diagnosis_id ?? null,
+    linkedDiagnoses,
+    diagnosisId: linkedDiagnoses[0]?.id ?? doc.diagnosis_id ?? null,
   };
 }
 
@@ -151,10 +161,24 @@ export async function uploadFile(
   mimeType: string,
   fileName: string,
   token: string,
+  webFile?: File | Blob,
 ): Promise<{ objectPath: string; url: string }> {
   const formData = new FormData();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  formData.append("file", { uri, name: fileName, type: mimeType } as any);
+
+  if (Platform.OS === "web") {
+    let body: Blob | File | null = webFile ?? null;
+    if (!body && uri.startsWith("blob:")) {
+      const response = await fetch(uri);
+      body = await response.blob();
+    }
+    if (!body) {
+      throw new Error("Could not read the selected file on web.");
+    }
+    formData.append("file", body, fileName);
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    formData.append("file", { uri, name: fileName, type: mimeType } as any);
+  }
 
   const res = await fetch(`${API_BASE}/uploads/file`, {
     method: "POST",

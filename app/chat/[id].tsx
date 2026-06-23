@@ -20,6 +20,7 @@ import { ChatAccessTemplates } from "@/components/ChatAccessTemplates";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
 import { PointsLowBanner } from "@/components/PointsLowBanner";
 import { usePresenceStore } from "@/domains/presence/store";
@@ -49,6 +50,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
+import { scrollChatToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -72,7 +74,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const { isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const role = useAuthStore((s) => s.role);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawPeerId } = useLocalSearchParams<{ id: string }>();
+  const id = Array.isArray(rawPeerId) ? rawPeerId[0] : rawPeerId;
   const messages = useChatStore((s) => s.messages[id] ?? EMPTY_MESSAGES);
   const messagesLoading = useChatStore((s) => s.messagesLoading[id] ?? false);
   const conversations = useChatStore((s) => s.conversations);
@@ -81,6 +84,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const markRead = useChatStore((s) => s.markRead);
   const resolvePeer = useChatStore((s) => s.resolvePeer);
   const ensureContacts = useChatStore((s) => s.ensureContacts);
+  const ensurePeer = useChatStore((s) => s.ensurePeer);
   const setActiveChatPeerId = useChatStore((s) => s.setActiveChatPeerId);
   const setPeerTyping = useChatStore((s) => s.setPeerTyping);
   const peerTyping = useChatStore((s) => s.peerTyping[id ?? ""] ?? false);
@@ -100,6 +104,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [medicalPickerOpen, setMedicalPickerOpen] = useState(false);
   const [medicalPickerLoading, setMedicalPickerLoading] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenVideo, setFullscreenVideo] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [replacingMedicalMessage, setReplacingMedicalMessage] = useState<ChatMessage | null>(null);
   const [medicalPickerMode, setMedicalPickerMode] = useState<"share" | "replace">("share");
@@ -112,7 +117,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatBodyRef = useRef<View>(null);
   const messageAnchorsRef = useRef<Map<string, View>>(new Map());
-  const initialScrollDoneRef = useRef<string | null>(null);
+  const stickToBottomRef = useRef(true);
+  const lastMessageTokenRef = useRef("");
   const onlineUsers = usePresenceStore((s) => s.users);
   const pointsSummary = usePointsStore((s) => s.summary);
   const pointsBalance = selectPointsBalance(pointsSummary);
@@ -148,8 +154,19 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
   useEffect(() => {
     if (!accessToken || !id) return;
-    void ensureContacts(accessToken).finally(() => setContactsReady(true));
-  }, [accessToken, id, ensureContacts]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        await ensureContacts(accessToken);
+        await ensurePeer(id, accessToken);
+      } finally {
+        if (!cancelled) setContactsReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, id, ensureContacts, ensurePeer]);
 
   useEffect(() => {
     if (!id) return;
@@ -198,29 +215,44 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return () => onChatAccessUpdated(null);
   }, [id]);
 
-  const scrollToBottom = useCallback((animated = true) => {
-    if (!listRef.current || messages.length === 0) return;
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd({ animated });
-    });
-  }, [messages.length]);
+  const chatMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const listInverted = chatMessages.length > 0;
+
+  const scrollToLatest = useCallback(
+    (animated = false) => {
+      scrollChatToLatest(listRef, listInverted, animated);
+    },
+    [listInverted],
+  );
+
+  useEffect(() => {
+    lastMessageTokenRef.current = "";
+    stickToBottomRef.current = true;
+  }, [id]);
 
   useEffect(() => {
     if (!id) {
-      initialScrollDoneRef.current = null;
+      lastMessageTokenRef.current = "";
       return;
     }
-    if (messagesLoading || messages.length === 0) return;
-    if (initialScrollDoneRef.current === id) return;
+    if (messagesLoading) return;
 
-    initialScrollDoneRef.current = id;
-    scrollToBottom(false);
-    const timers = [
-      setTimeout(() => scrollToBottom(false), 50),
-      setTimeout(() => scrollToBottom(false), 200),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [id, messagesLoading, messages.length, scrollToBottom]);
+    const token =
+      messages.length === 0
+        ? "empty"
+        : `${messages[messages.length - 1]?.id}:${messages.length}`;
+
+    if (token === lastMessageTokenRef.current) return;
+
+    const prevToken = lastMessageTokenRef.current;
+    lastMessageTokenRef.current = token;
+
+    if (messages.length === 0) return;
+
+    stickToBottomRef.current = true;
+    const isInitialBatch = prevToken === "" || prevToken === "empty";
+    scrollToLatest(!isInitialBatch);
+  }, [id, messages, messagesLoading, scrollToLatest]);
 
   if (!isSignedIn(profile, accessToken)) {
     return <Redirect href="/welcome" />;
@@ -358,7 +390,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   };
 
   const handleSend = async (input: SendMessageInput, replaceTempId?: string) => {
-    if (!id || !accessToken || !profile?.id || sending) return;
+    const abortSend = () => {
+      if (replaceTempId && id) failPendingMessage(id, replaceTempId);
+      throw new Error("SEND_ABORTED");
+    };
+
+    if (!id || !accessToken || !profile?.id || sending) abortSend();
 
     if (isBillableMessage(input)) {
       if (pointsBalance < messageCost) {
@@ -375,15 +412,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             },
           ],
         );
-        if (replaceTempId) failPendingMessage(id, replaceTempId);
-        return;
+        abortSend();
       }
 
       const proceed = await confirmLowBalanceSend(pointsBalance, messageCost);
-      if (!proceed) {
-        if (replaceTempId) failPendingMessage(id, replaceTempId);
-        return;
-      }
+      if (!proceed) abortSend();
     }
 
     setSending(true);
@@ -395,6 +428,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         isRTL ? "خطأ" : "Error",
         e instanceof Error ? e.message : isRTL ? "تعذر إرسال الرسالة" : "Failed to send message",
       );
+      throw e;
     } finally {
       setSending(false);
     }
@@ -636,8 +670,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const headerPaddingTop = desktopLayout ? 16 : insets.top + 8;
   const composerBottomInset = desktopLayout ? 12 : insets.bottom;
   const listPadding = desktopLayout
-    ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8, flexGrow: 1 }
-    : { padding: 14, gap: 6, paddingBottom: 12, flexGrow: 1 };
+    ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8 }
+    : { padding: 14, gap: 6, paddingBottom: 12 };
 
   const chatUi = (
     <>
@@ -757,14 +791,21 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       ) : (
         <FlatList
           ref={listRef}
-          data={messages}
+          data={chatMessages}
+          inverted={listInverted}
           keyExtractor={(m) => m.id}
-          extraData={reactionTarget?.id}
+          extraData={`${reactionTarget?.id ?? ""}:${messages.length}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           onScrollBeginDrag={closeReactionPicker}
+          onContentSizeChange={() => {
+            if (stickToBottomRef.current) scrollToLatest(false);
+          }}
+          onLayout={() => {
+            if (stickToBottomRef.current && messages.length > 0) scrollToLatest(false);
+          }}
           contentContainerStyle={
             messages.length === 0
               ? [styles.emptyListContent, desktopLayout && styles.emptyListContentDesktop]
@@ -798,7 +839,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             }
 
             const mine = item.senderId === "me";
-            const prev = messages[index - 1];
+            const prev = chatMessages[index + 1];
             const showAvatar = !mine && (!prev || prev.senderId !== item.senderId);
 
             return (
@@ -843,6 +884,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                     patientUserId={patientUserIdForLinks}
                     canOpenMedicalLink={canOpenSharedMedicalLinks}
                     onImagePress={setFullscreenImage}
+                    onVideoPress={setFullscreenVideo}
                     selfUserId={profile?.id}
                     onLongPress={
                       canReactToMessage(item) ? () => showReactionPicker(item) : undefined
@@ -967,6 +1009,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       <FullscreenImageViewer
         uri={fullscreenImage}
         onClose={() => setFullscreenImage(null)}
+      />
+      <FullscreenVideoViewer
+        uri={fullscreenVideo}
+        onClose={() => setFullscreenVideo(null)}
       />
     </View>
   );

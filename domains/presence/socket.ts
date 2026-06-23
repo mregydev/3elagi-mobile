@@ -12,6 +12,7 @@ let socket: Socket | null = null;
 type IncomingMessageHandler = (payload: {
   message: MessageRow;
   peer_id: string;
+  peer_name?: string;
 }) => void;
 
 let onMessageNew: IncomingMessageHandler | null = null;
@@ -116,7 +117,7 @@ function bindListeners(client: Socket) {
     }
   });
 
-  client.on("message:new", (payload: { message: MessageRow; peer_id: string }) => {
+  client.on("message:new", (payload: { message: MessageRow; peer_id: string; peer_name?: string }) => {
     onMessageNew?.(payload);
   });
 
@@ -187,6 +188,12 @@ export function connectPresenceSocket(user: LoggedInUser, accessToken?: string) 
     return socket;
   }
 
+  if (socket) {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+
   socket = io(SOCKET_BASE, {
     transports: ["websocket", "polling"],
     autoConnect: true,
@@ -196,6 +203,11 @@ export function connectPresenceSocket(user: LoggedInUser, accessToken?: string) 
   bindListeners(socket);
 
   socket.on("connect", () => {
+    socket?.emit("user:loggedIn", user);
+    socket?.emit("get:loggedIn:users");
+  });
+
+  socket.on("reconnect", () => {
     socket?.emit("user:loggedIn", user);
     socket?.emit("get:loggedIn:users");
   });
@@ -213,11 +225,6 @@ export function disconnectPresenceSocket(userId?: string) {
   socket.removeAllListeners();
   socket.disconnect();
   socket = null;
-  onMessageNew = null;
-  onMessageDeletedHandler = null;
-  onMessageUpdatedHandler = null;
-  onMessageEmotionUpdatedHandler = null;
-  onDoctorRegisteredHandler = null;
   usePresenceStore.getState().clear();
 }
 

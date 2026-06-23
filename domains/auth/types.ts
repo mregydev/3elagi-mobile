@@ -31,6 +31,8 @@ export interface SignupInput extends Credentials {
   messagePrice?: number;
 }
 
+export type DoctorApprovalStatus = "pending" | "approved" | "rejected";
+
 export interface AuthSession {
   accessToken: string;
   role: string;
@@ -42,4 +44,6 @@ export interface AuthSession {
   specialty?: string;
   /** Doctor speciality catalog id */
   specialityId?: string;
+  /** Doctor approval status from API */
+  doctorApprovalStatus?: DoctorApprovalStatus | null;
 }

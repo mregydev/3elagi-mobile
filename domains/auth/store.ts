@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { authRepository } from "./repository";
 import { emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "./events";
-import type { Credentials, PatientProfile, SignupInput } from "./types";
+import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
 
 interface AuthState {
   profile: PatientProfile | null;
@@ -13,6 +14,7 @@ interface AuthState {
   doctorId: string | null;
   specialty: string | null;
   specialityId: string | null;
+  doctorApprovalStatus: DoctorApprovalStatus | null;
   loading: boolean;
   error: string | null;
   hydrated: boolean;
@@ -21,6 +23,7 @@ interface AuthState {
   logout: () => void;
   clearError: () => void;
   setProfile: (profile: PatientProfile) => void;
+  setDoctorApprovalStatus: (status: DoctorApprovalStatus | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -32,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       doctorId: null,
       specialty: null,
       specialityId: null,
+      doctorApprovalStatus: null,
       loading: false,
       error: null,
       hydrated: false,
@@ -40,7 +44,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           const session = await authRepository.login(creds);
           const role = session.role.toLowerCase();
-          if (role !== "patient" && role !== "doctor") {
+          if (role === "admin" && Platform.OS !== "web") {
+            set({ loading: false });
+            throw new Error("__UNSUPPORTED_ROLE__");
+          }
+          if (role !== "patient" && role !== "doctor" && role !== "admin") {
             set({ loading: false });
             throw new Error("__UNSUPPORTED_ROLE__");
           }
@@ -51,6 +59,7 @@ export const useAuthStore = create<AuthState>()(
             doctorId: session.doctorId ?? null,
             specialty: session.specialty ?? null,
             specialityId: session.specialityId ?? null,
+            doctorApprovalStatus: session.doctorApprovalStatus ?? null,
             loading: false,
           });
         } catch (e) {
@@ -69,6 +78,7 @@ export const useAuthStore = create<AuthState>()(
             doctorId: session.doctorId ?? null,
             specialty: session.specialty ?? null,
             specialityId: session.specialityId ?? null,
+            doctorApprovalStatus: session.doctorApprovalStatus ?? null,
             loading: false,
           });
         } catch (e) {
@@ -85,12 +95,14 @@ export const useAuthStore = create<AuthState>()(
           doctorId: null,
           specialty: null,
           specialityId: null,
+          doctorApprovalStatus: null,
           error: null,
         });
         emit(AUTH_EVENTS.LOGOUT, { userId });
       },
       clearError: () => set({ error: null }),
       setProfile: (profile) => set({ profile }),
+      setDoctorApprovalStatus: (status) => set({ doctorApprovalStatus: status }),
     }),
     {
       name: "3elagi-auth",
@@ -102,6 +114,7 @@ export const useAuthStore = create<AuthState>()(
         doctorId: s.doctorId,
         specialty: s.specialty,
         specialityId: s.specialityId,
+        doctorApprovalStatus: s.doctorApprovalStatus,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) state.hydrated = true;

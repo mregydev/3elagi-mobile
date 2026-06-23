@@ -15,6 +15,7 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import type { Translations } from "@/constants/translations";
 import { useAuthStore } from "@/domains/auth/store";
+import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -106,7 +107,7 @@ export function WebSidebar() {
     if (!confirmed) return;
 
     logout();
-    router.replace("/welcome");
+    navigateToWelcome(router);
   };
 
   const isDoctor = role?.toLowerCase() === "doctor";

@@ -2,8 +2,10 @@ import { create } from "zustand";
 import { on } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "@/domains/auth/events";
 import { CHAT_EVENTS } from "@/domains/chat/events";
+import { AI_EVENTS } from "@/domains/ai/events";
 import type { AuthLogoutPayload } from "@/domains/auth/events";
 import type { ChatMessageSentPayload } from "@/domains/chat/events";
+import type { AiMessageSentPayload } from "@/domains/ai/events";
 import { addMessagePoints, fetchPointsBalance, type PointsSummary } from "./api";
 
 interface PointsState {
@@ -56,6 +58,10 @@ export function selectPointsBalance(summary: PointsSummary | null): number {
 
 // Cross-domain subscriptions (module load time)
 on<ChatMessageSentPayload>(CHAT_EVENTS.MESSAGE_SENT, ({ token }) => {
+  void usePointsStore.getState().loadPoints(token);
+});
+
+on<AiMessageSentPayload>(AI_EVENTS.MESSAGE_SENT, ({ token }) => {
   void usePointsStore.getState().loadPoints(token);
 });
 
