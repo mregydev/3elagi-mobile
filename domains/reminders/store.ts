@@ -9,6 +9,7 @@
  *   - Subscribes to auth:logout → cancels all reminders
  */
 import { create } from 'zustand'
+import { Platform } from 'react-native'
 import { on, emit } from '@/utils/eventBus'
 import { MEDICAL_EVENTS } from '@/domains/medical/events'
 import { AUTH_EVENTS } from '@/domains/auth/events'
@@ -137,6 +138,11 @@ export const useRemindersStore = create<RemindersState>()((set, get) => ({
   },
 
   cancelAll: async () => {
+    if (Platform.OS === 'web') {
+      set({ remindersByPrescription: {} })
+      return
+    }
+
     await cancelAllReminders()
     set({ remindersByPrescription: {} })
   },

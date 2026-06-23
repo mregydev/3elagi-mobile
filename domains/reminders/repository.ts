@@ -14,6 +14,7 @@ import type { MedicationReminder } from './types'
 const ANDROID_CHANNEL_ID = '3elagi-prescription-reminders'
 
 function remindersSupported(): boolean {
+  if (Platform.OS === 'web') return false
   return Platform.OS === 'ios' || Platform.OS === 'android'
 }
 
@@ -97,7 +98,11 @@ export async function cancelPrescriptionReminders(
 
 /** Cancel every scheduled notification (used on logout). */
 export async function cancelAllReminders(): Promise<void> {
-  if (!remindersSupported()) return
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return
 
-  await Notifications.cancelAllScheduledNotificationsAsync()
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync()
+  } catch {
+    // expo-notifications scheduling APIs are not available on web.
+  }
 }
