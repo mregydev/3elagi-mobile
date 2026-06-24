@@ -63,11 +63,15 @@ export async function getExpoPushToken(): Promise<string | null> {
   try {
     const token = await Notifications.getExpoPushTokenAsync({ projectId });
     if (__DEV__) {
-      console.log(`[push] Expo token: ${token.data.slice(0, 28)}...`);
+      console.log(`[push] Expo token acquired: ${token.data.slice(0, 32)}...`);
     }
     return token.data;
   } catch (error) {
-    console.warn("[push] getExpoPushTokenAsync failed:", (error as Error).message);
+    console.warn(
+      "[push] getExpoPushTokenAsync failed:",
+      (error as Error).message,
+      "— ensure FCM V1 credentials are set in EAS (eas credentials) and rebuild the app.",
+    );
     return null;
   }
 }

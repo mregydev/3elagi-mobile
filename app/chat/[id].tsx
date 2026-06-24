@@ -115,11 +115,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const lastMessageTokenRef = useRef("");
   const onlineUsers = usePresenceStore((s) => s.users);
 
+  const peerCacheTick = useChatStore((s) => s.peerCacheTick);
   const peer = useMemo(() => {
     if (!id) return undefined;
     const resolved = resolvePeer(id);
     return resolved ? applyLivePresence(resolved) : undefined;
-  }, [id, resolvePeer, conversations, contactsReady, onlineUsers]);
+  }, [id, resolvePeer, conversations, contactsReady, onlineUsers, messages, peerCacheTick]);
+
+  useEffect(() => {
+    if (!id || !accessToken || peer?.photoUrl) return;
+    void ensurePeer(id, accessToken);
+  }, [id, accessToken, peer?.photoUrl, ensurePeer]);
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const isPatient = role?.toLowerCase() === "patient";

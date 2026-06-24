@@ -6,16 +6,12 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "googleServicesFile": "./google-services.json"
-      }
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "googleServicesFile": "./google-services.json"
+        "buildType": "apk"
       },
       "env": {
         "EXPO_PUBLIC_API_HOST": "https://service-3elagi-q45gskkjsa-ew.a.run.app",
@@ -24,8 +20,7 @@
     },
     "production": {
       "android": {
-        "buildType": "app-bundle",
-        "googleServicesFile": "./google-services.json"
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_API_HOST": "https://service-3elagi-q45gskkjsa-ew.a.run.app",

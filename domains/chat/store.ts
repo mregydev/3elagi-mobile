@@ -37,6 +37,7 @@ interface ChatState {
   activeChatPeerId: string | null;
   selfId: string | null;
   peerTyping: Record<string, boolean>;
+  peerCacheTick: number;
   loadConversations: (
     token: string | null,
     selfId: string | null,
@@ -61,7 +62,13 @@ interface ChatState {
   ) => Promise<void>;
   markRead: (peerId: string, token: string | null) => Promise<void>;
   handleIncomingMessage: (
-    payload: { message: MessageRow; peer_id: string; peer_name?: string },
+    payload: {
+      message: MessageRow;
+      peer_id: string;
+      peer_name?: string;
+      peer_photo_url?: string | null;
+      peer_role?: string | null;
+    },
     token: string | null,
     selfId: string | null,
   ) => void;
@@ -187,12 +194,42 @@ function mergeMessagesById(
   );
 }
 
-function peerFromHint(peerId: string, name?: string): ChatUser {
+function mapPeerRole(role?: string | null): ChatUser["role"] {
+  if (role === "doctor") return "doctor";
+  if (role === "patient") return "patient";
+  return undefined;
+}
+
+function peerFromHint(
+  peerId: string,
+  name?: string,
+  photoUrl?: string | null,
+  role?: string | null,
+): ChatUser {
   const trimmed = name?.trim();
   return {
     id: peerId,
     name: trimmed || "…",
+    photoUrl: photoUrl ?? undefined,
     presence: "offline",
+    role: mapPeerRole(role),
+  };
+}
+
+function mergePeerHint(
+  peer: ChatUser | undefined,
+  peerId: string,
+  name?: string,
+  photoUrl?: string | null,
+  role?: string | null,
+): ChatUser {
+  const hinted = peerFromHint(peerId, name, photoUrl, role);
+  if (!peer) return hinted;
+  return {
+    ...peer,
+    name: hinted.name !== "…" ? hinted.name : peer.name,
+    photoUrl: hinted.photoUrl ?? peer.photoUrl,
+    role: hinted.role ?? peer.role,
   };
 }
 
@@ -202,14 +239,29 @@ function upsertConversation(
   lastMessage: ChatMessage,
   incrementUnread: boolean,
   nameHint?: string,
+  photoHint?: string | null,
+  roleHint?: string | null,
 ) {
-  const resolvedUser = user ?? peerFromHint(peerId, nameHint);
+  const resolvedUser = mergePeerHint(user, peerId, nameHint, photoHint, roleHint);
   const idx = baseConversations.findIndex((c) => c.id === peerId);
   if (idx >= 0) {
     const existing = baseConversations[idx];
     baseConversations[idx] = {
       ...existing,
-      user: user ?? existing.user,
+      user: user
+        ? {
+            ...existing.user,
+            ...user,
+            name: user.name || existing.user.name,
+            photoUrl: user.photoUrl ?? existing.user.photoUrl,
+          }
+        : mergePeerHint(
+            existing.user,
+            peerId,
+            nameHint,
+            photoHint,
+            roleHint,
+          ),
       lastMessage,
       unreadCount: incrementUnread ? existing.unreadCount + 1 : existing.unreadCount,
     };
@@ -221,6 +273,7 @@ function upsertConversation(
       unreadCount: incrementUnread ? 1 : 0,
     });
   }
+  chatRepository.cacheUsers([baseConversations.find((c) => c.id === peerId)!.user]);
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -232,6 +285,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   activeChatPeerId: null,
   selfId: null,
   peerTyping: {},
+  peerCacheTick: 0,
 
   setActiveChatPeerId: (peerId) => set({ activeChatPeerId: peerId }),
   setSelfId: (id) => set({ selfId: id }),
@@ -350,21 +404,48 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   ensurePeer: async (peerId, token) => {
     const existing = get().resolvePeer(peerId);
-    if (existing) return existing;
+    if (existing?.photoUrl && existing.name?.trim() && existing.name !== "…") {
+      return existing;
+    }
     try {
       const user = await fetchContactById(token, peerId);
       chatRepository.cacheUsers([user]);
-      return user;
+      const merged = existing ? { ...existing, ...user } : user;
+      const idx = baseConversations.findIndex((c) => c.id === peerId);
+      if (idx >= 0) {
+        baseConversations[idx] = {
+          ...baseConversations[idx],
+          user: { ...baseConversations[idx].user, ...merged },
+        };
+        set({
+          conversations: applyPresenceToConversations(baseConversations),
+          peerCacheTick: get().peerCacheTick + 1,
+        });
+      } else {
+        set({ peerCacheTick: get().peerCacheTick + 1 });
+      }
+      return merged;
     } catch {
-      return undefined;
+      return existing;
     }
   },
 
   resolvePeer: (peerId) => {
     const fromConversation = get().conversations.find((c) => c.id === peerId)?.user;
-    if (fromConversation) return fromConversation;
     const cached = chatRepository.getUser(peerId);
-    return cached ? { ...cached, ...applyLivePresence(cached) } : undefined;
+    const base = fromConversation ?? cached;
+    if (!base) return undefined;
+
+    const merged: ChatUser = {
+      ...base,
+      name: cached?.name?.trim() ? cached.name : base.name,
+      photoUrl: cached?.photoUrl ?? base.photoUrl,
+      role: cached?.role ?? base.role,
+      specialty: cached?.specialty ?? base.specialty,
+      doctorEntityId: cached?.doctorEntityId ?? base.doctorEntityId,
+    };
+
+    return { ...merged, ...applyLivePresence(merged) };
   },
 
   loadMessages: async (peerId, token, selfId) => {
@@ -609,9 +690,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!selfId) return;
     const peerId = payload.peer_id;
     const peerNameHint =
-      typeof (payload as { peer_name?: string }).peer_name === "string"
-        ? (payload as { peer_name?: string }).peer_name
-        : undefined;
+      typeof payload.peer_name === "string" ? payload.peer_name : undefined;
+    const peerPhotoHint = payload.peer_photo_url ?? undefined;
+    const peerRoleHint = payload.peer_role ?? undefined;
     const msg = mapMessageRow(payload.message, peerId, selfId);
     const isOwnMessage = msg.senderId === "me";
 
@@ -619,9 +700,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const isViewing = active === peerId;
     let peer = get().resolvePeer(peerId) ?? chatRepository.getUser(peerId);
 
-    if (!peer && peerNameHint) {
-      peer = peerFromHint(peerId, peerNameHint);
+    if (!peer && (peerNameHint || peerPhotoHint || peerRoleHint)) {
+      peer = peerFromHint(peerId, peerNameHint, peerPhotoHint, peerRoleHint);
       chatRepository.cacheUsers([peer]);
+      set({ peerCacheTick: get().peerCacheTick + 1 });
+    } else if (peer && (peerNameHint || peerPhotoHint || peerRoleHint)) {
+      peer = mergePeerHint(peer, peerId, peerNameHint, peerPhotoHint, peerRoleHint);
+      chatRepository.cacheUsers([peer]);
+      set({ peerCacheTick: get().peerCacheTick + 1 });
     }
 
     const appendMessage = () => {
@@ -649,7 +735,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [peerId]: applyConfirmedOutboundMessage(s.messages[peerId] || [], msg),
         },
       }));
-      upsertConversation(peerId, peer, msg, false, peerNameHint);
+      upsertConversation(
+        peerId,
+        peer,
+        msg,
+        false,
+        peerNameHint,
+        peerPhotoHint,
+        peerRoleHint,
+      );
       set({ conversations: applyPresenceToConversations(baseConversations) });
       return;
     }
@@ -657,12 +751,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (isViewing) {
       appendMessage();
       if (token) void get().markRead(peerId, token);
+      if (peer) {
+        upsertConversation(peerId, peer, msg, false, peerNameHint, peerPhotoHint, peerRoleHint);
+        set({ conversations: applyPresenceToConversations(baseConversations) });
+      }
     } else {
       appendMessage();
-      upsertConversation(peerId, peer, msg, true, peerNameHint);
+      upsertConversation(
+        peerId,
+        peer,
+        msg,
+        true,
+        peerNameHint,
+        peerPhotoHint,
+        peerRoleHint,
+      );
       set({ conversations: applyPresenceToConversations(baseConversations) });
 
-      if ((!peer || peer.name === "…") && token) {
+      if ((!peer || peer.name === "…" || !peer.photoUrl) && token) {
         void get()
           .ensurePeer(peerId, token)
           .then((resolved) => {

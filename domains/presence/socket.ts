@@ -13,6 +13,8 @@ type IncomingMessageHandler = (payload: {
   message: MessageRow;
   peer_id: string;
   peer_name?: string;
+  peer_photo_url?: string | null;
+  peer_role?: string | null;
 }) => void;
 
 let onMessageNew: IncomingMessageHandler | null = null;
@@ -117,9 +119,18 @@ function bindListeners(client: Socket) {
     }
   });
 
-  client.on("message:new", (payload: { message: MessageRow; peer_id: string; peer_name?: string }) => {
-    onMessageNew?.(payload);
-  });
+  client.on(
+    "message:new",
+    (payload: {
+      message: MessageRow;
+      peer_id: string;
+      peer_name?: string;
+      peer_photo_url?: string | null;
+      peer_role?: string | null;
+    }) => {
+      onMessageNew?.(payload);
+    },
+  );
 
   client.on("message:deleted", (payload: { message_id: string; peer_id: string }) => {
     if (payload?.message_id && payload?.peer_id) onMessageDeletedHandler?.(payload);

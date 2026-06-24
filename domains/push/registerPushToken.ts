@@ -9,7 +9,12 @@ export async function registerPushToken(accessToken: string): Promise<string | n
   if (Platform.OS === "web" || !accessToken) return null;
 
   const token = await getExpoPushToken();
-  if (!token) return null;
+  if (!token) {
+    console.warn(
+      "[push] No Expo token to register — open the native app on a physical device, allow notifications, then log in again.",
+    );
+    return null;
+  }
 
   if (
     lastRegistered?.token === token &&
