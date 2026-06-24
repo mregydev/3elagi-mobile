@@ -22,6 +22,7 @@ import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import {
   MedicalRecordAddBar,
   MEDICAL_RECORD_ADD_BAR_HEIGHT,
+  MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT,
 } from "@/components/records/MedicalRecordAddBar";
 import {
   getCategoryMeta,
@@ -71,7 +72,7 @@ export function RecordsWebView() {
   const { isDesktop } = useWebLayout();
   const tabBarHeight = useBottomTabBarHeight();
   const tabBarOffset = isDesktop ? 0 : tabBarHeight;
-  const { records } = useRecordsPage();
+  const { records, profile } = useRecordsPage();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const dateLocale = localeTag(isRTL);
@@ -107,7 +108,20 @@ export function RecordsWebView() {
   };
 
   const openAdd = (category: MedicalCategory) => {
-    router.push(`/medical/add?category=${category}`);
+    const ownerQuery = profile?.id
+      ? `patientUserId=${encodeURIComponent(profile.id)}`
+      : "";
+    if (category === "prescription") {
+      router.push(
+        ownerQuery ? `/medical/prescription/add?${ownerQuery}` : "/medical/prescription/add",
+      );
+      return;
+    }
+    router.push(
+      ownerQuery
+        ? `/medical/add?category=${category}&${ownerQuery}`
+        : `/medical/add?category=${category}`,
+    );
   };
 
   const setDateMode = (mode: DateFilterMode) => {
@@ -137,7 +151,7 @@ export function RecordsWebView() {
           {
             paddingBottom: isDesktop
               ? 32
-              : MEDICAL_RECORD_ADD_BAR_HEIGHT + tabBarOffset + 16,
+              : MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT + tabBarOffset + 16,
           },
         ]}
       >

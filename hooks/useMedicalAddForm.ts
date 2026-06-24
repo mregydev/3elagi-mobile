@@ -2,11 +2,12 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert } from "react-native";
+import { showAppAlert } from "@/utils/appAlert";
+import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
+import { showSuccessToast } from "@/utils/toast";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   createDiagnosis,
-  createDoctorMedicalDocument,
   createPatientMedicalDocument,
   fetchAllMedicalHistory,
   fetchDocumentsForPatientUser,
@@ -16,6 +17,7 @@ import { useMedicalStore } from "@/domains/medical/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useI18n } from "@/hooks/useI18n";
 import { getAddMedicalCategories } from "@/components/records/medicalRecordCategories";
+import { isDoctorAddingForPatient, resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
 
@@ -23,6 +25,7 @@ export interface AttachedFile {
   uri: string;
   name: string;
   mimeType: string;
+  webFile?: File;
 }
 
 export function useMedicalAddForm() {
@@ -38,6 +41,8 @@ export function useMedicalAddForm() {
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const isDoctor = role?.toLowerCase() === "doctor";
   const selectedPatientUserId = patientUserIdParam?.trim() ?? "";
+  const ownerUserId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
+  const doctorAddingForPatient = isDoctorAddingForPatient(role, patientUserIdParam, profile?.id);
   const canAddDiagnosis = isDoctor && !!selectedPatientUserId;
   const availableCategories = getAddMedicalCategories(canAddDiagnosis).map((c) => c.key);
 
@@ -117,7 +122,7 @@ export function useMedicalAddForm() {
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission required", "Please allow camera access to scan documents.");
+      showAppAlert("Permission required", "Please allow camera access to scan documents.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -138,7 +143,7 @@ export function useMedicalAddForm() {
   const pickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission required", "Please allow photo library access.");
+      showAppAlert("Permission required", "Please allow photo library access.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -181,14 +186,22 @@ export function useMedicalAddForm() {
     setRecordsFromApi(apiRecords, ownerId);
   };
 
+  const exitAfterSave = () => {
+    const fallback =
+      isDoctor && selectedPatientUserId
+        ? (`/patients/${selectedPatientUserId}` as `/patients/${string}`)
+        : "/(tabs)/records";
+    leaveMedicalForm(fallback);
+  };
+
   const submit = async () => {
     if (!profile || !accessToken) {
-      Alert.alert("Sign in first");
+      showAppAlert("Sign in first");
       return;
     }
     if (isDiagnosis) {
       if (!canAddDiagnosis || !doctorId) {
-        Alert.alert(
+        showAppAlert(
           isRTL ? "غير مسموح" : "Not allowed",
           isRTL
             ? "التشخيص يضيفه الطبيب فقط. يرجى مراجعة طبيبك."
@@ -197,7 +210,7 @@ export function useMedicalAddForm() {
         return;
       }
       if (!title.trim()) {
-        Alert.alert(
+        showAppAlert(
           isRTL ? "الوصف مطلوب" : "Description required",
           isRTL ? "أدخل وصف التشخيص." : "Enter a diagnosis description.",
         );
@@ -219,42 +232,41 @@ export function useMedicalAddForm() {
         );
         await refetchMedicalHistory(selectedPatientUserId);
         setUploading(false);
-        router.back();
+        showSuccessToast(isRTL ? "تم الحفظ" : "Saved");
+        exitAfterSave();
       } catch (e) {
         setUploading(false);
-        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+        showAppAlert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
       }
       return;
     }
 
     if (isLabOrXray) {
       if (!title.trim()) {
-        Alert.alert(
+        showAppAlert(
           isRTL ? "العنوان مطلوب" : "Title required",
           isRTL ? "أدخل عنوانًا لهذا السجل." : "Please enter a title for this record.",
         );
         return;
       }
       if (!notes.trim()) {
-        Alert.alert(
+        showAppAlert(
           isRTL ? "الوصف مطلوب" : "Description required",
           isRTL ? "أدخل وصفًا لهذا السجل." : "Please enter a description for this record.",
         );
         return;
       }
       if (!attached) {
-        Alert.alert(
+        showAppAlert(
           isRTL ? "الصورة مطلوبة" : "Image required",
           isRTL ? "التقط صورة أو اختر واحدة من المعرض." : "Take a photo or choose one from your gallery.",
         );
         return;
       }
-      if (isDoctor && !selectedPatientUserId) {
-        Alert.alert(
-          isRTL ? "المريض مطلوب" : "Patient required",
-          isRTL
-            ? "افتح هذا النموذج من سجل مريض لإضافة هذا المستند."
-            : "Open this form from a patient's medical record to add this document.",
+      if (!ownerUserId || !profile?.id) {
+        showAppAlert(
+          isRTL ? "خطأ" : "Error",
+          isRTL ? "تعذّر تحديد المريض. سجّل الدخول وحاول مرة أخرى." : "Could not determine patient. Sign in and try again.",
         );
         return;
       }
@@ -265,6 +277,7 @@ export function useMedicalAddForm() {
           attached.mimeType,
           attached.name,
           accessToken,
+          attached.webFile,
         );
         const fileName =
           uploaded.objectPath.split("/").pop() ??
@@ -277,27 +290,28 @@ export function useMedicalAddForm() {
           notes: notes.trim(),
           title: title.trim(),
         };
-        if (isDoctor && selectedPatientUserId) {
-          await createDoctorMedicalDocument(
-            { ...docPayload, patient_id: selectedPatientUserId },
+        if (doctorAddingForPatient) {
+          await createPatientMedicalDocument(
+            { ...docPayload, patient_user_id: ownerUserId },
             accessToken,
           );
-          await refetchMedicalHistory(selectedPatientUserId);
+          await refetchMedicalHistory(ownerUserId);
         } else {
           await createPatientMedicalDocument(docPayload, accessToken);
           await refetchMedicalHistory(profile.id);
         }
         setUploading(false);
-        router.back();
+        showSuccessToast(isRTL ? "تم الحفظ" : "Saved");
+        exitAfterSave();
       } catch (e) {
         setUploading(false);
-        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+        showAppAlert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
       }
       return;
     }
 
     if (!title.trim()) {
-      Alert.alert(isRTL ? "العنوان مطلوب" : "Title required");
+      showAppAlert(isRTL ? "العنوان مطلوب" : "Title required");
       return;
     }
 
@@ -308,7 +322,8 @@ export function useMedicalAddForm() {
       value: value.trim() || undefined,
       notes: notes.trim() || undefined,
     });
-    router.back();
+    showSuccessToast(isRTL ? "تم الحفظ" : "Saved");
+    exitAfterSave();
   };
 
   const pageTitle = isDiagnosis
@@ -372,6 +387,12 @@ export function useMedicalAddForm() {
     submit,
     pageTitle,
     pageSubtitle,
-    goBack: () => router.back(),
+    goBack: () => {
+      const fallback =
+        isDoctor && selectedPatientUserId
+          ? (`/patients/${selectedPatientUserId}` as `/patients/${string}`)
+          : "/(tabs)/records";
+      leaveMedicalForm(fallback);
+    },
   };
 }

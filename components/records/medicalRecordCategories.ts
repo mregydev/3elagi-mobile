@@ -60,6 +60,21 @@ export function getLocalizedCategoryLabel(
   return t.records.categories[key];
 }
 
+export function getLocalizedAddLabel(key: MedicalCategory, t: Translations): string {
+  switch (key) {
+    case "lab":
+      return t.records.addLab;
+    case "xray":
+      return t.records.addXray;
+    case "prescription":
+      return t.records.addPrescription;
+    case "diagnosis":
+      return t.records.addDiagnosis;
+    default:
+      return getLocalizedCategoryLabel(key, t);
+  }
+}
+
 export function getRecordTimestamp(record: MedicalRecord): number {
   const raw = record.date || record.createdAt;
   const time = new Date(raw).getTime();

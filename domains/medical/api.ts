@@ -132,6 +132,31 @@ function mapDiagnosis(d: RawDiagnosis): MedicalRecord {
   };
 }
 
+async function appendFileToFormData(
+  formData: FormData,
+  fieldName: string,
+  uri: string,
+  mimeType: string,
+  fileName: string,
+  webFile?: File | Blob,
+): Promise<void> {
+  if (Platform.OS === "web") {
+    let body: Blob | File | null = webFile ?? null;
+    if (!body && (uri.startsWith("blob:") || uri.startsWith("data:"))) {
+      const response = await fetch(uri);
+      body = await response.blob();
+    }
+    if (!body) {
+      throw new Error("Could not read the selected file on web.");
+    }
+    formData.append(fieldName, body, fileName);
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  formData.append(fieldName, { uri, name: fileName, type: mimeType } as any);
+}
+
 async function authJson<T>(
   path: string,
   token: string,
@@ -164,21 +189,7 @@ export async function uploadFile(
   webFile?: File | Blob,
 ): Promise<{ objectPath: string; url: string }> {
   const formData = new FormData();
-
-  if (Platform.OS === "web") {
-    let body: Blob | File | null = webFile ?? null;
-    if (!body && uri.startsWith("blob:")) {
-      const response = await fetch(uri);
-      body = await response.blob();
-    }
-    if (!body) {
-      throw new Error("Could not read the selected file on web.");
-    }
-    formData.append("file", body, fileName);
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    formData.append("file", { uri, name: fileName, type: mimeType } as any);
-  }
+  await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
 
   const res = await fetch(`${API_BASE}/uploads/file`, {
     method: "POST",
@@ -326,10 +337,10 @@ export async function analyzePrescriptionImage(
   fileName: string,
   token: string,
   lang: "ar" | "en" = "en",
+  webFile?: File | Blob,
 ): Promise<PrescriptionMedication[]> {
   const formData = new FormData();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  formData.append("file", { uri, name: fileName, type: mimeType } as any);
+  await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
   formData.append("lang", lang);
 
   const res = await fetch(`${API_BASE}/prescriptions/analyze-image`, {
@@ -430,6 +441,7 @@ export async function createPatientMedicalDocument(
     file_name: string;
     notes: string;
     title: string;
+    patient_user_id?: string;
   },
   token: string,
 ): Promise<MedicalRecord> {

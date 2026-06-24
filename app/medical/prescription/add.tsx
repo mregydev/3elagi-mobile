@@ -1,3 +1,4 @@
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, ArrowRight, Camera, Image as ImageIcon, Plus, Trash2, X } from "lucide-react-native";
@@ -16,11 +17,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
 import {
-  analyzePrescriptionImage,
   createPrescriptionForPatientUser,
   fetchAllMedicalHistory,
   uploadFile,
 } from "@/domains/medical/api";
+import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
+import {
+  analyzePrescriptionScan,
+  normalizePrescriptionScanFile,
+  type PrescriptionScanAsset,
+} from "@/domains/medical/prescriptionScan";
 import { useMedicalStore } from "@/domains/medical/store";
 import type { PrescriptionMedication } from "@/domains/medical/types";
 import { useReminderScheduler } from "@/domains/reminders/hooks/useReminderScheduler";
@@ -32,11 +38,7 @@ function emptyMedication(): PrescriptionMedication {
   return { medication_name: "", dose: "", interval: "", notes: "" };
 }
 
-interface ScanAsset {
-  uri: string;
-  mimeType: string;
-  fileName: string;
-}
+interface ScanAsset extends PrescriptionScanAsset {}
 
 export default function AddPrescriptionScreen() {
   const colors = useColors();
@@ -55,7 +57,7 @@ export default function AddPrescriptionScreen() {
   const { schedule: scheduleReminder } = useReminderScheduler();
 
   const patientUserId =
-    patientUserIdParam?.trim() || (role?.toLowerCase() === "patient" ? profile?.id : "") || "";
+    resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
 
   const [title, setTitle] = useState("");
   const [symptoms, setSymptoms] = useState("");
@@ -76,6 +78,46 @@ export default function AddPrescriptionScreen() {
 
   const removeMedicationRow = (index: number) => {
     setMedications((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== index)));
+  };
+
+  const processPrescriptionScan = async (picked: ScanAsset) => {
+    if (!accessToken) return;
+
+    const normalized = normalizePrescriptionScanFile(
+      picked.uri,
+      picked.mimeType,
+      picked.fileName,
+    );
+    setScanAsset(normalized);
+    setAnalyzing(true);
+    try {
+      const extracted = await analyzePrescriptionScan(
+        normalized,
+        accessToken,
+        locale === "ar" ? "ar" : "en",
+      );
+      if (!extracted.length) {
+        Alert.alert(
+          isRTL ? "صورة غير واضحة" : "Image not clear enough",
+          isRTL
+            ? "تعذّر قراءة الروشتة. استخدم صورة واضحة بخط مقروء، أو أضف الأدوية يدويًا."
+            : "We couldn't read this prescription. Use a clear photo with readable text, or add medications manually.",
+        );
+        return;
+      }
+      setMedications(extracted);
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "تعذر التحليل" : "Analysis failed",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تأكد من وضوح الصورة والخط، ثم حاول مرة أخرى."
+            : "Make sure the photo and text are clear, then try again.",
+      );
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const pickImage = async (source: "camera" | "gallery") => {
@@ -108,43 +150,28 @@ export default function AddPrescriptionScreen() {
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
-    const picked: ScanAsset = {
+    await processPrescriptionScan({
       uri: asset.uri,
       mimeType: asset.mimeType ?? "image/jpeg",
       fileName: asset.fileName ?? `prescription-${Date.now()}.jpg`,
-    };
-    setScanAsset(picked);
-    setAnalyzing(true);
-    try {
-      const extracted = await analyzePrescriptionImage(
-        picked.uri,
-        picked.mimeType,
-        picked.fileName,
-        accessToken,
-        locale === "ar" ? "ar" : "en",
-      );
-      if (!extracted.length) {
-        Alert.alert(
-          isRTL ? "صورة غير واضحة" : "Image not clear enough",
-          isRTL
-            ? "تعذّر قراءة الروشتة. استخدم صورة واضحة بخط مقروء، أو أضف الأدوية يدويًا."
-            : "We couldn't read this prescription. Use a clear photo with readable text, or add medications manually.",
-        );
-        return;
-      }
-      setMedications(extracted);
-    } catch (e) {
-      Alert.alert(
-        isRTL ? "تعذر التحليل" : "Analysis failed",
-        e instanceof Error
-          ? e.message
-          : isRTL
-            ? "تأكد من وضوح الصورة والخط، ثم حاول مرة أخرى."
-            : "Make sure the photo and text are clear, then try again.",
-      );
-    } finally {
-      setAnalyzing(false);
-    }
+    });
+  };
+
+  const pickFromFiles = async () => {
+    if (!accessToken) return;
+
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["image/*"],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    await processPrescriptionScan({
+      uri: asset.uri,
+      mimeType: asset.mimeType ?? "image/jpeg",
+      fileName: asset.name ?? `prescription-${Date.now()}.jpg`,
+    });
   };
 
   const showScanOptions = () => {
@@ -161,6 +188,10 @@ export default function AddPrescriptionScreen() {
         {
           text: isRTL ? "المعرض" : "Gallery",
           onPress: () => void pickImage("gallery"),
+        },
+        {
+          text: isRTL ? "ملف صورة" : "Image file",
+          onPress: () => void pickFromFiles(),
         },
         { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
       ],
@@ -207,10 +238,15 @@ export default function AddPrescriptionScreen() {
     try {
       let imageUrl: string | undefined;
       if (scanAsset) {
-        const uploaded = await uploadFile(
+        const normalized = normalizePrescriptionScanFile(
           scanAsset.uri,
           scanAsset.mimeType,
           scanAsset.fileName,
+        );
+        const uploaded = await uploadFile(
+          normalized.uri,
+          normalized.mimeType,
+          normalized.fileName,
           accessToken,
         );
         imageUrl = uploaded.url;

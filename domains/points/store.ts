@@ -6,7 +6,7 @@ import { AI_EVENTS } from "@/domains/ai/events";
 import type { AuthLogoutPayload } from "@/domains/auth/events";
 import type { ChatMessageSentPayload } from "@/domains/chat/events";
 import type { AiMessageSentPayload } from "@/domains/ai/events";
-import { addMessagePoints, fetchPointsBalance, type PointsSummary } from "./api";
+import { addMessagePoints, fetchPointsBalance, type PointsSummary, DEFAULT_AVAILABLE_POINTS } from "./api";
 
 interface PointsState {
   summary: PointsSummary | null;
@@ -18,7 +18,7 @@ interface PointsState {
 }
 
 const EMPTY: PointsSummary = {
-  message_points: 0,
+  message_points: DEFAULT_AVAILABLE_POINTS,
   points_spent_total: 0,
   points_purchased_total: 0,
 };
@@ -53,7 +53,7 @@ export const usePointsStore = create<PointsState>((set, get) => ({
 }));
 
 export function selectPointsBalance(summary: PointsSummary | null): number {
-  return summary?.message_points ?? 0;
+  return summary?.message_points ?? DEFAULT_AVAILABLE_POINTS;
 }
 
 // Cross-domain subscriptions (module load time)

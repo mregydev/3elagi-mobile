@@ -26,6 +26,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
 import {
+  MedicalRecordAddBar,
+} from "@/components/records/MedicalRecordAddBar";
+import {
   SHOW_INTAKE_RECORDS,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
@@ -126,16 +129,24 @@ export function MedicalHistoryList({
   };
 
   const openAdd = (category: MedicalCategory) => {
-    const base = `/medical/add?category=${category}`;
-    if (doctorView && patientUserId) {
-      router.push(`${base}&patientUserId=${patientUserId}`);
-    } else {
-      router.push(base);
+    const ownerQuery = patientUserId
+      ? `patientUserId=${encodeURIComponent(patientUserId)}`
+      : "";
+    if (category === "prescription") {
+      const base = `/medical/prescription/add`;
+      router.push(ownerQuery ? `${base}?${ownerQuery}` : base);
+      return;
     }
+    const base = `/medical/add?category=${category}`;
+    router.push(ownerQuery ? `${base}&${ownerQuery}` : base);
   };
 
   return (
     <>
+      {canAdd ? (
+        <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} layout="inline" />
+      ) : null}
+
       <MedicalHistoryFilterPanel
         filters={filters}
         onChange={setFilters}
@@ -150,7 +161,6 @@ export function MedicalHistoryList({
         const allItems = grouped[key];
         const items = isSearchable ? filteredGrouped[key] : allItems;
         const sectionFiltering = isSearchable && isFiltering;
-        const showAdd = canAdd && key !== "intake";
 
         return (
           <View key={key} style={styles.categoryBlock}>
@@ -190,17 +200,6 @@ export function MedicalHistoryList({
                   <ChevronDown size={16} color={colors.mutedForeground} />
                 )}
               </Pressable>
-
-              {showAdd && (
-                <>
-                  <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
-                  <Pressable onPress={() => openAdd(key)} style={styles.inlineAddBtn} hitSlop={6}>
-                    <Text style={[styles.inlineAddBtnText, { color }]}>
-                      {isRTL ? "إضافة" : "Add"}
-                    </Text>
-                  </Pressable>
-                </>
-              )}
             </View>
 
             {isOpen && (
@@ -403,14 +402,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
-  cardDivider: { width: 1, height: 28 },
-  inlineAddBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  inlineAddBtnText: { fontSize: 13, fontWeight: "700" },
   iconBubble: {
     width: 30,
     height: 30,

@@ -31,7 +31,9 @@ export function PaymentMethodCard({ id, label, subtitle, onPress }: PaymentMetho
         },
       ]}
     >
-      <PaymentProviderLogo id={id} />
+      <View style={styles.logoSlot}>
+        <PaymentProviderLogo id={id} />
+      </View>
       <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
         <Text style={[styles.label, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
           {label}
@@ -53,6 +55,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     cursor: "pointer" as "auto",
+  },
+  logoSlot: {
+    flexShrink: 0,
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
   label: { fontSize: 16, fontWeight: "800" },
   subtitle: { fontSize: 13, lineHeight: 18 },

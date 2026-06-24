@@ -10,8 +10,13 @@ import React from 'react'
 
 // ── Mock expo-router ──────────────────────────────────────────────────────────
 const mockRouterBack = vi.fn()
+const mockRouterReplace = vi.fn()
 vi.mock('expo-router', () => ({
-  router: { back: () => mockRouterBack() },
+  router: {
+    back: () => mockRouterBack(),
+    replace: (...args: unknown[]) => mockRouterReplace(...args),
+    canGoBack: () => true,
+  },
   useLocalSearchParams: () => ({ patientUserId: 'patient-123' }),
 }))
 
@@ -267,6 +272,7 @@ describe('AddPrescriptionScreen (web)', () => {
         'prescription.jpg',
         TOKEN,
         'en',
+        file,
       )
     })
   })
@@ -359,6 +365,7 @@ describe('AddPrescriptionScreen (web)', () => {
         'image/jpeg',
         'rx.jpg',
         TOKEN,
+        file,
       )
       expect(mockCreatePrescriptionForPatientUser).toHaveBeenCalledWith(
         expect.objectContaining({ image_url: 'https://cdn.example.com/rx.jpg' }),

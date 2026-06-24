@@ -99,21 +99,16 @@ export function MedicalHistoryTimeline({
   };
 
   const openAdd = (category: MedicalCategory) => {
+    const ownerQuery = patientUserId
+      ? `patientUserId=${encodeURIComponent(patientUserId)}`
+      : "";
     if (category === "prescription") {
       const base = `/medical/prescription/add`;
-      if (doctorView && patientUserId) {
-        router.push(`${base}?patientUserId=${patientUserId}`);
-      } else {
-        router.push(base);
-      }
+      router.push(ownerQuery ? `${base}?${ownerQuery}` : base);
       return;
     }
     const base = `/medical/add?category=${category}`;
-    if (doctorView && patientUserId) {
-      router.push(`${base}&patientUserId=${patientUserId}`);
-    } else {
-      router.push(base);
-    }
+    router.push(ownerQuery ? `${base}&${ownerQuery}` : base);
   };
 
   const clearFilters = () => {
@@ -217,7 +212,7 @@ export function MedicalHistoryTimeline({
       )}
     </ScrollView>
 
-    {canAdd ? <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} /> : null}
+    {canAdd ? <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} layout="dock" /> : null}
     </View>
   );
 }

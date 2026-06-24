@@ -21,7 +21,6 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   createDiagnosis,
-  createDoctorMedicalDocument,
   createPatientMedicalDocument,
   fetchAllMedicalHistory,
   fetchDocumentsForPatientUser,
@@ -33,6 +32,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
 import { getAddMedicalCategories } from "@/components/records/medicalRecordCategories";
+import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
 
@@ -84,6 +84,13 @@ export default function AddMedicalScreen() {
 
   const isDiagnosis = category === "diagnosis";
   const linkPatientId = isDoctor && selectedPatientUserId ? selectedPatientUserId : profile?.id;
+
+  useEffect(() => {
+    if (categoryParam !== "prescription") return;
+    const ownerId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
+    const query = ownerId ? `?patientUserId=${encodeURIComponent(ownerId)}` : "";
+    router.replace(`/medical/prescription/add${query}` as never);
+  }, [categoryParam, patientUserIdParam, profile?.id]);
 
   useEffect(() => {
     if (!isDiagnosis || !accessToken || !linkPatientId) {
@@ -294,8 +301,8 @@ export default function AddMedicalScreen() {
           title: title.trim(),
         };
         if (isDoctor && selectedPatientUserId) {
-          await createDoctorMedicalDocument(
-            { ...docPayload, patient_id: selectedPatientUserId },
+          await createPatientMedicalDocument(
+            { ...docPayload, patient_user_id: selectedPatientUserId },
             accessToken,
           );
           await refetchMedicalHistory(selectedPatientUserId);
@@ -326,6 +333,8 @@ export default function AddMedicalScreen() {
     });
     router.back();
   };
+
+  if (categoryParam === "prescription") return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

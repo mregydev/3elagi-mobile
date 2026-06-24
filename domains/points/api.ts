@@ -1,5 +1,8 @@
 import { API_BASE } from "@/constants/api";
 
+/** Matches API signup default (`DEFAULT_MESSAGE_POINTS`). */
+export const DEFAULT_AVAILABLE_POINTS = 10;
+
 export interface PointsSummary {
   message_points: number;
   points_spent_total: number;

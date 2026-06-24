@@ -2,10 +2,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { useAuthStore } from "@/domains/auth/store";
 import { usePointsStore } from "@/domains/points/store";
+import { DEFAULT_AVAILABLE_POINTS } from "@/domains/points/api";
 import { showErrorToast } from "@/utils/toast";
 
 const EMPTY_SUMMARY = {
-  message_points: 0,
+  message_points: DEFAULT_AVAILABLE_POINTS,
   points_spent_total: 0,
   points_purchased_total: 0,
 };

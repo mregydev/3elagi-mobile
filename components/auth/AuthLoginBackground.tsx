@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
-const LOGIN_HERO = require("@/assets/images/auth-login-hero.png");
+const LOGIN_HERO = require("@/assets/images/auth-login-hero.jpg");
 
 interface Props {
   children: React.ReactNode;

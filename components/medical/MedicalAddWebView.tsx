@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -158,7 +159,12 @@ export function MedicalAddWebView() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setAttached({ uri: reader.result as string, name: file.name, mimeType: file.type || "application/octet-stream" });
+      setAttached({
+        uri: reader.result as string,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        webFile: file,
+      });
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -171,17 +177,21 @@ export function MedicalAddWebView() {
   const saveButton = (
     <Pressable
       testID="medical-add-save"
+      accessibilityRole="button"
       onPress={() => void submit()}
       disabled={uploading}
       style={[
         styles.saveBtn,
+        Platform.OS === "web" && styles.saveBtnWeb,
         { backgroundColor: colors.primary, opacity: uploading ? 0.7 : 1 },
       ]}
     >
       {uploading ? (
         <ActivityIndicator size="small" color="#fff" />
       ) : (
-        <Text style={styles.saveBtnText}>{isRTL ? "حفظ" : "Save"}</Text>
+        <Text style={styles.saveBtnText} pointerEvents="none">
+          {isRTL ? "حفظ" : "Save"}
+        </Text>
       )}
     </Pressable>
   );
@@ -537,16 +547,22 @@ export function MedicalAddWebView() {
             </SectionCard>
           )}
 
-          <View style={[styles.footerActions, { flexDirection: dir }]}>
-            <Pressable onPress={goBack} style={styles.cancelBtn}>
-              <Text style={{ color: colors.mutedForeground, fontWeight: "600" }}>
-                {isRTL ? "إلغاء" : "Cancel"}
-              </Text>
-            </Pressable>
-            {saveButton}
-          </View>
         </View>
       </ScrollView>
+
+      <View
+        style={[
+          styles.stickyFooter,
+          { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: dir },
+        ]}
+      >
+        <Pressable onPress={goBack} style={styles.cancelBtn}>
+          <Text style={{ color: colors.mutedForeground, fontWeight: "600" }}>
+            {isRTL ? "إلغاء" : "Cancel"}
+          </Text>
+        </Pressable>
+        {saveButton}
+      </View>
 
       {attached && isImage ? (
         <Modal visible={zoomVisible} transparent animationType="fade" onRequestClose={() => setZoomVisible(false)}>
@@ -597,6 +613,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  saveBtnWeb: {
+    cursor: "pointer",
+  } as ViewStyle,
   saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   sectionCard: {
     borderWidth: 1,
@@ -688,11 +707,13 @@ const styles = StyleSheet.create({
   previewFooter: { alignItems: "center", gap: 10, padding: 12 },
   removeBtn: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   uploadingRow: { alignItems: "center", gap: 10, justifyContent: "center", paddingTop: 8 },
-  footerActions: {
-    justifyContent: "flex-end",
+  stickyFooter: {
     alignItems: "center",
+    justifyContent: "flex-end",
     gap: 12,
-    paddingTop: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
   },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 11 },
   zoomBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)" },

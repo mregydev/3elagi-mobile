@@ -1,10 +1,10 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ArrowLeft, ArrowRight, Image as ImageIcon, Plus, Trash2, Upload, X } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,17 +16,25 @@ import {
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useAuthStore } from "@/domains/auth/store";
 import {
-  analyzePrescriptionImage,
   createPrescriptionForPatientUser,
   fetchAllMedicalHistory,
   uploadFile,
 } from "@/domains/medical/api";
+import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
+import {
+  analyzePrescriptionScan,
+  normalizePrescriptionScanFile,
+  type PrescriptionScanAsset,
+} from "@/domains/medical/prescriptionScan";
 import { useMedicalStore } from "@/domains/medical/store";
 import type { PrescriptionMedication } from "@/domains/medical/types";
 import { useReminderScheduler } from "@/domains/reminders/hooks/useReminderScheduler";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { showAppAlert } from "@/utils/appAlert";
+import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
+import { showSuccessToast } from "@/utils/toast";
 
 const ACCEPTED_FILE_TYPES = "image/*,.pdf";
 
@@ -34,11 +42,7 @@ function emptyMedication(): PrescriptionMedication {
   return { medication_name: "", dose: "", interval: "", notes: "" };
 }
 
-interface ScanAsset {
-  uri: string;
-  mimeType: string;
-  fileName: string;
-}
+interface ScanAsset extends PrescriptionScanAsset {}
 
 function gridStyle(columns: number): ViewStyle {
   if (columns <= 1) return { flexDirection: "column", gap: 16 };
@@ -146,8 +150,15 @@ export function PrescriptionAddWebView() {
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const { schedule: scheduleReminder } = useReminderScheduler();
 
-  const patientUserId =
-    patientUserIdParam?.trim() || (role?.toLowerCase() === "patient" ? profile?.id : "") || "";
+  const patientUserId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
+
+  const exitAfterSave = () => {
+    const fallback =
+      role?.toLowerCase() === "doctor" && patientUserIdParam?.trim()
+        ? (`/patients/${patientUserIdParam.trim()}` as `/patients/${string}`)
+        : "/(tabs)/records";
+    leaveMedicalForm(fallback);
+  };
 
   const [title, setTitle] = useState("");
   const [symptoms, setSymptoms] = useState("");
@@ -187,7 +198,7 @@ export function PrescriptionAddWebView() {
     try {
       dataUri = await readFileAsDataUrl(file);
     } catch {
-      Alert.alert(
+      showAppAlert(
         isRTL ? "خطأ في القراءة" : "Read error",
         isRTL ? "تعذّر قراءة الملف. حاول مرة أخرى." : "Could not read the file. Please try again.",
       );
@@ -198,19 +209,23 @@ export function PrescriptionAddWebView() {
       uri: dataUri,
       mimeType: file.type || "application/octet-stream",
       fileName: file.name || `prescription-${Date.now()}`,
+      webFile: file,
     };
-    setScanAsset(picked);
+    const normalized = normalizePrescriptionScanFile(
+      picked.uri,
+      picked.mimeType,
+      picked.fileName,
+    );
+    setScanAsset({ ...normalized, webFile: picked.webFile });
     setAnalyzing(true);
     try {
-      const extracted = await analyzePrescriptionImage(
-        picked.uri,
-        picked.mimeType,
-        picked.fileName,
+      const extracted = await analyzePrescriptionScan(
+        { ...normalized, webFile: picked.webFile },
         accessToken,
         locale === "ar" ? "ar" : "en",
       );
       if (!extracted.length) {
-        Alert.alert(
+        showAppAlert(
           isRTL ? "صورة غير واضحة" : "Image not clear enough",
           isRTL
             ? "تعذّر قراءة الروشتة. استخدم صورة واضحة بخط مقروء، أو أضف الأدوية يدويًا."
@@ -220,7 +235,7 @@ export function PrescriptionAddWebView() {
       }
       setMedications(extracted);
     } catch (e) {
-      Alert.alert(
+      showAppAlert(
         isRTL ? "تعذر التحليل" : "Analysis failed",
         e instanceof Error
           ? e.message
@@ -234,18 +249,23 @@ export function PrescriptionAddWebView() {
   };
 
   const handleCancel = () => {
-    router.back();
+    exitAfterSave();
   };
 
   const handleSave = async () => {
     if (!accessToken || !patientUserId) {
-      Alert.alert(isRTL ? "خطأ" : "Error", isRTL ? "المريض غير محدد." : "Patient is not set.");
+      showAppAlert(
+        isRTL ? "خطأ" : "Error",
+        isRTL
+          ? "تعذّر تحديد المريض. انتظر تحميل الحساب أو سجّل الدخول مرة أخرى."
+          : "Could not determine patient. Wait for your account to load or sign in again.",
+      );
       return;
     }
 
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      Alert.alert(
+      showAppAlert(
         isRTL ? "العنوان مطلوب" : "Title required",
         isRTL ? "أدخل عنوانًا للروشتة." : "Enter a title for this prescription.",
       );
@@ -262,7 +282,7 @@ export function PrescriptionAddWebView() {
       .filter((row) => row.medication_name.length > 0);
 
     if (!cleaned.length) {
-      Alert.alert(
+      showAppAlert(
         isRTL ? "أدوية مطلوبة" : "Medications required",
         isRTL ? "أضف دواء واحدًا على الأقل." : "Add at least one medication.",
       );
@@ -273,11 +293,17 @@ export function PrescriptionAddWebView() {
     try {
       let imageUrl: string | undefined;
       if (scanAsset) {
-        const uploaded = await uploadFile(
+        const normalized = normalizePrescriptionScanFile(
           scanAsset.uri,
           scanAsset.mimeType,
           scanAsset.fileName,
+        );
+        const uploaded = await uploadFile(
+          normalized.uri,
+          normalized.mimeType,
+          normalized.fileName,
           accessToken,
+          scanAsset.webFile,
         );
         imageUrl = uploaded.url;
       }
@@ -297,9 +323,10 @@ export function PrescriptionAddWebView() {
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);
-      router.back();
+      showSuccessToast(isRTL ? "تم الحفظ" : "Saved");
+      exitAfterSave();
     } catch (e) {
-      Alert.alert(
+      showAppAlert(
         isRTL ? "فشل الحفظ" : "Save failed",
         e instanceof Error ? e.message : isRTL ? "حاول مرة أخرى." : "Please try again.",
       );
@@ -311,14 +338,21 @@ export function PrescriptionAddWebView() {
   const saveButton = (
     <Pressable
       testID="save-btn"
+      accessibilityRole="button"
       onPress={() => void handleSave()}
       disabled={busy}
-      style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: busy ? 0.7 : 1 }]}
+      style={[
+        styles.saveBtn,
+        Platform.OS === "web" && styles.saveBtnWeb,
+        { backgroundColor: colors.primary, opacity: busy ? 0.7 : 1 },
+      ]}
     >
       {saving ? (
         <ActivityIndicator color="#fff" testID="saving-indicator" />
       ) : (
-        <Text style={styles.saveBtnText}>{t.common.save}</Text>
+        <Text style={styles.saveBtnText} pointerEvents="none">
+          {t.common.save}
+        </Text>
       )}
     </Pressable>
   );
@@ -559,17 +593,22 @@ export function PrescriptionAddWebView() {
               ))}
             </View>
           </SectionCard>
-
-          <View style={[styles.footerActions, { flexDirection: dir }]}>
-            <Pressable onPress={handleCancel} disabled={busy} style={styles.cancelBtn}>
-              <Text style={{ color: colors.mutedForeground, fontWeight: "600" }}>
-                {t.common.cancel}
-              </Text>
-            </Pressable>
-            {saveButton}
-          </View>
         </View>
       </ScrollView>
+
+      <View
+        style={[
+          styles.stickyFooter,
+          { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: dir },
+        ]}
+      >
+        <Pressable onPress={handleCancel} disabled={busy} style={styles.cancelBtn}>
+          <Text style={{ color: colors.mutedForeground, fontWeight: "600" }}>
+            {t.common.cancel}
+          </Text>
+        </Pressable>
+        {saveButton}
+      </View>
     </View>
   );
 }
@@ -607,6 +646,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  saveBtnWeb: {
+    cursor: "pointer",
+  } as ViewStyle,
   saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   sectionCard: {
     borderWidth: 1,
@@ -680,11 +722,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  footerActions: {
+  stickyFooter: {
     alignItems: "center",
     justifyContent: "flex-end",
     gap: 12,
-    paddingTop: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
   },
   cancelBtn: {
     paddingHorizontal: 16,
