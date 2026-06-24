@@ -1,5 +1,6 @@
 import { AppState, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { shouldSuppressAiPush } from "@/domains/ai/push-suppression";
 import {
   clearPushTokenRegistrationCache,
   registerPushToken,
@@ -8,15 +9,33 @@ import { unregisterPushToken } from "@/domains/push/api";
 import { ensureChatPushChannel } from "@/domains/push/expoPush";
 import type { PushBootstrapContext, PushProvider } from "@/domains/push/providers/types";
 
+function shouldSuppressForegroundAiPush(data: Record<string, unknown> | undefined): boolean {
+  if (data?.type !== "ai") return false;
+  const chatId = String(data.chatId ?? data.chat_id ?? "");
+  return shouldSuppressAiPush(chatId);
+}
+
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    // ponytail: suppress system popup in foreground; in-app banner handles it instead
-    shouldShowAlert: false,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: false,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data as Record<string, unknown>;
+    if (shouldSuppressForegroundAiPush(data)) {
+      return {
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    }
+    return {
+      // ponytail: suppress system popup in foreground; in-app banner handles chat instead
+      shouldShowAlert: false,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: false,
+      shouldShowList: true,
+    };
+  },
 });
 
 // ponytail: module-level set prevents double-navigation when subscribe() re-runs
@@ -68,6 +87,7 @@ export class ExpoPushProvider implements PushProvider {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const content = notification.request.content;
       const data = content.data as Record<string, unknown>;
+      if (shouldSuppressForegroundAiPush(data)) return;
       if (data?.type !== "chat") return;
       onForegroundChat({
         peerId: String(data.chatId ?? ""),

@@ -7,6 +7,7 @@ import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import { AUTH_EVENTS } from "@/domains/auth/events";
@@ -98,7 +99,10 @@ export default function WelcomeScreenWeb() {
             <View style={styles.backBtnPlaceholder} />
           )}
           <View style={styles.actionTopSpacer} />
-          <AuthLanguageField />
+          <View style={[styles.topActions, { flexDirection: dir }]}>
+            <MobileAppLink variant="toolbar" />
+            <AuthLanguageField />
+          </View>
         </View>
 
         <ScrollView
@@ -221,6 +225,10 @@ const styles = StyleSheet.create({
     height: 34,
   },
   actionTopSpacer: { flex: 1 },
+  topActions: {
+    alignItems: "center",
+    gap: 10,
+  },
   actionScroll: {
     flex: 1,
     minHeight: 0,

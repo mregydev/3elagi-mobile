@@ -250,6 +250,14 @@ const en = {
     doctorAccount: "Doctor account",
     patientAccount: "Patient account",
   },
+  mobileApp: {
+    linkLabel: "Get the Android app",
+    modalTitle: "Download 3elagi for Android",
+    modalSubtitle: "Scan the QR code or open the link on your phone.",
+    openLink: "Open Android download link",
+    close: "Close",
+    qrAlt: "QR code to download the 3elagi Android app",
+  },
   reviews: {
     title: "My Reviews",
     empty: "No reviews yet",
@@ -566,6 +574,14 @@ const ar: typeof en = {
     logoutConfirm: "هل أنت متأكد؟",
     doctorAccount: "حساب طبيب",
     patientAccount: "حساب مريض",
+  },
+  mobileApp: {
+    linkLabel: "حمّل تطبيق أندرويد",
+    modalTitle: "حمّل تطبيق 3elagi لأندرويد",
+    modalSubtitle: "امسح رمز QR أو افتح الرابط على هاتفك.",
+    openLink: "فتح رابط تحميل أندرويد",
+    close: "إغلاق",
+    qrAlt: "رمز QR لتحميل تطبيق 3elagi على أندرويد",
   },
   reviews: {
     title: "تقييماتي",

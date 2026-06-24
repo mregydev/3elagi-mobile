@@ -1,6 +1,11 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { Redirect, useLocalSearchParams } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { AssistantMobileView } from "@/components/assistant/AssistantMobileView";
+import {
+  setActiveAiChatId,
+  setAssistantScreenActive,
+} from "@/domains/ai/push-suppression";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
@@ -13,10 +18,26 @@ export default function AssistantScreen() {
   const signedIn = isSignedIn(profile, accessToken);
   const assistant = useAiAssistant();
 
+  useFocusEffect(
+    useCallback(() => {
+      setAssistantScreenActive(true);
+      return () => setAssistantScreenActive(false);
+    }, []),
+  );
+
   useEffect(() => {
-    if (typeof chatId !== "string" || !chatId) return;
-    assistant.setActiveId(chatId);
+    if (typeof chatId === "string" && chatId) {
+      assistant.setActiveId(chatId);
+    }
   }, [chatId, assistant.setActiveId]);
+
+  useEffect(() => {
+    if (!assistant.activeId || assistant.activeId.startsWith("draft-")) {
+      setActiveAiChatId(null);
+      return;
+    }
+    setActiveAiChatId(assistant.activeId);
+  }, [assistant.activeId]);
 
   if (!hydrated) return null;
   if (!signedIn) return <Redirect href="/welcome" />;

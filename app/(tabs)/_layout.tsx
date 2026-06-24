@@ -53,6 +53,7 @@ export default function TabsLayout() {
         options={{
           title: t.tabs.assistant,
           tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
+          tabBarHideOnKeyboard: false,
         }}
       />
       <Tabs.Screen
