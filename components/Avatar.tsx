@@ -1,4 +1,4 @@
-import { defaultAvatarUrl, resolveAvatarUrl } from "@/domains/chat/avatar";
+import { resolveMediaUrl } from "@/domains/chat/avatar";
 import type { Presence } from "@/domains/chat/types";
 import { UserRound } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -38,19 +38,18 @@ export function Avatar({
   const dot = Math.max(14, Math.round(size * 0.28));
   const trimmed = uri?.trim();
   const [imageFailed, setImageFailed] = useState(false);
-  const showDoctorPlaceholder = role === "doctor" && (!trimmed || imageFailed);
-  const resolvedUri = showDoctorPlaceholder
-    ? null
-    : resolveAvatarUrl(uri, seed, role);
-  const [imageUri, setImageUri] = useState(resolvedUri);
+  const showPersonPlaceholder = !trimmed || imageFailed;
+  const imageUri =
+    trimmed && !imageFailed ? resolveMediaUrl(trimmed) : null;
+  const [loadedUri, setLoadedUri] = useState(imageUri);
 
   useEffect(() => {
     setImageFailed(false);
   }, [uri]);
 
   useEffect(() => {
-    setImageUri(resolvedUri);
-  }, [resolvedUri]);
+    setLoadedUri(imageUri);
+  }, [imageUri]);
 
   const showDot = presence === "online" || presence === "away";
   const showOfflineDot = presence === "offline";
@@ -78,7 +77,7 @@ export function Avatar({
       ]}
     >
       <View style={{ width: size, height: size }}>
-        {showDoctorPlaceholder ? (
+        {showPersonPlaceholder ? (
           <View
             style={[
               avatarCircleStyle,
@@ -92,14 +91,8 @@ export function Avatar({
           </View>
         ) : (
           <Image
-            source={{ uri: imageUri ?? undefined }}
-            onError={() => {
-              if (role === "doctor") {
-                setImageFailed(true);
-                return;
-              }
-              setImageUri(defaultAvatarUrl(seed, role));
-            }}
+            source={{ uri: loadedUri ?? undefined }}
+            onError={() => setImageFailed(true)}
             style={avatarCircleStyle}
           />
         )}

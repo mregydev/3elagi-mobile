@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Camera, LogOut } from "lucide-react-native";
+import { Camera, LogOut, UserRound } from "lucide-react-native";
 import React from "react";
 import {
   ActivityIndicator,
@@ -92,17 +92,29 @@ export function ProfileEditor({
                 accessibilityRole="button"
                 accessibilityLabel={isRTL ? "تغيير الصورة" : "Change profile photo"}
               >
-                <Image
-                  source={{
-                    uri:
-                      displayPhoto ||
-                      "https://api.dicebear.com/9.x/avataaars/png?seed=anon",
-                  }}
-                  style={[
-                    styles.avatar,
-                    { backgroundColor: colors.muted, borderColor: colors.border },
-                  ]}
-                />
+                {displayPhoto ? (
+                  <Image
+                    source={{ uri: displayPhoto }}
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: colors.muted, borderColor: colors.border },
+                    ]}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.avatar,
+                      {
+                        backgroundColor: colors.muted,
+                        borderColor: colors.border,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                    ]}
+                  >
+                    <UserRound size={34} color={colors.mutedForeground} />
+                  </View>
+                )}
                 <View style={[styles.avatarBadge, { backgroundColor: colors.primary }]}>
                   <Camera size={14} color="#fff" />
                 </View>

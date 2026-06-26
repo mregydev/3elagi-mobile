@@ -10,7 +10,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Camera } from "lucide-react-native";
+import { Camera, UserRound } from "lucide-react-native";
 import { MessagePricePicker } from "@/components/MessagePricePicker";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -116,17 +116,29 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
           >
             <View style={[styles.heroRow, { flexDirection: dir }]}>
               <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
-                <Image
-                  source={{
-                    uri:
-                      displayPhoto ||
-                      "https://api.dicebear.com/9.x/avataaars/png?seed=anon",
-                  }}
-                  style={[
-                    styles.avatar,
-                    { backgroundColor: colors.muted, borderColor: colors.border },
-                  ]}
-                />
+                {displayPhoto ? (
+                  <Image
+                    source={{ uri: displayPhoto }}
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: colors.muted, borderColor: colors.border },
+                    ]}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.avatar,
+                      {
+                        backgroundColor: colors.muted,
+                        borderColor: colors.border,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                    ]}
+                  >
+                    <UserRound size={40} color={colors.mutedForeground} />
+                  </View>
+                )}
                 <View style={[styles.avatarBadge, { backgroundColor: colors.primary }]}>
                   <Camera size={16} color="#fff" />
                 </View>
