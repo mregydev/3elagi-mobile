@@ -21,6 +21,7 @@ import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
+import { getPostAuthRoute } from "@/domains/auth/navigation";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
 import {
   hasFieldErrors,
@@ -199,7 +200,8 @@ export default function SignupScreen() {
         specialityId: isDoctor ? specialityId : undefined,
         messagePrice: isDoctor ? messagePrice : undefined,
       });
-      router.replace(isDoctor ? "/doctor-pending" : "/(tabs)");
+      const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
+      router.replace(getPostAuthRoute(signedRole, doctorApprovalStatus));
     } catch (e) {
       setFormError((e as Error).message || t.auth.genericError);
     }

@@ -1,5 +1,6 @@
 import { defaultAvatarUrl, resolveAvatarUrl } from "@/domains/chat/avatar";
 import type { Presence } from "@/domains/chat/types";
+import { UserRound } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
@@ -35,8 +36,17 @@ export function Avatar({
 }: Props) {
   const colors = useColors();
   const dot = Math.max(14, Math.round(size * 0.28));
-  const resolvedUri = resolveAvatarUrl(uri, seed, role);
+  const trimmed = uri?.trim();
+  const [imageFailed, setImageFailed] = useState(false);
+  const showDoctorPlaceholder = role === "doctor" && (!trimmed || imageFailed);
+  const resolvedUri = showDoctorPlaceholder
+    ? null
+    : resolveAvatarUrl(uri, seed, role);
   const [imageUri, setImageUri] = useState(resolvedUri);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [uri]);
 
   useEffect(() => {
     setImageUri(resolvedUri);
@@ -45,6 +55,15 @@ export function Avatar({
   const showDot = presence === "online" || presence === "away";
   const showOfflineDot = presence === "offline";
   const isOnlineHighlight = highlightOnline && presence === "online";
+
+  const avatarCircleStyle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  } as const;
 
   return (
     <View
@@ -59,18 +78,31 @@ export function Avatar({
       ]}
     >
       <View style={{ width: size, height: size }}>
-        <Image
-          source={{ uri: imageUri }}
-          onError={() => setImageUri(defaultAvatarUrl(seed, role))}
-          style={{
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            backgroundColor: colors.muted,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        />
+        {showDoctorPlaceholder ? (
+          <View
+            style={[
+              avatarCircleStyle,
+              { alignItems: "center", justifyContent: "center" },
+            ]}
+          >
+            <UserRound
+              size={Math.round(size * 0.46)}
+              color={colors.mutedForeground}
+            />
+          </View>
+        ) : (
+          <Image
+            source={{ uri: imageUri ?? undefined }}
+            onError={() => {
+              if (role === "doctor") {
+                setImageFailed(true);
+                return;
+              }
+              setImageUri(defaultAvatarUrl(seed, role));
+            }}
+            style={avatarCircleStyle}
+          />
+        )}
         {showDot || showOfflineDot ? (
           <View
             style={[

@@ -1,6 +1,7 @@
-import React from "react";
+import { UserRound } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
-import { defaultAvatarUrl } from "@/domains/chat/avatar";
+import { resolveMediaUrl } from "@/domains/chat/avatar";
 import { useColors } from "@/hooks/useColors";
 
 interface Props {
@@ -14,26 +15,56 @@ interface Props {
 export function DoctorProfilePhoto({ photoUrl, userId, size = 96 }: Props) {
   const colors = useColors();
   const trimmed = photoUrl?.trim();
-  const uri = trimmed || defaultAvatarUrl(userId, "doctor");
+  const [imageFailed, setImageFailed] = useState(false);
+  const showPlaceholder = !trimmed || imageFailed;
+  const uri = trimmed ? resolveMediaUrl(trimmed) : null;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [photoUrl]);
 
   return (
     <View style={[styles.wrap, { width: size, height: size }]}>
-      <Image
-        key={uri}
-        source={{ uri }}
-        style={[
-          styles.image,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            borderColor: colors.border,
-            backgroundColor: colors.muted,
-          },
-        ]}
-        resizeMode="cover"
-        accessibilityLabel="Doctor profile photo"
-      />
+      {showPlaceholder ? (
+        <View
+          style={[
+            styles.image,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              borderColor: colors.border,
+              backgroundColor: colors.muted,
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
+          accessibilityLabel="Doctor profile photo"
+        >
+          <UserRound
+            size={Math.round(size * 0.46)}
+            color={colors.mutedForeground}
+          />
+        </View>
+      ) : (
+        <Image
+          key={uri ?? userId}
+          source={{ uri: uri ?? undefined }}
+          onError={() => setImageFailed(true)}
+          style={[
+            styles.image,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              borderColor: colors.border,
+              backgroundColor: colors.muted,
+            },
+          ]}
+          resizeMode="cover"
+          accessibilityLabel="Doctor profile photo"
+        />
+      )}
     </View>
   );
 }

@@ -2,7 +2,7 @@ import { API_BASE } from "@/constants/api";
 
 /** Consistent default avatar when user has no photo_url. */
 export function defaultAvatarUrl(userId: string, role?: "doctor" | "patient"): string {
-  const style = role === "doctor" ? "initials" : "avataaars";
+  const style = "avataaars";
   return `https://api.dicebear.com/9.x/${style}/png?seed=${encodeURIComponent(userId)}`;
 }
 
