@@ -53,12 +53,14 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
             {t.mobileApp.modalSubtitle}
           </Text>
 
-          <Image
-            source={ANDROID_APP_QR}
-            style={styles.qr}
-            contentFit="contain"
-            accessibilityLabel={t.mobileApp.qrAlt}
-          />
+          <View style={styles.qrWrap}>
+            <Image
+              source={ANDROID_APP_QR}
+              style={styles.qr}
+              contentFit="contain"
+              accessibilityLabel={t.mobileApp.qrAlt}
+            />
+          </View>
         </View>
       </View>
     </Modal>
@@ -98,6 +100,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 8,
+    marginHorizontal: 8,
   },
   header: {
     flexDirection: "row",
@@ -119,10 +122,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  qr: {
-    width: 220,
-    height: 220,
+  qrWrap: {
     alignSelf: "center",
-    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 4,
+  },
+  qr: {
+    width: 200,
+    height: 200,
+    alignSelf: "center",
   },
 });

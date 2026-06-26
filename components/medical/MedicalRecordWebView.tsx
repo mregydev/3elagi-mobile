@@ -131,7 +131,7 @@ function SectionCard({
 export function MedicalRecordWebView() {
   const colors = useColors();
   const { isRTL } = useI18n();
-  const { isDesktop, isTablet } = useWebLayout();
+  const { isDesktop, isTablet, isMobile } = useWebLayout();
   const dateLocale = localeTag(isRTL);
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -175,6 +175,7 @@ export function MedicalRecordWebView() {
   const infoColumns = isDesktop ? 3 : isTablet ? 2 : 1;
   const hasMedia = (isLabOrXray || isPrescription) && !!record?.fileUrl;
   const showSplitLayout = isDesktop && hasMedia;
+  const mediaImageStyle = isMobile ? styles.mediaImageMobile : styles.mediaImage;
 
   if (needsDoctorAccess && !accessChecked) {
     return (
@@ -270,7 +271,7 @@ export function MedicalRecordWebView() {
           onPress={() => record.fileUrl && setZoomImageUri(record.fileUrl)}
           style={[styles.mediaCard, { borderColor: colors.border, backgroundColor: colors.card }]}
         >
-          <Image source={{ uri: record.fileUrl }} style={styles.mediaImage} resizeMode="cover" />
+          <Image source={{ uri: record.fileUrl }} style={mediaImageStyle} resizeMode="cover" />
           <Text style={[styles.mediaHint, { color: colors.mutedForeground, textAlign }]}>
             {isRTL ? "اضغط للتكبير" : "Click to zoom"}
           </Text>
@@ -662,16 +663,26 @@ export function MedicalRecordWebView() {
     <View style={[styles.page, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isDesktop && styles.scrollContentDesktop,
+          isMobile && styles.scrollContentMobile,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
           {/* Toolbar */}
-          <View style={[styles.toolbar, { flexDirection: dir }]}>
+          <View
+            style={[
+              styles.toolbar,
+              { flexDirection: isMobile ? "column" : dir },
+              isMobile && styles.toolbarMobile,
+            ]}
+          >
             <Pressable
               testID="medical-record-back"
               onPress={goBack}
-              style={[styles.backBtn, { flexDirection: dir }]}
+              style={[styles.backBtn, { flexDirection: dir, alignSelf: isMobile ? "flex-start" : undefined }]}
             >
               {isRTL ? (
                 <ArrowRight size={18} color={colors.primary} />
@@ -683,7 +694,13 @@ export function MedicalRecordWebView() {
               </Text>
             </Pressable>
 
-            <View style={[styles.toolbarActions, { flexDirection: dir }]}>
+            <View
+              style={[
+                styles.toolbarActions,
+                { flexDirection: dir },
+                isMobile && styles.toolbarActionsMobile,
+              ]}
+            >
               <View style={[styles.categoryPill, { backgroundColor: `${color}14`, flexDirection: dir }]}>
                 <Icon size={15} color={color} />
                 <Text style={[styles.categoryPillText, { color }]}>{label}</Text>
@@ -707,14 +724,26 @@ export function MedicalRecordWebView() {
           <View
             style={[
               styles.hero,
-              { backgroundColor: colors.card, borderColor: colors.border, flexDirection: dir },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                flexDirection: isMobile ? "column" : dir,
+                alignItems: isMobile ? "flex-start" : "center",
+              },
+              isMobile && styles.heroMobile,
             ]}
           >
             <View style={[styles.heroIcon, { backgroundColor: `${color}18` }]}>
               <Icon size={28} color={color} />
             </View>
-            <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.heroTitle, { color: colors.foreground, textAlign }]}>
+            <View style={{ flex: 1, gap: 6, minWidth: 0, width: isMobile ? "100%" : undefined }}>
+              <Text
+                style={[
+                  styles.heroTitle,
+                  { color: colors.foreground, textAlign },
+                  isMobile && styles.heroTitleMobile,
+                ]}
+              >
                 {isDiagnosis && editingDiagnosis && canEditDiagnosis
                   ? editDesc || record.title
                   : record.title}
@@ -805,9 +834,10 @@ export function MedicalRecordWebView() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
+  page: { flex: 1, minHeight: 0 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 48 },
+  scrollContentMobile: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 32 },
   scrollContentDesktop: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 64 },
   container: { width: "100%", alignSelf: "center", gap: 20 },
   loadingBody: { alignItems: "center", justifyContent: "center", paddingVertical: 80 },
@@ -818,7 +848,15 @@ const styles = StyleSheet.create({
     gap: 16,
     flexWrap: "wrap",
   },
+  toolbarMobile: {
+    alignItems: "stretch",
+    gap: 12,
+  },
   toolbarActions: { alignItems: "center", gap: 10, flexWrap: "wrap" },
+  toolbarActionsMobile: {
+    width: "100%",
+    justifyContent: "space-between",
+  },
   backBtn: { alignItems: "center", gap: 8, paddingVertical: 4 },
   backText: { fontSize: 14, fontWeight: "600" },
   categoryPill: {
@@ -848,6 +886,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
+  heroMobile: {
+    padding: 16,
+    gap: 12,
+  },
   heroIcon: {
     width: 56,
     height: 56,
@@ -856,6 +898,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   heroTitle: { fontSize: 26, fontWeight: "800", lineHeight: 32 },
+  heroTitleMobile: { fontSize: 20, lineHeight: 26 },
   heroSubtitle: { fontSize: 15, fontWeight: "600" },
 
   splitRow: { gap: 20, alignItems: "flex-start" },
@@ -867,7 +910,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: "hidden",
   },
-  mediaImage: { width: "100%", height: 320 },
+  mediaImage: { width: "100%", height: 320, maxHeight: 360 },
+  mediaImageMobile: { width: "100%", height: 220, maxHeight: 280 },
   mediaHint: { fontSize: 12, padding: 10, textAlign: "center" },
   fileCard: {
     borderRadius: 16,

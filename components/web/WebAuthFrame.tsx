@@ -4,6 +4,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { WebAuthBackground } from "@/components/web/WebAuthBackground";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -36,7 +37,7 @@ export function WebAuthFrame({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop, isTablet, isWide } = useWebLayout();
+  const { isDesktop, isMobile, isTablet, isWide } = useWebLayout();
   const textAlign = isRTL ? "right" : "left";
 
   const panelWidth = isWide
@@ -47,10 +48,18 @@ export function WebAuthFrame({
         ? 760
         : "100%";
 
+  const pagePadding = isMobile ? 16 : isTablet ? 24 : 32;
+
   return (
     <WebAuthBackground variant={backgroundVariant} heroOverlayOpacity={heroOverlayOpacity}>
       <View style={[styles.page, scrollForm && styles.pageForm]}>
-        <View style={[styles.scrollBody, scrollForm && styles.scrollBodyForm]}>
+        <View
+          style={[
+            styles.scrollBody,
+            scrollForm && styles.scrollBodyForm,
+            { paddingHorizontal: pagePadding, paddingVertical: isMobile ? 16 : 24 },
+          ]}
+        >
         <View
           style={[
             styles.center,
@@ -72,7 +81,10 @@ export function WebAuthFrame({
             >
               <ArrowLeft size={22} color={colors.foreground} />
             </Pressable>
-            <AuthLanguageField />
+            <View style={[styles.pageTopActions, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <MobileAppLink variant="toolbar" />
+              <AuthLanguageField />
+            </View>
           </View>
 
           <View
@@ -80,6 +92,7 @@ export function WebAuthFrame({
               styles.panel,
               isDesktop && !scrollForm && styles.panelDesktop,
               scrollForm && styles.panelForm,
+              isMobile && styles.panelMobile,
               {
                 backgroundColor: colors.card,
                 borderColor: colors.border,
@@ -159,8 +172,6 @@ const styles = StyleSheet.create({
     minHeight: "100%",
     width: "100%",
     alignItems: "center",
-    paddingHorizontal: 32,
-    paddingVertical: 24,
   },
   scrollBodyForm: {
     height: "100%",
@@ -183,6 +194,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 4,
     paddingBottom: 4,
+    gap: 8,
+  },
+  pageTopActions: {
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 1,
   },
   backBtn: {
     padding: 6,
@@ -195,6 +212,9 @@ const styles = StyleSheet.create({
   },
   panelDesktop: {
     minHeight: 720,
+  },
+  panelMobile: {
+    borderRadius: 16,
   },
   panelForm: {
     flex: 1,

@@ -7,12 +7,14 @@ export function useWebLayout() {
   const isTablet = width >= WEB_BREAKPOINTS.tablet;
   const isDesktop = width >= WEB_BREAKPOINTS.desktop;
   const isWide = width >= WEB_BREAKPOINTS.wide;
+  const isMobile = width < WEB_BREAKPOINTS.tablet;
 
   const gridColumns = isWide ? 4 : isDesktop ? 3 : isTablet ? 3 : 2;
 
   return {
     width,
     height,
+    isMobile,
     isTablet,
     isDesktop,
     isWide,

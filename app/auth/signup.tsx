@@ -37,7 +37,7 @@ export default function SignupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
 
@@ -230,7 +230,14 @@ export default function SignupScreen() {
         </View>
       ) : null}
 
-      <KeyboardSafeScrollView style={styles.flex} contentContainerStyle={styles.body} bottomOffset={32}>
+      <KeyboardSafeScrollView
+        style={styles.flex}
+        contentContainerStyle={[
+          styles.body,
+          Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
+        ]}
+        bottomOffset={32}
+      >
         {!hideIntro ? (
           <>
             <Text style={[styles.title, { color: colors.foreground }]}>
@@ -539,6 +546,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 40 : 40,
   },
+  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4, textAlign: "center" },
   roleRow: { gap: 10, width: "100%" },

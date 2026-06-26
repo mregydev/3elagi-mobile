@@ -12,6 +12,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (max-width: 1023px) {
+  body {
+    overflow: auto;
+  }
+}
+
 #root {
   display: flex;
   flex-direction: column;

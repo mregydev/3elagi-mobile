@@ -17,12 +17,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import {
   MedicalRecordAddBar,
   MEDICAL_RECORD_ADD_BAR_HEIGHT,
-  MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT,
 } from "@/components/records/MedicalRecordAddBar";
 import {
   getCategoryMeta,
@@ -70,8 +68,7 @@ export function RecordsWebView() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
-  const tabBarHeight = useBottomTabBarHeight();
-  const tabBarOffset = isDesktop ? 0 : tabBarHeight;
+  const mobileAddBarOffset = isDesktop ? 0 : MEDICAL_RECORD_ADD_BAR_HEIGHT + 12;
   const { records, profile } = useRecordsPage();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -149,9 +146,7 @@ export function RecordsWebView() {
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
           {
-            paddingBottom: isDesktop
-              ? 32
-              : MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT + tabBarOffset + 16,
+            paddingBottom: isDesktop ? 32 : mobileAddBarOffset,
           },
         ]}
       >
@@ -385,8 +380,8 @@ export function RecordsWebView() {
       </ScrollView>
 
       {!isDesktop ? (
-        <View style={[styles.webDock, { bottom: tabBarOffset }]}>
-          <MedicalRecordAddBar onAdd={openAdd} layout="web-dock" />
+        <View style={styles.mobileDock}>
+          <MedicalRecordAddBar onAdd={openAdd} layout="dock" />
         </View>
       ) : null}
     </View>
@@ -587,12 +582,11 @@ function RecordTimelineItem({
 
 const styles = StyleSheet.create({
   page: { flex: 1, minHeight: 0, width: "100%", position: "relative" },
-  webDock: {
+  mobileDock: {
     position: "absolute",
     left: 0,
     right: 0,
-    alignItems: "center",
-    paddingHorizontal: 20,
+    bottom: 0,
     zIndex: 100,
   },
   scroll: { flex: 1 },

@@ -30,7 +30,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isMobile } = useWebLayout();
   const login = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
   const [email, setEmail] = useState("");
@@ -90,7 +90,14 @@ export default function LoginScreen() {
           <AuthLanguageField />
         </View>
       ) : null}
-      <KeyboardSafeScrollView style={styles.flex} contentContainerStyle={styles.body} bottomOffset={32}>
+      <KeyboardSafeScrollView
+        style={styles.flex}
+        contentContainerStyle={[
+          styles.body,
+          Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
+        ]}
+        bottomOffset={32}
+      >
         {!hideIntro ? (
           <>
             <Text style={[styles.title, { color: colors.foreground }]}>
@@ -190,6 +197,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: { padding: 24, alignItems: "center", paddingBottom: Platform.OS === "web" ? 32 : 24 },
+  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
   btn: {

@@ -2,6 +2,7 @@ import { Send } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -17,6 +18,8 @@ interface Props {
   bottomInset?: number;
   /** Tighter padding for mobile tab screens (no extra safe-area bottom). */
   compact?: boolean;
+  /** Mobile web: remove bottom padding so the composer sits on the tab bar. */
+  flushWebFooter?: boolean;
   onSend: (text: string) => void;
 }
 
@@ -26,10 +29,13 @@ export function AssistantComposer({
   placeholder = "Ask about your medical records…",
   bottomInset = 0,
   compact = false,
+  flushWebFooter = false,
   onSend,
 }: Props) {
   const colors = useColors();
   const [text, setText] = useState("");
+  const webFlush = flushWebFooter && Platform.OS === "web" && compact;
+  const bottomPadding = webFlush ? 0 : (compact ? 6 : 12) + bottomInset;
 
   const submit = () => {
     const value = text.trim();
@@ -45,7 +51,7 @@ export function AssistantComposer({
         {
           borderTopColor: colors.border,
           backgroundColor: colors.card,
-          paddingBottom: (compact ? 6 : 12) + bottomInset,
+          paddingBottom: bottomPadding,
         },
       ]}
     >

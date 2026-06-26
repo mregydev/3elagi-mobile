@@ -26,10 +26,10 @@ type WelcomePanel = "home" | "login" | "signup";
 export default function WelcomeScreenWeb() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { width, isDesktop } = useWebLayout();
+  const { isDesktop, isMobile, isTablet } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
-  const stackVertical = width < WEB_BREAKPOINTS.tablet;
+  const stackVertical = !isTablet;
   const [panel, setPanel] = useState<WelcomePanel>("home");
   const showForm = panel !== "home";
 
@@ -81,7 +81,7 @@ export default function WelcomeScreenWeb() {
           stackVertical && styles.actionPaneFull,
         ]}
       >
-        <View style={[styles.actionTopBar, { flexDirection: dir }]}>
+        <View style={[styles.actionTopBar, { flexDirection: dir, paddingHorizontal: isMobile ? 16 : 20 }]}>
           {showForm ? (
             <Pressable
               onPress={() => setPanel("home")}
@@ -109,6 +109,7 @@ export default function WelcomeScreenWeb() {
           style={styles.actionScroll}
           contentContainerStyle={[
             styles.actionScrollContent,
+            { paddingHorizontal: isMobile ? 16 : 24 },
             !showForm && styles.actionScrollContentCentered,
           ]}
           keyboardShouldPersistTaps="handled"
@@ -121,7 +122,13 @@ export default function WelcomeScreenWeb() {
                 centered
               />
 
-              <Text style={[styles.ctaTitle, { color: colors.foreground, textAlign }]}>
+              <Text
+                style={[
+                  styles.ctaTitle,
+                  { color: colors.foreground, textAlign },
+                  isMobile && styles.ctaTitleMobile,
+                ]}
+              >
                 {t.auth.welcomeCtaTitle}
               </Text>
               <Text style={[styles.ctaSubtitle, { color: colors.mutedForeground, textAlign }]}>
@@ -210,7 +217,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionTopBar: {
-    paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
     alignItems: "center",
@@ -235,7 +241,6 @@ const styles = StyleSheet.create({
   },
   actionScrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
     paddingBottom: 32,
   },
   actionScrollContentCentered: {
@@ -267,6 +272,10 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.4,
     marginTop: 8,
+  },
+  ctaTitleMobile: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   ctaSubtitle: {
     fontSize: 15,

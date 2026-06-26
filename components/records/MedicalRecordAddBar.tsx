@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import {
   getAddMedicalCategories,
@@ -37,6 +37,7 @@ function MobileAddBar({
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
   const categories = getAddMedicalCategories(showDiagnosis);
+  const flushWebDock = Platform.OS === "web" && layout === "dock";
 
   const dockStyle: ViewStyle | undefined =
     layout === "dock"
@@ -53,6 +54,7 @@ function MobileAddBar({
       style={[
         styles.mobileWrap,
         layout === "inline" && styles.mobileWrapInline,
+        flushWebDock && styles.mobileWrapWebDock,
         dockStyle,
         {
           backgroundColor: layout === "dock" ? colors.card : "transparent",
@@ -203,6 +205,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
     marginBottom: 12,
+  },
+  mobileWrapWebDock: {
+    paddingBottom: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   tray: {
     borderRadius: 14,

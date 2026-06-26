@@ -43,6 +43,10 @@ interface Props {
   onRetry: () => void;
   selfUserId?: string | null;
   onToggleMessageEmotion?: (messageId: string, emotion: AiFeedbackType) => void;
+  /** Extra bottom inset for native tab screens that need it. */
+  bottomTabInset?: number;
+  /** Mobile web: sit flush on the bottom tab bar (no extra gap). */
+  flushWebFooter?: boolean;
 }
 
 export function AssistantMobileView({
@@ -61,6 +65,8 @@ export function AssistantMobileView({
   onRetry,
   selfUserId,
   onToggleMessageEmotion,
+  bottomTabInset = 0,
+  flushWebFooter = false,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -324,7 +330,8 @@ export function AssistantMobileView({
           compact
           sending={sending}
           disabled={loadingHistory}
-          bottomInset={0}
+          bottomInset={bottomTabInset}
+          flushWebFooter={flushWebFooter}
           placeholder={
             isDoctor
               ? isEn

@@ -19,6 +19,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { alignText, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
 
@@ -95,6 +96,7 @@ function isHomePath(path: string) {
 export function WebSidebar() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const router = useRouter();
   const pathname = usePathname();
   const role = useAuthStore((s) => s.role);
@@ -119,6 +121,8 @@ export function WebSidebar() {
       active: item.Icon === Home ? isHomePath(pathname) : item.match(pathname),
     }),
   );
+
+  if (!isDesktop) return null;
 
   return (
     <View
