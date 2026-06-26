@@ -23,7 +23,6 @@ export default function ProfileTabWeb() {
       role={role ?? "patient"}
       isRTL={isRTL}
       colors={colors}
-      showLogout={false}
     />
   );
 }

@@ -10,14 +10,19 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Camera, UserRound } from "lucide-react-native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useRouter } from "expo-router";
+import { Camera, LogOut, UserRound } from "lucide-react-native";
 import { MessagePricePicker } from "@/components/MessagePricePicker";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { navigateToWelcome } from "@/domains/auth/navigation";
+import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { webConfirm } from "@/utils/webConfirm";
 
 interface Props {
   accessToken: string;
@@ -50,7 +55,11 @@ function spanStyle(columns: number, span: number): ViewStyle {
 
 export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props) {
   const { t } = useI18n();
+  const router = useRouter();
+  const logout = useAuthStore((s) => s.logout);
   const { isWide, isDesktop, isTablet } = useWebLayout();
+  const tabBarHeight = useBottomTabBarHeight();
+  const showLogout = !isDesktop;
   const columns = gridColumns(isWide, isDesktop, isTablet);
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -82,6 +91,51 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
   const roleLabel = isDoctor ? t.auth.doctor : t.auth.patient;
   const showSplitCards = columns >= 2;
 
+  const handleLogout = () => {
+    const confirmed = webConfirm(t.tabs.logout, t.tabs.logoutConfirm);
+    if (!confirmed) return;
+    logout();
+    navigateToWelcome(router);
+  };
+
+  const actionButtons = (
+    <View
+      style={[
+        showLogout ? styles.mobileActions : styles.footerInner,
+        !showLogout && { maxWidth: WEB_MAX_WIDTH.profile, flexDirection: dir, gap: 10 },
+      ]}
+    >
+      <Pressable
+        onPress={() => void save()}
+        disabled={saving}
+        style={[
+          styles.saveBtn,
+          { backgroundColor: colors.primary, opacity: saving ? 0.7 : 1 },
+          showLogout ? styles.mobileFullBtn : null,
+        ]}
+      >
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveBtnText}>{t.settings.saveChanges}</Text>
+        )}
+      </Pressable>
+      {showLogout ? (
+        <Pressable
+          onPress={handleLogout}
+          style={[
+            styles.logoutBtn,
+            styles.mobileFullBtn,
+            { borderColor: colors.border, flexDirection: dir },
+          ]}
+        >
+          <LogOut size={16} color="#ef4444" />
+          <Text style={styles.logoutText}>{t.tabs.logout}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={[styles.page, { backgroundColor: colors.background }]}>
@@ -94,7 +148,10 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     <View style={[styles.page, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          showLogout && { paddingBottom: tabBarHeight + 12 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.profile }]}>
@@ -333,35 +390,24 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               <ProfileLanguageField embedded />
             </View>
           ) : null}
+
+          {showLogout ? actionButtons : null}
         </View>
       </ScrollView>
 
-      <View
-        style={[
-          styles.footer,
-          {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-          },
-        ]}
-      >
-        <View style={[styles.footerInner, { maxWidth: WEB_MAX_WIDTH.profile }]}>
-          <Pressable
-            onPress={() => void save()}
-            disabled={saving}
-            style={[
-              styles.saveBtn,
-              { backgroundColor: colors.primary, opacity: saving ? 0.7 : 1 },
-            ]}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveBtnText}>{t.settings.saveChanges}</Text>
-            )}
-          </Pressable>
+      {!showLogout ? (
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
+          {actionButtons}
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -571,7 +617,28 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     flexDirection: "row",
     justifyContent: "flex-end",
+    alignItems: "center",
   },
+  mobileActions: {
+    width: "100%",
+    gap: 10,
+    paddingTop: 4,
+  },
+  mobileFullBtn: {
+    width: "100%",
+    minWidth: 0,
+  },
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  logoutText: { color: "#ef4444", fontWeight: "700", fontSize: 14 },
   saveBtn: {
     minWidth: 168,
     paddingHorizontal: 28,
