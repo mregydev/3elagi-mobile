@@ -64,7 +64,40 @@ function mimeFromUri(uri: string, fallback: string): string {
   if (ext === "3gp") return "audio/3gpp";
   if (ext === "aac") return "audio/aac";
   if (ext === "mp3") return "audio/mpeg";
+  if (ext === "webm") return "audio/webm";
+  if (ext === "ogg") return "audio/ogg";
+  if (ext === "wav") return "audio/wav";
   return fallback;
+}
+
+function normalizeWebVoiceMime(rawType: string, fallbackMime: string): string {
+  const base = rawType.split(";")[0].trim().toLowerCase();
+  if (!base || base === "application/octet-stream") return fallbackMime;
+  // MediaRecorder on Chrome may label audio-only captures as video/webm.
+  if (base === "video/webm") return "audio/webm";
+  return base;
+}
+
+async function resolveWebVoiceFile(
+  uri: string,
+  fallbackMime: string,
+): Promise<{ webFile: File; mimeType: string; fileName: string }> {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const mimeType = normalizeWebVoiceMime(blob.type, fallbackMime);
+  const ext =
+    mimeType.includes("webm")
+      ? "webm"
+      : mimeType.includes("ogg")
+        ? "ogg"
+        : mimeType.includes("wav")
+          ? "wav"
+          : mimeType.includes("mpeg")
+            ? "mp3"
+            : "m4a";
+  const fileName = `voice-${Date.now()}.${ext}`;
+  const webFile = new File([blob], fileName, { type: mimeType });
+  return { webFile, mimeType, fileName };
 }
 
 export function ChatComposer({
@@ -333,6 +366,7 @@ export function ChatComposer({
   };
 
   const prepareAudioMode = async () => {
+    if (Platform.OS === "web") return;
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
@@ -370,9 +404,17 @@ export function ChatComposer({
           return;
         }
 
-        const mime = mimeFromUri(uri, Platform.OS === "ios" ? "audio/m4a" : "audio/mp4");
-        const ext = uri.split(".").pop() ?? "m4a";
-        await uploadAndSend(uri, mime, `voice-${Date.now()}.${ext}`, "voice");
+        if (Platform.OS === "web") {
+          const { webFile, mimeType, fileName } = await resolveWebVoiceFile(
+            uri,
+            "audio/webm",
+          );
+          await uploadAndSend(uri, mimeType, fileName, "voice", webFile);
+        } else {
+          const mime = mimeFromUri(uri, Platform.OS === "ios" ? "audio/m4a" : "audio/mp4");
+          const ext = uri.split(".").pop() ?? "m4a";
+          await uploadAndSend(uri, mime, `voice-${Date.now()}.${ext}`, "voice");
+        }
       } catch (e) {
         setRecording(null);
         setRecordingStartedAt(null);

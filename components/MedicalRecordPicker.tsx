@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   SectionList,
@@ -70,6 +71,7 @@ export function MedicalRecordPicker({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === "web";
   const dir = flexRow(isRTL);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
@@ -159,17 +161,36 @@ export function MedicalRecordPicker({
       : section?.labelEn ?? "Medical record";
 
     return (
-      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Modal
+        visible={visible}
+        animationType={isWeb ? "fade" : "slide"}
+        transparent
+        onRequestClose={onClose}
+      >
         <KeyboardAvoidingView
-          style={styles.overlay}
+          style={[styles.overlay, isWeb && styles.overlayWeb]}
           behavior="padding"
-          keyboardVerticalOffset={insets.top}
+          keyboardVerticalOffset={isWeb ? 0 : insets.top}
         >
-          <Pressable style={styles.overlayDismiss} onPress={onClose} />
+          {isWeb ? (
+            <Pressable
+              style={styles.backdrop}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "إغلاق" : "Close"}
+            />
+          ) : (
+            <Pressable style={styles.overlayDismiss} onPress={onClose} />
+          )}
           <View
             style={[
               styles.confirmSheet,
-              { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) },
+              isWeb && styles.confirmSheetWeb,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                paddingBottom: isWeb ? 20 : Math.max(insets.bottom, 16),
+              },
             ]}
           >
             <ScrollView
@@ -284,9 +305,28 @@ export function MedicalRecordPicker({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+    <Modal
+      visible={visible}
+      animationType={isWeb ? "fade" : "slide"}
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.overlay, isWeb && styles.overlayWeb]} accessibilityViewIsModal>
+        {isWeb ? (
+          <Pressable
+            style={styles.backdrop}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "إغلاق" : "Close"}
+          />
+        ) : null}
+        <View
+          style={[
+            styles.sheet,
+            isWeb && styles.sheetWeb,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <View style={[styles.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
@@ -322,7 +362,7 @@ export function MedicalRecordPicker({
             <SectionList
               sections={sections}
               keyExtractor={(item) => item.id}
-              style={styles.list}
+              style={[styles.list, isWeb && styles.listWeb]}
               contentContainerStyle={styles.listContent}
               stickySectionHeadersEnabled={false}
               ListHeaderComponent={listHeader}
@@ -414,6 +454,25 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.35)",
   },
+  overlayWeb: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    backgroundColor: "rgba(15, 23, 42, 0.48)",
+    ...(Platform.OS === "web"
+      ? ({
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1000,
+        } as object)
+      : null),
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   overlayDismiss: {
     flex: 1,
   },
@@ -424,6 +483,22 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     paddingTop: 16,
+  },
+  sheetWeb: {
+    height: "auto",
+    maxHeight: "85vh" as unknown as number,
+    width: "100%",
+    maxWidth: 560,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingTop: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+    marginHorizontal: 8,
   },
   header: {
     alignItems: "flex-start",
@@ -438,6 +513,9 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+  },
+  listWeb: {
+    maxHeight: 420,
   },
   listContent: {
     paddingBottom: 24,
@@ -463,6 +541,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 16,
     maxHeight: "85%",
+  },
+  confirmSheetWeb: {
+    width: "100%",
+    maxWidth: 480,
+    maxHeight: "85vh" as unknown as number,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
   confirmScroll: {
     flexGrow: 1,

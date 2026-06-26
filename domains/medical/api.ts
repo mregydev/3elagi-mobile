@@ -149,7 +149,15 @@ async function appendFileToFormData(
     if (!body) {
       throw new Error("Could not read the selected file on web.");
     }
-    formData.append(fieldName, body, fileName);
+    const resolvedType =
+      mimeType ||
+      (body instanceof File ? body.type : body.type) ||
+      "application/octet-stream";
+    const payload =
+      body instanceof File && body.type === resolvedType
+        ? body
+        : new File([body], fileName, { type: resolvedType });
+    formData.append(fieldName, payload, fileName);
     return;
   }
 
