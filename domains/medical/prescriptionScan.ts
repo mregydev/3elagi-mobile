@@ -1,4 +1,6 @@
 import { analyzePrescriptionImage } from "./api";
+import { MEDICAL_EVENTS } from "./events";
+import { emit } from "@/utils/eventBus";
 import type { PrescriptionMedication } from "./types";
 
 export interface PrescriptionScanAsset {
@@ -41,7 +43,7 @@ export async function analyzePrescriptionScan(
     asset.mimeType,
     asset.fileName,
   );
-  return analyzePrescriptionImage(
+  const rows = await analyzePrescriptionImage(
     normalized.uri,
     normalized.mimeType,
     normalized.fileName,
@@ -49,4 +51,6 @@ export async function analyzePrescriptionScan(
     lang,
     asset.webFile,
   );
+  emit(MEDICAL_EVENTS.PRESCRIPTION_SCANNED, { token: accessToken });
+  return rows;
 }

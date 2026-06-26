@@ -12,8 +12,14 @@ export function setActiveAiChatId(chatId: string | null): void {
   activeAiChatId = chatId;
 }
 
+/** AI assistant push notifications are disabled on mobile. */
+export function isMobileAiPushDisabled(): boolean {
+  return true;
+}
+
 /** Suppress AI push in foreground when the user is already on that conversation. */
 export function shouldSuppressAiPush(chatId: string): boolean {
+  if (isMobileAiPushDisabled()) return true;
   if (!chatId || !assistantScreenActive) return false;
   if (AppState.currentState !== "active") return false;
   if (!activeAiChatId) return false;

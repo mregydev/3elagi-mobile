@@ -6,6 +6,8 @@ import { AI_EVENTS } from "@/domains/ai/events";
 import type { AuthLogoutPayload } from "@/domains/auth/events";
 import type { ChatMessageSentPayload } from "@/domains/chat/events";
 import type { AiMessageSentPayload } from "@/domains/ai/events";
+import type { MedicalPrescriptionScannedPayload } from "@/domains/medical/events";
+import { MEDICAL_EVENTS } from "@/domains/medical/events";
 import { addMessagePoints, fetchPointsBalance, type PointsSummary, DEFAULT_AVAILABLE_POINTS } from "./api";
 
 interface PointsState {
@@ -62,6 +64,10 @@ on<ChatMessageSentPayload>(CHAT_EVENTS.MESSAGE_SENT, ({ token }) => {
 });
 
 on<AiMessageSentPayload>(AI_EVENTS.MESSAGE_SENT, ({ token }) => {
+  void usePointsStore.getState().loadPoints(token);
+});
+
+on<MedicalPrescriptionScannedPayload>(MEDICAL_EVENTS.PRESCRIPTION_SCANNED, ({ token }) => {
   void usePointsStore.getState().loadPoints(token);
 });
 

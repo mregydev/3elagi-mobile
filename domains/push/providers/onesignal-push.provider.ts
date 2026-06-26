@@ -1,5 +1,4 @@
-import { AppState, Platform } from "react-native";
-import { shouldSuppressAiPush } from "@/domains/ai/push-suppression";
+import { Platform } from "react-native";
 import { oneSignalService } from "@/domains/push/one-signal.service";
 import type { PushBootstrapContext, PushProvider } from "@/domains/push/providers/types";
 
@@ -44,15 +43,7 @@ export class OneSignalPushProvider implements PushProvider {
     const removeForeground = oneSignalService.addForegroundListener((event) => {
       const data = event.getNotification().additionalData;
       if (data?.type === "ai") {
-        const chatId = String(data.chatId ?? "");
-        if (
-          AppState.currentState === "active" &&
-          shouldSuppressAiPush(chatId)
-        ) {
-          event.preventDefault();
-          return;
-        }
-        event.display();
+        event.preventDefault();
         return;
       }
       if (data?.type !== "chat") {
