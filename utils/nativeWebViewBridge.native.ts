@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import type WebView from "react-native-webview";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   NATIVE_WEBVIEW_BRIDGE,
@@ -7,6 +6,10 @@ import {
   type WebViewAuthSession,
 } from "@/constants/nativeWebViewBridge";
 import { handleNativeShellCameraPick } from "@/utils/nativeWebViewMedia.native";
+
+// Minimal shape we use from a WebView ref — avoids depending on the
+// react-native-webview package (removed; the native WebView shell is gone).
+type WebViewLike = { injectJavaScript: (script: string) => void };
 
 function isWebViewAuthSession(value: unknown): value is WebViewAuthSession {
   if (!value || typeof value !== "object") return false;
@@ -56,7 +59,7 @@ export function isNativeWebViewShell(): boolean {
 
 export function handleNativeWebViewMessage(
   raw: string,
-  webViewRef: RefObject<WebView | null>,
+  webViewRef: RefObject<WebViewLike | null>,
 ): void {
   const message = parseBridgeMessage(raw);
   if (!message) return;

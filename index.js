@@ -1,9 +1,4 @@
-const { Platform } = require("react-native");
-
-if (Platform.OS !== "web") {
-  const ExpoSplashScreen = require("expo-splash-screen");
-  ExpoSplashScreen.hideAsync().catch(() => {});
-  require("./native-shell");
-} else {
-  require("expo-router/entry");
-}
+// Single entry for all platforms: the app runs natively through Expo Router.
+// (The old native WebView shell has been removed.) AppSplash in app/_layout.tsx
+// hides the native splash screen once the JS splash renders.
+require("expo-router/entry");

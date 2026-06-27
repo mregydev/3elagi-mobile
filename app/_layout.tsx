@@ -11,6 +11,7 @@ import { AppToast } from "@/components/AppToast";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { AppSplash } from "@/components/SplashScreen";
+import { NavLoadingOverlay } from "@/components/NavLoadingOverlay";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
@@ -134,6 +135,7 @@ export default function RootLayout() {
                   <Stack.Screen name="doctor-pending" />
                   <Stack.Screen name="points/checkout" />
                 </Stack>
+                <NavLoadingOverlay />
                 <AppToast />
               </View>
             </KeyboardProvider>

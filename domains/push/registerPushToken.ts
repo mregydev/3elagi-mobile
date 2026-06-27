@@ -3,12 +3,16 @@ import { registerPushToken as registerPushTokenApi } from "@/domains/push/api";
 import { getExpoPushToken } from "@/domains/push/expoPush";
 
 let lastRegistered: { token: string; accessToken: string } | null = null;
+// The device token is stable for the install; cache it so we don't make the
+// native getExpoPushToken() bridge call on every foreground resume.
+let cachedToken: string | null = null;
 
 /** Registers the Expo push token (`ExponentPushToken[...]`) with the API. */
 export async function registerPushToken(accessToken: string): Promise<string | null> {
   if (Platform.OS === "web" || !accessToken) return null;
 
-  const token = await getExpoPushToken();
+  const token = cachedToken ?? (await getExpoPushToken());
+  if (token) cachedToken = token;
   if (!token) {
     console.warn(
       "[push] No Expo token to register — open the native app on a physical device, allow notifications, then log in again.",
@@ -37,4 +41,5 @@ export async function registerPushToken(accessToken: string): Promise<string | n
 
 export function clearPushTokenRegistrationCache(): void {
   lastRegistered = null;
+  cachedToken = null;
 }

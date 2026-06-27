@@ -1,5 +1,6 @@
-import { AppState, Platform } from "react-native";
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { onAppResume } from "@/utils/appResume";
 import { shouldSuppressAiPush } from "@/domains/ai/push-suppression";
 import { extractPushNotificationData } from "@/domains/push/types";
 import {
@@ -81,8 +82,10 @@ export class ExpoPushProvider implements PushProvider {
       }
     });
 
-    const appStateSub = AppState.addEventListener("change", (state) => {
-      if (state === "active" && ctx.accessToken) {
+    // Re-register on resume, but deferred off the resume frame (and skipped for
+    // brief background flaps) so it never freezes the UI on foreground.
+    const removeResumeTask = onAppResume(() => {
+      if (ctx.accessToken) {
         void registerPushToken(ctx.accessToken).catch(() => {});
       }
     });
@@ -126,7 +129,7 @@ export class ExpoPushProvider implements PushProvider {
 
     return () => {
       tokenSub.remove();
-      appStateSub.remove();
+      removeResumeTask();
       receivedSub.remove();
       responseSub.remove();
     };

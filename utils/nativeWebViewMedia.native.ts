@@ -1,11 +1,14 @@
 import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import type { RefObject } from "react";
-import type WebView from "react-native-webview";
 import {
   NATIVE_WEBVIEW_BRIDGE,
   type NativeShellCameraMediaResult,
 } from "@/constants/nativeWebViewBridge";
+
+// Minimal shape we use from a WebView ref — avoids depending on the
+// react-native-webview package (removed; the native WebView shell is gone).
+type WebViewLike = { injectJavaScript: (script: string) => void };
 import { uploadFile } from "@/domains/medical/api";
 import { useAuthStore } from "@/domains/auth/store";
 import {
@@ -16,7 +19,7 @@ import {
 } from "@/utils/chatVideoLimits";
 
 function sendMediaResult(
-  webViewRef: RefObject<WebView | null>,
+  webViewRef: RefObject<WebViewLike | null>,
   payload: NativeShellCameraMediaResult,
 ): void {
   const detail = JSON.stringify(payload);
@@ -28,7 +31,7 @@ function sendMediaResult(
 export async function handleNativeShellCameraPick(
   requestId: string,
   media: "image" | "video",
-  webViewRef: RefObject<WebView | null>,
+  webViewRef: RefObject<WebViewLike | null>,
 ): Promise<void> {
   try {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
