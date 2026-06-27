@@ -12,3 +12,10 @@ export const WEB_MAX_WIDTH = {
   chat: 980,
   profile: 1200,
 } as const;
+
+/** Tab bar content row height on mobile web (matches `(tabs)/_layout.web`). */
+export const WEB_MOBILE_TAB_BAR_HEIGHT = 60;
+
+export function mobileWebTabBarHeight(bottomInset: number): number {
+  return WEB_MOBILE_TAB_BAR_HEIGHT + Math.max(bottomInset, 8);
+}

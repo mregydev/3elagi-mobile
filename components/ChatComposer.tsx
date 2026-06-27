@@ -15,6 +15,10 @@ import { ChatAttachMenu } from "@/components/chat/ChatAttachMenu";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
+import {
+  MOBILE_WEB_COMPOSER_FOOTER_GAP,
+  mobileWebComposerStyles,
+} from "@/constants/mobileWebComposer";
 import { uploadFile } from "@/domains/medical/api";
 import type { ChatMessage, SendMessageInput } from "@/domains/chat/types";
 import {
@@ -22,6 +26,7 @@ import {
   emitChatTyping,
 } from "@/domains/presence/socket";
 import { useColors } from "@/hooks/useColors";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
 import {
   CHAT_VIDEO_PICKER_OPTIONS,
@@ -120,6 +125,9 @@ export function ChatComposer({
   disabledHint,
 }: Props) {
   const colors = useColors();
+  const { isMobile } = useWebLayout();
+  const isMobileWeb = Platform.OS === "web" && isMobile;
+  const mobileWebBottomPadding = MOBILE_WEB_COMPOSER_FOOTER_GAP;
   const [text, setText] = useState("");
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
@@ -488,6 +496,109 @@ export function ChatComposer({
   const isEditing = !!editingMessage;
   const controlsDisabled = busy || !!recording || isEditing;
   const canSend = !!text.trim() || !!pendingAttachment;
+  const composerPaddingBottom = isMobileWeb ? mobileWebBottomPadding : bottomInset + 8;
+
+  const attachButtons = !isEditing ? (
+    <>
+      <Pressable
+        onPress={openAttachMenu}
+        disabled={controlsDisabled}
+        accessibilityLabel={isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video"}
+        style={[
+          isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+          {
+            backgroundColor: colors.muted,
+            opacity: controlsDisabled ? 0.45 : 1,
+          },
+        ]}
+        hitSlop={6}
+      >
+        <Paperclip size={18} color={colors.mutedForeground} />
+      </Pressable>
+
+      {isPatient ? (
+        <Pressable
+          onPress={onPickMedical}
+          disabled={controlsDisabled}
+          accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
+          style={[
+            isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+            {
+              backgroundColor: colors.muted,
+              opacity: controlsDisabled ? 0.45 : 1,
+            },
+          ]}
+          hitSlop={6}
+        >
+          <ClipboardList size={18} color={colors.mutedForeground} />
+        </Pressable>
+      ) : null}
+    </>
+  ) : null;
+
+  const messageInput = (
+    <TextInput
+      value={text}
+      onChangeText={(value) => {
+        setText(value);
+        if (value.trim()) notifyTyping();
+        else stopTyping();
+      }}
+      onFocus={onComposerFocus}
+      onBlur={stopTyping}
+      placeholder={
+        pendingAttachment
+          ? isRTL
+            ? "أضف تعليقاً (اختياري)…"
+            : "Add a caption (optional)…"
+          : isRTL
+            ? "اكتب رسالة…"
+            : "Type a message…"
+      }
+      placeholderTextColor={colors.mutedForeground}
+      style={[
+        isMobileWeb ? mobileWebComposerStyles.input : styles.input,
+        {
+          backgroundColor: colors.muted,
+          color: colors.foreground,
+          textAlign: isRTL ? "right" : "left",
+        },
+      ]}
+      multiline
+      editable={!uploading && !disabled && !recording}
+      blurOnSubmit={false}
+      onKeyPress={(e) => handleEnterToSendMessage(e, sendMessage)}
+    />
+  );
+
+  const sendOrMicButton = canSend ? (
+    <Pressable
+      onPress={() => void sendMessage()}
+      disabled={busy}
+      style={[
+        isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+        { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 },
+      ]}
+    >
+      <Send size={18} color="#fff" />
+    </Pressable>
+  ) : isEditing ? null : (
+    <Pressable
+      onPress={() => void toggleRecording()}
+      disabled={uploading || sending || isEditing || !!pendingAttachment}
+      style={[
+        isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+        {
+          backgroundColor: recording ? "#ef4444" : colors.muted,
+          opacity: uploading || sending || isEditing || pendingAttachment ? 0.45 : 1,
+        },
+      ]}
+      hitSlop={6}
+      accessibilityLabel={isRTL ? "رسالة صوتية" : "Voice message"}
+    >
+      <Mic size={18} color={recording ? "#fff" : colors.mutedForeground} />
+    </Pressable>
+  );
 
   if (disabled && !isEditing) {
     return (
@@ -574,111 +685,43 @@ export function ChatComposer({
       />
 
       <View
-        style={[
-          styles.composer,
-          {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            flexDirection: rowDir,
-            paddingBottom: bottomInset + 8,
-          },
-        ]}
-      >
-        {!isEditing ? (
-          <View style={[styles.composerActions, { flexDirection: rowDir }]}>
-            <Pressable
-              onPress={openAttachMenu}
-              disabled={controlsDisabled}
-              accessibilityLabel={isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video"}
-              style={[
-                styles.iconBtn,
+        style={
+          isMobileWeb
+            ? [
+                mobileWebComposerStyles.shell,
                 {
-                  backgroundColor: colors.muted,
-                  opacity: controlsDisabled ? 0.45 : 1,
+                  paddingBottom: composerPaddingBottom,
+                  backgroundColor: colors.card,
+                  borderTopColor: colors.border,
                 },
-              ]}
-              hitSlop={6}
-            >
-              <Paperclip size={18} color={colors.mutedForeground} />
-            </Pressable>
-
-            {isPatient ? (
-              <Pressable
-                onPress={onPickMedical}
-                disabled={controlsDisabled}
-                accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
-                style={[
-                  styles.iconBtn,
-                  {
-                    backgroundColor: colors.muted,
-                    opacity: controlsDisabled ? 0.45 : 1,
-                  },
-                ]}
-                hitSlop={6}
-              >
-                <ClipboardList size={18} color={colors.mutedForeground} />
-              </Pressable>
-            ) : null}
+              ]
+            : [
+                styles.composer,
+                {
+                  backgroundColor: colors.card,
+                  borderTopColor: colors.border,
+                  flexDirection: rowDir,
+                  paddingBottom: composerPaddingBottom,
+                },
+              ]
+        }
+      >
+        {isMobileWeb ? (
+          <View style={[mobileWebComposerStyles.row, { flexDirection: rowDir }]}>
+            {attachButtons}
+            {messageInput}
+            {sendOrMicButton}
           </View>
-        ) : null}
-
-        <TextInput
-          value={text}
-          onChangeText={(value) => {
-            setText(value);
-            if (value.trim()) notifyTyping();
-            else stopTyping();
-          }}
-          onFocus={onComposerFocus}
-          onBlur={stopTyping}
-          placeholder={
-            pendingAttachment
-              ? isRTL
-                ? "أضف تعليقاً (اختياري)…"
-                : "Add a caption (optional)…"
-              : isRTL
-                ? "اكتب رسالة…"
-                : "Type a message…"
-          }
-          placeholderTextColor={colors.mutedForeground}
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.muted,
-              color: colors.foreground,
-              textAlign: isRTL ? "right" : "left",
-            },
-          ]}
-          multiline
-          editable={!uploading && !disabled && !recording}
-          blurOnSubmit={false}
-          onKeyPress={(e) => handleEnterToSendMessage(e, sendMessage)}
-        />
-
-        {canSend ? (
-          <Pressable
-            onPress={() => void sendMessage()}
-            disabled={busy}
-            style={[styles.iconBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
-          >
-            <Send size={18} color="#fff" />
-          </Pressable>
-        ) : isEditing ? null : (
-          <Pressable
-            onPress={() => void toggleRecording()}
-            disabled={uploading || sending || isEditing || !!pendingAttachment}
-            style={[
-              styles.iconBtn,
-              {
-                backgroundColor: recording ? "#ef4444" : colors.muted,
-                opacity: uploading || sending || isEditing || pendingAttachment ? 0.45 : 1,
-              },
-            ]}
-            hitSlop={6}
-            accessibilityLabel={isRTL ? "رسالة صوتية" : "Voice message"}
-          >
-            <Mic size={18} color={recording ? "#fff" : colors.mutedForeground} />
-          </Pressable>
+        ) : (
+          <>
+            {!isEditing ? (
+              <View style={[styles.composerActions, { flexDirection: rowDir }]}>
+                {attachButtons}
+              </View>
+            ) : null}
+            {messageInput}
+            {sendOrMicButton}
+          </>
         )}
       </View>
 

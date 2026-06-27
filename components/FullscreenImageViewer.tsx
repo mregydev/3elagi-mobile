@@ -22,6 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_SCALE = 4;
 const MIN_SCALE = 1;
+const VIEW_WIDTH = SCREEN_WIDTH;
+const VIEW_HEIGHT = SCREEN_HEIGHT * 0.88;
 
 interface Props {
   uri: string | null;
@@ -31,6 +33,32 @@ interface Props {
 function clampScale(value: number) {
   "worklet";
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+}
+
+function clampTranslation(tx: number, ty: number, scaleValue: number) {
+  "worklet";
+  if (scaleValue <= MIN_SCALE) {
+    return { x: 0, y: 0 };
+  }
+  const maxX = Math.max(0, (VIEW_WIDTH * scaleValue - VIEW_WIDTH) / 2);
+  const maxY = Math.max(0, (VIEW_HEIGHT * scaleValue - VIEW_HEIGHT) / 2);
+  return {
+    x: Math.min(maxX, Math.max(-maxX, tx)),
+    y: Math.min(maxY, Math.max(-maxY, ty)),
+  };
+}
+
+function resetPanWorklet(
+  translateX: Animated.SharedValue<number>,
+  translateY: Animated.SharedValue<number>,
+  savedTranslateX: Animated.SharedValue<number>,
+  savedTranslateY: Animated.SharedValue<number>,
+) {
+  "worklet";
+  translateX.value = withTiming(0, { duration: 120 });
+  translateY.value = withTiming(0, { duration: 120 });
+  savedTranslateX.value = 0;
+  savedTranslateY.value = 0;
 }
 
 function IosScrollZoomImage({ uri }: { uri: string }) {
@@ -53,11 +81,19 @@ function IosScrollZoomImage({ uri }: { uri: string }) {
 function PinchZoomImage({ uri }: { uri: string }) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
 
   useEffect(() => {
     scale.value = 1;
     savedScale.value = 1;
-  }, [uri, scale, savedScale]);
+    translateX.value = 0;
+    translateY.value = 0;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  }, [uri, scale, savedScale, translateX, translateY, savedTranslateX, savedTranslateY]);
 
   const pinch = Gesture.Pinch()
     .onBegin(() => {
@@ -70,6 +106,43 @@ function PinchZoomImage({ uri }: { uri: string }) {
       const next = clampScale(scale.value);
       scale.value = withTiming(next, { duration: 120 });
       savedScale.value = next;
+
+      if (next <= MIN_SCALE) {
+        resetPanWorklet(translateX, translateY, savedTranslateX, savedTranslateY);
+        return;
+      }
+
+      const clamped = clampTranslation(translateX.value, translateY.value, next);
+      translateX.value = withTiming(clamped.x, { duration: 120 });
+      translateY.value = withTiming(clamped.y, { duration: 120 });
+      savedTranslateX.value = clamped.x;
+      savedTranslateY.value = clamped.y;
+    });
+
+  const pan = Gesture.Pan()
+    .maxPointers(1)
+    .minDistance(4)
+    .onBegin(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    })
+    .onUpdate((event) => {
+      if (scale.value <= MIN_SCALE) return;
+      const clamped = clampTranslation(
+        savedTranslateX.value + event.translationX,
+        savedTranslateY.value + event.translationY,
+        scale.value,
+      );
+      translateX.value = clamped.x;
+      translateY.value = clamped.y;
+    })
+    .onEnd(() => {
+      if (scale.value <= MIN_SCALE) return;
+      const clamped = clampTranslation(translateX.value, translateY.value, scale.value);
+      translateX.value = withTiming(clamped.x, { duration: 120 });
+      translateY.value = withTiming(clamped.y, { duration: 120 });
+      savedTranslateX.value = clamped.x;
+      savedTranslateY.value = clamped.y;
     });
 
   const doubleTap = Gesture.Tap()
@@ -78,12 +151,19 @@ function PinchZoomImage({ uri }: { uri: string }) {
       const next = savedScale.value > 1 ? MIN_SCALE : 2;
       scale.value = withTiming(next, { duration: 180 });
       savedScale.value = next;
+      if (next <= MIN_SCALE) {
+        resetPanWorklet(translateX, translateY, savedTranslateX, savedTranslateY);
+      }
     });
 
-  const composed = Gesture.Simultaneous(pinch, doubleTap);
+  const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
   }));
 
   return (
@@ -162,14 +242,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   pinchZoomContent: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.88,
+    width: VIEW_WIDTH,
+    height: VIEW_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
   },
   fullImage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.88,
+    width: VIEW_WIDTH,
+    height: VIEW_HEIGHT,
   },
   closeBtn: {
     position: "absolute",

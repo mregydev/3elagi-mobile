@@ -33,6 +33,7 @@ import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useMedicalRecordDetail } from "@/hooks/useMedicalRecordDetail";
+import { useMobileWebTabBarHeight } from "@/hooks/useMobileWebTabBarHeight";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { localeTag } from "@/utils/rtl";
 
@@ -132,6 +133,8 @@ export function MedicalRecordWebView() {
   const colors = useColors();
   const { isRTL } = useI18n();
   const { isDesktop, isTablet, isMobile } = useWebLayout();
+  const tabBarHeight = useMobileWebTabBarHeight();
+  const mobileScrollPadding = tabBarHeight + 24;
   const dateLocale = localeTag(isRTL);
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -667,6 +670,7 @@ export function MedicalRecordWebView() {
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
           isMobile && styles.scrollContentMobile,
+          isMobile && { paddingBottom: mobileScrollPadding },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -837,7 +841,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, minHeight: 0 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 48 },
-  scrollContentMobile: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 32 },
+  scrollContentMobile: { paddingHorizontal: 12, paddingTop: 12 },
   scrollContentDesktop: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 64 },
   container: { width: "100%", alignSelf: "center", gap: 20 },
   loadingBody: { alignItems: "center", justifyContent: "center", paddingVertical: 80 },

@@ -452,7 +452,12 @@ export default function MedicalRecordDetail() {
       </View>
 
       {/* ── Detail cards ── */}
-      <KeyboardSafeScrollView contentContainerStyle={styles.body}>
+      <KeyboardSafeScrollView
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: Math.max(56 + insets.bottom, 140) },
+        ]}
+      >
 
         {(isLabOrXray || isPrescription) && record.fileUrl && isDocImage && (
           <Pressable

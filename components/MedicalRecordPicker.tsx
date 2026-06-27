@@ -23,6 +23,7 @@ import {
 } from "@/domains/medical/search";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 const SECTIONS: {
@@ -71,7 +72,10 @@ export function MedicalRecordPicker({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { isMobile } = useWebLayout();
   const isWeb = Platform.OS === "web";
+  const isMobileWeb = isWeb && isMobile;
+  const useDialog = isWeb && !isMobileWeb;
   const dir = flexRow(isRTL);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
@@ -163,16 +167,16 @@ export function MedicalRecordPicker({
     return (
       <Modal
         visible={visible}
-        animationType={isWeb ? "fade" : "slide"}
+        animationType={useDialog ? "fade" : "slide"}
         transparent
         onRequestClose={onClose}
       >
         <KeyboardAvoidingView
-          style={[styles.overlay, isWeb && styles.overlayWeb]}
+          style={[styles.overlay, useDialog && styles.overlayWeb, isMobileWeb && styles.overlayMobileWeb]}
           behavior="padding"
-          keyboardVerticalOffset={isWeb ? 0 : insets.top}
+          keyboardVerticalOffset={useDialog ? 0 : insets.top}
         >
-          {isWeb ? (
+          {useDialog ? (
             <Pressable
               style={styles.backdrop}
               onPress={onClose}
@@ -185,14 +189,17 @@ export function MedicalRecordPicker({
           <View
             style={[
               styles.confirmSheet,
-              isWeb && styles.confirmSheetWeb,
+              useDialog && styles.confirmSheetWeb,
               {
                 backgroundColor: colors.card,
                 borderColor: colors.border,
-                paddingBottom: isWeb ? 20 : Math.max(insets.bottom, 16),
+                paddingBottom: useDialog ? 20 : Math.max(insets.bottom, 16),
               },
             ]}
           >
+            {!useDialog ? (
+              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            ) : null}
             <ScrollView
               keyboardShouldPersistTaps="handled"
               bounces={false}
@@ -307,26 +314,38 @@ export function MedicalRecordPicker({
   return (
     <Modal
       visible={visible}
-      animationType={isWeb ? "fade" : "slide"}
+      animationType={useDialog ? "fade" : "slide"}
       transparent
       onRequestClose={onClose}
     >
-      <View style={[styles.overlay, isWeb && styles.overlayWeb]} accessibilityViewIsModal>
-        {isWeb ? (
+      <View
+        style={[styles.overlay, useDialog && styles.overlayWeb, isMobileWeb && styles.overlayMobileWeb]}
+        accessibilityViewIsModal
+      >
+        {useDialog ? (
           <Pressable
             style={styles.backdrop}
             onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel={isRTL ? "إغلاق" : "Close"}
           />
-        ) : null}
+        ) : (
+          <Pressable style={styles.overlayDismiss} onPress={onClose} />
+        )}
         <View
           style={[
             styles.sheet,
-            isWeb && styles.sheetWeb,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            useDialog && styles.sheetWeb,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              paddingBottom: isMobileWeb ? Math.max(insets.bottom, 12) : undefined,
+            },
           ]}
         >
+          {!useDialog ? (
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          ) : null}
           <View style={[styles.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
@@ -362,7 +381,7 @@ export function MedicalRecordPicker({
             <SectionList
               sections={sections}
               keyExtractor={(item) => item.id}
-              style={[styles.list, isWeb && styles.listWeb]}
+              style={[styles.list, useDialog && styles.listWeb]}
               contentContainerStyle={styles.listContent}
               stickySectionHeadersEnabled={false}
               ListHeaderComponent={listHeader}
@@ -470,6 +489,18 @@ const styles = StyleSheet.create({
         } as object)
       : null),
   },
+  overlayMobileWeb: {
+    ...(Platform.OS === "web"
+      ? ({
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1000,
+        } as object)
+      : null),
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -482,7 +513,14 @@ const styles = StyleSheet.create({
     width: "100%",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
-    paddingTop: 16,
+    paddingTop: 8,
+  },
+  handle: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 10,
   },
   sheetWeb: {
     height: "auto",

@@ -40,7 +40,7 @@ export default function AssistantScreenWeb() {
   };
 
   if (!isDesktop) {
-    return <AssistantMobileView {...viewProps} flushWebFooter />;
+    return <AssistantMobileView {...viewProps} />;
   }
 
   return <AssistantWebView {...viewProps} />;
