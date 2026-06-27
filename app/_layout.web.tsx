@@ -8,8 +8,11 @@ import { AppSplash } from "@/components/SplashScreen";
 import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
+import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridge.web";
+import { NativeWebViewPushNavigation } from "@/components/web/NativeWebViewPushNavigation.web";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
+import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
 import { PresenceSocket } from "@/components/PresenceSocket";
@@ -95,11 +98,14 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <MedicalDataLoader />
           <PointsDataLoader />
+          <NativeWebViewAuthBridge />
+          <NativeWebViewPushNavigation />
           <PresenceSocket />
           <PresenceChatSync />
           <ChatMessageSync />
           <ChatNotifications />
           <WebChatNotificationsBootstrap />
+          <HardwareBackHandler />
           <AuthRedirect />
           <WebLogoutRedirect />
           <Stack screenOptions={{ headerShown: false }}>
@@ -109,6 +115,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
             <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
             <Stack.Screen name="chat/[id]" />
+            <Stack.Screen name="ai/[id]" />
             <Stack.Screen name="doctor/[doctorId]" />
             <Stack.Screen name="patients/[userId]" />
             <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />

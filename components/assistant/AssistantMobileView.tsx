@@ -2,6 +2,7 @@ import { Bot, History, Plus, RefreshCw } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -45,8 +46,6 @@ interface Props {
   onToggleMessageEmotion?: (messageId: string, emotion: AiFeedbackType) => void;
   /** Extra bottom inset for native tab screens that need it. */
   bottomTabInset?: number;
-  /** Mobile web: sit flush on the bottom tab bar (no extra gap). */
-  flushWebFooter?: boolean;
 }
 
 export function AssistantMobileView({
@@ -66,7 +65,6 @@ export function AssistantMobileView({
   selfUserId,
   onToggleMessageEmotion,
   bottomTabInset = 0,
-  flushWebFooter = false,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -84,11 +82,32 @@ export function AssistantMobileView({
       : []);
   const lastMessage = messages[messages.length - 1];
 
-  const scrollToBottom = useCallback((animated = false) => {
+  const scrollToBottom = useCallback((animated = true) => {
+    if (!listRef.current) return;
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd({ animated });
+      if (Platform.OS === "web") {
+        const candidate = listRef.current as unknown as {
+          getScrollableNode?: () => HTMLElement;
+          getNativeScrollRef?: () => { getScrollableNode?: () => HTMLElement };
+        };
+        const node =
+          candidate.getScrollableNode?.() ??
+          candidate.getNativeScrollRef?.()?.getScrollableNode?.();
+        if (node) node.scrollTop = node.scrollHeight;
+      }
     });
   }, []);
+
+  const scrollToBottomWithRetries = useCallback(
+    (animated = false) => {
+      scrollToBottom(animated);
+      for (const delay of [50, 150, 300, 500, 800]) {
+        setTimeout(() => scrollToBottom(animated), delay);
+      }
+    },
+    [scrollToBottom],
+  );
 
   useEffect(() => {
     initialScrollPendingRef.current = true;
@@ -98,31 +117,49 @@ export function AssistantMobileView({
   useEffect(() => {
     if (loadingHistory || messages.length === 0) return;
     if (!initialScrollPendingRef.current) return;
-    scrollToBottom(false);
+    scrollToBottomWithRetries(false);
     initialScrollPendingRef.current = false;
-  }, [activeId, loadingHistory, messages.length, scrollToBottom]);
+  }, [activeId, loadingHistory, messages.length, scrollToBottomWithRetries]);
 
   const lastMessageId = lastMessage?.id;
 
-  // Streaming growth is handled by onContentSizeChange (one scroll per content
-  // change). Here we only react to a *new* message being appended.
   useEffect(() => {
-    if (!lastMessageId) return;
-    if (sending || isNearBottomRef.current) scrollToBottom(false);
-  }, [lastMessageId, sending, scrollToBottom]);
+    if (!sending) return;
+    scrollToBottomWithRetries(false);
+  }, [
+    sending,
+    messages.length,
+    lastMessageId,
+    lastMessage?.content,
+    lastMessage?.pending,
+    scrollToBottomWithRetries,
+  ]);
 
   useEffect(() => {
-    const didShowSub = KeyboardEvents.addListener("keyboardDidShow", () => {
-      if (sending || isNearBottomRef.current) scrollToBottom(true);
+    if (!lastMessageId) return;
+    if (sending || isNearBottomRef.current) {
+      scrollToBottomWithRetries(false);
+    }
+  }, [lastMessageId, sending, scrollToBottomWithRetries]);
+
+  useEffect(() => {
+    const showSub = KeyboardEvents.addListener("keyboardWillShow", () => {
+      if (sending || isNearBottomRef.current) scrollToBottomWithRetries(true);
     });
-    return () => didShowSub.remove();
-  }, [scrollToBottom, sending]);
+    const didShowSub = KeyboardEvents.addListener("keyboardDidShow", () => {
+      if (sending || isNearBottomRef.current) scrollToBottomWithRetries(false);
+    });
+    return () => {
+      showSub.remove();
+      didShowSub.remove();
+    };
+  }, [scrollToBottomWithRetries, sending]);
 
   const handleContentSizeChange = useCallback(() => {
     if (initialScrollPendingRef.current || sending || isNearBottomRef.current) {
-      scrollToBottom(false);
+      scrollToBottomWithRetries(false);
     }
-  }, [scrollToBottom, sending]);
+  }, [scrollToBottomWithRetries, sending]);
 
   const handleScroll = useCallback(
     (event: {
@@ -145,9 +182,9 @@ export function AssistantMobileView({
     (text: string) => {
       isNearBottomRef.current = true;
       onSend(text);
-      scrollToBottom(false);
+      scrollToBottomWithRetries(false);
     },
-    [onSend, scrollToBottom],
+    [onSend, scrollToBottomWithRetries],
   );
 
   const handleNewChat = () => {
@@ -207,16 +244,19 @@ export function AssistantMobileView({
           />
         )}
         ListEmptyComponent={renderEmpty}
-        extraData={`${messages.length}:${lastMessageId}:${sending}`}
+        extraData={`${messages.length}:${lastMessageId}:${lastMessage?.content?.length ?? 0}:${sending}`}
         contentContainerStyle={
           messages.length === 0 ? styles.messagesEmpty : styles.messages
         }
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onLayout={() => {
-          if (sending || initialScrollPendingRef.current) scrollToBottom(false);
+          if (sending || initialScrollPendingRef.current) {
+            scrollToBottomWithRetries(false);
+          }
         }}
         onContentSizeChange={handleContentSizeChange}
       />
@@ -297,7 +337,6 @@ export function AssistantMobileView({
           sending={sending}
           disabled={loadingHistory}
           bottomInset={bottomTabInset}
-          flushWebFooter={flushWebFooter}
           placeholder={
             isDoctor
               ? isEn

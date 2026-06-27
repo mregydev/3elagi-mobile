@@ -20,6 +20,7 @@ import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { webConfirm } from "@/utils/webConfirm";
@@ -57,7 +58,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
   const { t } = useI18n();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
-  const { isWide, isDesktop, isTablet } = useWebLayout();
+  const { isWide, isDesktop, isTablet, isMobile } = useWebLayout();
+  const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const tabBarHeight = useBottomTabBarHeight();
   const showLogout = !isDesktop;
   const columns = gridColumns(isWide, isDesktop, isTablet);
@@ -155,7 +157,12 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.profile }]}>
-          <View style={styles.pageHeader}>
+          <View
+            style={[
+              styles.pageHeader,
+              mobileTitlePaddingTop > 0 && { paddingTop: mobileTitlePaddingTop },
+            ]}
+          >
             <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>
               {t.settings.personalInfo}
             </Text>
@@ -477,7 +484,6 @@ const styles = StyleSheet.create({
   },
   pageHeader: {
     paddingHorizontal: 4,
-    paddingTop: 8,
     paddingBottom: 4,
     gap: 6,
   },

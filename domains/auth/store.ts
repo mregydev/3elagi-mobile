@@ -6,6 +6,7 @@ import { authRepository } from "./repository";
 import { emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "./events";
 import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
+import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
 
 interface AuthState {
   profile: PatientProfile | null;
@@ -24,6 +25,8 @@ interface AuthState {
   clearError: () => void;
   setProfile: (profile: PatientProfile) => void;
   setDoctorApprovalStatus: (status: DoctorApprovalStatus | null) => void;
+  applyWebViewSession: (session: WebViewAuthSession) => void;
+  clearWebViewSession: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -103,6 +106,33 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
       setProfile: (profile) => set({ profile }),
       setDoctorApprovalStatus: (status) => set({ doctorApprovalStatus: status }),
+      applyWebViewSession: (session) => {
+        set({
+          profile: session.profile,
+          accessToken: session.accessToken,
+          role: session.role,
+          doctorId: session.doctorId,
+          specialty: session.specialty,
+          specialityId: session.specialityId,
+          doctorApprovalStatus: session.doctorApprovalStatus,
+          hydrated: true,
+          error: null,
+        });
+      },
+      clearWebViewSession: () => {
+        const userId = useAuthStore.getState().profile?.id;
+        set({
+          profile: null,
+          accessToken: null,
+          role: null,
+          doctorId: null,
+          specialty: null,
+          specialityId: null,
+          doctorApprovalStatus: null,
+          error: null,
+        });
+        emit(AUTH_EVENTS.LOGOUT, { userId });
+      },
     }),
     {
       name: "3elagi-auth",

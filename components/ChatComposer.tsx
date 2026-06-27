@@ -15,6 +15,10 @@ import { ChatAttachMenu } from "@/components/chat/ChatAttachMenu";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
+import {
+  MOBILE_WEB_COMPOSER_FOOTER_GAP,
+  mobileWebComposerStyles,
+} from "@/constants/mobileWebComposer";
 import { uploadFile } from "@/domains/medical/api";
 import type { ChatMessage, SendMessageInput } from "@/domains/chat/types";
 import {
@@ -22,7 +26,14 @@ import {
   emitChatTyping,
 } from "@/domains/presence/socket";
 import { useColors } from "@/hooks/useColors";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
+import { isNativeWebViewShell } from "@/utils/nativeWebViewBridge";
+import {
+  cameraErrorMessage,
+  pickNativeShellCamera,
+} from "@/utils/nativeWebViewMedia";
+import type { NativeShellCameraMediaResult } from "@/constants/nativeWebViewBridge";
 import {
   CHAT_VIDEO_PICKER_OPTIONS,
   getChatVideoLimitViolation,
@@ -55,6 +66,7 @@ type PendingAttachment = {
   fileName: string;
   type: "image" | "video";
   webFile?: File | Blob;
+  preUploadedUrl?: string;
 };
 
 function mimeFromUri(uri: string, fallback: string): string {
@@ -120,11 +132,10 @@ export function ChatComposer({
   disabledHint,
 }: Props) {
   const colors = useColors();
+  const { isMobile } = useWebLayout();
+  const isMobileWeb = Platform.OS === "web" && isMobile;
+  const mobileWebBottomPadding = MOBILE_WEB_COMPOSER_FOOTER_GAP;
   const [text, setText] = useState("");
-  // Mirror the freshest text synchronously: setState is batched, so a tap on
-  // Send right after the last keystroke can read a stale `text` and truncate
-  // the message. Refs update immediately, so we send from this instead.
-  const textRef = useRef("");
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -156,7 +167,6 @@ export function ChatComposer({
 
   useEffect(() => {
     if (editingMessage) {
-      textRef.current = editingMessage.text;
       setText(editingMessage.text);
       stopTyping();
     }
@@ -221,6 +231,7 @@ export function ChatComposer({
     type: "image" | "video" | "voice",
     webFile?: File | Blob,
     caption?: string,
+    preUploadedUrl?: string,
   ) => {
     if (sendInFlightRef.current || sending || uploading) return;
 
@@ -232,13 +243,15 @@ export function ChatComposer({
     sendInFlightRef.current = true;
     setUploading(true);
     try {
-      const uploaded = await uploadFile(uri, mimeType, fileName, accessToken, webFile);
+      const attachmentUrl =
+        preUploadedUrl ??
+        (await uploadFile(uri, mimeType, fileName, accessToken, webFile)).url;
       await onSend(
         {
           recipientId: peerId,
           type,
           content: caption?.trim() || undefined,
-          attachmentUrl: uploaded.url,
+          attachmentUrl,
         },
         tempId,
       );
@@ -270,25 +283,27 @@ export function ChatComposer({
 
   const sendPendingAttachment = async () => {
     if (!pendingAttachment || sending || uploading) return;
-    const caption = textRef.current.trim();
-    const { uri, mimeType, fileName, type, webFile } = pendingAttachment;
+    const caption = text.trim();
+    const { uri, mimeType, fileName, type, webFile, preUploadedUrl } = pendingAttachment;
     stopTyping();
     setPendingAttachment(null);
-    textRef.current = "";
     setText("");
-    await uploadAndSend(uri, mimeType, fileName, type, webFile, caption);
+    await uploadAndSend(uri, mimeType, fileName, type, webFile, caption, preUploadedUrl);
   };
 
   const pickGallery = async (media: "image" | "video") => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          isRTL ? "إذن مطلوب" : "Permission required",
-          isRTL ? "يرجى السماح بالوصول إلى المعرض" : "Please allow gallery access.",
-        );
-        return;
+      if (Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            isRTL ? "إذن مطلوب" : "Permission required",
+            isRTL ? "يرجى السماح بالوصول إلى المعرض" : "Please allow gallery access.",
+          );
+          return;
+        }
       }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: media === "image" ? ["images"] : ["videos"],
         quality: media === "image" ? 0.85 : CHAT_VIDEO_PICKER_OPTIONS.quality,
@@ -320,6 +335,44 @@ export function ChatComposer({
 
   const pickCamera = async (media: "image" | "video") => {
     try {
+      if (Platform.OS === "web") {
+        if (isNativeWebViewShell()) {
+          const asset = await pickNativeShellCamera(media);
+          if (!asset) return;
+          setPendingAttachment({
+            uri: asset.uri,
+            mimeType: asset.mimeType,
+            fileName: asset.fileName,
+            type: asset.mediaType,
+            preUploadedUrl: asset.preUploadedUrl,
+          });
+          return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: media === "image" ? ["images"] : ["videos"],
+          quality: media === "image" ? 0.85 : CHAT_VIDEO_PICKER_OPTIONS.quality,
+          allowsEditing: media === "image",
+          ...(media === "video" ? CHAT_VIDEO_PICKER_OPTIONS : {}),
+        });
+        if (result.canceled || !result.assets[0]) return;
+        const asset = result.assets[0];
+        if (media === "video") {
+          const violation = await getChatVideoLimitViolation(
+            asset.duration ?? null,
+            asset.uri,
+            isRTL,
+            asset.fileSize ?? null,
+          );
+          if (violation) {
+            Alert.alert(violation.title, violation.body);
+            return;
+          }
+        }
+        queueAttachment(asset, media);
+        return;
+      }
+
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
@@ -329,7 +382,7 @@ export function ChatComposer({
         return;
       }
 
-      if (media === "video" && Platform.OS !== "web") {
+      if (media === "video") {
         const mic = await Audio.requestPermissionsAsync();
         if (mic.status !== "granted") {
           Alert.alert(
@@ -364,6 +417,17 @@ export function ChatComposer({
       }
       queueAttachment(asset, media);
     } catch (e) {
+      if (Platform.OS === "web" && isNativeWebViewShell()) {
+        const code =
+          e instanceof Error
+            ? (e.message as NativeShellCameraMediaResult["error"])
+            : "failed";
+        Alert.alert(
+          isRTL ? "خطأ" : "Error",
+          cameraErrorMessage(code, isRTL),
+        );
+        return;
+      }
       Alert.alert(
         isRTL ? "خطأ" : "Error",
         e instanceof Error ? e.message : isRTL ? "تعذر فتح الكاميرا" : "Could not open camera.",
@@ -457,27 +521,24 @@ export function ChatComposer({
   };
 
   const sendText = async () => {
-    const t = textRef.current.trim();
+    const t = text.trim();
     if (!t || sending || uploading || sendInFlightRef.current) return;
     stopTyping();
 
     if (editingMessage && onEdit) {
       await onEdit(editingMessage.id, t);
-      textRef.current = "";
       setText("");
       onCancelEdit?.();
       return;
     }
 
     sendInFlightRef.current = true;
-    textRef.current = "";
     setText("");
     const tempId = createPending("text", undefined, t);
 
     try {
       await onSend({ recipientId: peerId, type: "text", content: t }, tempId);
     } catch {
-      textRef.current = t;
       setText(t);
     } finally {
       sendInFlightRef.current = false;
@@ -497,6 +558,109 @@ export function ChatComposer({
   const isEditing = !!editingMessage;
   const controlsDisabled = busy || !!recording || isEditing;
   const canSend = !!text.trim() || !!pendingAttachment;
+  const composerPaddingBottom = isMobileWeb ? mobileWebBottomPadding : bottomInset + 8;
+
+  const attachButtons = !isEditing ? (
+    <>
+      <Pressable
+        onPress={openAttachMenu}
+        disabled={controlsDisabled}
+        accessibilityLabel={isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video"}
+        style={[
+          isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+          {
+            backgroundColor: colors.muted,
+            opacity: controlsDisabled ? 0.45 : 1,
+          },
+        ]}
+        hitSlop={6}
+      >
+        <Paperclip size={18} color={colors.mutedForeground} />
+      </Pressable>
+
+      {isPatient ? (
+        <Pressable
+          onPress={onPickMedical}
+          disabled={controlsDisabled}
+          accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
+          style={[
+            isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+            {
+              backgroundColor: colors.muted,
+              opacity: controlsDisabled ? 0.45 : 1,
+            },
+          ]}
+          hitSlop={6}
+        >
+          <ClipboardList size={18} color={colors.mutedForeground} />
+        </Pressable>
+      ) : null}
+    </>
+  ) : null;
+
+  const messageInput = (
+    <TextInput
+      value={text}
+      onChangeText={(value) => {
+        setText(value);
+        if (value.trim()) notifyTyping();
+        else stopTyping();
+      }}
+      onFocus={onComposerFocus}
+      onBlur={stopTyping}
+      placeholder={
+        pendingAttachment
+          ? isRTL
+            ? "أضف تعليقاً (اختياري)…"
+            : "Add a caption (optional)…"
+          : isRTL
+            ? "اكتب رسالة…"
+            : "Type a message…"
+      }
+      placeholderTextColor={colors.mutedForeground}
+      style={[
+        isMobileWeb ? mobileWebComposerStyles.input : styles.input,
+        {
+          backgroundColor: colors.muted,
+          color: colors.foreground,
+          textAlign: isRTL ? "right" : "left",
+        },
+      ]}
+      multiline
+      editable={!uploading && !disabled && !recording}
+      blurOnSubmit={false}
+      onKeyPress={(e) => handleEnterToSendMessage(e, sendMessage)}
+    />
+  );
+
+  const sendOrMicButton = canSend ? (
+    <Pressable
+      onPress={() => void sendMessage()}
+      disabled={busy}
+      style={[
+        isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+        { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 },
+      ]}
+    >
+      <Send size={18} color="#fff" />
+    </Pressable>
+  ) : isEditing ? null : (
+    <Pressable
+      onPress={() => void toggleRecording()}
+      disabled={uploading || sending || isEditing || !!pendingAttachment}
+      style={[
+        isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
+        {
+          backgroundColor: recording ? "#ef4444" : colors.muted,
+          opacity: uploading || sending || isEditing || pendingAttachment ? 0.45 : 1,
+        },
+      ]}
+      hitSlop={6}
+      accessibilityLabel={isRTL ? "رسالة صوتية" : "Voice message"}
+    >
+      <Mic size={18} color={recording ? "#fff" : colors.mutedForeground} />
+    </Pressable>
+  );
 
   if (disabled && !isEditing) {
     return (
@@ -583,112 +747,43 @@ export function ChatComposer({
       />
 
       <View
-        style={[
-          styles.composer,
-          {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            flexDirection: rowDir,
-            paddingBottom: bottomInset + 8,
-          },
-        ]}
-      >
-        {!isEditing ? (
-          <View style={[styles.composerActions, { flexDirection: rowDir }]}>
-            <Pressable
-              onPress={openAttachMenu}
-              disabled={controlsDisabled}
-              accessibilityLabel={isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video"}
-              style={[
-                styles.iconBtn,
+        style={
+          isMobileWeb
+            ? [
+                mobileWebComposerStyles.shell,
                 {
-                  backgroundColor: colors.muted,
-                  opacity: controlsDisabled ? 0.45 : 1,
+                  paddingBottom: composerPaddingBottom,
+                  backgroundColor: colors.card,
+                  borderTopColor: colors.border,
                 },
-              ]}
-              hitSlop={6}
-            >
-              <Paperclip size={18} color={colors.mutedForeground} />
-            </Pressable>
-
-            {isPatient ? (
-              <Pressable
-                onPress={onPickMedical}
-                disabled={controlsDisabled}
-                accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
-                style={[
-                  styles.iconBtn,
-                  {
-                    backgroundColor: colors.muted,
-                    opacity: controlsDisabled ? 0.45 : 1,
-                  },
-                ]}
-                hitSlop={6}
-              >
-                <ClipboardList size={18} color={colors.mutedForeground} />
-              </Pressable>
-            ) : null}
+              ]
+            : [
+                styles.composer,
+                {
+                  backgroundColor: colors.card,
+                  borderTopColor: colors.border,
+                  flexDirection: rowDir,
+                  paddingBottom: composerPaddingBottom,
+                },
+              ]
+        }
+      >
+        {isMobileWeb ? (
+          <View style={[mobileWebComposerStyles.row, { flexDirection: rowDir }]}>
+            {messageInput}
+            {attachButtons}
+            {sendOrMicButton}
           </View>
-        ) : null}
-
-        <TextInput
-          value={text}
-          onChangeText={(value) => {
-            textRef.current = value;
-            setText(value);
-            if (value.trim()) notifyTyping();
-            else stopTyping();
-          }}
-          onFocus={onComposerFocus}
-          onBlur={stopTyping}
-          placeholder={
-            pendingAttachment
-              ? isRTL
-                ? "أضف تعليقاً (اختياري)…"
-                : "Add a caption (optional)…"
-              : isRTL
-                ? "اكتب رسالة…"
-                : "Type a message…"
-          }
-          placeholderTextColor={colors.mutedForeground}
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.muted,
-              color: colors.foreground,
-              textAlign: isRTL ? "right" : "left",
-            },
-          ]}
-          multiline
-          editable={!uploading && !disabled && !recording}
-          blurOnSubmit={false}
-          onKeyPress={(e) => handleEnterToSendMessage(e, sendMessage)}
-        />
-
-        {canSend ? (
-          <Pressable
-            onPress={() => void sendMessage()}
-            disabled={busy}
-            style={[styles.iconBtn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
-          >
-            <Send size={18} color="#fff" />
-          </Pressable>
-        ) : isEditing ? null : (
-          <Pressable
-            onPress={() => void toggleRecording()}
-            disabled={uploading || sending || isEditing || !!pendingAttachment}
-            style={[
-              styles.iconBtn,
-              {
-                backgroundColor: recording ? "#ef4444" : colors.muted,
-                opacity: uploading || sending || isEditing || pendingAttachment ? 0.45 : 1,
-              },
-            ]}
-            hitSlop={6}
-            accessibilityLabel={isRTL ? "رسالة صوتية" : "Voice message"}
-          >
-            <Mic size={18} color={recording ? "#fff" : colors.mutedForeground} />
-          </Pressable>
+        ) : (
+          <>
+            {!isEditing ? (
+              <View style={[styles.composerActions, { flexDirection: rowDir }]}>
+                {attachButtons}
+              </View>
+            ) : null}
+            {messageInput}
+            {sendOrMicButton}
+          </>
         )}
       </View>
 

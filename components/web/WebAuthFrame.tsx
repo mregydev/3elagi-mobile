@@ -7,9 +7,16 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { WebAuthBackground } from "@/components/web/WebAuthBackground";
-import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import {
+  WEB_MAX_WIDTH,
+  WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING,
+  WEB_MOBILE_AUTH_EXTRA_TOP_PADDING,
+  WEB_MOBILE_AUTH_LOGIN_FLAGS_EXTRA_TOP_MARGIN,
+  WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING,
+} from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 interface Props {
@@ -38,6 +45,7 @@ export function WebAuthFrame({
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile, isTablet, isWide } = useWebLayout();
+  const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const textAlign = isRTL ? "right" : "left";
 
   const panelWidth = isWide
@@ -57,7 +65,18 @@ export function WebAuthFrame({
           style={[
             styles.scrollBody,
             scrollForm && styles.scrollBodyForm,
-            { paddingHorizontal: pagePadding, paddingVertical: isMobile ? 16 : 24 },
+            {
+              paddingHorizontal: pagePadding,
+              paddingBottom:
+                isMobile && scrollForm
+                  ? 16 + WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING
+                  : isMobile
+                    ? 16 + WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING
+                    : 24,
+              paddingTop: isMobile
+                ? mobileTitlePaddingTop + WEB_MOBILE_AUTH_EXTRA_TOP_PADDING
+                : 24,
+            },
           ]}
         >
         <View
@@ -70,6 +89,11 @@ export function WebAuthFrame({
           <View
             style={[
               styles.pageTopBar,
+              isMobile && styles.pageTopBarMobile,
+              isMobile &&
+                !scrollForm && {
+                  marginTop: WEB_MOBILE_AUTH_LOGIN_FLAGS_EXTRA_TOP_MARGIN,
+                },
               { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
@@ -133,6 +157,7 @@ export function WebAuthFrame({
               <Text
                 style={[
                   styles.eyebrow,
+                  isMobile && styles.eyebrowMobile,
                   {
                     color: colors.mutedForeground,
                     textAlign: "center",
@@ -196,6 +221,10 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     gap: 8,
   },
+  pageTopBarMobile: {
+    paddingBottom: 12,
+    marginBottom: 8,
+  },
   pageTopActions: {
     alignItems: "center",
     gap: 8,
@@ -246,6 +275,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  eyebrowMobile: {
+    paddingTop: 20,
   },
   formPane: {
     flex: 1,

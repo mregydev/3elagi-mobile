@@ -1,6 +1,7 @@
 import { AppState, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { shouldSuppressAiPush } from "@/domains/ai/push-suppression";
+import { extractPushNotificationData } from "@/domains/push/types";
 import {
   clearPushTokenRegistrationCache,
   registerPushToken,
@@ -11,7 +12,9 @@ import type { PushBootstrapContext, PushProvider } from "@/domains/push/provider
 
 function shouldSuppressForegroundAiPush(data: Record<string, unknown> | undefined): boolean {
   if (data?.type !== "ai") return false;
-  const chatId = String(data.chatId ?? data.chat_id ?? "");
+  const chatId = String(
+    data.chatId ?? data.chat_id ?? data.threadId ?? data.thread_id ?? "",
+  );
   return shouldSuppressAiPush(chatId);
 }
 
@@ -86,11 +89,15 @@ export class ExpoPushProvider implements PushProvider {
 
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const content = notification.request.content;
-      const data = content.data as Record<string, unknown>;
+      const data = extractPushNotificationData(
+        content.data as Record<string, unknown>,
+      );
       if (shouldSuppressForegroundAiPush(data)) return;
       if (data?.type !== "chat") return;
       onForegroundChat({
-        peerId: String(data.chatId ?? ""),
+        peerId: String(
+          data.chatId ?? data.chat_id ?? data.threadId ?? data.thread_id ?? "",
+        ),
         senderName: typeof content.title === "string" ? content.title : "New message",
         preview: typeof content.body === "string" ? content.body : "New message",
         messageId: String(data.messageId ?? ""),
@@ -98,7 +105,11 @@ export class ExpoPushProvider implements PushProvider {
     });
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
-      onOpen(response.notification.request.content.data as Record<string, unknown>);
+      onOpen(
+        extractPushNotificationData(
+          response.notification.request.content.data as Record<string, unknown>,
+        ),
+      );
     });
 
     void Notifications.getLastNotificationResponseAsync().then((response) => {
@@ -106,7 +117,11 @@ export class ExpoPushProvider implements PushProvider {
       const id = response.notification.request.identifier;
       if (handledInitialIds.has(id)) return;
       handledInitialIds.add(id);
-      onOpen(response.notification.request.content.data as Record<string, unknown>);
+      onOpen(
+        extractPushNotificationData(
+          response.notification.request.content.data as Record<string, unknown>,
+        ),
+      );
     });
 
     return () => {

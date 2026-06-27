@@ -40,6 +40,7 @@ import {
 } from "@/domains/medical/search";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
+import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useI18n } from "@/hooks/useI18n";
 import { useRecordsPage } from "@/hooks/useRecordsPage";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -67,7 +68,8 @@ function formatWebDate(d: Date | null): string {
 export function RecordsWebView() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isMobile } = useWebLayout();
+  const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const mobileAddBarOffset = isDesktop ? 0 : MEDICAL_RECORD_ADD_BAR_HEIGHT + 12;
   const { records, profile } = useRecordsPage();
   const dir = flexRow(isRTL);
@@ -151,7 +153,12 @@ export function RecordsWebView() {
         ]}
       >
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
-          <View style={styles.pageHeader}>
+          <View
+            style={[
+              styles.pageHeader,
+              mobileTitlePaddingTop > 0 && { paddingTop: mobileTitlePaddingTop },
+            ]}
+          >
             <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>
               {t.records.title}
             </Text>

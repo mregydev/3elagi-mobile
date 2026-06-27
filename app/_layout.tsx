@@ -9,6 +9,7 @@ import { PushNotificationsBootstrap } from "@/components/PushNotificationsBootst
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { AppToast } from "@/components/AppToast";
 import { ChatNotifications } from "@/components/ChatNotifications";
+import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { AppSplash } from "@/components/SplashScreen";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
@@ -105,6 +106,7 @@ export default function RootLayout() {
       <PresenceChatSync />
       <ChatMessageSync />
       <ChatNotifications />
+      <HardwareBackHandler />
       {showSplash ? (
         <AppSplash onDone={handleSplashDone} />
       ) : (
@@ -124,6 +126,7 @@ export default function RootLayout() {
                   <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
                   <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
                   <Stack.Screen name="chat/[id]" />
+                  <Stack.Screen name="ai/[id]" />
                   <Stack.Screen name="doctor/[doctorId]" />
                   <Stack.Screen name="patients/[userId]" />
                   <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />

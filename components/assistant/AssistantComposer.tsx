@@ -1,5 +1,5 @@
 import { Send } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -8,6 +8,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import {
+  MOBILE_WEB_COMPOSER_FOOTER_GAP,
+  mobileWebComposerStyles,
+} from "@/constants/mobileWebComposer";
 import { useColors } from "@/hooks/useColors";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
 
@@ -18,8 +22,6 @@ interface Props {
   bottomInset?: number;
   /** Tighter padding for mobile tab screens (no extra safe-area bottom). */
   compact?: boolean;
-  /** Mobile web: remove bottom padding so the composer sits on the tab bar. */
-  flushWebFooter?: boolean;
   onSend: (text: string) => void;
 }
 
@@ -29,24 +31,73 @@ export function AssistantComposer({
   placeholder = "Ask about your medical records…",
   bottomInset = 0,
   compact = false,
-  flushWebFooter = false,
   onSend,
 }: Props) {
   const colors = useColors();
   const [text, setText] = useState("");
-  // See ChatComposer: read freshest text from a ref so a fast Send tap can't
-  // truncate the message before the last keystroke's setState commits.
-  const textRef = useRef("");
-  const webFlush = flushWebFooter && Platform.OS === "web" && compact;
-  const bottomPadding = webFlush ? 0 : (compact ? 6 : 12) + bottomInset;
+  const isMobileWeb = Platform.OS === "web" && compact;
+  const bottomPadding = isMobileWeb
+    ? MOBILE_WEB_COMPOSER_FOOTER_GAP
+    : (compact ? 6 : 12) + bottomInset;
 
   const submit = () => {
-    const value = textRef.current.trim();
+    const value = text.trim();
     if (!value || disabled || sending) return;
     onSend(value);
-    textRef.current = "";
     setText("");
   };
+
+  if (isMobileWeb) {
+    return (
+      <View
+        style={[
+          mobileWebComposerStyles.shell,
+          {
+            paddingBottom: bottomPadding,
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
+        <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder={placeholder}
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            editable={!disabled && !sending}
+            blurOnSubmit={false}
+            onKeyPress={(e) => handleEnterToSendMessage(e, submit)}
+            style={[
+              mobileWebComposerStyles.input,
+              {
+                color: colors.foreground,
+                backgroundColor: colors.muted,
+              },
+            ]}
+          />
+          <Pressable
+            onPress={submit}
+            disabled={disabled || sending || !text.trim()}
+            style={[
+              mobileWebComposerStyles.iconBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: disabled || sending || !text.trim() ? 0.45 : 1,
+              },
+            ]}
+          >
+            {sending ? (
+              <ActivityIndicator color={colors.primaryForeground} size="small" />
+            ) : (
+              <Send color={colors.primaryForeground} size={18} />
+            )}
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -61,10 +112,7 @@ export function AssistantComposer({
     >
       <TextInput
         value={text}
-        onChangeText={(value) => {
-          textRef.current = value;
-          setText(value);
-        }}
+        onChangeText={setText}
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}
         multiline

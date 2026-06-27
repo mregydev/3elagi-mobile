@@ -2,7 +2,7 @@ import type { PushProviderId } from "@/constants/push";
 import type { Router } from "expo-router";
 
 export interface PushBootstrapContext {
-  router: Router;
+  router?: Router;
   hydrated: boolean;
   accessToken: string | null;
   profileId: string | undefined;

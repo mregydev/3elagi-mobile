@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { MobileAppDownloadModal } from "@/components/web/MobileAppDownloadModal.web";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 type Props = {
@@ -13,8 +14,11 @@ type Props = {
 export function MobileAppLink({ variant = "link" }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const dir = flexRow(isRTL);
   const [open, setOpen] = useState(false);
+
+  if (!isDesktop) return null;
   const iconSize =
     variant === "nav" ? 18 : variant === "button" ? 20 : variant === "toolbar" ? 16 : 16;
   const iconColor =

@@ -27,6 +27,31 @@ The app ships with a built-in demo profile:
 - email: `demo@3elagi.com`
 - password: `demo1234`
 
+## Native app (WebView shell)
+
+On iOS and Android, the app is a **native shell** with splash screen + WebView loading a **bundled static web app** (offline-capable).
+
+### Build & run with local web bundle
+
+```bash
+npm run build:web-local   # exports web app → assets/web/ (+ copies into android/)
+npm run android           # installs APK with bundled web assets
+```
+
+Or in one step:
+
+```bash
+npm run android:local
+```
+
+### Dev without rebuilding the bundle
+
+If `assets/web/` already exists, `npm run android` copies it into the APK automatically.
+
+To use the live dev server instead, set `EXPO_PUBLIC_USE_LOCAL_WEB=0` and run `npm run web` in another terminal.
+
+To load a remote URL (e.g. Vercel), set `EXPO_PUBLIC_WEB_APP_URL=https://3elagi-mobile.vercel.app/`.
+
 ## Build
 
 - Web bundle: `npm run build:web`  →  `dist/`

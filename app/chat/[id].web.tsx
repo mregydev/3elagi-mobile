@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import ChatScreen from "./[id].tsx";
 import { WebDesktopShell } from "@/components/web/WebDesktopShell";
+import { WebMobileTabShell } from "@/components/web/WebMobileTabShell";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
@@ -23,7 +24,11 @@ export default function ChatScreenWeb() {
   if (!hydrated || !signedIn) return null;
 
   if (!isDesktop) {
-    return <ChatScreen />;
+    return (
+      <WebMobileTabShell>
+        <ChatScreen />
+      </WebMobileTabShell>
+    );
   }
 
   return (

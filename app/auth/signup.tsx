@@ -31,6 +31,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING } from "@/constants/webLayout";
 
 type LocalFile = SignupFile & { label: string };
 
@@ -548,7 +549,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 40 : 40,
   },
-  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
+  bodyMobileWeb: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 40 + WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING,
+  },
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4, textAlign: "center" },
   roleRow: { gap: 10, width: "100%" },
