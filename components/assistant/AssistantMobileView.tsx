@@ -2,6 +2,7 @@ import { Bot, History, Plus, RefreshCw } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -85,6 +86,16 @@ export function AssistantMobileView({
     if (!listRef.current) return;
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd({ animated });
+      if (Platform.OS === "web") {
+        const candidate = listRef.current as unknown as {
+          getScrollableNode?: () => HTMLElement;
+          getNativeScrollRef?: () => { getScrollableNode?: () => HTMLElement };
+        };
+        const node =
+          candidate.getScrollableNode?.() ??
+          candidate.getNativeScrollRef?.()?.getScrollableNode?.();
+        if (node) node.scrollTop = node.scrollHeight;
+      }
     });
   }, []);
 
@@ -106,11 +117,9 @@ export function AssistantMobileView({
   useEffect(() => {
     if (loadingHistory || messages.length === 0) return;
     if (!initialScrollPendingRef.current) return;
-    scrollToBottom(false);
-    const timer = setTimeout(() => scrollToBottom(false), 100);
+    scrollToBottomWithRetries(false);
     initialScrollPendingRef.current = false;
-    return () => clearTimeout(timer);
-  }, [activeId, loadingHistory, messages.length, scrollToBottom]);
+  }, [activeId, loadingHistory, messages.length, scrollToBottomWithRetries]);
 
   const lastMessageId = lastMessage?.id;
 

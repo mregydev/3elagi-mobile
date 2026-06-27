@@ -11,7 +11,9 @@ import type { PushBootstrapContext, PushProvider } from "@/domains/push/provider
 
 function shouldSuppressForegroundAiPush(data: Record<string, unknown> | undefined): boolean {
   if (data?.type !== "ai") return false;
-  const chatId = String(data.chatId ?? data.chat_id ?? "");
+  const chatId = String(
+    data.chatId ?? data.chat_id ?? data.threadId ?? data.thread_id ?? "",
+  );
   return shouldSuppressAiPush(chatId);
 }
 
@@ -90,7 +92,9 @@ export class ExpoPushProvider implements PushProvider {
       if (shouldSuppressForegroundAiPush(data)) return;
       if (data?.type !== "chat") return;
       onForegroundChat({
-        peerId: String(data.chatId ?? ""),
+        peerId: String(
+          data.chatId ?? data.chat_id ?? data.threadId ?? data.thread_id ?? "",
+        ),
         senderName: typeof content.title === "string" ? content.title : "New message",
         preview: typeof content.body === "string" ? content.body : "New message",
         messageId: String(data.messageId ?? ""),

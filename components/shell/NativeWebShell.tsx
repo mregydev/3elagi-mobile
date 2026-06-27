@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AppWebView } from "@/components/shell/AppWebView";
+import { NativePushBootstrap } from "@/components/shell/NativePushBootstrap";
 import colors from "@/constants/colors";
 
 export function NativeWebShell() {
@@ -10,6 +11,7 @@ export function NativeWebShell() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <SafeAreaView style={styles.root} edges={["top"]}>
+        <NativePushBootstrap />
         <View style={styles.webviewFrame}>
           <AppWebView />
         </View>

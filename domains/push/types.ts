@@ -32,7 +32,7 @@ export function parsePushNotificationData(
   if (!data) return null;
 
   const type = data.type;
-  const chatId = readString(data, "chatId", "chat_id");
+  const chatId = readString(data, "chatId", "chat_id", "threadId", "thread_id");
   const messageId = readString(data, "messageId", "message_id");
   if (!chatId) return null;
 

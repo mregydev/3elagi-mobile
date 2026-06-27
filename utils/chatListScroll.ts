@@ -51,4 +51,6 @@ export function scrollChatToLatest<T>(
   setTimeout(scroll, 80);
   setTimeout(scroll, 180);
   setTimeout(scroll, 360);
+  setTimeout(scroll, 600);
+  setTimeout(scroll, 1000);
 }

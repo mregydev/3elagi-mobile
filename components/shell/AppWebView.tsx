@@ -1,12 +1,25 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import WebView from "react-native-webview";
 import colors from "@/constants/colors";
 import { WEB_APP_URL } from "@/constants/webAppUrl";
+import { setWebAppNavigator } from "@/domains/push/webViewNavigation";
 
 export function AppWebView() {
   const [loadError, setLoadError] = useState<string | null>(null);
-  const url = process.env.EXPO_PUBLIC_WEB_APP_URL ?? WEB_APP_URL;
+  const baseUrl = useMemo(
+    () => (process.env.EXPO_PUBLIC_WEB_APP_URL ?? WEB_APP_URL).replace(/\/$/, ""),
+    [],
+  );
+  const [uri, setUri] = useState(`${baseUrl}/`);
+
+  useEffect(() => {
+    setWebAppNavigator((path) => {
+      const normalized = path.startsWith("/") ? path : `/${path}`;
+      setUri(`${baseUrl}${normalized}`);
+    });
+    return () => setWebAppNavigator(null);
+  }, [baseUrl]);
 
   if (loadError) {
     return (
@@ -19,7 +32,7 @@ export function AppWebView() {
 
   return (
     <WebView
-      source={{ uri: url }}
+      source={{ uri }}
       style={styles.webview}
       originWhitelist={["*"]}
       javaScriptEnabled
@@ -30,10 +43,10 @@ export function AppWebView() {
       setSupportMultipleWindows={false}
       startInLoadingState
       onError={() => {
-        setLoadError(`Could not load ${url}. Check your internet connection.`);
+        setLoadError(`Could not load ${uri}. Check your internet connection.`);
       }}
       onHttpError={() => {
-        setLoadError(`Could not load ${url}. Check your internet connection.`);
+        setLoadError(`Could not load ${uri}. Check your internet connection.`);
       }}
     />
   );

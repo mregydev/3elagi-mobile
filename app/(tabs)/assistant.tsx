@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { Redirect } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import { AssistantMobileView } from "@/components/assistant/AssistantMobileView";
 import {
@@ -9,12 +9,13 @@ import {
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
+import { useAssistantDeepLinkId } from "@/hooks/useAssistantDeepLinkId";
 
 export default function AssistantScreen() {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
-  const { chatId } = useLocalSearchParams<{ chatId?: string }>();
+  const conversationId = useAssistantDeepLinkId();
   const signedIn = isSignedIn(profile, accessToken);
   const assistant = useAiAssistant();
 
@@ -26,10 +27,10 @@ export default function AssistantScreen() {
   );
 
   useEffect(() => {
-    if (typeof chatId === "string" && chatId) {
-      assistant.setActiveId(chatId);
+    if (conversationId) {
+      assistant.setActiveId(conversationId);
     }
-  }, [chatId, assistant.setActiveId]);
+  }, [conversationId, assistant.setActiveId]);
 
   useEffect(() => {
     if (!assistant.activeId || assistant.activeId.startsWith("draft-")) {
