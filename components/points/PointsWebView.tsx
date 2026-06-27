@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { PointsPieChart } from "@/components/PointsPieChart";
-import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { WEB_MAX_WIDTH, WEB_MOBILE_PAGE_TITLE_TOP_PADDING } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { usePointsPage } from "@/hooks/usePointsPage";
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   pageHeaderMobile: {
-    marginTop: 8,
+    paddingTop: WEB_MOBILE_PAGE_TITLE_TOP_PADDING,
   },
   pageHeaderDesktop: {
     paddingBottom: 24,

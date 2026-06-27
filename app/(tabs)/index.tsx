@@ -212,7 +212,7 @@ export default function ChatsTab() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {showHeader ? <AppHeader logoMarginTop={8} /> : null}
+      {showHeader ? <AppHeader /> : null}
       <ChatsHomeBrowse />
     </View>
   );

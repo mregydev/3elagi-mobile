@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
+import { WEB_MOBILE_PAGE_TITLE_TOP_PADDING } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
@@ -10,8 +11,6 @@ interface Props {
   surface?: "background" | "card";
   borderless?: boolean;
   title?: string;
-  /** Extra space above the logo on home/history-style headers. */
-  logoMarginTop?: number;
 }
 
 export function AppHeader({
@@ -19,10 +18,10 @@ export function AppHeader({
   surface = "background",
   borderless = false,
   title,
-  logoMarginTop = 0,
 }: Props) {
   const colors = useColors();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isMobile } = useWebLayout();
+  const mobileTitleTop = isMobile ? WEB_MOBILE_PAGE_TITLE_TOP_PADDING : 0;
 
   return (
     <View
@@ -32,12 +31,12 @@ export function AppHeader({
           backgroundColor: surface === "card" ? colors.card : colors.background,
           borderBottomColor: colors.border,
           borderBottomWidth: borderless ? 0 : StyleSheet.hairlineWidth,
-          paddingTop: isDesktop ? 16 : 10,
+          paddingTop: isDesktop ? 16 : 10 + mobileTitleTop,
         },
       ]}
     >
       {!isDesktop ? (
-        <View style={[styles.brandRow, logoMarginTop > 0 && { marginTop: logoMarginTop }]}>
+        <View style={styles.brandRow}>
           <Logo3elagi height={LOGO_HEIGHT.header} />
         </View>
       ) : title ? (

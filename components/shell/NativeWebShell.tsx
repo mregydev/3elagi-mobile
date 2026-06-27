@@ -28,6 +28,6 @@ const styles = StyleSheet.create({
   webviewFrame: {
     flex: 1,
     paddingHorizontal: 0,
-    paddingTop: 15,
+    
   },
 });

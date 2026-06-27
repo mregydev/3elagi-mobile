@@ -60,7 +60,7 @@ export default function HistoryTab() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader logoMarginTop={8}>
+      <AppHeader>
         <View
           style={[
             styles.searchBar,

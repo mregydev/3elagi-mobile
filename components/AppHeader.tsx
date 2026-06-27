@@ -12,11 +12,9 @@ interface Props {
   surface?: "background" | "card";
   borderless?: boolean;
   title?: string;
-  /** Extra space above the logo on home/history-style headers. */
-  logoMarginTop?: number;
 }
 
-export function AppHeader({ children, surface = "background", logoMarginTop = 0 }: Props) {
+export function AppHeader({ children, surface = "background" }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
 
@@ -31,7 +29,7 @@ export function AppHeader({ children, surface = "background", logoMarginTop = 0 
         },
       ]}
     >
-      <View style={[styles.brandRow, logoMarginTop > 0 && { marginTop: logoMarginTop }]}>
+      <View style={styles.brandRow}>
         <Logo3elagi height={LOGO_HEIGHT.header} />
       </View>
       {children ? <View style={styles.below}>{children}</View> : null}
