@@ -84,22 +84,11 @@ export function AssistantMobileView({
       : []);
   const lastMessage = messages[messages.length - 1];
 
-  const scrollToBottom = useCallback((animated = true) => {
-    if (!listRef.current) return;
+  const scrollToBottom = useCallback((animated = false) => {
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd({ animated });
     });
   }, []);
-
-  const scrollToBottomWithRetries = useCallback(
-    (animated = false) => {
-      scrollToBottom(animated);
-      for (const delay of [50, 150, 300, 500, 800]) {
-        setTimeout(() => scrollToBottom(animated), delay);
-      }
-    },
-    [scrollToBottom],
-  );
 
   useEffect(() => {
     initialScrollPendingRef.current = true;
@@ -110,50 +99,30 @@ export function AssistantMobileView({
     if (loadingHistory || messages.length === 0) return;
     if (!initialScrollPendingRef.current) return;
     scrollToBottom(false);
-    const timer = setTimeout(() => scrollToBottom(false), 100);
     initialScrollPendingRef.current = false;
-    return () => clearTimeout(timer);
   }, [activeId, loadingHistory, messages.length, scrollToBottom]);
 
   const lastMessageId = lastMessage?.id;
 
-  useEffect(() => {
-    if (!sending) return;
-    scrollToBottomWithRetries(false);
-  }, [
-    sending,
-    messages.length,
-    lastMessageId,
-    lastMessage?.content,
-    lastMessage?.pending,
-    scrollToBottomWithRetries,
-  ]);
-
+  // Streaming growth is handled by onContentSizeChange (one scroll per content
+  // change). Here we only react to a *new* message being appended.
   useEffect(() => {
     if (!lastMessageId) return;
-    if (sending || isNearBottomRef.current) {
-      scrollToBottomWithRetries(false);
-    }
-  }, [lastMessageId, sending, scrollToBottomWithRetries]);
+    if (sending || isNearBottomRef.current) scrollToBottom(false);
+  }, [lastMessageId, sending, scrollToBottom]);
 
   useEffect(() => {
-    const showSub = KeyboardEvents.addListener("keyboardWillShow", () => {
-      if (sending || isNearBottomRef.current) scrollToBottomWithRetries(true);
-    });
     const didShowSub = KeyboardEvents.addListener("keyboardDidShow", () => {
-      if (sending || isNearBottomRef.current) scrollToBottomWithRetries(false);
+      if (sending || isNearBottomRef.current) scrollToBottom(true);
     });
-    return () => {
-      showSub.remove();
-      didShowSub.remove();
-    };
-  }, [scrollToBottomWithRetries, sending]);
+    return () => didShowSub.remove();
+  }, [scrollToBottom, sending]);
 
   const handleContentSizeChange = useCallback(() => {
     if (initialScrollPendingRef.current || sending || isNearBottomRef.current) {
-      scrollToBottomWithRetries(false);
+      scrollToBottom(false);
     }
-  }, [scrollToBottomWithRetries, sending]);
+  }, [scrollToBottom, sending]);
 
   const handleScroll = useCallback(
     (event: {
@@ -176,9 +145,9 @@ export function AssistantMobileView({
     (text: string) => {
       isNearBottomRef.current = true;
       onSend(text);
-      scrollToBottomWithRetries(false);
+      scrollToBottom(false);
     },
-    [onSend, scrollToBottomWithRetries],
+    [onSend, scrollToBottom],
   );
 
   const handleNewChat = () => {
@@ -238,19 +207,16 @@ export function AssistantMobileView({
           />
         )}
         ListEmptyComponent={renderEmpty}
-        extraData={`${messages.length}:${lastMessageId}:${lastMessage?.content?.length ?? 0}:${sending}`}
+        extraData={`${messages.length}:${lastMessageId}:${sending}`}
         contentContainerStyle={
           messages.length === 0 ? styles.messagesEmpty : styles.messages
         }
-        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onLayout={() => {
-          if (sending || initialScrollPendingRef.current) {
-            scrollToBottomWithRetries(false);
-          }
+          if (sending || initialScrollPendingRef.current) scrollToBottom(false);
         }}
         onContentSizeChange={handleContentSizeChange}
       />

@@ -1,5 +1,5 @@
 import { Send } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -34,13 +34,17 @@ export function AssistantComposer({
 }: Props) {
   const colors = useColors();
   const [text, setText] = useState("");
+  // See ChatComposer: read freshest text from a ref so a fast Send tap can't
+  // truncate the message before the last keystroke's setState commits.
+  const textRef = useRef("");
   const webFlush = flushWebFooter && Platform.OS === "web" && compact;
   const bottomPadding = webFlush ? 0 : (compact ? 6 : 12) + bottomInset;
 
   const submit = () => {
-    const value = text.trim();
+    const value = textRef.current.trim();
     if (!value || disabled || sending) return;
     onSend(value);
+    textRef.current = "";
     setText("");
   };
 
@@ -57,7 +61,10 @@ export function AssistantComposer({
     >
       <TextInput
         value={text}
-        onChangeText={setText}
+        onChangeText={(value) => {
+          textRef.current = value;
+          setText(value);
+        }}
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}
         multiline

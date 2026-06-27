@@ -69,8 +69,11 @@ function ChatsHomeBrowse() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!selectedSpeciality) void loadHome();
-    }, [loadHome, selectedSpeciality]),
+      // Only fetch when we have nothing yet — refetching on every tab focus
+      // caused a network round-trip + re-render that made the home tab feel
+      // like it hung when switching back to it.
+      if (!selectedSpeciality && specialities.length === 0) void loadHome();
+    }, [loadHome, selectedSpeciality, specialities.length]),
   );
 
   const openSpeciality = useCallback(async (speciality: Speciality) => {

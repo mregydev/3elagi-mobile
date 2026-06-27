@@ -28,6 +28,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Freeze blurred tabs so off-screen screens stop re-rendering while
+        // you're on another tab — keeps switching snappy.
+        freezeOnBlur: true,
+        lazy: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarHideOnKeyboard: true,

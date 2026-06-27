@@ -121,6 +121,10 @@ export function ChatComposer({
 }: Props) {
   const colors = useColors();
   const [text, setText] = useState("");
+  // Mirror the freshest text synchronously: setState is batched, so a tap on
+  // Send right after the last keystroke can read a stale `text` and truncate
+  // the message. Refs update immediately, so we send from this instead.
+  const textRef = useRef("");
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -152,6 +156,7 @@ export function ChatComposer({
 
   useEffect(() => {
     if (editingMessage) {
+      textRef.current = editingMessage.text;
       setText(editingMessage.text);
       stopTyping();
     }
@@ -265,10 +270,11 @@ export function ChatComposer({
 
   const sendPendingAttachment = async () => {
     if (!pendingAttachment || sending || uploading) return;
-    const caption = text.trim();
+    const caption = textRef.current.trim();
     const { uri, mimeType, fileName, type, webFile } = pendingAttachment;
     stopTyping();
     setPendingAttachment(null);
+    textRef.current = "";
     setText("");
     await uploadAndSend(uri, mimeType, fileName, type, webFile, caption);
   };
@@ -451,24 +457,27 @@ export function ChatComposer({
   };
 
   const sendText = async () => {
-    const t = text.trim();
+    const t = textRef.current.trim();
     if (!t || sending || uploading || sendInFlightRef.current) return;
     stopTyping();
 
     if (editingMessage && onEdit) {
       await onEdit(editingMessage.id, t);
+      textRef.current = "";
       setText("");
       onCancelEdit?.();
       return;
     }
 
     sendInFlightRef.current = true;
+    textRef.current = "";
     setText("");
     const tempId = createPending("text", undefined, t);
 
     try {
       await onSend({ recipientId: peerId, type: "text", content: t }, tempId);
     } catch {
+      textRef.current = t;
       setText(t);
     } finally {
       sendInFlightRef.current = false;
@@ -625,6 +634,7 @@ export function ChatComposer({
         <TextInput
           value={text}
           onChangeText={(value) => {
+            textRef.current = value;
             setText(value);
             if (value.trim()) notifyTyping();
             else stopTyping();

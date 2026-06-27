@@ -53,7 +53,7 @@ function canReactToAiMessage(message: AiMessage): boolean {
   );
 }
 
-export function AssistantMessageBubble({
+function AssistantMessageBubbleBase({
   message,
   compact = false,
   selfUserId,
@@ -137,6 +137,18 @@ export function AssistantMessageBubble({
     </View>
   );
 }
+
+// Memoized: during streaming only the last assistant message object changes
+// (patchAssistantMessage keeps other message references stable), so this skips
+// re-rendering every other bubble on each token. onFeedback identity is
+// intentionally ignored — it closes over a stable store callback.
+export const AssistantMessageBubble = React.memo(
+  AssistantMessageBubbleBase,
+  (prev, next) =>
+    prev.message === next.message &&
+    prev.compact === next.compact &&
+    prev.selfUserId === next.selfUserId,
+);
 
 const styles = StyleSheet.create({
   row: { marginBottom: 12, paddingHorizontal: 16 },
