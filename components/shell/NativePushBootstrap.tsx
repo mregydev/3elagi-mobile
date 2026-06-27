@@ -81,7 +81,7 @@ export function NativePushBootstrap() {
   );
 
   useEffect(() => {
-    if (Platform.OS === "web" || !accessToken) return;
+    if (Platform.OS === "web") return;
 
     return provider.subscribe(
       {
@@ -93,8 +93,8 @@ export function NativePushBootstrap() {
       handleOpen,
     );
   }, [
-    accessToken,
     hydrated,
+    accessToken,
     profile?.id,
     provider,
     handleForegroundChat,

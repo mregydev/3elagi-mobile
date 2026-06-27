@@ -8,6 +8,8 @@ import {
   disconnectPresenceSocket,
 } from "@/domains/presence/socket";
 import type { LoggedInUser } from "@/domains/presence/types";
+import { NATIVE_WEBVIEW_BRIDGE } from "@/constants/nativeWebViewBridge";
+import { isNativeWebViewShell } from "@/utils/nativeWebViewBridge";
 
 function buildLoggedInUser(
   profile: { id: string; name: string; email: string; avatarUrl?: string },
@@ -96,6 +98,35 @@ export function PresenceSocket() {
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("focus", onWindowFocus);
+    };
+  }, [
+    hydrated,
+    profile?.id,
+    profile?.name,
+    profile?.email,
+    profile?.avatarUrl,
+    role,
+    specialty,
+    specialityId,
+    doctorId,
+    accessToken,
+  ]);
+
+  useEffect(() => {
+    if (!isNativeWebViewShell()) return;
+    if (!hydrated || !profile || !accessToken) return;
+
+    const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
+
+    const onBackground = () => announcePresenceLogout(profile.id);
+    const onForeground = () => announcePresenceLogin(user, accessToken);
+
+    window.addEventListener(NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND, onBackground);
+    window.addEventListener(NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND, onForeground);
+
+    return () => {
+      window.removeEventListener(NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND, onBackground);
+      window.removeEventListener(NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND, onForeground);
     };
   }, [
     hydrated,

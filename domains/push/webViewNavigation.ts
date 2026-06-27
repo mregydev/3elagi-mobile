@@ -1,25 +1,47 @@
-import type { PushNotificationData } from "@/domains/push/types";
 import { getPushNotificationPath } from "@/domains/push/navigation";
+import type { PushNotificationData } from "@/domains/push/types";
 
 type WebAppNavigator = (path: string) => void;
+type WebAppInjectNavigate = (path: string) => void;
 
 let navigate: WebAppNavigator | null = null;
+let injectNavigate: WebAppInjectNavigate | null = null;
 let pendingPath: string | null = null;
 
-export function setWebAppNavigator(fn: WebAppNavigator | null): void {
+function flushPendingPath(): void {
+  if (!pendingPath) return;
+  const path = pendingPath;
+  pendingPath = null;
+  navigateWebAppPath(path);
+}
+
+export function setWebAppNavigator(
+  fn: WebAppNavigator | null,
+  inject?: WebAppInjectNavigate | null,
+): void {
   navigate = fn;
-  if (fn && pendingPath) {
-    fn(pendingPath);
-    pendingPath = null;
-  }
+  injectNavigate = inject ?? null;
+  flushPendingPath();
+}
+
+export function notifyWebAppLoaded(): void {
+  flushPendingPath();
 }
 
 export function navigateWebAppPath(path: string): void {
-  if (navigate) {
-    navigate(path);
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+
+  if (injectNavigate) {
+    injectNavigate(normalized);
     return;
   }
-  pendingPath = path;
+
+  if (navigate) {
+    navigate(normalized);
+    return;
+  }
+
+  pendingPath = normalized;
 }
 
 export function navigateFromPushToWebApp(data: PushNotificationData): void {

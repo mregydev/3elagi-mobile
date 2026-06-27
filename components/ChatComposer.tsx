@@ -28,6 +28,12 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
+import { isNativeWebViewShell } from "@/utils/nativeWebViewBridge";
+import {
+  cameraErrorMessage,
+  pickNativeShellCamera,
+} from "@/utils/nativeWebViewMedia";
+import type { NativeShellCameraMediaResult } from "@/constants/nativeWebViewBridge";
 import {
   CHAT_VIDEO_PICKER_OPTIONS,
   getChatVideoLimitViolation,
@@ -60,6 +66,7 @@ type PendingAttachment = {
   fileName: string;
   type: "image" | "video";
   webFile?: File | Blob;
+  preUploadedUrl?: string;
 };
 
 function mimeFromUri(uri: string, fallback: string): string {
@@ -224,6 +231,7 @@ export function ChatComposer({
     type: "image" | "video" | "voice",
     webFile?: File | Blob,
     caption?: string,
+    preUploadedUrl?: string,
   ) => {
     if (sendInFlightRef.current || sending || uploading) return;
 
@@ -235,13 +243,15 @@ export function ChatComposer({
     sendInFlightRef.current = true;
     setUploading(true);
     try {
-      const uploaded = await uploadFile(uri, mimeType, fileName, accessToken, webFile);
+      const attachmentUrl =
+        preUploadedUrl ??
+        (await uploadFile(uri, mimeType, fileName, accessToken, webFile)).url;
       await onSend(
         {
           recipientId: peerId,
           type,
           content: caption?.trim() || undefined,
-          attachmentUrl: uploaded.url,
+          attachmentUrl,
         },
         tempId,
       );
@@ -274,23 +284,26 @@ export function ChatComposer({
   const sendPendingAttachment = async () => {
     if (!pendingAttachment || sending || uploading) return;
     const caption = text.trim();
-    const { uri, mimeType, fileName, type, webFile } = pendingAttachment;
+    const { uri, mimeType, fileName, type, webFile, preUploadedUrl } = pendingAttachment;
     stopTyping();
     setPendingAttachment(null);
     setText("");
-    await uploadAndSend(uri, mimeType, fileName, type, webFile, caption);
+    await uploadAndSend(uri, mimeType, fileName, type, webFile, caption, preUploadedUrl);
   };
 
   const pickGallery = async (media: "image" | "video") => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          isRTL ? "إذن مطلوب" : "Permission required",
-          isRTL ? "يرجى السماح بالوصول إلى المعرض" : "Please allow gallery access.",
-        );
-        return;
+      if (Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            isRTL ? "إذن مطلوب" : "Permission required",
+            isRTL ? "يرجى السماح بالوصول إلى المعرض" : "Please allow gallery access.",
+          );
+          return;
+        }
       }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: media === "image" ? ["images"] : ["videos"],
         quality: media === "image" ? 0.85 : CHAT_VIDEO_PICKER_OPTIONS.quality,
@@ -322,6 +335,44 @@ export function ChatComposer({
 
   const pickCamera = async (media: "image" | "video") => {
     try {
+      if (Platform.OS === "web") {
+        if (isNativeWebViewShell()) {
+          const asset = await pickNativeShellCamera(media);
+          if (!asset) return;
+          setPendingAttachment({
+            uri: asset.uri,
+            mimeType: asset.mimeType,
+            fileName: asset.fileName,
+            type: asset.mediaType,
+            preUploadedUrl: asset.preUploadedUrl,
+          });
+          return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: media === "image" ? ["images"] : ["videos"],
+          quality: media === "image" ? 0.85 : CHAT_VIDEO_PICKER_OPTIONS.quality,
+          allowsEditing: media === "image",
+          ...(media === "video" ? CHAT_VIDEO_PICKER_OPTIONS : {}),
+        });
+        if (result.canceled || !result.assets[0]) return;
+        const asset = result.assets[0];
+        if (media === "video") {
+          const violation = await getChatVideoLimitViolation(
+            asset.duration ?? null,
+            asset.uri,
+            isRTL,
+            asset.fileSize ?? null,
+          );
+          if (violation) {
+            Alert.alert(violation.title, violation.body);
+            return;
+          }
+        }
+        queueAttachment(asset, media);
+        return;
+      }
+
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
@@ -331,7 +382,7 @@ export function ChatComposer({
         return;
       }
 
-      if (media === "video" && Platform.OS !== "web") {
+      if (media === "video") {
         const mic = await Audio.requestPermissionsAsync();
         if (mic.status !== "granted") {
           Alert.alert(
@@ -366,6 +417,17 @@ export function ChatComposer({
       }
       queueAttachment(asset, media);
     } catch (e) {
+      if (Platform.OS === "web" && isNativeWebViewShell()) {
+        const code =
+          e instanceof Error
+            ? (e.message as NativeShellCameraMediaResult["error"])
+            : "failed";
+        Alert.alert(
+          isRTL ? "خطأ" : "Error",
+          cameraErrorMessage(code, isRTL),
+        );
+        return;
+      }
       Alert.alert(
         isRTL ? "خطأ" : "Error",
         e instanceof Error ? e.message : isRTL ? "تعذر فتح الكاميرا" : "Could not open camera.",
@@ -708,8 +770,8 @@ export function ChatComposer({
       >
         {isMobileWeb ? (
           <View style={[mobileWebComposerStyles.row, { flexDirection: rowDir }]}>
-            {attachButtons}
             {messageInput}
+            {attachButtons}
             {sendOrMicButton}
           </View>
         ) : (

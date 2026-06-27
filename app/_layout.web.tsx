@@ -8,6 +8,8 @@ import { AppSplash } from "@/components/SplashScreen";
 import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
+import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridge.web";
+import { NativeWebViewPushNavigation } from "@/components/web/NativeWebViewPushNavigation.web";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
@@ -96,6 +98,8 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <MedicalDataLoader />
           <PointsDataLoader />
+          <NativeWebViewAuthBridge />
+          <NativeWebViewPushNavigation />
           <PresenceSocket />
           <PresenceChatSync />
           <ChatMessageSync />

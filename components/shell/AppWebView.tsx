@@ -1,14 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, StyleSheet, Text, View } from "react-native";
+import { AppState, BackHandler, StyleSheet, Text, View } from "react-native";
 import WebView from "react-native-webview";
 import colors from "@/constants/colors";
+import { NATIVE_WEBVIEW_BRIDGE } from "@/constants/nativeWebViewBridge";
 import {
   isAiChatWebPath,
   isNormalChatWebPath,
   WEB_APP_PATHS,
 } from "@/constants/webAppPaths";
 import { WEB_APP_URL } from "@/constants/webAppUrl";
-import { setWebAppNavigator } from "@/domains/push/webViewNavigation";
+import {
+  notifyWebAppLoaded,
+  setWebAppNavigator,
+} from "@/domains/push/webViewNavigation";
+import { handleNativeWebViewMessage } from "@/utils/nativeWebViewBridge.native";
+import { buildWebViewPushNavigateScript } from "@/utils/webViewPushNavigate";
+
+function requestAuthSyncScript(): string {
+  return `window.dispatchEvent(new Event(${JSON.stringify(NATIVE_WEBVIEW_BRIDGE.REQUEST_AUTH)})); true;`;
+}
+
+function appLifecycleScript(state: "active" | "background"): string {
+  const event =
+    state === "active"
+      ? NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND
+      : NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND;
+  return `window.dispatchEvent(new Event(${JSON.stringify(event)})); true;`;
+}
 
 function pathFromUri(uri: string, baseUrl: string): string {
   try {
@@ -31,12 +49,31 @@ export function AppWebView() {
   const path = useMemo(() => pathFromUri(uri, baseUrl), [uri, baseUrl]);
 
   useEffect(() => {
-    setWebAppNavigator((nextPath) => {
-      const normalized = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
-      setUri(`${baseUrl}${normalized}`);
-    });
-    return () => setWebAppNavigator(null);
+    setWebAppNavigator(
+      (nextPath) => {
+        const normalized = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
+        setUri(`${baseUrl}${normalized}`);
+      },
+      (nextPath) => {
+        webViewRef.current?.injectJavaScript(buildWebViewPushNavigateScript(nextPath));
+      },
+    );
+    return () => setWebAppNavigator(null, null);
   }, [baseUrl]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        webViewRef.current?.injectJavaScript(appLifecycleScript("active"));
+        webViewRef.current?.injectJavaScript(requestAuthSyncScript());
+        return;
+      }
+      if (state === "background" || state === "inactive") {
+        webViewRef.current?.injectJavaScript(appLifecycleScript("background"));
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -80,7 +117,16 @@ export function AppWebView() {
         allowsBackForwardNavigationGestures={false}
         setSupportMultipleWindows={false}
         startInLoadingState
+        mediaCapturePermissionGrantType="grant"
+        allowsInlineMediaPlayback
         onNavigationStateChange={(event) => setCanGoBack(event.canGoBack)}
+        onMessage={(event) =>
+          handleNativeWebViewMessage(event.nativeEvent.data, webViewRef)
+        }
+        onLoadEnd={() => {
+          webViewRef.current?.injectJavaScript(requestAuthSyncScript());
+          notifyWebAppLoaded();
+        }}
         onError={() => {
           setLoadError(`Could not load ${uri}. Check your internet connection.`);
         }}

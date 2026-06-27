@@ -74,6 +74,12 @@ export function ChatAttachMenu({
           : "Attach";
 
   const run = (action: () => void) => {
+    // Mobile web: open the file/camera picker while the tap gesture is still active.
+    if (isMobileWeb) {
+      action();
+      onClose();
+      return;
+    }
     if (isWeb) {
       onClose();
       action();
