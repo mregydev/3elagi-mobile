@@ -25,6 +25,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING } from "@/constants/webLayout";
 
 export default function LoginScreen() {
   const colors = useColors();
