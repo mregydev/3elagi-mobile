@@ -48,6 +48,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
+import { leaveChatToHistory } from "@/utils/chatNavigation";
 import { scrollChatToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
 
@@ -650,7 +651,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={leaveChatToHistory} style={styles.backBtn}>
           <ArrowLeft size={22} color={colors.foreground} />
         </Pressable>
 

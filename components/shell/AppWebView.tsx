@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { BackHandler, StyleSheet, Text, View } from "react-native";
 import WebView from "react-native-webview";
 import colors from "@/constants/colors";
+import {
+  isAiChatWebPath,
+  isNormalChatWebPath,
+  WEB_APP_PATHS,
+} from "@/constants/webAppPaths";
 import { WEB_APP_URL } from "@/constants/webAppUrl";
 import { setWebAppNavigator } from "@/domains/push/webViewNavigation";
-
-/** Extra top inset when the WebView shows a normal chat thread. */
-const NATIVE_CHAT_WEBVIEW_TOP_PADDING = 12;
 
 function pathFromUri(uri: string, baseUrl: string): string {
   try {
@@ -17,29 +19,43 @@ function pathFromUri(uri: string, baseUrl: string): string {
   }
 }
 
-function isNormalChatPath(path: string): boolean {
-  return /^\/chat\/[^/]+/.test(path);
-}
-
 export function AppWebView() {
+  const webViewRef = useRef<WebView>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [canGoBack, setCanGoBack] = useState(false);
   const baseUrl = useMemo(
     () => (process.env.EXPO_PUBLIC_WEB_APP_URL ?? WEB_APP_URL).replace(/\/$/, ""),
     [],
   );
   const [uri, setUri] = useState(`${baseUrl}/`);
-  const isNormalChat = useMemo(
-    () => isNormalChatPath(pathFromUri(uri, baseUrl)),
-    [uri, baseUrl],
-  );
+  const path = useMemo(() => pathFromUri(uri, baseUrl), [uri, baseUrl]);
 
   useEffect(() => {
-    setWebAppNavigator((path) => {
-      const normalized = path.startsWith("/") ? path : `/${path}`;
+    setWebAppNavigator((nextPath) => {
+      const normalized = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
       setUri(`${baseUrl}${normalized}`);
     });
     return () => setWebAppNavigator(null);
   }, [baseUrl]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (isNormalChatWebPath(path)) {
+        setUri(`${baseUrl}${WEB_APP_PATHS.history}`);
+        return true;
+      }
+      if (isAiChatWebPath(path)) {
+        setUri(`${baseUrl}${WEB_APP_PATHS.assistant}`);
+        return true;
+      }
+      if (canGoBack) {
+        webViewRef.current?.goBack();
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [path, canGoBack, baseUrl]);
 
   if (loadError) {
     return (
@@ -51,29 +67,26 @@ export function AppWebView() {
   }
 
   return (
-    <View
-      style={[
-        styles.frame,
-        isNormalChat && { paddingTop: NATIVE_CHAT_WEBVIEW_TOP_PADDING },
-      ]}
-    >
+    <View style={styles.frame}>
       <WebView
+        ref={webViewRef}
         source={{ uri }}
         style={styles.webview}
-      originWhitelist={["*"]}
-      javaScriptEnabled
-      domStorageEnabled
-      sharedCookiesEnabled
-      mixedContentMode="always"
-      allowsBackForwardNavigationGestures={false}
-      setSupportMultipleWindows={false}
-      startInLoadingState
-      onError={() => {
-        setLoadError(`Could not load ${uri}. Check your internet connection.`);
-      }}
-      onHttpError={() => {
-        setLoadError(`Could not load ${uri}. Check your internet connection.`);
-      }}
+        originWhitelist={["*"]}
+        javaScriptEnabled
+        domStorageEnabled
+        sharedCookiesEnabled
+        mixedContentMode="always"
+        allowsBackForwardNavigationGestures={false}
+        setSupportMultipleWindows={false}
+        startInLoadingState
+        onNavigationStateChange={(event) => setCanGoBack(event.canGoBack)}
+        onError={() => {
+          setLoadError(`Could not load ${uri}. Check your internet connection.`);
+        }}
+        onHttpError={() => {
+          setLoadError(`Could not load ${uri}. Check your internet connection.`);
+        }}
       />
     </View>
   );

@@ -10,6 +10,8 @@ interface Props {
   surface?: "background" | "card";
   borderless?: boolean;
   title?: string;
+  /** Extra space above the logo on home/history-style headers. */
+  logoMarginTop?: number;
 }
 
 export function AppHeader({
@@ -17,6 +19,7 @@ export function AppHeader({
   surface = "background",
   borderless = false,
   title,
+  logoMarginTop = 0,
 }: Props) {
   const colors = useColors();
   const { isDesktop } = useWebLayout();
@@ -34,7 +37,7 @@ export function AppHeader({
       ]}
     >
       {!isDesktop ? (
-        <View style={styles.brandRow}>
+        <View style={[styles.brandRow, logoMarginTop > 0 && { marginTop: logoMarginTop }]}>
           <Logo3elagi height={LOGO_HEIGHT.header} />
         </View>
       ) : title ? (

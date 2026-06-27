@@ -278,6 +278,7 @@ export function PointsWebView() {
             style={[
               styles.pageHeader,
               useSplitLayout && styles.pageHeaderDesktop,
+              isMobile && styles.pageHeaderMobile,
               { borderBottomColor: colors.border },
             ]}
           >
@@ -597,6 +598,9 @@ const styles = StyleSheet.create({
   pageHeader: {
     paddingHorizontal: 4,
     paddingBottom: 20,
+  },
+  pageHeaderMobile: {
+    marginTop: 8,
   },
   pageHeaderDesktop: {
     paddingBottom: 24,

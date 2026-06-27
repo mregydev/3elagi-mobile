@@ -9,6 +9,7 @@ import { PushNotificationsBootstrap } from "@/components/PushNotificationsBootst
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { AppToast } from "@/components/AppToast";
 import { ChatNotifications } from "@/components/ChatNotifications";
+import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { AppSplash } from "@/components/SplashScreen";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
@@ -105,6 +106,7 @@ export default function RootLayout() {
       <PresenceChatSync />
       <ChatMessageSync />
       <ChatNotifications />
+      <HardwareBackHandler />
       {showSplash ? (
         <AppSplash onDone={handleSplashDone} />
       ) : (

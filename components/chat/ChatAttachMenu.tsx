@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 export type ChatAttachMode = "photo" | "video" | "all";
@@ -36,8 +37,10 @@ export function ChatAttachMenu({
   onVideoCamera,
 }: Props) {
   const colors = useColors();
+  const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
   const isWeb = Platform.OS === "web";
+  const isMobileWeb = isWeb && isMobile;
   const pendingActionRef = useRef<(() => void) | null>(null);
 
   const showPhoto = mode === "all" || mode === "photo";
@@ -82,7 +85,12 @@ export function ChatAttachMenu({
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View style={[styles.overlay, isWeb && styles.overlayWeb]}>
+      <View
+        style={[
+          styles.overlay,
+          isWeb && !isMobileWeb && styles.overlayWeb,
+        ]}
+      >
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
         <View
           style={[
@@ -91,7 +99,7 @@ export function ChatAttachMenu({
               backgroundColor: colors.card,
               borderColor: colors.border,
             },
-            isWeb && styles.sheetWeb,
+            isWeb && !isMobileWeb && styles.sheetWeb,
           ]}
         >
           <View style={[styles.header, { flexDirection: dir }]}>
@@ -110,10 +118,10 @@ export function ChatAttachMenu({
                 colors={colors}
                 dir={dir}
               />
-              {!isWeb ? (
+              {!isWeb || isMobileWeb ? (
                 <MenuRow
                   icon={<Camera size={20} color={colors.primary} />}
-                  label={isRTL ? "التقاط صورة" : "Take photo"}
+                  label={isRTL ? "التقاط صورة" : "Photo from camera"}
                   onPress={() => run(onPhotoCamera)}
                   colors={colors}
                   dir={dir}
@@ -137,10 +145,14 @@ export function ChatAttachMenu({
                 colors={colors}
                 dir={dir}
               />
-              {!isWeb ? (
+              {!isWeb || isMobileWeb ? (
                 <MenuRow
                   icon={<Camera size={20} color={colors.primary} />}
-                  label={isRTL ? "تسجيل فيديو (حد أقصى دقيقة)" : "Record video (max 1 min)"}
+                  label={
+                    isRTL
+                      ? "فيديو من الكاميرا (حد أقصى دقيقة)"
+                      : "Video from camera (max 1 min)"
+                  }
                   onPress={() => run(onVideoCamera)}
                   colors={colors}
                   dir={dir}

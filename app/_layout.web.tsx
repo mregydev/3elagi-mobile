@@ -10,6 +10,7 @@ import { AuthRedirect } from "@/components/AuthRedirect";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
+import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
 import { PresenceSocket } from "@/components/PresenceSocket";
@@ -100,6 +101,7 @@ export default function RootLayout() {
           <ChatMessageSync />
           <ChatNotifications />
           <WebChatNotificationsBootstrap />
+          <HardwareBackHandler />
           <AuthRedirect />
           <WebLogoutRedirect />
           <Stack screenOptions={{ headerShown: false }}>

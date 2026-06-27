@@ -10,7 +10,7 @@ export function NativeWebShell() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <SafeAreaView style={styles.root} edges={["top"]}>
+      <SafeAreaView style={styles.root} edges={[]}>
         <NativePushBootstrap />
         <View style={styles.webviewFrame}>
           <AppWebView />
@@ -27,6 +27,7 @@ const styles = StyleSheet.create({
   },
   webviewFrame: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
+    paddingTop: 15,
   },
 });
