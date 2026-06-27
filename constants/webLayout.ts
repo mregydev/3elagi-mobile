@@ -16,9 +16,14 @@ export const WEB_MAX_WIDTH = {
 /** Tab bar content row height on mobile web (matches `(tabs)/_layout.web`). */
 export const WEB_MOBILE_TAB_BAR_HEIGHT = 60;
 
-/** Extra top inset for tab page titles/logos on mobile web. */
-export const WEB_MOBILE_PAGE_TITLE_TOP_PADDING = 8;
+/** Minimum top inset for tab page titles/logos on mobile web (below status bar). */
+export const WEB_MOBILE_PAGE_TITLE_TOP_PADDING = 36;
 
 export function mobileWebTabBarHeight(bottomInset: number): number {
   return WEB_MOBILE_TAB_BAR_HEIGHT + Math.max(bottomInset, 8);
+}
+
+/** Top padding for mobile web page titles — respects safe area when available. */
+export function mobileWebPageTitlePaddingTop(safeAreaTop: number): number {
+  return Math.max(safeAreaTop, WEB_MOBILE_PAGE_TITLE_TOP_PADDING);
 }

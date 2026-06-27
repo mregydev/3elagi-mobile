@@ -2,8 +2,8 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
-import { WEB_MOBILE_PAGE_TITLE_TOP_PADDING } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
+import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 interface Props {
@@ -20,8 +20,8 @@ export function AppHeader({
   title,
 }: Props) {
   const colors = useColors();
-  const { isDesktop, isMobile } = useWebLayout();
-  const mobileTitleTop = isMobile ? WEB_MOBILE_PAGE_TITLE_TOP_PADDING : 0;
+  const { isDesktop } = useWebLayout();
+  const mobileTitleTop = useMobileWebPageTitlePaddingTop();
 
   return (
     <View
@@ -31,7 +31,7 @@ export function AppHeader({
           backgroundColor: surface === "card" ? colors.card : colors.background,
           borderBottomColor: colors.border,
           borderBottomWidth: borderless ? 0 : StyleSheet.hairlineWidth,
-          paddingTop: isDesktop ? 16 : 10 + mobileTitleTop,
+          paddingTop: isDesktop ? 16 : 14 + mobileTitleTop,
         },
       ]}
     >
