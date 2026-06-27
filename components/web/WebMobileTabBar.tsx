@@ -46,7 +46,7 @@ export function WebMobileTabBar({ height, bottomGap }: Props) {
       href: "/(tabs)/assistant",
       title: t.tabs.assistant,
       Icon: Bot,
-      isActive: (path) => path.includes("/assistant"),
+      isActive: (path) => path.includes("/assistant") || path.includes("/ai/"),
     },
     {
       href: "/(tabs)/history",

@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 
-/** Tiny gap between composer and bottom tab bar / screen edge on mobile web. */
-export const MOBILE_WEB_COMPOSER_FOOTER_GAP = 4;
+/** Small gap between composer and bottom tab bar on mobile web. */
+export const MOBILE_WEB_COMPOSER_FOOTER_GAP = 8;
 
 export const MOBILE_WEB_COMPOSER_BTN = 40;
 

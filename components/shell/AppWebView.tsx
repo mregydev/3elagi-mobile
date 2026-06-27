@@ -5,6 +5,22 @@ import colors from "@/constants/colors";
 import { WEB_APP_URL } from "@/constants/webAppUrl";
 import { setWebAppNavigator } from "@/domains/push/webViewNavigation";
 
+/** Extra top inset when the WebView shows a normal chat thread. */
+const NATIVE_CHAT_WEBVIEW_TOP_PADDING = 12;
+
+function pathFromUri(uri: string, baseUrl: string): string {
+  try {
+    return new URL(uri).pathname;
+  } catch {
+    const prefix = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+    return uri.startsWith(prefix) ? uri.slice(prefix.length - 1) : uri;
+  }
+}
+
+function isNormalChatPath(path: string): boolean {
+  return /^\/chat\/[^/]+/.test(path);
+}
+
 export function AppWebView() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const baseUrl = useMemo(
@@ -12,6 +28,10 @@ export function AppWebView() {
     [],
   );
   const [uri, setUri] = useState(`${baseUrl}/`);
+  const isNormalChat = useMemo(
+    () => isNormalChatPath(pathFromUri(uri, baseUrl)),
+    [uri, baseUrl],
+  );
 
   useEffect(() => {
     setWebAppNavigator((path) => {
@@ -31,9 +51,15 @@ export function AppWebView() {
   }
 
   return (
-    <WebView
-      source={{ uri }}
-      style={styles.webview}
+    <View
+      style={[
+        styles.frame,
+        isNormalChat && { paddingTop: NATIVE_CHAT_WEBVIEW_TOP_PADDING },
+      ]}
+    >
+      <WebView
+        source={{ uri }}
+        style={styles.webview}
       originWhitelist={["*"]}
       javaScriptEnabled
       domStorageEnabled
@@ -48,11 +74,16 @@ export function AppWebView() {
       onHttpError={() => {
         setLoadError(`Could not load ${uri}. Check your internet connection.`);
       }}
-    />
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  frame: {
+    flex: 1,
+    minHeight: 0,
+  },
   webview: {
     flex: 1,
     backgroundColor: colors.light.background,
