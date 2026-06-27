@@ -19,6 +19,9 @@ export const WEB_MOBILE_TAB_BAR_HEIGHT = 60;
 /** Minimum top inset for tab page titles/logos on mobile web (below status bar). */
 export const WEB_MOBILE_PAGE_TITLE_TOP_PADDING = 36;
 
+/** Extra top inset for auth pages (login/signup) on mobile web. */
+export const WEB_MOBILE_AUTH_EXTRA_TOP_PADDING = 24;
+
 export function mobileWebTabBarHeight(bottomInset: number): number {
   return WEB_MOBILE_TAB_BAR_HEIGHT + Math.max(bottomInset, 8);
 }
