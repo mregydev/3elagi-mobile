@@ -206,7 +206,7 @@ export function connectPresenceSocket(user: LoggedInUser, accessToken?: string) 
   }
 
   socket = io(SOCKET_BASE, {
-    transports: ["websocket", "polling"],
+    transports: ["websocket"],
     autoConnect: true,
     auth: accessToken ? { token: accessToken } : undefined,
   });
