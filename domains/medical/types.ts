@@ -1,5 +1,10 @@
 export type MedicalCategory = "diagnosis" | "lab" | "xray" | "intake" | "prescription";
 
+export interface MedicalAiInsight {
+  description: string;
+  possible_diseases: string;
+}
+
 export interface PrescriptionMedication {
   id?: string;
   medication_name: string;
@@ -50,4 +55,6 @@ export interface MedicalRecord {
   pdfUrl?: string | null;
   /** Scanned/uploaded prescription photo */
   imageUrl?: string | null;
+  /** AI-generated summary and possible conditions */
+  aiInsight?: MedicalAiInsight | null;
 }

@@ -44,6 +44,7 @@ interface RawAuthResponse {
   role: string;
   user_id: string;
   profile: Record<string, unknown>;
+  preferred_locale?: "ar" | "en" | null;
 }
 
 function doctorSpecialtyFromProfile(profile: Record<string, unknown>): {
@@ -151,6 +152,7 @@ export const authRepository = {
       accessToken: raw.access_token,
       role: raw.role,
       userId: raw.user_id,
+      preferredLocale: raw.preferred_locale ?? null,
       doctorId: isDoctor ? String(profile.id ?? "") : undefined,
       specialty,
       specialityId,
@@ -206,6 +208,7 @@ export const authRepository = {
       accessToken: raw.access_token,
       role: raw.role,
       userId: raw.user_id,
+      preferredLocale: raw.preferred_locale ?? null,
       doctorId: isDoctorRole ? String(profileRaw.id ?? "") : undefined,
       specialty,
       specialityId,

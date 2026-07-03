@@ -58,7 +58,7 @@ const CATEGORIES: {
 ];
 
 const SEARCHABLE_CATEGORIES: MedicalCategory[] = ["diagnosis", "lab", "xray", "prescription"];
-const IMAGE_EXTS = /\.(jpe?g|png|gif|webp|heic)(\?.*)?$/i;
+import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
 
 export interface MedicalHistoryListProps {
   records: MedicalRecord[];
@@ -239,7 +239,7 @@ export function MedicalHistoryList({
                     renderItem={({ item }) => {
                       const isImg =
                         !!item.fileUrl &&
-                        (IMAGE_EXTS.test(item.fileUrl) || IMAGE_EXTS.test(item.fileName ?? ""));
+                        isMedicalImageAttachment(item.fileUrl, item.fileName);
                       return (
                         <View
                           style={[

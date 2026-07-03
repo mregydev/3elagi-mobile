@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
-import { IMAGE_EXTS, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
+import { isMedicalImageAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -17,9 +17,12 @@ import {
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
+  generateMedicalRecordDetails,
   updateDiagnosis,
+  updatePatientMedicalDocument,
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
+import { getApiLang } from "@/domains/i18n/store";
 import type { MedicalRecord } from "@/domains/medical/types";
 import {
   canAddDiagnosisSymptom,
@@ -43,6 +46,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const remove = useMedicalStore((s) => s.remove);
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
   const upsertPrescription = useMedicalStore((s) => s.upsertPrescription);
+  const upsertDocument = useMedicalStore((s) => s.upsertDocument);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
 
@@ -55,6 +59,11 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const [editingDiagnosis, setEditingDiagnosis] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const [editingLabDetails, setEditingLabDetails] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingLabDetails, setSavingLabDetails] = useState(false);
+  const [generatingDetails, setGeneratingDetails] = useState(false);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
 
@@ -213,9 +222,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     const isDiagnosis = record.category === "diagnosis";
     const isPrescription = record.category === "prescription";
     const isLabOrXray = record.category === "lab" || record.category === "xray";
-    const isDocImage =
-      !!record.fileUrl &&
-      (IMAGE_EXTS.test(record.fileUrl) || IMAGE_EXTS.test(record.fileName ?? ""));
+    const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
 
     return {
       meta,
@@ -229,8 +236,9 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       isPrescription,
       isLabOrXray,
       isDocImage,
+      canEditLabDetails: isLabOrXray && !isDoctorView && !!accessToken,
     };
-  }, [record, isRTL, permissionCtx]);
+  }, [record, isRTL, permissionCtx, isDoctorView, accessToken]);
 
   const refetchListsAfterChange = async () => {
     if (!accessToken || !profile) return;
@@ -273,6 +281,50 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
     } finally {
       setAddingSymptom(false);
+    }
+  };
+
+  const saveLabDetails = async () => {
+    const title = editTitle.trim();
+    const notes = editNotes.trim();
+    if (!title || !notes || !id || !accessToken || !derived.canEditLabDetails) return;
+    setSavingLabDetails(true);
+    try {
+      const updated = await updatePatientMedicalDocument(
+        id,
+        { title, notes },
+        accessToken,
+      );
+      setDetail(updated);
+      upsertDocument(updated);
+      setEditingLabDetails(false);
+      await refetchListsAfterChange();
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+    } finally {
+      setSavingLabDetails(false);
+    }
+  };
+
+  const generateLabDetails = async () => {
+    if (!record || !accessToken || !derived.canEditLabDetails) return;
+    setGeneratingDetails(true);
+    try {
+      const updated = await generateMedicalRecordDetails(
+        record,
+        accessToken,
+        getApiLang(),
+      );
+      setDetail(updated);
+      upsertDocument(updated);
+      setEditTitle(updated.title);
+      setEditNotes(updated.notes ?? "");
+      setEditingLabDetails(true);
+      await refetchListsAfterChange();
+    } catch (e) {
+      Alert.alert(isRTL ? "خطأ" : "Error", (e as Error).message);
+    } finally {
+      setGeneratingDetails(false);
     }
   };
 
@@ -344,6 +396,16 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     savingDiagnosis,
     zoomImageUri,
     setZoomImageUri,
+    editingLabDetails,
+    setEditingLabDetails,
+    editTitle,
+    setEditTitle,
+    editNotes,
+    setEditNotes,
+    savingLabDetails,
+    generatingDetails,
+    saveLabDetails,
+    generateLabDetails,
     ...derived,
     saveDiagnosisEdit,
     submitSymptom,

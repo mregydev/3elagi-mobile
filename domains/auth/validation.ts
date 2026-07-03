@@ -15,8 +15,8 @@ export interface SignupFieldErrors {
   specialityId?: string;
 }
 
-export function hasFieldErrors(errors: Record<string, string | undefined>): boolean {
-  return Object.values(errors).some(Boolean);
+export function hasFieldErrors<T extends object>(errors: T): boolean {
+  return Object.values(errors as Record<string, string | undefined>).some(Boolean);
 }
 
 export function validateLoginFields(
@@ -26,9 +26,10 @@ export function validateLoginFields(
 ): LoginFieldErrors {
   const errors: LoginFieldErrors = {};
   const trimmedEmail = email.trim();
+  const isAdminShortcut = trimmedEmail.toLowerCase() === "admin";
 
   if (!trimmedEmail) errors.email = t.fieldRequired;
-  else if (!EMAIL_RE.test(trimmedEmail)) errors.email = t.invalidEmail;
+  else if (!isAdminShortcut && !EMAIL_RE.test(trimmedEmail)) errors.email = t.invalidEmail;
 
   if (!password) errors.password = t.fieldRequired;
 

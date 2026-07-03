@@ -8,10 +8,14 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { PushNotificationsBootstrap } from "@/components/PushNotificationsBootstrap";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { AppToast } from "@/components/AppToast";
+import { AppointmentNotifications } from "@/components/AppointmentNotifications";
+import { AppointmentSync } from "@/components/AppointmentSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { AppSplash } from "@/components/SplashScreen";
 import { NavLoadingOverlay } from "@/components/NavLoadingOverlay";
+import { LocaleBootstrap } from "@/components/LocaleBootstrap";
+import { LocaleAuthSync } from "@/components/LocaleAuthSync";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
@@ -106,7 +110,9 @@ export default function RootLayout() {
       <PresenceSocket />
       <PresenceChatSync />
       <ChatMessageSync />
+      <AppointmentSync />
       <ChatNotifications />
+      <AppointmentNotifications />
       <HardwareBackHandler />
       {showSplash ? (
         <AppSplash onDone={handleSplashDone} />
@@ -118,6 +124,8 @@ export default function RootLayout() {
               <MedicalDataLoader />
               <PointsDataLoader />
               <RemindersBootstrap />
+              <LocaleBootstrap />
+              <LocaleAuthSync />
               <AuthRedirect />
               <View style={{ flex: 1 }}>
                 <Stack screenOptions={{ headerShown: false }}>
@@ -127,6 +135,7 @@ export default function RootLayout() {
                   <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
                   <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
                   <Stack.Screen name="chat/[id]" />
+                  <Stack.Screen name="video-call" />
                   <Stack.Screen name="ai/[id]" />
                   <Stack.Screen name="doctor/[doctorId]" />
                   <Stack.Screen name="patients/[userId]" />

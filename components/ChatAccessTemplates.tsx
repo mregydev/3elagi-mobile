@@ -1,4 +1,4 @@
-import { Ban, ShieldCheck, ShieldOff, Stethoscope, Unlock } from "lucide-react-native";
+import { Ban, Calendar, ClipboardList, Share2, ShieldCheck, ShieldOff, Stethoscope, Unlock } from "lucide-react-native";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { AccessActionType, DoctorPatientAccessStatus } from "@/domains/chat/access";
@@ -12,6 +12,7 @@ interface Chip {
   action?: AccessActionType;
   onPress?: () => void;
   tone?: "primary" | "danger" | "muted";
+  disabled?: boolean;
 }
 
 interface Props {
@@ -19,8 +20,13 @@ interface Props {
   isDoctor: boolean;
   access: DoctorPatientAccessStatus | null;
   showDiagnosis?: boolean;
+  showMedicalRecordActions?: boolean;
+  medicalActionsDisabled?: boolean;
   onAccessAction: (action: AccessActionType) => void;
   onDiagnosisPress?: () => void;
+  onAddMedicalRecord?: () => void;
+  onShareMedicalRecord?: () => void;
+  onBookAppointment?: () => void;
 }
 
 export function ChatAccessTemplates({
@@ -28,8 +34,13 @@ export function ChatAccessTemplates({
   isDoctor,
   access,
   showDiagnosis = false,
+  showMedicalRecordActions = false,
+  medicalActionsDisabled = false,
   onAccessAction,
   onDiagnosisPress,
+  onAddMedicalRecord,
+  onShareMedicalRecord,
+  onBookAppointment,
 }: Props) {
   const colors = useColors();
   const dir = chatFlexRow();
@@ -43,6 +54,16 @@ export function ChatAccessTemplates({
         icon: <Stethoscope size={15} color={colors.primary} />,
         onPress: onDiagnosisPress,
         tone: "primary",
+      });
+    }
+    if (showMedicalRecordActions && access?.records_allowed && !access?.is_blocked) {
+      chips.push({
+        key: "add_medical",
+        label: isRTL ? "سجل طبي جديد" : "Add medical record",
+        icon: <ClipboardList size={15} color={colors.primary} />,
+        onPress: onAddMedicalRecord,
+        tone: "primary",
+        disabled: medicalActionsDisabled,
       });
     }
     if (!access?.blocked_by_doctor) {
@@ -63,6 +84,33 @@ export function ChatAccessTemplates({
       });
     }
   } else {
+    if (!access?.is_blocked) {
+      chips.push({
+        key: "book_appointment",
+        label: isRTL ? "حجز موعد" : "Book appointment",
+        icon: <Calendar size={15} color={colors.primary} />,
+        onPress: onBookAppointment,
+        tone: "primary",
+      });
+    }
+    if (showMedicalRecordActions && !access?.is_blocked) {
+      chips.push({
+        key: "share_medical",
+        label: isRTL ? "مشاركة سجل طبي" : "Share medical record",
+        icon: <Share2 size={15} color={colors.primary} />,
+        onPress: onShareMedicalRecord,
+        tone: "primary",
+        disabled: medicalActionsDisabled,
+      });
+      chips.push({
+        key: "add_medical",
+        label: isRTL ? "سجل طبي جديد" : "Add medical record",
+        icon: <ClipboardList size={15} color={colors.primary} />,
+        onPress: onAddMedicalRecord,
+        tone: "primary",
+        disabled: medicalActionsDisabled,
+      });
+    }
     if (!access?.records_allowed && !access?.is_blocked) {
       chips.push({
         key: "grant",
@@ -121,15 +169,18 @@ export function ChatAccessTemplates({
             <Pressable
               key={chip.key}
               onPress={() => {
+                if (chip.disabled) return;
                 if (chip.action) onAccessAction(chip.action);
                 else chip.onPress?.();
               }}
+              disabled={chip.disabled}
               style={({ pressed }) => [
                 styles.chip,
                 {
                   backgroundColor: pressed ? `${toneColor}22` : `${toneColor}12`,
                   borderColor: toneColor,
                   flexDirection: dir,
+                  opacity: chip.disabled ? 0.45 : 1,
                 },
               ]}
             >

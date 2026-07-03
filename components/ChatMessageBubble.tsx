@@ -26,6 +26,14 @@ interface Props {
   rowDir: "row" | "row-reverse";
   patientUserId?: string;
   canOpenMedicalLink?: boolean;
+  isDoctor?: boolean;
+  appointmentStatus?: { status: string; meetingLink?: string | null };
+  onAppointmentAction?: (
+    appointmentId: string,
+    action: "confirm" | "reject" | "cancel",
+  ) => void;
+  appointmentActionBusy?: boolean;
+  showAppointmentControls?: boolean;
   onImagePress?: (uri: string) => void;
   onVideoPress?: (uri: string) => void;
   onLongPress?: () => void;
@@ -41,6 +49,11 @@ export function ChatMessageBubble({
   rowDir,
   patientUserId,
   canOpenMedicalLink = true,
+  isDoctor = false,
+  appointmentStatus,
+  onAppointmentAction,
+  appointmentActionBusy = false,
+  showAppointmentControls = false,
   onImagePress,
   onVideoPress,
   onLongPress,
@@ -97,6 +110,7 @@ export function ChatMessageBubble({
   };
 
   const isAccessAction = item.type === "access_action";
+  const isAppointmentAction = item.type === "appointment_action";
   const isImage = item.type === "image" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
@@ -432,6 +446,76 @@ export function ChatMessageBubble({
     );
   }
 
+  if (isAppointmentAction && item.appointmentAction) {
+    const meta = item.appointmentAction;
+    const status = appointmentStatus?.status ?? meta.status ?? "pending";
+    const meetingLink = appointmentStatus?.meetingLink ?? meta.meeting_link;
+    const canRespond =
+      meta.action === "request" && status === "pending" && isDoctor && !mine;
+    const canCancel =
+      showAppointmentControls && (status === "pending" || status === "confirmed");
+
+    return (
+      <View style={styles.accessRow}>
+        <View style={[styles.accessPill, { backgroundColor: `${colors.muted}cc`, gap: 10 }]}>
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontSize: 12,
+              lineHeight: 17,
+              textAlign: "center",
+              fontWeight: "600",
+            }}
+          >
+            {item.text}
+          </Text>
+          {canRespond ? (
+            <View style={[styles.apptActions, { flexDirection: rowDir }]}>
+              <Pressable
+                disabled={appointmentActionBusy}
+                onPress={() => onAppointmentAction?.(meta.appointment_id, "confirm")}
+                style={[styles.apptBtn, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.apptBtnText}>{isRTL ? "قبول" : "Accept"}</Text>
+              </Pressable>
+              <Pressable
+                disabled={appointmentActionBusy}
+                onPress={() => onAppointmentAction?.(meta.appointment_id, "reject")}
+                style={[styles.apptBtn, { backgroundColor: colors.destructive }]}
+              >
+                <Text style={styles.apptBtnText}>{isRTL ? "رفض" : "Reject"}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {canCancel && onAppointmentAction ? (
+            <Pressable
+              disabled={appointmentActionBusy}
+              onPress={() => onAppointmentAction(meta.appointment_id, "cancel")}
+              style={[styles.apptBtnOutline, { borderColor: colors.destructive }]}
+            >
+              <Text style={{ color: colors.destructive, fontWeight: "700", fontSize: 12 }}>
+                {isRTL ? "إلغاء الموعد" : "Cancel appointment"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {meetingLink && showAppointmentControls ? (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/video-call",
+                  params: { meetingUrl: meetingLink },
+                })
+              }
+              style={[styles.apptBtn, { backgroundColor: colors.primary }]}
+            >
+              <Text style={styles.apptBtnText}>{isRTL ? "انضم للاجتماع" : "Join meeting"}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
@@ -583,5 +667,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 14,
+  },
+  apptActions: {
+    gap: 8,
+    justifyContent: "center",
+  },
+  apptBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  apptBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  apptBtnOutline: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
   },
 });

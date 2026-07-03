@@ -489,7 +489,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (payload.type === "text" && !payload.content?.trim()) return;
 
     const msg = await sendChatMessage(token, payload, selfId);
-    if (payload.type !== "access_action") {
+    if (payload.type !== "access_action" && payload.type !== "appointment_action") {
       emit(CHAT_EVENTS.MESSAGE_SENT, { token });
     }
     const peer = get().resolvePeer(peerId);

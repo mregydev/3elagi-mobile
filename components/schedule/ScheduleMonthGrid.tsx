@@ -1,0 +1,249 @@
+import React, { useMemo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  buildMonthGrid,
+  monthLabel,
+  parseYmd,
+  weekRangeForDate,
+  WEEKDAY_LABELS_AR,
+  WEEKDAY_LABELS_EN,
+  type ScheduleScopeMode,
+} from "@/domains/schedule/calendar";
+import { useColors } from "@/hooks/useColors";
+import { flexRow } from "@/utils/rtl";
+
+interface Props {
+  isRTL: boolean;
+  year: number;
+  month: number;
+  mode: ScheduleScopeMode;
+  selectedDate: string;
+  selectedWeekStart: string;
+  selectedMonth: number;
+  selectedYear: number;
+  markedDates?: Set<string>;
+  singleDaySelection?: boolean;
+  onSelectDate: (date: string) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+}
+
+export function ScheduleMonthGrid({
+  isRTL,
+  year,
+  month,
+  mode,
+  selectedDate,
+  selectedWeekStart,
+  selectedMonth,
+  selectedYear,
+  markedDates,
+  singleDaySelection = false,
+  onSelectDate,
+  onPrevMonth,
+  onNextMonth,
+}: Props) {
+  const colors = useColors();
+  const dir = flexRow(isRTL);
+  const weekdayLabels = isRTL ? WEEKDAY_LABELS_AR : WEEKDAY_LABELS_EN;
+  const weeks = useMemo(() => buildMonthGrid(year, month), [year, month]);
+
+  const isInSelectedWeek = (date: string) => {
+    if (mode !== "week") return false;
+    const range = weekRangeForDate(parseYmd(selectedWeekStart));
+    return date >= range.start && date <= range.end;
+  };
+
+  const isSelectedMonthTile = (m: number) =>
+    mode === "month" && m === selectedMonth && year === selectedYear;
+
+  const isSelectedYear = (y: number) => mode === "year" && y === selectedYear;
+
+  if (mode === "year") {
+    const years = [year - 1, year, year + 1];
+    return (
+      <View style={styles.wrap}>
+        <View style={[styles.navRow, { flexDirection: dir }]}>
+          <Pressable onPress={onPrevMonth} hitSlop={8}>
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>‹</Text>
+          </Pressable>
+          <Text style={[styles.monthTitle, { color: colors.foreground }]}>{year}</Text>
+          <Pressable onPress={onNextMonth} hitSlop={8}>
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>›</Text>
+          </Pressable>
+        </View>
+        <View style={[styles.yearGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          {years.map((y) => (
+            <Pressable
+              key={y}
+              onPress={() => onSelectDate(`${y}-01-01`)}
+              style={[
+                styles.yearTile,
+                {
+                  borderColor: isSelectedYear(y) ? colors.primary : colors.border,
+                  backgroundColor: isSelectedYear(y) ? `${colors.primary}18` : colors.muted,
+                },
+              ]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "800", fontSize: 16 }}>{y}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={[styles.monthsGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          {Array.from({ length: 12 }, (_, m) => (
+            <Pressable
+              key={m}
+              onPress={() => onSelectDate(`${selectedYear}-${String(m + 1).padStart(2, "0")}-01`)}
+              style={[
+                styles.monthTile,
+                {
+                  borderColor: isSelectedMonthTile(m) ? colors.primary : colors.border,
+                  backgroundColor: isSelectedMonthTile(m) ? `${colors.primary}18` : colors.background,
+                },
+              ]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "600", fontSize: 12 }}>
+                {monthLabel(m, isRTL)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.wrap}>
+      <View style={[styles.navRow, { flexDirection: dir }]}>
+        <Pressable onPress={onPrevMonth} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>‹</Text>
+        </Pressable>
+        <Text style={[styles.monthTitle, { color: colors.foreground }]}>
+          {monthLabel(month, isRTL)} {year}
+        </Text>
+        <Pressable onPress={onNextMonth} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>›</Text>
+        </Pressable>
+      </View>
+
+      <View style={[styles.weekdayRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        {weekdayLabels.map((label, i) => (
+          <Text key={`${label}-${i}`} style={[styles.weekday, { color: colors.mutedForeground }]}>
+            {label}
+          </Text>
+        ))}
+      </View>
+
+      {weeks.map((week, wi) => (
+        <View key={wi} style={[styles.weekRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          {week.map((date, di) => {
+            if (!date) {
+              return <View key={`empty-${wi}-${di}`} style={styles.dayCell} />;
+            }
+            const inMonth = parseYmd(date).getMonth() === month;
+            const selected = singleDaySelection
+              ? selectedDate === date
+              : mode === "month"
+                ? parseYmd(date).getMonth() === selectedMonth &&
+                  parseYmd(date).getFullYear() === selectedYear
+                : mode === "week"
+                  ? isInSelectedWeek(date)
+                  : selectedDate === date;
+            const marked = markedDates?.has(date);
+
+            return (
+              <Pressable
+                key={date}
+                onPress={() => onSelectDate(date)}
+                style={[
+                  styles.dayCell,
+                  selected && {
+                    backgroundColor: `${colors.primary}22`,
+                    borderColor: colors.primary,
+                    borderWidth: 1,
+                  },
+                  !inMonth && { opacity: 0.35 },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: selected ? colors.primary : colors.foreground,
+                    fontWeight: selected ? "800" : "500",
+                    fontSize: 13,
+                  }}
+                >
+                  {parseYmd(date).getDate()}
+                </Text>
+                {marked ? (
+                  <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { gap: 8 },
+  navRow: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  weekdayRow: {
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+  },
+  weekday: {
+    width: 36,
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  weekRow: {
+    justifyContent: "space-between",
+  },
+  dayCell: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 2,
+  },
+  yearGrid: {
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "center",
+  },
+  yearTile: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  monthsGrid: {
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  monthTile: {
+    width: "30%",
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+});

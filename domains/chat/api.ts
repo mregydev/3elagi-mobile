@@ -3,6 +3,7 @@ import type { MessageEmotionType } from "@/domains/emotions";
 import { mapEmotionRows } from "@/domains/emotions";
 import type {
   AccessActionMeta,
+  AppointmentActionMeta,
   ChatMessage,
   ChatMessageType,
   ChatUser,
@@ -31,7 +32,7 @@ export interface MessageRow {
   recipient: string;
   datetime: string;
   attachment_url?: string | null;
-  attachment_meta?: MedicalLinkMeta | AccessActionMeta | null;
+  attachment_meta?: MedicalLinkMeta | AccessActionMeta | AppointmentActionMeta | null;
   read_at?: string | null;
   edited_at?: string | null;
   points_balance?: number;
@@ -80,6 +81,10 @@ export function mapMessageRow(
     accessAction:
       row.type === "access_action"
         ? (row.attachment_meta as AccessActionMeta | undefined) ?? null
+        : null,
+    appointmentAction:
+      row.type === "appointment_action"
+        ? (row.attachment_meta as AppointmentActionMeta | undefined) ?? null
         : null,
     editedAt: row.edited_at ?? null,
     pointsBalance: row.points_balance,
@@ -170,7 +175,7 @@ export async function sendChatMessage(
       type: input.type ?? "text",
       content: input.content,
       attachment_url: input.attachmentUrl,
-      attachment_meta: input.accessAction ?? input.medicalLink,
+      attachment_meta: input.accessAction ?? input.appointmentAction ?? input.medicalLink,
     }),
   });
   const data = (await res.json().catch(() => ({}))) as MessageRow & { message?: string };

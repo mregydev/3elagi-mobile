@@ -1,6 +1,7 @@
 import { Href, usePathname, useRouter } from "expo-router";
 import {
   Bot,
+  CalendarClock,
   ClipboardList,
   Coins,
   History,
@@ -35,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/(tabs)",
     labelKey: "home",
-    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant"),
+    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("appointments") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant"),
     Icon: Home,
   },
   {
@@ -56,6 +57,12 @@ const NAV_ITEMS: NavItem[] = [
     match: (path) => path.includes("reviews"),
     Icon: Star,
     doctorOnly: true,
+  },
+  {
+    href: "/(tabs)/appointments",
+    labelKey: "appointments",
+    match: (path) => path.includes("appointments"),
+    Icon: CalendarClock,
   },
   {
     href: "/(tabs)/records",
@@ -86,6 +93,7 @@ function isHomePath(path: string) {
     (path.includes("(tabs)") &&
       !path.includes("history") &&
       !path.includes("records") &&
+      !path.includes("appointments") &&
       !path.includes("points") &&
       !path.includes("profile") &&
       !path.includes("assistant") &&

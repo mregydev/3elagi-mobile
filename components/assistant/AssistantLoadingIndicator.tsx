@@ -7,7 +7,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Logo3elagi } from "@/components/Logo3elagi";
+import { AssistantAvatar } from "@/components/assistant/AssistantAvatar";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -17,6 +17,8 @@ interface Props {
   style?: ViewStyle;
   /** History fetch vs AI generating a reply. */
   variant?: "history" | "response";
+  /** TTS playback — pulse the 3elagi mark while speaking. */
+  isTalking?: boolean;
 }
 
 function LoadingDots({ color, size }: { color: string; size: number }) {
@@ -82,12 +84,14 @@ export function AssistantLoadingIndicator({
   compact = false,
   style,
   variant = "response",
+  isTalking = false,
 }: Props) {
   const colors = useColors();
   const { isRTL, t } = useI18n();
   const float = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (isTalking) return;
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(float, {
@@ -106,7 +110,7 @@ export function AssistantLoadingIndicator({
     );
     animation.start();
     return () => animation.stop();
-  }, [float]);
+  }, [float, isTalking]);
 
   const logoTranslateY = float.interpolate({
     inputRange: [0, 1],
@@ -138,11 +142,19 @@ export function AssistantLoadingIndicator({
       accessibilityLabel={label}
     >
       <Animated.View
-        style={{
-          transform: [{ translateY: logoTranslateY }, { scale: logoScale }],
-        }}
+        style={
+          isTalking
+            ? undefined
+            : {
+                transform: [{ translateY: logoTranslateY }, { scale: logoScale }],
+              }
+        }
       >
-        <Logo3elagi height={logoSize} markOnly />
+        <AssistantAvatar
+          height={logoSize}
+          isTalking={isTalking}
+          webClassName="assistant-avatar"
+        />
       </Animated.View>
 
       <View style={[styles.labelRow, isRTL && styles.labelRowRtl]}>

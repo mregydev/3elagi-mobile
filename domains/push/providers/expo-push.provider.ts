@@ -8,7 +8,7 @@ import {
   registerPushToken,
 } from "@/domains/push/registerPushToken";
 import { unregisterPushToken } from "@/domains/push/api";
-import { ensureChatPushChannel } from "@/domains/push/expoPush";
+import { ensurePushChannels } from "@/domains/push/expoPush";
 import type { PushBootstrapContext, PushProvider } from "@/domains/push/providers/types";
 
 function shouldSuppressForegroundAiPush(data: Record<string, unknown> | undefined): boolean {
@@ -31,6 +31,19 @@ Notifications.setNotificationHandler({
         shouldShowList: false,
       };
     }
+    if (
+      data?.type === "incoming_video_call" ||
+      data?.type === "appointment_reminder" ||
+      data?.type === "appointment_status"
+    ) {
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      };
+    }
     return {
       // ponytail: suppress system popup in foreground; in-app banner handles chat instead
       shouldShowAlert: false,
@@ -50,7 +63,7 @@ export class ExpoPushProvider implements PushProvider {
 
   init(): void {
     if (Platform.OS === "web") return;
-    void ensureChatPushChannel();
+    void ensurePushChannels();
   }
 
   async register(accessToken: string): Promise<string | null> {

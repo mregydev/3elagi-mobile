@@ -259,7 +259,20 @@ export default function AdminPanelWeb() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Admin — Doctors</Text>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Admin — Doctors</Text>
+          <View style={styles.navRow}>
+            <View style={[styles.navBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}14` }]}>
+              <Text style={{ color: colors.primary, fontWeight: "800" }}>Doctors</Text>
+            </View>
+            <Pressable
+              onPress={() => router.push("/admin/rag")}
+              style={[styles.navBtn, { borderColor: colors.border }]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "700" }}>RAG Sources</Text>
+            </Pressable>
+          </View>
+        </View>
         <Pressable
           onPress={() => {
             logout();
@@ -302,7 +315,15 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  headerLeft: { gap: 10 },
   title: { fontSize: 22, fontWeight: "800" },
+  navRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  navBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   logoutBtn: {
     borderWidth: 1,
     borderRadius: 10,

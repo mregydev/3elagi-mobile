@@ -14,6 +14,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { Camera, LogOut, UserRound } from "lucide-react-native";
 import { MessagePricePicker } from "@/components/MessagePricePicker";
+import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { navigateToWelcome } from "@/domains/auth/navigation";
@@ -382,6 +383,10 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                 })}
               </View>
             </View>
+          ) : null}
+
+          {isDoctor && accessToken ? (
+            <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
           ) : null}
 
           {isDoctor ? (

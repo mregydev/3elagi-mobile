@@ -7,6 +7,10 @@ export interface AiMessage {
   createdAt: string;
   pending?: boolean;
   error?: boolean;
+  /** Local preview URI while uploading (user messages). */
+  imageUri?: string;
+  /** Remote image URL after upload (user messages). */
+  imageUrl?: string;
   emotions?: import("@/domains/emotions/types").MessageEmotionItem[];
 }
 

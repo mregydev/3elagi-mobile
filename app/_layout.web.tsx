@@ -10,6 +10,8 @@ import { AuthRedirect } from "@/components/AuthRedirect";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
 import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridge.web";
 import { NativeWebViewPushNavigation } from "@/components/web/NativeWebViewPushNavigation.web";
+import { AppointmentNotifications } from "@/components/AppointmentNotifications";
+import { AppointmentSync } from "@/components/AppointmentSync";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
@@ -103,7 +105,9 @@ export default function RootLayout() {
           <PresenceSocket />
           <PresenceChatSync />
           <ChatMessageSync />
+          <AppointmentSync />
           <ChatNotifications />
+          <AppointmentNotifications />
           <WebChatNotificationsBootstrap />
           <HardwareBackHandler />
           <AuthRedirect />

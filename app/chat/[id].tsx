@@ -17,8 +17,10 @@ import { Avatar } from "@/components/Avatar";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { ChatAccessTemplates } from "@/components/ChatAccessTemplates";
+import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
+import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
@@ -38,6 +40,8 @@ import {
   type DoctorPatientAccessStatus,
 } from "@/domains/chat/access";
 import type { ChatMessage, MedicalLinkMeta, SendMessageInput } from "@/domains/chat/types";
+import { mapMessageRow } from "@/domains/chat/api";
+import { sendAppointmentAction } from "@/domains/appointments/api";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
@@ -103,11 +107,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [replacingMedicalMessage, setReplacingMedicalMessage] = useState<ChatMessage | null>(null);
   const [medicalPickerMode, setMedicalPickerMode] = useState<"share" | "replace">("share");
   const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
+  const [createMedicalRecordOpen, setCreateMedicalRecordOpen] = useState(false);
   const [reactionTarget, setReactionTarget] = useState<ChatMessage | null>(null);
   const [reactionAnchor, setReactionAnchor] = useState<ReactionAnchor | null>(null);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [accessLoading, setAccessLoading] = useState(false);
+  const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
+  const [appointmentActionBusy, setAppointmentActionBusy] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const chatBodyRef = useRef<View>(null);
   const sendingRef = useRef(false);
@@ -149,6 +156,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       : isDoctorDoctorChat
         ? false
         : true;
+  const canAddMedicalRecord =
+    !chatBlocked &&
+    (isPatient || (isDoctor && !!accessStatus?.records_allowed));
+  const medicalRecordPatientUserId = isDoctor ? id : profile?.id;
 
   useEffect(() => {
     if (!accessToken || !id) return;
@@ -214,6 +225,25 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [id]);
 
   const chatMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const latestAppointmentMessageIds = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const message of messages) {
+      const apptId = message.appointmentAction?.appointment_id;
+      if (apptId) map.set(apptId, message.id);
+    }
+    return map;
+  }, [messages]);
+  const appointmentStatuses = useMemo(() => {
+    const map = new Map<string, { status: string; meetingLink?: string | null }>();
+    for (const message of messages) {
+      if (message.type !== "appointment_action" || !message.appointmentAction) continue;
+      map.set(message.appointmentAction.appointment_id, {
+        status: message.appointmentAction.status ?? "pending",
+        meetingLink: message.appointmentAction.meeting_link,
+      });
+    }
+    return map;
+  }, [messages]);
   const listInverted = chatMessages.length > 0;
 
   const scrollToLatest = useCallback(
@@ -382,7 +412,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     sendingRef.current = true;
     setSending(true);
     try {
-      await sendMessage(id, input, accessToken, profile.id, role, replaceTempId);
+      await sendMessage(id, input, accessToken, profile!.id, role, replaceTempId);
     } catch (e) {
       if (replaceTempId) failPendingMessage(id, replaceTempId);
       if ((e as Error).message !== "SEND_ABORTED") {
@@ -521,6 +551,56 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       );
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleAppointmentAction = async (
+    appointmentId: string,
+    action: "confirm" | "reject" | "cancel",
+  ) => {
+    if (!id || !accessToken || !profile?.id || appointmentActionBusy) return;
+
+    if (action === "cancel") {
+      const ok = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          isRTL ? "إلغاء الموعد" : "Cancel appointment",
+          isRTL ? "هل تريد إلغاء هذا الموعد؟" : "Cancel this appointment?",
+          [
+            { text: isRTL ? "لا" : "No", style: "cancel", onPress: () => resolve(false) },
+            {
+              text: isRTL ? "نعم" : "Yes",
+              style: "destructive",
+              onPress: () => resolve(true),
+            },
+          ],
+        );
+      });
+      if (!ok) return;
+    }
+
+    setAppointmentActionBusy(true);
+    try {
+      const row = await sendAppointmentAction(accessToken, id, {
+        appointment_id: appointmentId,
+        action,
+        date: "",
+        time: "",
+      });
+      const msg = mapMessageRow(row, id, profile.id);
+      useChatStore.setState((s) => {
+        const thread = s.messages[id] ?? [];
+        if (thread.some((m) => m.id === msg.id)) return s;
+        return {
+          messages: { ...s.messages, [id]: [...thread, msg] },
+        };
+      });
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error ? e.message : isRTL ? "تعذر تحديث الموعد" : "Could not update appointment",
+      );
+    } finally {
+      setAppointmentActionBusy(false);
     }
   };
 
@@ -780,7 +860,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             </View>
           }
           renderItem={({ item, index }) => {
-            if (item.type === "access_action") {
+            if (item.type === "access_action" || item.type === "appointment_action") {
+              const apptId = item.appointmentAction?.appointment_id;
+              const showAppointmentControls = apptId
+                ? latestAppointmentMessageIds.get(apptId) === item.id
+                : false;
               return (
                 <ChatMessageBubble
                   item={item}
@@ -789,6 +873,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   rowDir={rowDir}
                   patientUserId={patientUserIdForLinks}
                   canOpenMedicalLink={canOpenSharedMedicalLinks}
+                  isDoctor={isDoctor}
+                  appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
+                  showAppointmentControls={showAppointmentControls}
+                  onAppointmentAction={(appointmentId, action) =>
+                    void handleAppointmentAction(appointmentId, action)
+                  }
+                  appointmentActionBusy={appointmentActionBusy}
                 />
               );
             }
@@ -885,8 +976,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           isDoctor={isDoctor}
           access={accessStatus}
           showDiagnosis={canOpenPatientRecord}
+          showMedicalRecordActions={canAddMedicalRecord}
+          medicalActionsDisabled={chatBlocked}
           onAccessAction={(action) => void handleAccessAction(action)}
           onDiagnosisPress={openDiagnosisModal}
+          onAddMedicalRecord={() => setCreateMedicalRecordOpen(true)}
+          onShareMedicalRecord={() => void openMedicalPicker()}
+          onBookAppointment={
+            isPatient && peer?.doctorEntityId && !chatBlocked
+              ? () => setBookAppointmentOpen(true)
+              : undefined
+          }
         />
       ) : null}
 
@@ -921,6 +1021,16 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   : "This chat is blocked"
             : undefined
         }
+        canStoreImageInMedicalRecord={
+          isPatient && isDoctorPatientChat && !chatBlocked
+        }
+        medicalRecordPatientUserId={profile?.id}
+        onMedicalRecordCreated={() => {
+          if (!accessToken || !profile?.id) return;
+          void fetchAllMedicalHistory(profile.id, accessToken).then((apiRecords) =>
+            setRecordsFromApi(apiRecords, profile.id),
+          );
+        }}
       />
       </View>
       </KeyboardAvoidingView>
@@ -946,6 +1056,22 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         />
       ) : null}
 
+      {accessToken ? (
+        <AssistantCreateRecordDialog
+          visible={createMedicalRecordOpen}
+          token={accessToken}
+          patientUserId={isDoctor ? id : undefined}
+          onClose={() => setCreateMedicalRecordOpen(false)}
+          onCreated={() => {
+            setCreateMedicalRecordOpen(false);
+            if (!profile?.id) return;
+            void fetchAllMedicalHistory(profile.id, accessToken).then((apiRecords) =>
+              setRecordsFromApi(apiRecords, profile.id),
+            );
+          }}
+        />
+      ) : null}
+
       <MedicalRecordPicker
         visible={medicalPickerOpen}
         records={medicalRecords}
@@ -956,6 +1082,23 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         onClose={closeMedicalPicker}
         onSelect={(record, note) => void handleMedicalPickerSelect(record, note)}
       />
+
+      {isPatient && id && accessToken && profile?.id && peer?.doctorEntityId ? (
+        <BookAppointmentDialog
+          visible={bookAppointmentOpen}
+          isRTL={isRTL}
+          token={accessToken}
+          selfId={profile.id}
+          doctorUserId={id}
+          doctorEntityId={peer.doctorEntityId}
+          onClose={() => setBookAppointmentOpen(false)}
+          onBooked={() => {
+            if (accessToken && profile?.id) {
+              void loadMessages(id, accessToken, profile.id);
+            }
+          }}
+        />
+      ) : null}
 
       <FullscreenImageViewer
         uri={fullscreenImage}

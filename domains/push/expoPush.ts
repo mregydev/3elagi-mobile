@@ -2,9 +2,10 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { EXPO_EAS_PROJECT_ID, EXPO_PUSH_CHANNEL_ID } from "@/constants/expoPush";
+import { EXPO_EAS_PROJECT_ID, EXPO_PUSH_CHANNEL_ID, EXPO_VIDEO_CALL_CHANNEL_ID } from "@/constants/expoPush";
 
 export const CHAT_PUSH_CHANNEL_ID = EXPO_PUSH_CHANNEL_ID;
+export const VIDEO_CALL_PUSH_CHANNEL_ID = EXPO_VIDEO_CALL_CHANNEL_ID;
 
 function resolveExpoProjectId(): string {
   return (
@@ -22,6 +23,22 @@ export async function ensureChatPushChannel(): Promise<void> {
     sound: "default",
     vibrationPattern: [0, 250, 250, 250],
   });
+}
+
+export async function ensureVideoCallPushChannel(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync(VIDEO_CALL_PUSH_CHANNEL_ID, {
+    name: "Video calls",
+    importance: Notifications.AndroidImportance.MAX,
+    sound: "default",
+    vibrationPattern: [0, 500, 250, 500, 250, 500],
+    bypassDnd: true,
+  });
+}
+
+export async function ensurePushChannels(): Promise<void> {
+  await ensureChatPushChannel();
+  await ensureVideoCallPushChannel();
 }
 
 export async function requestPushPermission(): Promise<boolean> {
@@ -53,7 +70,7 @@ export async function getExpoPushToken(): Promise<string | null> {
     console.log(`[push] Resolving Expo token (projectId=${projectId})`);
   }
 
-  await ensureChatPushChannel();
+  await ensurePushChannels();
   const granted = await requestPushPermission();
   if (!granted) {
     if (__DEV__) console.warn("[push] Notification permission denied");

@@ -50,6 +50,7 @@ export default function AssistantScreen() {
       activeId={assistant.activeId}
       loadingHistory={assistant.loadingHistory}
       sending={assistant.sending}
+      streaming={assistant.streaming}
       error={assistant.error}
       historyError={assistant.historyError}
       canRetry={assistant.canRetry}
@@ -61,6 +62,11 @@ export default function AssistantScreen() {
       selfUserId={assistant.selfUserId}
       onToggleMessageEmotion={(messageId, emotion) =>
         void assistant.toggleMessageEmotion(messageId, emotion)
+      }
+      medicalImageBusy={assistant.medicalImageBusy}
+      onSubmitMedicalImage={(input) => void assistant.submitMedicalImage(input)}
+      onMedicalRecordCreated={(record, previewUri) =>
+        assistant.appendMedicalRecordCreated(record, previewUri)
       }
     />
   );

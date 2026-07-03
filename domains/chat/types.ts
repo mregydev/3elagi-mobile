@@ -8,7 +8,8 @@ export type ChatMessageType =
   | "video"
   | "voice"
   | "medical_link"
-  | "access_action";
+  | "access_action"
+  | "appointment_action";
 
 export type AccessActionType =
   | "grant_records"
@@ -20,6 +21,17 @@ export type AccessActionType =
 
 export interface AccessActionMeta {
   action: AccessActionType;
+}
+
+export type AppointmentActionType = "request" | "confirm" | "reject" | "cancel";
+
+export interface AppointmentActionMeta {
+  appointment_id: string;
+  action: AppointmentActionType;
+  date: string;
+  time: string;
+  status?: string;
+  meeting_link?: string | null;
 }
 
 export interface MedicalLinkMeta {
@@ -54,6 +66,7 @@ export interface ChatMessage {
   localAttachmentUrl?: string | null;
   medicalLink?: MedicalLinkMeta | null;
   accessAction?: AccessActionMeta | null;
+  appointmentAction?: AppointmentActionMeta | null;
   pending?: boolean;
   failed?: boolean;
   editedAt?: string | null;
@@ -75,4 +88,5 @@ export interface SendMessageInput {
   attachmentUrl?: string;
   medicalLink?: MedicalLinkMeta;
   accessAction?: AccessActionMeta;
+  appointmentAction?: AppointmentActionMeta;
 }

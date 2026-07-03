@@ -44,4 +44,12 @@ export const MEDICAL_RECORD_CATEGORY_META: Record<
   },
 };
 
-export const IMAGE_EXTS = /\.(jpe?g|png|gif|webp|heic)(\?.*)?$/i;
+export const IMAGE_EXTS = /\.(jpe?g|png|gif|webp|avif|heic|heif)(\?.*)?$/i;
+
+export function isMedicalImageAttachment(
+  fileUrl?: string | null,
+  fileName?: string | null,
+): boolean {
+  if (!fileUrl) return false;
+  return IMAGE_EXTS.test(fileUrl) || IMAGE_EXTS.test(fileName ?? "");
+}

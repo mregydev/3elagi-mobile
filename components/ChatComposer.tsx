@@ -19,8 +19,13 @@ import {
   MOBILE_WEB_COMPOSER_FOOTER_GAP,
   mobileWebComposerStyles,
 } from "@/constants/mobileWebComposer";
-import { uploadFile } from "@/domains/medical/api";
+import { uploadFile, createMedicalRecordFromChatImage } from "@/domains/medical/api";
+import { getApiLang } from "@/domains/i18n/store";
 import type { ChatMessage, SendMessageInput } from "@/domains/chat/types";
+import {
+  MedicalImageAttachOptions,
+  type MedicalImageAttachOptionsValue,
+} from "@/components/medical/MedicalImageAttachOptions";
 import {
   emitChatStopTyping,
   emitChatTyping,
@@ -39,6 +44,7 @@ import {
   getChatVideoLimitViolation,
 } from "@/utils/chatVideoLimits";
 import { chatFlexRow } from "@/utils/rtl";
+import { showSuccessToast } from "@/utils/toast";
 
 interface Props {
   isRTL: boolean;
@@ -58,6 +64,10 @@ interface Props {
   onComposerFocus?: () => void;
   disabled?: boolean;
   disabledHint?: string;
+  /** Patient-only: show medical record + AI insight options on image attach. */
+  canStoreImageInMedicalRecord?: boolean;
+  medicalRecordPatientUserId?: string;
+  onMedicalRecordCreated?: () => void;
 }
 
 type PendingAttachment = {
@@ -130,6 +140,9 @@ export function ChatComposer({
   onComposerFocus,
   disabled = false,
   disabledHint,
+  canStoreImageInMedicalRecord = false,
+  medicalRecordPatientUserId,
+  onMedicalRecordCreated,
 }: Props) {
   const colors = useColors();
   const { isMobile } = useWebLayout();
@@ -141,6 +154,11 @@ export function ChatComposer({
   const [uploading, setUploading] = useState(false);
   const [attachMenuVisible, setAttachMenuVisible] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [medicalImageOptions, setMedicalImageOptions] =
+    useState<MedicalImageAttachOptionsValue>({
+      addToMedicalRecords: false,
+      generateAiInsight: true,
+    });
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -270,6 +288,7 @@ export function ChatComposer({
   const queueAttachment = (
     asset: ImagePicker.ImagePickerAsset,
     media: "image" | "video",
+    preUploadedUrl?: string,
   ) => {
     setPendingAttachment({
       uri: asset.uri,
@@ -278,17 +297,64 @@ export function ChatComposer({
         asset.fileName ?? `${media}-${Date.now()}.${media === "video" ? "mp4" : "jpg"}`,
       type: media,
       webFile: asset.file,
+      preUploadedUrl,
     });
+    if (media === "image") {
+      setMedicalImageOptions({
+        addToMedicalRecords: false,
+        generateAiInsight: true,
+      });
+    }
   };
 
   const sendPendingAttachment = async () => {
     if (!pendingAttachment || sending || uploading) return;
     const caption = text.trim();
     const { uri, mimeType, fileName, type, webFile, preUploadedUrl } = pendingAttachment;
+    const shouldCreateMedicalRecord =
+      type === "image" &&
+      canStoreImageInMedicalRecord &&
+      medicalImageOptions.addToMedicalRecords;
     stopTyping();
     setPendingAttachment(null);
     setText("");
     await uploadAndSend(uri, mimeType, fileName, type, webFile, caption, preUploadedUrl);
+    if (shouldCreateMedicalRecord) {
+      try {
+        await createMedicalRecordFromChatImage(
+          {
+            uri,
+            mimeType,
+            fileName,
+            webFile,
+            caption,
+            patientUserId: medicalRecordPatientUserId,
+            generateInsight: medicalImageOptions.generateAiInsight,
+          },
+          accessToken,
+          getApiLang(),
+        );
+        onMedicalRecordCreated?.();
+        showSuccessToast(
+          medicalImageOptions.generateAiInsight
+            ? isRTL
+              ? "تم حفظ السجل الطبي مع التحليل الذكي"
+              : "Medical record saved with AI insight"
+            : isRTL
+              ? "تم حفظ السجل الطبي"
+              : "Medical record saved",
+        );
+      } catch (e) {
+        Alert.alert(
+          isRTL ? "تنبيه" : "Notice",
+          e instanceof Error
+            ? e.message
+            : isRTL
+              ? "تعذر إضافة السجل الطبي"
+              : "Could not add medical record",
+        );
+      }
+    }
   };
 
   const pickGallery = async (media: "image" | "video") => {
@@ -339,13 +405,25 @@ export function ChatComposer({
         if (isNativeWebViewShell()) {
           const asset = await pickNativeShellCamera(media);
           if (!asset) return;
-          setPendingAttachment({
-            uri: asset.uri,
-            mimeType: asset.mimeType,
-            fileName: asset.fileName,
-            type: asset.mediaType,
-            preUploadedUrl: asset.preUploadedUrl,
-          });
+          if (asset.mediaType === "image") {
+            queueAttachment(
+              {
+                uri: asset.uri,
+                mimeType: asset.mimeType,
+                fileName: asset.fileName,
+              } as ImagePicker.ImagePickerAsset,
+              "image",
+              asset.preUploadedUrl,
+            );
+          } else {
+            setPendingAttachment({
+              uri: asset.uri,
+              mimeType: asset.mimeType,
+              fileName: asset.fileName,
+              type: asset.mediaType,
+              preUploadedUrl: asset.preUploadedUrl,
+            });
+          }
           return;
         }
 
@@ -734,6 +812,17 @@ export function ChatComposer({
           onReplace={openAttachMenu}
           onExpandImage={setPreviewImageUri}
           onExpandVideo={setPreviewVideoUri}
+        />
+      ) : null}
+
+      {pendingAttachment?.type === "image" &&
+      canStoreImageInMedicalRecord &&
+      !isEditing ? (
+        <MedicalImageAttachOptions
+          isRTL={isRTL}
+          value={medicalImageOptions}
+          onChange={setMedicalImageOptions}
+          disabled={uploading || sending}
         />
       ) : null}
 

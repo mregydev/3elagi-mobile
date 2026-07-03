@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { authRepository } from "./repository";
 import { emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "./events";
+import { applyLocaleAfterAuth } from "@/domains/i18n/store";
 import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
 import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
 
@@ -65,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
             doctorApprovalStatus: session.doctorApprovalStatus ?? null,
             loading: false,
           });
+          applyLocaleAfterAuth(session.preferredLocale);
         } catch (e) {
           set({ error: (e as Error).message, loading: false });
           throw e;
@@ -84,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
             doctorApprovalStatus: session.doctorApprovalStatus ?? null,
             loading: false,
           });
+          applyLocaleAfterAuth(session.preferredLocale);
         } catch (e) {
           set({ error: (e as Error).message, loading: false });
           throw e;

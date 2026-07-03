@@ -1,5 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react-native";
+import { Check, Copy, ThumbsDown, ThumbsUp, Volume2 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import type { AiFeedbackType } from "@/domains/emotions/types";
@@ -10,6 +10,8 @@ interface Props {
   content: string;
   myFeedback?: AiFeedbackType | null;
   onFeedback?: (emotion: AiFeedbackType) => void;
+  onReadAloud?: () => void;
+  isReadingAloud?: boolean;
   disabled?: boolean;
 }
 
@@ -17,6 +19,8 @@ export function AssistantMessageActions({
   content,
   myFeedback,
   onFeedback,
+  onReadAloud,
+  isReadingAloud = false,
   disabled = false,
 }: Props) {
   const colors = useColors();
@@ -43,6 +47,23 @@ export function AssistantMessageActions({
 
   return (
     <View style={[styles.row, isRTL && styles.rowRtl]}>
+      {onReadAloud ? (
+        <Pressable
+          onPress={onReadAloud}
+          disabled={disabled || !content.trim()}
+          hitSlop={8}
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+          accessibilityLabel={isRTL ? "قراءة بصوت عالٍ" : "Read aloud"}
+        >
+          <Volume2
+            size={16}
+            color={isReadingAloud ? activeColor : iconColor}
+            fill={isReadingAloud ? activeColor : "transparent"}
+            strokeWidth={2}
+          />
+        </Pressable>
+      ) : null}
+
       <Pressable
         onPress={() => void handleCopy()}
         disabled={disabled || !content.trim()}

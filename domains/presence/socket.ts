@@ -39,6 +39,26 @@ let onMessageEmotionUpdatedHandler:
 let onDoctorRegisteredHandler:
   | ((payload: import("@/domains/home/api").SpecialityDoctorRow) => void)
   | null = null;
+let onAppointmentReminderHandler:
+  | ((payload: {
+      appointment_id: string;
+      session_id?: string;
+      meeting_link?: string;
+      when: string;
+    }) => void)
+  | null = null;
+let onAppointmentUpdatedHandler:
+  | ((payload: {
+      appointment_id?: string;
+      peer_id?: string;
+      actor_id?: string;
+      actor_name?: string;
+      action?: "confirm" | "reject" | "cancel";
+      date?: string;
+      time?: string;
+      status?: string;
+    }) => void)
+  | null = null;
 
 export function onChatMessageNew(handler: IncomingMessageHandler | null) {
   onMessageNew = handler;
@@ -86,6 +106,36 @@ export function onDoctorRegistered(
   handler: ((payload: import("@/domains/home/api").SpecialityDoctorRow) => void) | null,
 ) {
   onDoctorRegisteredHandler = handler;
+}
+
+export function onAppointmentReminder(
+  handler:
+    | ((payload: {
+        appointment_id: string;
+        session_id?: string;
+        meeting_link?: string;
+        when: string;
+      }) => void)
+    | null,
+) {
+  onAppointmentReminderHandler = handler;
+}
+
+export function onAppointmentUpdated(
+  handler:
+    | ((payload: {
+        appointment_id?: string;
+        peer_id?: string;
+        actor_id?: string;
+        actor_name?: string;
+        action?: "confirm" | "reject" | "cancel";
+        date?: string;
+        time?: string;
+        status?: string;
+      }) => void)
+    | null,
+) {
+  onAppointmentUpdatedHandler = handler;
 }
 
 export function emitChatTyping(recipientId: string, userId: string) {
@@ -174,6 +224,41 @@ function bindListeners(client: Socket) {
       onDoctorRegisteredHandler?.(payload);
     }
   });
+
+  client.on(
+    "appointment:reminder",
+    (payload: {
+      appointment_id?: string;
+      session_id?: string;
+      meeting_link?: string;
+      when?: string;
+    }) => {
+      if (payload?.appointment_id && payload?.when) {
+        onAppointmentReminderHandler?.({
+          appointment_id: payload.appointment_id,
+          session_id: payload.session_id,
+          meeting_link: payload.meeting_link,
+          when: payload.when,
+        });
+      }
+    },
+  );
+
+  client.on(
+    "appointment:updated",
+    (payload: {
+      appointment_id?: string;
+      peer_id?: string;
+      actor_id?: string;
+      actor_name?: string;
+      action?: "confirm" | "reject" | "cancel";
+      date?: string;
+      time?: string;
+      status?: string;
+    }) => {
+      onAppointmentUpdatedHandler?.(payload);
+    },
+  );
 }
 
 /** Re-register presence on an existing socket (e.g. doctor returns to a browser tab). */

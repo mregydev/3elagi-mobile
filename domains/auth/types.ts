@@ -33,11 +33,14 @@ export interface SignupInput extends Credentials {
 
 export type DoctorApprovalStatus = "pending" | "approved" | "rejected";
 
+export type PreferredLocale = "ar" | "en";
+
 export interface AuthSession {
   accessToken: string;
   role: string;
   userId: string;
   profile: PatientProfile;
+  preferredLocale?: PreferredLocale | null;
   /** Set when role is doctor */
   doctorId?: string;
   /** Set when role is doctor */

@@ -1,6 +1,7 @@
 import { Link, usePathname } from "expo-router";
 import {
   Bot,
+  CalendarClock,
   ClipboardList,
   Coins,
   History,
@@ -60,6 +61,12 @@ export function WebMobileTabBar({ height, bottomGap }: Props) {
       Icon: Star,
       isActive: (path) => path.includes("/reviews"),
       hidden: !isDoctor,
+    },
+    {
+      href: "/(tabs)/appointments",
+      title: t.tabs.appointments,
+      Icon: CalendarClock,
+      isActive: (path) => path.includes("/appointments"),
     },
     {
       href: "/(tabs)/records",

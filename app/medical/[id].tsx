@@ -16,7 +16,6 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Linking,
   Pressable,
   StyleSheet,
@@ -42,9 +41,15 @@ import {
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
+  generateMedicalRecordAiInsight,
+  generateMedicalRecordDetails,
   updateDiagnosis,
+  updatePatientMedicalDocument,
 } from "@/domains/medical/api";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
+import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
+import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
+import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
 import { useMedicalStore } from "@/domains/medical/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import {
@@ -54,6 +59,7 @@ import {
 } from "@/domains/medical/permissions";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useApiLang } from "@/hooks/useApiLang";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
 
 const CATEGORY_META: Record<
@@ -70,6 +76,7 @@ const CATEGORY_META: Record<
 export default function MedicalRecordDetail() {
   const colors = useColors();
   const { isRTL } = useI18n();
+  const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
   const { id, doctorView, patientUserId } = useLocalSearchParams<{
     id: string;
@@ -86,6 +93,7 @@ export default function MedicalRecordDetail() {
   const remove = useMedicalStore((s) => s.remove);
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
   const upsertPrescription = useMedicalStore((s) => s.upsertPrescription);
+  const upsertDocument = useMedicalStore((s) => s.upsertDocument);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
@@ -97,10 +105,14 @@ export default function MedicalRecordDetail() {
   const [editingDiagnosis, setEditingDiagnosis] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const [generatingInsight, setGeneratingInsight] = useState(false);
+  const [editingLabDetails, setEditingLabDetails] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingLabDetails, setSavingLabDetails] = useState(false);
+  const [generatingDetails, setGeneratingDetails] = useState(false);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
-
-  const IMAGE_EXTS = /\.(jpe?g|png|gif|webp|heic)(\?.*)?$/i;
 
   const needsDoctorAccess = isDoctorView && !!patientUserId;
   const hasDoctorAccess =
@@ -306,9 +318,8 @@ export default function MedicalRecordDetail() {
   const isDiagnosis = record.category === "diagnosis";
   const isPrescription = record.category === "prescription";
   const isLabOrXray = record.category === "lab" || record.category === "xray";
-  const isDocImage =
-    !!record.fileUrl &&
-    (IMAGE_EXTS.test(record.fileUrl) || IMAGE_EXTS.test(record.fileName ?? ""));
+  const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
+  const canEditLabDetails = isLabOrXray && !isDoctorView && !!accessToken;
 
   const refetchListsAfterChange = async () => {
     if (!accessToken || !profile) return;
@@ -351,6 +362,50 @@ export default function MedicalRecordDetail() {
       Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
     } finally {
       setAddingSymptom(false);
+    }
+  };
+
+  const saveLabDetails = async () => {
+    const title = editTitle.trim();
+    const notes = editNotes.trim();
+    if (!title || !notes || !id || !accessToken || !canEditLabDetails) return;
+    setSavingLabDetails(true);
+    try {
+      const updated = await updatePatientMedicalDocument(
+        id,
+        { title, notes },
+        accessToken,
+      );
+      setDetail(updated);
+      upsertDocument(updated);
+      setEditingLabDetails(false);
+      await refetchListsAfterChange();
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+    } finally {
+      setSavingLabDetails(false);
+    }
+  };
+
+  const generateLabDetails = async () => {
+    if (!record || !accessToken || !canEditLabDetails) return;
+    setGeneratingDetails(true);
+    try {
+      const updated = await generateMedicalRecordDetails(
+        record,
+        accessToken,
+        apiLang,
+      );
+      setDetail(updated);
+      upsertDocument(updated);
+      setEditTitle(updated.title);
+      setEditNotes(updated.notes ?? "");
+      setEditingLabDetails(true);
+      await refetchListsAfterChange();
+    } catch (e) {
+      Alert.alert(isRTL ? "خطأ" : "Error", (e as Error).message);
+    } finally {
+      setGeneratingDetails(false);
     }
   };
 
@@ -464,7 +519,10 @@ export default function MedicalRecordDetail() {
             onPress={() => setZoomImageUri(record.fileUrl!)}
             style={[styles.imageCard, { borderColor: colors.border }]}
           >
-            <Image source={{ uri: record.fileUrl }} style={styles.detailImage} resizeMode="cover" />
+            <MedicalRecordAttachmentImage
+              uri={record.fileUrl}
+              style={styles.detailImage}
+            />
           </Pressable>
         )}
 
@@ -491,7 +549,7 @@ export default function MedicalRecordDetail() {
           />
         ) : null}
 
-        {record.notes ? (
+        {record.notes && !editingLabDetails ? (
           <DetailCard
             icon={<FileText size={18} color={color} />}
             label={isRTL ? "الوصف" : isLabOrXray ? "Description" : "Notes"}
@@ -499,6 +557,168 @@ export default function MedicalRecordDetail() {
             color={color}
             colors={colors}
             isRTL={isRTL}
+          />
+        ) : null}
+
+        {canEditLabDetails ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
+              {isRTL ? "تفاصيل السجل" : "Record details"}
+            </Text>
+            {editingLabDetails ? (
+              <View style={{ gap: 10 }}>
+                <TextInput
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  placeholder={isRTL ? "العنوان" : "Title"}
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[
+                    styles.titleInput,
+                    {
+                      color: colors.foreground,
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      textAlign,
+                    },
+                  ]}
+                />
+                <TextInput
+                  value={editNotes}
+                  onChangeText={setEditNotes}
+                  multiline
+                  placeholder={isRTL ? "الوصف" : "Description"}
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[
+                    styles.titleInput,
+                    {
+                      color: colors.foreground,
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      textAlign,
+                      minHeight: 88,
+                      textAlignVertical: "top",
+                    },
+                  ]}
+                />
+                <View style={[styles.labDetailActions, { flexDirection: dir }]}>
+                  <Pressable
+                    onPress={saveLabDetails}
+                    disabled={savingLabDetails || !editTitle.trim() || !editNotes.trim()}
+                    style={[
+                      styles.addSymptomBtn,
+                      {
+                        backgroundColor: colors.primary,
+                        opacity:
+                          savingLabDetails || !editTitle.trim() || !editNotes.trim()
+                            ? 0.5
+                            : 1,
+                      },
+                    ]}
+                  >
+                    {savingLabDetails ? (
+                      <ActivityIndicator color={colors.primaryForeground} />
+                    ) : (
+                      <Text style={{ color: colors.primaryForeground, fontWeight: "700" }}>
+                        {isRTL ? "حفظ" : "Save"}
+                      </Text>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setEditingLabDetails(false);
+                      setEditTitle(record.title);
+                      setEditNotes(record.notes ?? "");
+                    }}
+                    style={[styles.addSymptomBtn, { backgroundColor: colors.muted }]}
+                  >
+                    <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                      {isRTL ? "إلغاء" : "Cancel"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    setEditTitle(record.title);
+                    setEditNotes(record.notes ?? "");
+                    setEditingLabDetails(true);
+                  }}
+                  style={[styles.addSymptomBtn, { backgroundColor: colors.muted, alignSelf: "flex-start" }]}
+                >
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                    {isRTL ? "تعديل العنوان والوصف" : "Edit title & description"}
+                  </Text>
+                </Pressable>
+                {isDocImage ? (
+                  <Pressable
+                    onPress={() => void generateLabDetails()}
+                    disabled={generatingDetails}
+                    style={[
+                      styles.addSymptomBtn,
+                      {
+                        backgroundColor: `${colors.primary}14`,
+                        borderWidth: 1,
+                        borderColor: colors.primary,
+                        alignSelf: "flex-start",
+                        opacity: generatingDetails ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    {generatingDetails ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : (
+                      <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                        {isRTL ? "إنشاء بالذكاء الاصطناعي" : "Generate with AI"}
+                      </Text>
+                    )}
+                  </Pressable>
+                ) : null}
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {record.category !== "intake" ? (
+          <MedicalRecordAiInsightSection
+            record={record}
+            generating={generatingInsight}
+            onGenerate={
+              accessToken
+                ? () => {
+                    setGeneratingInsight(true);
+                    void generateMedicalRecordAiInsight(
+                      record,
+                      accessToken,
+                      apiLang,
+                    )
+                      .then((updated) => {
+                        setDetail(updated);
+                        if (
+                          updated.category === "lab" ||
+                          updated.category === "xray"
+                        ) {
+                          upsertDocument(updated);
+                        } else if (updated.category === "diagnosis") {
+                          upsertDiagnosis(updated);
+                        } else if (updated.category === "prescription") {
+                          upsertPrescription(updated);
+                        }
+                        const ownerId =
+                          patientUserId?.trim() || profile?.id || updated.ownerId;
+                        if (ownerId) notifyMedicalHistoryChanged(ownerId);
+                      })
+                      .catch((err) =>
+                        Alert.alert(
+                          isRTL ? "خطأ" : "Error",
+                          (err as Error).message,
+                        ),
+                      )
+                      .finally(() => setGeneratingInsight(false));
+                  }
+                : undefined
+            }
           />
         ) : null}
 
@@ -625,9 +845,7 @@ export default function MedicalRecordDetail() {
             </View>
             {record.linkedDocuments.map((doc) => {
               const docMeta = CATEGORY_META[doc.category];
-              const docIsImage =
-                !!doc.fileUrl &&
-                (IMAGE_EXTS.test(doc.fileUrl) || IMAGE_EXTS.test(doc.fileName ?? ""));
+              const docIsImage = isMedicalImageAttachment(doc.fileUrl, doc.fileName);
               return (
                 <Pressable
                   key={doc.id}
@@ -651,10 +869,9 @@ export default function MedicalRecordDetail() {
                   ]}
                 >
                   {docIsImage && doc.fileUrl ? (
-                    <Image
-                      source={{ uri: doc.fileUrl }}
+                    <MedicalRecordAttachmentImage
+                      uri={doc.fileUrl}
                       style={styles.linkedThumb}
-                      resizeMode="cover"
                     />
                   ) : (
                     <View
@@ -1032,6 +1249,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minWidth: 64,
     alignItems: "center",
+  },
+  labDetailActions: {
+    gap: 8,
+    flexWrap: "wrap",
   },
   addSymptomBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 

@@ -54,6 +54,7 @@ export default function AssistantScreenWeb() {
     activeId: assistant.activeId,
     loadingHistory: assistant.loadingHistory,
     sending: assistant.sending,
+    streaming: assistant.streaming,
     error: assistant.error,
     historyError: assistant.historyError,
     canRetry: assistant.canRetry,
@@ -65,6 +66,10 @@ export default function AssistantScreenWeb() {
     selfUserId: assistant.selfUserId,
     onToggleMessageEmotion: (messageId: string, emotion: AiFeedbackType) =>
       void assistant.toggleMessageEmotion(messageId, emotion),
+    medicalImageBusy: assistant.medicalImageBusy,
+    onSubmitMedicalImage: (input) => void assistant.submitMedicalImage(input),
+    onMedicalRecordCreated: (record, previewUri) =>
+      assistant.appendMedicalRecordCreated(record, previewUri),
   };
 
   if (!isDesktop) {

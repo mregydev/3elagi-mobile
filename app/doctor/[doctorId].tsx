@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { chatRepository } from "@/domains/chat/repository";
+import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -76,6 +77,7 @@ export default function DoctorProfileScreen() {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
+  const authDoctorId = useAuthStore((s) => s.doctorId);
   const { doctorId, userId } = useLocalSearchParams<{ doctorId: string; userId?: string }>();
 
   const [doctor, setDoctor] = useState<PublicDoctorProfile | null>(null);
@@ -89,6 +91,8 @@ export default function DoctorProfileScreen() {
   const [reviewStatus, setReviewStatus] = useState<DoctorReviewStatus | null>(null);
 
   const isPatient = role?.toLowerCase() === "patient";
+  const isOwnDoctorProfile =
+    role?.toLowerCase() === "doctor" && !!authDoctorId && authDoctorId === doctorId;
 
   const load = useCallback(async () => {
     if (!doctorId) return;
@@ -227,6 +231,10 @@ export default function DoctorProfileScreen() {
           <MessageCircle size={20} color="#fff" />
           <Text style={styles.chatBtnText}>{isRTL ? "مراسلة الطبيب" : "Message doctor"}</Text>
         </Pressable>
+
+        {isOwnDoctorProfile && accessToken ? (
+          <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
+        ) : null}
 
         {isPatient && reviewStatus?.canReview ? (
           <View style={[styles.reviewForm, { backgroundColor: colors.card, borderColor: colors.border }]}>

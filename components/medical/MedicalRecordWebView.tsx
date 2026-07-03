@@ -13,7 +13,6 @@ import {
 import React from "react";
 import {
   ActivityIndicator,
-  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -25,8 +24,9 @@ import {
 } from "react-native";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
 import {
-  IMAGE_EXTS,
+  isMedicalImageAttachment,
   MEDICAL_RECORD_CATEGORY_META,
 } from "@/components/medical/medicalRecordMeta";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -158,6 +158,7 @@ export function MedicalRecordWebView() {
     isLabOrXray,
     isDocImage,
     isDoctorView,
+    canEditLabDetails,
     newSymptom,
     setNewSymptom,
     addingSymptom,
@@ -168,6 +169,16 @@ export function MedicalRecordWebView() {
     savingDiagnosis,
     zoomImageUri,
     setZoomImageUri,
+    editingLabDetails,
+    setEditingLabDetails,
+    editTitle,
+    setEditTitle,
+    editNotes,
+    setEditNotes,
+    savingLabDetails,
+    generatingDetails,
+    saveLabDetails,
+    generateLabDetails,
     saveDiagnosisEdit,
     submitSymptom,
     confirmDelete,
@@ -274,7 +285,7 @@ export function MedicalRecordWebView() {
           onPress={() => record.fileUrl && setZoomImageUri(record.fileUrl)}
           style={[styles.mediaCard, { borderColor: colors.border, backgroundColor: colors.card }]}
         >
-          <Image source={{ uri: record.fileUrl }} style={mediaImageStyle} resizeMode="cover" />
+          <MedicalRecordAttachmentImage uri={record.fileUrl} style={mediaImageStyle} />
           <Text style={[styles.mediaHint, { color: colors.mutedForeground, textAlign }]}>
             {isRTL ? "اضغط للتكبير" : "Click to zoom"}
           </Text>
@@ -312,9 +323,7 @@ export function MedicalRecordWebView() {
           <View style={styles.linkedList}>
             {record.linkedDocuments.map((doc) => {
               const docMeta = MEDICAL_RECORD_CATEGORY_META[doc.category];
-              const docIsImage =
-                !!doc.fileUrl &&
-                (IMAGE_EXTS.test(doc.fileUrl) || IMAGE_EXTS.test(doc.fileName ?? ""));
+              const docIsImage = isMedicalImageAttachment(doc.fileUrl, doc.fileName);
               return (
                 <Pressable
                   key={doc.id}
@@ -326,7 +335,10 @@ export function MedicalRecordWebView() {
                   ]}
                 >
                   {docIsImage && doc.fileUrl ? (
-                    <Image source={{ uri: doc.fileUrl }} style={styles.linkedThumb} resizeMode="cover" />
+                    <MedicalRecordAttachmentImage
+                      uri={doc.fileUrl}
+                      style={styles.linkedThumb}
+                    />
                   ) : (
                     <View
                       style={[
@@ -542,6 +554,125 @@ export function MedicalRecordWebView() {
           <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
             {isRTL ? "لا توجد أدوية مسجلة" : "No medications recorded"}
           </Text>
+        )}
+      </SectionCard>
+    );
+  };
+
+  const renderLabDetailsEdit = () => {
+    if (!canEditLabDetails || !record) return null;
+
+    return (
+      <SectionCard
+        title={isRTL ? "تفاصيل السجل" : "Record details"}
+        icon={<FileText size={18} color={color} />}
+        accent={color}
+        colors={colors}
+        textAlign={textAlign}
+        dir={dir}
+      >
+        {editingLabDetails ? (
+          <View style={{ gap: 12 }}>
+            <TextInput
+              value={editTitle}
+              onChangeText={setEditTitle}
+              placeholder={isRTL ? "العنوان" : "Title"}
+              placeholderTextColor={colors.mutedForeground}
+              style={[
+                styles.editInput,
+                {
+                  color: colors.foreground,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                  textAlign,
+                },
+              ]}
+            />
+            <TextInput
+              value={editNotes}
+              onChangeText={setEditNotes}
+              multiline
+              placeholder={isRTL ? "الوصف" : "Description"}
+              placeholderTextColor={colors.mutedForeground}
+              style={[
+                styles.editInput,
+                {
+                  color: colors.foreground,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                  textAlign,
+                  minHeight: 100,
+                },
+              ]}
+            />
+            <View style={[styles.editActions, { flexDirection: dir }]}>
+              <Pressable
+                onPress={saveLabDetails}
+                disabled={savingLabDetails || !editTitle.trim() || !editNotes.trim()}
+                style={[
+                  styles.primaryBtn,
+                  {
+                    backgroundColor:
+                      editTitle.trim() && editNotes.trim() ? color : colors.muted,
+                    opacity: savingLabDetails ? 0.6 : 1,
+                  },
+                ]}
+              >
+                {savingLabDetails ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>{isRTL ? "حفظ" : "Save"}</Text>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setEditingLabDetails(false);
+                  setEditTitle(record.title);
+                  setEditNotes(record.notes ?? "");
+                }}
+              >
+                <Text style={{ color: colors.mutedForeground, fontWeight: "600" }}>
+                  {isRTL ? "إلغاء" : "Cancel"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={{ gap: 12 }}>
+            {record.notes ? (
+              <Text style={{ color: colors.foreground, fontSize: 15, textAlign }}>
+                {record.notes}
+              </Text>
+            ) : null}
+            <View style={[styles.editActions, { flexDirection: dir }]}>
+              <Pressable
+                onPress={() => {
+                  setEditTitle(record.title);
+                  setEditNotes(record.notes ?? "");
+                  setEditingLabDetails(true);
+                }}
+              >
+                <Text style={{ color: color, fontWeight: "700" }}>
+                  {isRTL ? "تعديل العنوان والوصف" : "Edit title & description"}
+                </Text>
+              </Pressable>
+              {isDocImage ? (
+                <Pressable
+                  onPress={() => void generateLabDetails()}
+                  disabled={generatingDetails}
+                  style={{ opacity: generatingDetails ? 0.6 : 1 }}
+                >
+                  {generatingDetails ? (
+                    <ActivityIndicator size="small" color={color} />
+                  ) : (
+                    <Text style={{ color, fontWeight: "700" }}>
+                      {isRTL ? "إنشاء بالذكاء الاصطناعي" : "Generate with AI"}
+                    </Text>
+                  )}
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
         )}
       </SectionCard>
     );
@@ -766,7 +897,7 @@ export function MedicalRecordWebView() {
               <View style={styles.splitMedia}>{renderMedia()}</View>
               <View style={styles.splitMain}>
                 {infoGrid}
-                {record.notes ? (
+                {record.notes && !canEditLabDetails ? (
                   <InfoCard
                     icon={<FileText size={18} color={color} />}
                     label={isRTL ? "الوصف" : "Description"}
@@ -785,7 +916,7 @@ export function MedicalRecordWebView() {
             <>
               {hasMedia ? renderMedia() : null}
               {infoGrid}
-              {record.notes ? (
+              {record.notes && !canEditLabDetails ? (
                 <View style={gridStyle(1)}>
                   <InfoCard
                     icon={<FileText size={18} color={color} />}
@@ -807,6 +938,7 @@ export function MedicalRecordWebView() {
 
           {/* Full-width sections */}
           <View style={styles.sections}>
+            {renderLabDetailsEdit()}
             {renderDiagnosisEdit()}
             {renderLinkedDocs()}
             {renderLinkedDiagnoses()}

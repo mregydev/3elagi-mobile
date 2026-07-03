@@ -16,6 +16,8 @@ export function messagePreviewText(
       return `📋 ${message.medicalLink?.title ?? message.text}`;
     case "access_action":
       return message.text;
+    case "appointment_action":
+      return message.text;
     default:
       return message.text;
   }

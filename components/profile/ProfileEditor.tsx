@@ -16,6 +16,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { MessagePricePicker } from "@/components/MessagePricePicker";
+import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
@@ -226,6 +227,10 @@ export function ProfileEditor({
                   label={isRTL ? "سعر الرسالة (نقاط)" : "Message price (points)"}
                 />
               </SectionCard>
+            ) : null}
+
+            {isDoctor ? (
+              <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
             ) : null}
 
             <SectionCard

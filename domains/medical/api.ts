@@ -1,6 +1,17 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
-import type { DiagnosisSymptom, MedicalRecord, PrescriptionMedication } from "./types";
+import type { DiagnosisSymptom, MedicalAiInsight, MedicalRecord, PrescriptionMedication } from "./types";
+
+function mapAiInsight(raw: unknown): MedicalAiInsight | null | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const source = raw as Record<string, unknown>;
+  const description = String(source.description ?? "").trim();
+  const possible_diseases = String(
+    source.possible_diseases ?? source.possibleDiseases ?? "",
+  ).trim();
+  if (!description && !possible_diseases) return undefined;
+  return { description, possible_diseases };
+}
 
 interface RawPrescriptionMedication {
   id: string;
@@ -21,6 +32,7 @@ interface RawPrescription {
   image_url?: string | null;
   created_at: string;
   medications?: RawPrescriptionMedication[];
+  ai_insight?: MedicalAiInsight | null;
 }
 
 function mapPrescriptionMedication(raw: RawPrescriptionMedication): PrescriptionMedication {
@@ -51,6 +63,7 @@ function mapPrescription(raw: RawPrescription): MedicalRecord {
     imageUrl,
     fileUrl: imageUrl,
     fileName: imageUrl ? "prescription.jpg" : undefined,
+    aiInsight: mapAiInsight(raw.ai_insight) ?? null,
   };
 }
 
@@ -71,6 +84,7 @@ interface RawDiagnosis {
   created_at: string;
   symptoms?: RawSymptom[];
   documents?: RawDocument[];
+  ai_insight?: MedicalAiInsight | null;
 }
 
 function mapSymptoms(raw: RawSymptom[] | undefined): DiagnosisSymptom[] {
@@ -92,6 +106,7 @@ interface RawDocument {
   created_at: string;
   diagnosis_id?: string | null;
   linked_diagnoses?: Array<{ id: string; desc: string }>;
+  ai_insight?: MedicalAiInsight | null;
 }
 
 function mapLinkedDiagnoses(
@@ -114,6 +129,7 @@ function mapDocument(doc: RawDocument): MedicalRecord {
     createdAt: doc.created_at,
     linkedDiagnoses,
     diagnosisId: linkedDiagnoses[0]?.id ?? doc.diagnosis_id ?? null,
+    aiInsight: mapAiInsight(doc.ai_insight) ?? null,
   };
 }
 
@@ -129,6 +145,7 @@ function mapDiagnosis(d: RawDiagnosis): MedicalRecord {
     doctorName: d.doctor_name ?? null,
     doctorId: d.doctor_id ?? null,
     linkedDocuments: (d.documents ?? []).map(mapDocument),
+    aiInsight: mapAiInsight(d.ai_insight) ?? null,
   };
 }
 
@@ -450,6 +467,7 @@ export async function createPatientMedicalDocument(
     notes: string;
     title: string;
     patient_user_id?: string;
+    ai_insight?: MedicalAiInsight;
   },
   token: string,
 ): Promise<MedicalRecord> {
@@ -536,4 +554,196 @@ export async function addSymptomToDiagnosis(
     { method: "POST", body: JSON.stringify({ desc }) },
   );
   return mapDiagnosis(data);
+}
+
+export interface AnalyzedMedicalRecordImage {
+  type: "lab" | "xray";
+  title: string;
+  notes: string;
+  ai_insight: MedicalAiInsight;
+}
+
+export async function analyzeMedicalRecordImage(
+  uri: string,
+  mimeType: string,
+  fileName: string,
+  token: string,
+  lang: "ar" | "en",
+  webFile?: File | Blob,
+): Promise<AnalyzedMedicalRecordImage> {
+  const formData = new FormData();
+  await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
+  const res = await fetch(
+    `${API_BASE}/patient/medical-documents/analyze-image?lang=${lang}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
+        `Analyze failed (${res.status})`,
+    );
+  }
+  return data as AnalyzedMedicalRecordImage;
+}
+
+export async function createMedicalRecordFromImage(
+  uri: string,
+  mimeType: string,
+  fileName: string,
+  token: string,
+  lang: "ar" | "en",
+  webFile?: File | Blob,
+  options?: { generateInsight?: boolean },
+): Promise<MedicalRecord> {
+  const formData = new FormData();
+  await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
+  const insightParam =
+    options?.generateInsight === false ? "&generate_insight=false" : "";
+  const res = await fetch(
+    `${API_BASE}/patient/medical-documents/from-image?lang=${lang}${insightParam}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
+        `Create failed (${res.status})`,
+    );
+  }
+  return mapDocument(data as RawDocument);
+}
+
+export async function updatePatientMedicalDocument(
+  id: string,
+  payload: { title?: string; notes?: string },
+  token: string,
+): Promise<MedicalRecord> {
+  const data = await authJson<RawDocument>(
+    `/patient/medical-documents/${id}/update`,
+    token,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+  return mapDocument(data);
+}
+
+export async function generateMedicalRecordDetails(
+  record: MedicalRecord,
+  token: string,
+  lang: "ar" | "en",
+): Promise<MedicalRecord> {
+  if (record.category !== "lab" && record.category !== "xray") {
+    throw new Error("AI details are only supported for lab and imaging records");
+  }
+  const data = await authJson<RawDocument>(
+    `/patient/medical-documents/${record.id}/generate-details?lang=${lang}`,
+    token,
+    { method: "POST" },
+  );
+  return mapDocument(data);
+}
+
+export async function createMedicalRecordFromChatImage(
+  input: {
+    uri: string;
+    mimeType: string;
+    fileName: string;
+    webFile?: File | Blob;
+    caption?: string;
+    patientUserId?: string;
+    generateInsight: boolean;
+  },
+  token: string,
+  lang: "ar" | "en",
+): Promise<MedicalRecord> {
+  if (input.generateInsight) {
+    return createMedicalRecordFromImage(
+      input.uri,
+      input.mimeType,
+      input.fileName,
+      token,
+      lang,
+      input.webFile,
+      { generateInsight: true },
+    );
+  }
+
+  const uploaded = await uploadFile(
+    input.uri,
+    input.mimeType,
+    input.fileName,
+    token,
+    input.webFile,
+  );
+  let type: "lab" | "xray" = "lab";
+  let title = input.caption?.trim() || "Medical image";
+  let notes = input.caption?.trim() || title;
+
+  try {
+    const analyzed = await analyzeMedicalRecordImage(
+      input.uri,
+      input.mimeType,
+      input.fileName,
+      token,
+      lang,
+      input.webFile,
+    );
+    type = analyzed.type;
+    title = analyzed.title;
+    notes = analyzed.notes;
+  } catch {
+    // keep caption-based defaults
+  }
+
+  return createPatientMedicalDocument(
+    {
+      type,
+      file_url: uploaded.url || uploaded.objectPath,
+      file_name: input.fileName,
+      title,
+      notes,
+      patient_user_id: input.patientUserId,
+    },
+    token,
+  );
+}
+
+export async function generateMedicalRecordAiInsight(
+  record: MedicalRecord,
+  token: string,
+  lang: "ar" | "en",
+): Promise<MedicalRecord> {
+  if (record.category === "lab" || record.category === "xray") {
+    const data = await authJson<RawDocument>(
+      `/patient/medical-documents/${record.id}/generate-insight?lang=${lang}`,
+      token,
+      { method: "POST" },
+    );
+    return mapDocument(data);
+  }
+  if (record.category === "diagnosis") {
+    const data = await authJson<RawDiagnosis>(
+      `/patient/diagnoses/${record.id}/generate-insight?lang=${lang}`,
+      token,
+      { method: "POST" },
+    );
+    return mapDiagnosis(data);
+  }
+  if (record.category === "prescription") {
+    const data = await authJson<RawPrescription>(
+      `/prescriptions/patient-user/${record.ownerId}/${record.id}/generate-insight?lang=${lang}`,
+      token,
+      { method: "POST" },
+    );
+    return mapPrescription(data);
+  }
+  throw new Error("AI insight is not supported for this record type");
 }

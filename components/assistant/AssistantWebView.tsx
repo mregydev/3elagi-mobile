@@ -1,5 +1,6 @@
-import { Bot, Plus, RefreshCw, Trash2 } from "lucide-react-native";
-import React, { useCallback, useEffect, useRef } from "react";
+import { Plus, RefreshCw, Trash2 } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -9,14 +10,22 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AssistantComposer } from "@/components/assistant/AssistantComposer";
+import { AssistantComposer, type AssistantPendingImage } from "@/components/assistant/AssistantComposer";
+import { ChatMedicalRecordPills } from "@/components/chat/ChatMedicalRecordPills";
+import type { MedicalImageAttachOptionsValue } from "@/components/medical/MedicalImageAttachOptions";
+import { AssistantAvatar } from "@/components/assistant/AssistantAvatar";
 import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadingIndicator";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
+import { AssistantVoiceModeView } from "@/components/assistant/AssistantVoiceModeView";
+import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
+import { AssistantVoiceWebStyles } from "@/components/assistant/AssistantVoiceWebStyles";
+import type { MedicalRecord } from "@/domains/medical/types";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useAssistantVoiceChat } from "@/hooks/useAssistantVoiceChat";
 
 interface Props {
   conversations: AiConversation[];
@@ -24,6 +33,7 @@ interface Props {
   activeId: string | null;
   loadingHistory: boolean;
   sending: boolean;
+  streaming?: boolean;
   error: string | null;
   historyError?: string | null;
   canRetry?: boolean;
@@ -34,6 +44,17 @@ interface Props {
   onRetry: () => void;
   selfUserId?: string | null;
   onToggleMessageEmotion?: (messageId: string, emotion: AiFeedbackType) => void;
+  medicalImageBusy?: boolean;
+  onSubmitMedicalImage?: (input: {
+    uri: string;
+    mimeType: string;
+    fileName: string;
+    webFile?: File;
+    caption?: string;
+    addToMedicalRecords: boolean;
+    generateAiInsight: boolean;
+  }) => void;
+  onMedicalRecordCreated?: (record: MedicalRecord, previewUri?: string) => void;
 }
 
 const DISCLAIMER_EN =
@@ -47,6 +68,7 @@ export function AssistantWebView({
   activeId,
   loadingHistory,
   sending,
+  streaming = false,
   error,
   historyError,
   canRetry = true,
@@ -57,21 +79,49 @@ export function AssistantWebView({
   onRetry,
   selfUserId,
   onToggleMessageEmotion,
+  medicalImageBusy = false,
+  onSubmitMedicalImage,
+  onMedicalRecordCreated,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isRTL } = useI18n();
   const isEn = !isRTL;
+  const accessToken = useAuthStore((s) => s.accessToken);
   const isDoctor = useAuthStore((s) => s.role?.toLowerCase() === "doctor");
+  const [dictatedText, setDictatedText] = useState<string | null>(null);
+  const [createRecordOpen, setCreateRecordOpen] = useState(false);
+  const [pendingImage, setPendingImage] = useState<AssistantPendingImage | null>(null);
+  const [medicalImageOptions, setMedicalImageOptions] =
+    useState<MedicalImageAttachOptionsValue>({
+      addToMedicalRecords: false,
+      generateAiInsight: true,
+    });
   const listRef = useRef<FlatList<AiMessage>>(null);
   const isNearBottomRef = useRef(true);
   const initialScrollPendingRef = useRef(true);
   const messages =
     activeConversation?.messages ??
-    (sending
+    (sending || medicalImageBusy
       ? conversations.find((c) => c.messages.some((m) => m.pending))?.messages ?? []
       : []);
   const lastMessage = messages[messages.length - 1];
+
+  const voice = useAssistantVoiceChat({
+    messages,
+    sending,
+    streaming,
+    onSend,
+  });
+
+  const handleSend = useCallback(
+    (text: string) => {
+      isNearBottomRef.current = true;
+      voice.armAutoSpeak();
+      onSend(text);
+    },
+    [onSend, voice],
+  );
 
   const scrollToBottom = useCallback((animated = true) => {
     requestAnimationFrame(() => {
@@ -127,16 +177,53 @@ export function AssistantWebView({
     [sending],
   );
 
-  const handleSend = useCallback(
-    (text: string) => {
-      isNearBottomRef.current = true;
-      onSend(text);
+  const handleAttachMedicalImage = useCallback(async () => {
+    if (!onSubmitMedicalImage || isDoctor) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setPendingImage({
+      uri: asset.uri,
+      mimeType: asset.mimeType ?? "image/jpeg",
+      fileName: asset.fileName ?? "medical-record.jpg",
+      webFile: asset.file as File | undefined,
+    });
+    setMedicalImageOptions({
+      addToMedicalRecords: false,
+      generateAiInsight: true,
+    });
+  }, [isDoctor, onSubmitMedicalImage]);
+
+  const handleSendImage = useCallback(
+    ({
+      text,
+      options,
+    }: {
+      text: string;
+      options: MedicalImageAttachOptionsValue;
+    }) => {
+      if (!pendingImage || !onSubmitMedicalImage) return;
+      onSubmitMedicalImage({
+        ...pendingImage,
+        caption: text.trim() || undefined,
+        addToMedicalRecords: options.addToMedicalRecords,
+        generateAiInsight: options.generateAiInsight,
+      });
+      setPendingImage(null);
+      setMedicalImageOptions({
+        addToMedicalRecords: false,
+        generateAiInsight: true,
+      });
     },
-    [onSend],
+    [onSubmitMedicalImage, pendingImage],
   );
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <AssistantVoiceWebStyles />
       <View
         style={[
           styles.historyPanel,
@@ -228,7 +315,11 @@ export function AssistantWebView({
           ]}
         >
           <View style={styles.headerTitleRow}>
-            <Bot color={colors.primary} size={22} />
+            <AssistantAvatar
+              height={26}
+              isTalking={voice.isTalking}
+              webClassName="assistant-avatar"
+            />
             <Text style={[styles.conversationTitle, { color: colors.foreground }]}>
               {isEn ? "Medical AI Assistant" : "المساعد الطبي الذكي"}
             </Text>
@@ -238,13 +329,32 @@ export function AssistantWebView({
           </Text>
         </View>
 
-        {loadingHistory && messages.length === 0 ? (
+        {voice.isVoiceMode ? (
+          <AssistantVoiceModeView
+            isRecording={voice.isRecording}
+            isTranscribing={voice.isTranscribing}
+            isTalking={voice.isTalking}
+            sending={sending}
+            streaming={streaming}
+            voiceError={voice.voiceError ?? error}
+            liveTranscript={voice.liveTranscript}
+            speechLocale={voice.speechLocale}
+            onSpeechLocaleChange={voice.setSpeechLocale}
+            onSend={() => void voice.sendRecording(voice.liveTranscript)}
+            onExit={() => void voice.exitVoiceMode()}
+            onClearError={voice.clearVoiceError}
+          />
+        ) : loadingHistory && messages.length === 0 ? (
           <View style={styles.historyLoadingMain}>
             <AssistantLoadingIndicator variant="history" />
           </View>
         ) : !activeConversation && !sending && messages.length === 0 ? (
           <View style={styles.emptyState}>
-            <Bot color={colors.primary} size={48} />
+            <AssistantAvatar
+              height={48}
+              isTalking={voice.isTalking}
+              webClassName="assistant-avatar"
+            />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               {isDoctor
                 ? isEn
@@ -273,6 +383,18 @@ export function AssistantWebView({
               <AssistantMessageBubble
                 message={item}
                 selfUserId={selfUserId}
+                spokenWordIndex={
+                  voice.spokenHighlight?.messageId === item.id
+                    ? voice.spokenHighlight.wordIndex
+                    : null
+                }
+                isReadingAloud={
+                  voice.spokenHighlight?.messageId === item.id &&
+                  voice.isTalking
+                }
+                onReadAloud={() =>
+                  void voice.readAloudMessage(item.id, item.content)
+                }
                 onFeedback={
                   onToggleMessageEmotion
                     ? (emotion) => onToggleMessageEmotion(item.id, emotion)
@@ -281,14 +403,14 @@ export function AssistantWebView({
               />
             )}
             contentContainerStyle={styles.messages}
-            extraData={messages.length}
+            extraData={`${messages.length}-${voice.spokenHighlight?.wordIndex ?? -1}-${voice.isTalking}`}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             onContentSizeChange={handleContentSizeChange}
           />
         )}
 
-        {error ? (
+        {(error || voice.voiceError) && !voice.isVoiceMode ? (
           <View
             style={[
               styles.errorBar,
@@ -296,34 +418,83 @@ export function AssistantWebView({
             ]}
           >
             <Text style={[styles.errorText, { color: colors.destructive }]}>
-              {error}
+              {error ?? voice.voiceError}
             </Text>
-            {canRetry ? (
+            {canRetry && error ? (
               <Pressable onPress={onRetry} style={styles.retryBtn}>
                 <RefreshCw size={14} color={colors.destructive} />
                 <Text style={[styles.retryText, { color: colors.destructive }]}>
                   {isEn ? "Retry" : "إعادة"}
                 </Text>
               </Pressable>
+            ) : voice.voiceError ? (
+              <Pressable onPress={voice.clearVoiceError} style={styles.retryBtn}>
+                <Text style={[styles.retryText, { color: colors.destructive }]}>
+                  {isEn ? "Dismiss" : "إغلاق"}
+                </Text>
+              </Pressable>
             ) : null}
           </View>
         ) : null}
 
-        <AssistantComposer
-          sending={sending}
-          disabled={loadingHistory}
-          placeholder={
-            isDoctor
-              ? isEn
-                ? "Ask about your patients, diagnoses, records…"
-                : "اسأل عن مرضاك، التشخيصات، السجلات…"
-              : isEn
-                ? "Ask about allergies, labs, prescriptions…"
-                : "اسأل عن الحساسية، التحاليل، الأدوية…"
-          }
-          onSend={handleSend}
-        />
+        {!voice.isVoiceMode ? (
+          <>
+            {!isDoctor ? (
+              <ChatMedicalRecordPills
+                isRTL={isRTL}
+                onAddMedicalRecord={() => setCreateRecordOpen(true)}
+                disabled={loadingHistory || medicalImageBusy}
+              />
+            ) : null}
+          <AssistantComposer
+            isRTL={isRTL}
+            sending={sending || medicalImageBusy}
+            disabled={loadingHistory || medicalImageBusy}
+            isDictating={voice.isDictating}
+            micLoading={voice.isDictating && voice.isTranscribing}
+            onMicPress={() =>
+              voice.toggleDictation((text) => setDictatedText(text))
+            }
+            onAttachImage={
+              !isDoctor && onSubmitMedicalImage
+                ? () => void handleAttachMedicalImage()
+                : undefined
+            }
+            attachLoading={medicalImageBusy}
+            pendingImage={pendingImage}
+            onRemovePendingImage={() => setPendingImage(null)}
+            medicalImageOptions={medicalImageOptions}
+            onMedicalImageOptionsChange={setMedicalImageOptions}
+            canAddMedicalRecord={!isDoctor}
+            onSendImage={handleSendImage}
+            dictatedText={dictatedText}
+            onDictatedTextConsumed={() => setDictatedText(null)}
+            placeholder={
+              isDoctor
+                ? isEn
+                  ? "Ask about your patients, diagnoses, records…"
+                  : "اسأل عن مرضاك، التشخيصات، السجلات…"
+                : isEn
+                  ? "Ask about allergies, labs, prescriptions…"
+                  : "اسأل عن الحساسية، التحاليل، الأدوية…"
+            }
+            onSend={handleSend}
+          />
+          </>
+        ) : null}
       </View>
+
+      {accessToken ? (
+        <AssistantCreateRecordDialog
+          visible={createRecordOpen}
+          token={accessToken}
+          onClose={() => setCreateRecordOpen(false)}
+          onCreated={(record, previewUri) => {
+            onMedicalRecordCreated?.(record, previewUri);
+            setCreateRecordOpen(false);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

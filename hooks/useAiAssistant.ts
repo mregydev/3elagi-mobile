@@ -1,19 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Alert } from "react-native";
 import { useAuthStore } from "@/domains/auth/store";
 import { fetchAiHistory, deleteAiConversation } from "@/domains/ai/api";
-import { AI_INSUFFICIENT_POINTS_MESSAGE_AR, AI_INSUFFICIENT_POINTS_MESSAGE_EN, formatAiChatError } from "@/domains/ai/errors";
+import { formatAiChatError } from "@/domains/ai/errors";
 import { AI_EVENTS } from "@/domains/ai/events";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionItem, type MessageEmotionType, type AiFeedbackType } from "@/domains/emotions/types";
 import { requestAiHistory, sendAiMessageViaSocket } from "@/domains/ai/socket";
 import { getPresenceSocket, onMessageEmotionUpdated } from "@/domains/presence/socket";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
-import { selectPointsBalance, usePointsStore } from "@/domains/points/store";
+import { createMedicalRecordFromChatImage, uploadFile } from "@/domains/medical/api";
+import { getApiLang } from "@/domains/i18n/store";
+import type { MedicalRecord } from "@/domains/medical/types";
+import { useMedicalStore } from "@/domains/medical/store";
 import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
-
-const AI_MESSAGE_COST = 1;
+import { formatMedicalRecordInsightReply } from "@/utils/medicalAiInsightChat";
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -36,6 +38,175 @@ function patchAssistantMessage(
       ),
     };
   });
+}
+
+function patchMessage(
+  conversations: AiConversation[],
+  conversationKey: string,
+  messageId: string,
+  patch: Partial<AiMessage>,
+): AiConversation[] {
+  return conversations.map((c) => {
+    if (c.id !== conversationKey) return c;
+    return {
+      ...c,
+      messages: c.messages.map((m) =>
+        m.id === messageId ? { ...m, ...patch } : m,
+      ),
+    };
+  });
+}
+
+function ensureDraftConversation(
+  conversations: AiConversation[],
+  activeId: string | null,
+  seedMessages: AiMessage[],
+  title: string,
+): { conversations: AiConversation[]; conversationKey: string } {
+  const isDraft = !activeId || activeId.startsWith("draft-");
+  const conversationKey = isDraft ? makeId("draft") : activeId!;
+  if (isDraft) {
+    const draft: AiConversation = {
+      id: conversationKey,
+      title: title.slice(0, 80) || "New chat",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: seedMessages,
+    };
+    return { conversations: [draft, ...conversations], conversationKey };
+  }
+  return {
+    conversations: conversations.map((c) =>
+      c.id === conversationKey
+        ? {
+            ...c,
+            updatedAt: new Date().toISOString(),
+            messages: [...c.messages, ...seedMessages],
+          }
+        : c,
+    ),
+    conversationKey,
+  };
+}
+
+async function streamAssistantReply(input: {
+  accessToken: string;
+  isRTL: boolean;
+  question: string;
+  conversationKey: string;
+  assistantLocalId: string;
+  serverConversationId?: string;
+  patientUserId?: string;
+  setConversations: Dispatch<SetStateAction<AiConversation[]>>;
+  setActiveId: Dispatch<SetStateAction<string | null>>;
+  setChatError: Dispatch<SetStateAction<string | null>>;
+  setRateLimitReached: Dispatch<SetStateAction<boolean>>;
+  setCanRetry: Dispatch<SetStateAction<boolean>>;
+}): Promise<string> {
+  const {
+    accessToken,
+    isRTL,
+    question,
+    conversationKey,
+    assistantLocalId,
+    serverConversationId,
+    patientUserId,
+    setConversations,
+    setActiveId,
+    setChatError,
+    setRateLimitReached,
+    setCanRetry,
+  } = input;
+
+  let resolvedConversationId = serverConversationId;
+  let assistantContent = "";
+
+  await sendAiMessageViaSocket(
+    {
+      message: question,
+      chatId: serverConversationId,
+      patientUserId,
+    },
+    (event) => {
+      if (event.type === "ack" && event.conversationId) {
+        resolvedConversationId = event.conversationId;
+        emit(AI_EVENTS.MESSAGE_SENT, { token: accessToken });
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationKey || c.id === event.conversationId
+              ? { ...c, id: event.conversationId! }
+              : c,
+          ),
+        );
+        setActiveId(event.conversationId);
+      }
+      if (event.type === "token" && event.content) {
+        assistantContent += event.content;
+        setConversations((prev) =>
+          patchAssistantMessage(
+            prev,
+            conversationKey,
+            assistantLocalId,
+            { content: assistantContent },
+            resolvedConversationId,
+          ),
+        );
+      }
+      if (event.type === "done") {
+        if (event.conversationId) {
+          resolvedConversationId = event.conversationId;
+          setActiveId(event.conversationId);
+        }
+        const finalContent = event.content ?? assistantContent;
+        assistantContent = finalContent;
+        setConversations((prev) =>
+          patchAssistantMessage(
+            prev,
+            conversationKey,
+            assistantLocalId,
+            {
+              id: event.messageId ?? assistantLocalId,
+              pending: false,
+              content: finalContent,
+            },
+            event.conversationId,
+          ),
+        );
+      }
+      if (event.type === "error") {
+        const formatted = formatAiChatError(event.error, event.code, isRTL);
+        setChatError(formatted.message);
+        setRateLimitReached(formatted.isRateLimit);
+        setCanRetry(formatted.canRetry);
+        setConversations((prev) =>
+          patchAssistantMessage(
+            prev,
+            conversationKey,
+            assistantLocalId,
+            {
+              pending: false,
+              error: true,
+              content: formatted.message,
+            },
+            resolvedConversationId,
+          ),
+        );
+        throw new Error(formatted.message);
+      }
+    },
+  );
+
+  setConversations((prev) =>
+    patchAssistantMessage(
+      prev,
+      conversationKey,
+      assistantLocalId,
+      { pending: false, content: assistantContent },
+      resolvedConversationId,
+    ),
+  );
+
+  return assistantContent;
 }
 
 async function loadHistoryWithFallback(accessToken: string): Promise<AiConversation[]> {
@@ -65,15 +236,20 @@ function mapConversationEmotions(conversation: AiConversation): AiConversation {
 
 export function useAiAssistant() {
   const accessToken = useAuthStore((s) => s.accessToken);
-  const selfUserId = useAuthStore((s) => s.profile?.id ?? null);
-  const pointsSummary = usePointsStore((s) => s.summary);
-  const pointsBalance = selectPointsBalance(pointsSummary);
+  const profile = useAuthStore((s) => s.profile);
+  const selfUserId = profile?.id ?? null;
+  const upsertDocument = useMedicalStore((s) => s.upsertDocument);
+  const notifyMedicalHistoryChanged = useMedicalStore(
+    (s) => s.notifyMedicalHistoryChanged,
+  );
   const { isRTL } = useI18n();
+  const isEn = !isRTL;
   const [conversations, setConversations] = useState<AiConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [medicalImageBusy, setMedicalImageBusy] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [rateLimitReached, setRateLimitReached] = useState(false);
@@ -145,15 +321,6 @@ export function useAiAssistant() {
     async (text: string, patientUserId?: string) => {
       if (!accessToken || !text.trim()) return;
       const question = text.trim();
-
-      if (pointsBalance < AI_MESSAGE_COST) {
-        setChatError(
-          isRTL ? AI_INSUFFICIENT_POINTS_MESSAGE_AR : AI_INSUFFICIENT_POINTS_MESSAGE_EN,
-        );
-        setRateLimitReached(false);
-        setCanRetry(false);
-        return;
-      }
 
       setLastQuestion(question);
       setChatError(null);
@@ -339,7 +506,7 @@ export function useAiAssistant() {
         setStreaming(false);
       }
     },
-    [accessToken, activeId, isRTL, pointsBalance],
+    [accessToken, activeId, isRTL],
   );
 
   useEffect(() => {
@@ -371,6 +538,244 @@ export function useAiAssistant() {
     await sendMessage(lastQuestion);
   }, [lastQuestion, sendMessage, canRetry]);
 
+  const appendMedicalRecordCreated = useCallback(
+    (record: MedicalRecord, previewUri?: string) => {
+      upsertDocument(record);
+      if (profile?.id) notifyMedicalHistoryChanged(profile.id);
+
+      const userMessage: AiMessage = {
+        id: makeId("user"),
+        role: "user",
+        content: isEn
+          ? `Created medical record: ${record.title}`
+          : `تم إنشاء سجل طبي: ${record.title}`,
+        createdAt: new Date().toISOString(),
+        imageUri: previewUri,
+        imageUrl: record.fileUrl ?? undefined,
+      };
+      const assistantMessage: AiMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        content: formatMedicalRecordInsightReply(record, isEn, "created"),
+        createdAt: new Date().toISOString(),
+      };
+      setConversations((prev) => {
+        const next = ensureDraftConversation(
+          prev,
+          activeId,
+          [userMessage, assistantMessage],
+          record.title,
+        );
+        setActiveId(next.conversationKey);
+        return next.conversations;
+      });
+    },
+    [activeId, isEn, notifyMedicalHistoryChanged, profile?.id, upsertDocument],
+  );
+
+  const submitMedicalImage = useCallback(
+    async (input: {
+      uri: string;
+      mimeType: string;
+      fileName: string;
+      webFile?: File;
+      caption?: string;
+      addToMedicalRecords: boolean;
+      generateAiInsight: boolean;
+    }) => {
+      if (!accessToken || medicalImageBusy || sending) return;
+      const userMessageId = makeId("user");
+      const caption = input.caption?.trim();
+      const wantsCaptionReply = !!caption;
+      const wantsRecord = input.addToMedicalRecords;
+      const userContent =
+        caption || (isEn ? "Shared medical image" : "صورة طبية مرفقة");
+      const userMessage: AiMessage = {
+        id: userMessageId,
+        role: "user",
+        content: userContent,
+        createdAt: new Date().toISOString(),
+        imageUri: input.uri,
+      };
+
+      const needsAssistant = wantsRecord || wantsCaptionReply;
+      const assistantLocalId = needsAssistant ? makeId("assistant") : null;
+      const seedMessages: AiMessage[] = [userMessage];
+      if (assistantLocalId) {
+        seedMessages.push({
+          id: assistantLocalId,
+          role: "assistant",
+          content: "",
+          createdAt: new Date().toISOString(),
+          pending: true,
+        });
+      }
+
+      const isDraft = !activeId || activeId.startsWith("draft-");
+      const serverConversationId = isDraft ? undefined : activeId ?? undefined;
+      let conversationKey = isDraft ? makeId("draft") : activeId!;
+
+      setMedicalImageBusy(true);
+      setChatError(null);
+      setConversations((prev) => {
+        const next = ensureDraftConversation(
+          prev,
+          activeId,
+          seedMessages,
+          userContent,
+        );
+        conversationKey = next.conversationKey;
+        setActiveId(next.conversationKey);
+        return next.conversations;
+      });
+
+      const recordSavedLine = (record: MedicalRecord) =>
+        isEn
+          ? `Medical record saved: [${record.title}](/medical/${record.id}).`
+          : `تم حفظ السجل الطبي: [${record.title}](/medical/${record.id}).`;
+
+      try {
+        if (wantsRecord) {
+          const record = await createMedicalRecordFromChatImage(
+            {
+              uri: input.uri,
+              mimeType: input.mimeType,
+              fileName: input.fileName,
+              webFile: input.webFile,
+              caption,
+              generateInsight: input.generateAiInsight,
+            },
+            accessToken,
+            getApiLang(),
+          );
+          upsertDocument(record);
+          if (profile?.id) notifyMedicalHistoryChanged(profile.id);
+
+          setConversations((prev) =>
+            patchMessage(prev, conversationKey, userMessageId, {
+              imageUrl: record.fileUrl ?? undefined,
+            }),
+          );
+
+          if (!assistantLocalId) return;
+
+          if (input.generateAiInsight) {
+            const assistantContent = formatMedicalRecordInsightReply(
+              record,
+              isEn,
+              "uploaded",
+            );
+            setConversations((prev) =>
+              patchAssistantMessage(prev, conversationKey, assistantLocalId, {
+                pending: false,
+                content: assistantContent,
+              }),
+            );
+          } else if (wantsCaptionReply) {
+            setLastQuestion(caption!);
+            setSending(true);
+            setStreaming(true);
+            try {
+              const reply = await streamAssistantReply({
+                accessToken,
+                isRTL,
+                question: caption!,
+                conversationKey,
+                assistantLocalId,
+                serverConversationId,
+                setConversations,
+                setActiveId,
+                setChatError,
+                setRateLimitReached,
+                setCanRetry,
+              });
+              const combined = `${reply}\n\n${recordSavedLine(record)}`;
+              setConversations((prev) =>
+                patchAssistantMessage(prev, conversationKey, assistantLocalId, {
+                  pending: false,
+                  content: combined,
+                }),
+              );
+            } finally {
+              setSending(false);
+              setStreaming(false);
+            }
+          } else {
+            setConversations((prev) =>
+              patchAssistantMessage(prev, conversationKey, assistantLocalId, {
+                pending: false,
+                content: recordSavedLine(record),
+              }),
+            );
+          }
+          return;
+        }
+
+        const uploaded = await uploadFile(
+          input.uri,
+          input.mimeType,
+          input.fileName,
+          accessToken,
+          input.webFile,
+        );
+        const imageUrl = uploaded.url || uploaded.objectPath;
+        setConversations((prev) =>
+          patchMessage(prev, conversationKey, userMessageId, { imageUrl }),
+        );
+
+        if (wantsCaptionReply && assistantLocalId) {
+          setLastQuestion(caption!);
+          setSending(true);
+          setStreaming(true);
+          try {
+            await streamAssistantReply({
+              accessToken,
+              isRTL,
+              question: caption!,
+              conversationKey,
+              assistantLocalId,
+              serverConversationId,
+              setConversations,
+              setActiveId,
+              setChatError,
+              setRateLimitReached,
+              setCanRetry,
+            });
+          } finally {
+            setSending(false);
+            setStreaming(false);
+          }
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : isEn ? "Upload failed" : "فشل الرفع";
+        setChatError(message);
+        if (assistantLocalId) {
+          setConversations((prev) =>
+            patchAssistantMessage(prev, conversationKey, assistantLocalId, {
+              pending: false,
+              error: true,
+              content: message,
+            }),
+          );
+        }
+      } finally {
+        setMedicalImageBusy(false);
+      }
+    },
+    [
+      accessToken,
+      activeId,
+      isEn,
+      isRTL,
+      medicalImageBusy,
+      notifyMedicalHistoryChanged,
+      profile?.id,
+      sending,
+      upsertDocument,
+    ],
+  );
+
   return {
     conversations,
     activeConversation,
@@ -379,6 +784,7 @@ export function useAiAssistant() {
     loadingHistory,
     sending,
     streaming,
+    medicalImageBusy,
     error: chatError,
     historyError,
     rateLimitReached,
@@ -387,6 +793,8 @@ export function useAiAssistant() {
     startNewChat,
     removeConversation,
     sendMessage,
+    submitMedicalImage,
+    appendMedicalRecordCreated,
     retryLast,
     lastQuestion,
     selfUserId,
