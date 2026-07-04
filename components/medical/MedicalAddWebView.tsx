@@ -116,6 +116,58 @@ function FormField({
   );
 }
 
+function InsightOptionCard({
+  checked,
+  onToggle,
+  isRTL,
+  colors,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  isRTL: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const dir = isRTL ? "row-reverse" : "row";
+  const textAlign = isRTL ? "right" : "left";
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={[
+        styles.insightCard,
+        {
+          flexDirection: dir,
+          backgroundColor: colors.background,
+          borderColor: checked ? colors.primary : colors.border,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.insightCheckbox,
+          {
+            borderColor: checked ? colors.primary : colors.border,
+            backgroundColor: checked ? colors.primary : "transparent",
+          },
+        ]}
+      >
+        {checked ? <Text style={styles.insightCheck}>✓</Text> : null}
+      </View>
+      <View style={styles.insightContent}>
+        <Text style={[styles.insightTitle, { color: colors.foreground, textAlign }]}>
+          {isRTL ? "إنشاء تحليل ذكي" : "Generate AI insight"}
+        </Text>
+        <Text
+          style={[styles.insightDescription, { color: colors.mutedForeground, textAlign }]}
+        >
+          {isRTL
+            ? "حلل الصورة لاستخراج العنوان والوصف، ثم أنشئ ملخصًا ذكيًا ومؤشرات محتملة لهذا السجل."
+            : "Analyze the image to extract the title and description, then create an AI summary and possible findings."}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function MedicalAddWebView() {
   const colors = useColors();
   const { isDesktop, isTablet } = useWebLayout();
@@ -139,6 +191,7 @@ export function MedicalAddWebView() {
     attached,
     setAttached,
     uploading,
+    analyzingImage,
     zoomVisible,
     setZoomVisible,
     linkableDocs,
@@ -148,6 +201,8 @@ export function MedicalAddWebView() {
     isDiagnosis,
     isLabOrXray,
     isImage,
+    generateAiInsight,
+    setGenerateAiInsight,
     submit,
     pageTitle,
     pageSubtitle,
@@ -179,14 +234,14 @@ export function MedicalAddWebView() {
       testID="medical-add-save"
       accessibilityRole="button"
       onPress={() => void submit()}
-      disabled={uploading}
+      disabled={uploading || analyzingImage}
       style={[
         styles.saveBtn,
         Platform.OS === "web" && styles.saveBtnWeb,
-        { backgroundColor: colors.primary, opacity: uploading ? 0.7 : 1 },
+        { backgroundColor: colors.primary, opacity: uploading || analyzingImage ? 0.7 : 1 },
       ]}
     >
-      {uploading ? (
+      {uploading || analyzingImage ? (
         <ActivityIndicator size="small" color="#fff" />
       ) : (
         <Text style={styles.saveBtnText} pointerEvents="none">
@@ -329,6 +384,12 @@ export function MedicalAddWebView() {
       colors={colors}
       textAlign={textAlign}
     >
+      <InsightOptionCard
+        checked={generateAiInsight}
+        onToggle={() => setGenerateAiInsight(!generateAiInsight)}
+        isRTL={isRTL}
+        colors={colors}
+      />
       {attached ? (
         <View style={[styles.previewCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
           {isImage ? (
@@ -376,11 +437,17 @@ export function MedicalAddWebView() {
           </Pressable>
         </>
       )}
-      {uploading ? (
+      {uploading || analyzingImage ? (
         <View style={[styles.uploadingRow, { flexDirection: dir }]}>
           <ActivityIndicator color={colors.primary} />
           <Text style={{ color: colors.mutedForeground }}>
-            {isRTL ? "جاري الرفع…" : "Uploading…"}
+            {analyzingImage
+              ? isRTL
+                ? "جارٍ تحليل الصورة…"
+                : "Analyzing image…"
+              : isRTL
+                ? "جاري الرفع…"
+                : "Uploading…"}
           </Text>
         </View>
       ) : null}
@@ -492,7 +559,7 @@ export function MedicalAddWebView() {
                         ? "مثال: أشعة الصدر"
                         : "e.g. Chest X-ray"
                   }
-                  required
+                  required={!generateAiInsight}
                   colors={colors}
                   textAlign={textAlign}
                 />
@@ -504,7 +571,7 @@ export function MedicalAddWebView() {
                     isRTL ? "صف النتيجة أو الملاحظات…" : "Describe the result or findings…"
                   }
                   multiline
-                  required
+                  required={!generateAiInsight}
                   colors={colors}
                   textAlign={textAlign}
                 />
@@ -628,6 +695,43 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: 13 },
   field: { gap: 8 },
   fieldLabel: { fontSize: 13, fontWeight: "700" },
+  insightCard: {
+    alignItems: "flex-start",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 2,
+  },
+  insightCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  insightCheck: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  insightContent: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  insightTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  insightDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   input: {
     borderRadius: 12,
     borderWidth: 1,

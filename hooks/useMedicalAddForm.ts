@@ -1,12 +1,14 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { showAppAlert } from "@/utils/appAlert";
 import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 import { showSuccessToast } from "@/utils/toast";
 import { useAuthStore } from "@/domains/auth/store";
+import { getApiLang } from "@/domains/i18n/store";
 import {
+  analyzeMedicalRecordImage,
   createDiagnosis,
   createPatientMedicalDocument,
   fetchAllMedicalHistory,
@@ -60,10 +62,12 @@ export function useMedicalAddForm() {
   const [symptomLines, setSymptomLines] = useState<string[]>([""]);
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
   const [zoomVisible, setZoomVisible] = useState(false);
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [generateAiInsight, setGenerateAiInsight] = useState(false);
 
   const isDiagnosis = category === "diagnosis";
   const isLabOrXray = category === "lab" || category === "xray";
@@ -71,6 +75,7 @@ export function useMedicalAddForm() {
   const linkPatientId = isDoctor && selectedPatientUserId ? selectedPatientUserId : profile?.id;
   const hasCategoryParam =
     !!categoryParam && availableCategories.includes(categoryParam as MedicalCategory);
+  const analyzeRunRef = useRef(0);
 
   useEffect(() => {
     if (!isDiagnosis || !accessToken || !linkPatientId) {
@@ -101,6 +106,44 @@ export function useMedicalAddForm() {
       cancelled = true;
     };
   }, [isDiagnosis, accessToken, linkPatientId, isDoctor, selectedPatientUserId, role]);
+
+  useEffect(() => {
+    if (!isLabOrXray || !generateAiInsight || !attached || !accessToken) {
+      setAnalyzingImage(false);
+      return;
+    }
+    let cancelled = false;
+    const runId = ++analyzeRunRef.current;
+    setAnalyzingImage(true);
+    void analyzeMedicalRecordImage(
+      attached.uri,
+      attached.mimeType,
+      attached.name,
+      accessToken,
+      getApiLang(),
+      attached.webFile,
+    )
+      .then((analyzed) => {
+        if (cancelled || analyzeRunRef.current !== runId) return;
+        setCategory(analyzed.type);
+        setTitle(analyzed.title);
+        setNotes(analyzed.notes);
+      })
+      .catch((err) => {
+        if (cancelled || analyzeRunRef.current !== runId) return;
+        showAppAlert(
+          isRTL ? "تعذر تحليل الصورة" : "Could not analyze image",
+          err instanceof Error ? err.message : undefined,
+        );
+      })
+      .finally(() => {
+        if (cancelled || analyzeRunRef.current !== runId) return;
+        setAnalyzingImage(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [attached, accessToken, generateAiInsight, isLabOrXray, isRTL]);
 
   const toggleDocumentLink = (docId: string) => {
     setSelectedDocumentIds((prev) =>
@@ -199,6 +242,15 @@ export function useMedicalAddForm() {
       showAppAlert("Sign in first");
       return;
     }
+    if (analyzingImage) {
+      showAppAlert(
+        isRTL ? "يرجى الانتظار" : "Please wait",
+        isRTL
+          ? "جارٍ تحليل الصورة لاستخراج العنوان والوصف."
+          : "Image analysis is still extracting the title and description.",
+      );
+      return;
+    }
     if (isDiagnosis) {
       if (!canAddDiagnosis || !doctorId) {
         showAppAlert(
@@ -242,24 +294,24 @@ export function useMedicalAddForm() {
     }
 
     if (isLabOrXray) {
-      if (!title.trim()) {
+      if (!attached) {
+        showAppAlert(
+          isRTL ? "الصورة مطلوبة" : "Image required",
+          isRTL ? "التقط صورة أو اختر واحدة من المعرض." : "Take a photo or choose one from your gallery.",
+        );
+        return;
+      }
+      if (!generateAiInsight && !title.trim()) {
         showAppAlert(
           isRTL ? "العنوان مطلوب" : "Title required",
           isRTL ? "أدخل عنوانًا لهذا السجل." : "Please enter a title for this record.",
         );
         return;
       }
-      if (!notes.trim()) {
+      if (!generateAiInsight && !notes.trim()) {
         showAppAlert(
           isRTL ? "الوصف مطلوب" : "Description required",
           isRTL ? "أدخل وصفًا لهذا السجل." : "Please enter a description for this record.",
-        );
-        return;
-      }
-      if (!attached) {
-        showAppAlert(
-          isRTL ? "الصورة مطلوبة" : "Image required",
-          isRTL ? "التقط صورة أو اختر واحدة من المعرض." : "Take a photo or choose one from your gallery.",
         );
         return;
       }
@@ -272,6 +324,26 @@ export function useMedicalAddForm() {
       }
       setUploading(true);
       try {
+        let resolvedTitle = title.trim();
+        let resolvedNotes = notes.trim();
+        let resolvedInsight = undefined;
+
+        if (generateAiInsight) {
+          const analyzed = await analyzeMedicalRecordImage(
+            attached.uri,
+            attached.mimeType,
+            attached.name,
+            accessToken,
+            getApiLang(),
+            attached.webFile,
+          );
+          resolvedTitle = analyzed.title;
+          resolvedNotes = analyzed.notes;
+          resolvedInsight = analyzed.ai_insight;
+          setTitle(analyzed.title);
+          setNotes(analyzed.notes);
+        }
+
         const uploaded = await uploadFile(
           attached.uri,
           attached.mimeType,
@@ -287,8 +359,11 @@ export function useMedicalAddForm() {
           type: category as "lab" | "xray",
           file_url: uploaded.url,
           file_name: fileName,
-          notes: notes.trim(),
-          title: title.trim(),
+          notes: resolvedNotes,
+          title: resolvedTitle,
+          ai_insight: resolvedInsight,
+          generate_ai_insight: generateAiInsight,
+          lang: getApiLang(),
         };
         if (doctorAddingForPatient) {
           await createPatientMedicalDocument(
@@ -372,6 +447,7 @@ export function useMedicalAddForm() {
     attached,
     setAttached,
     uploading,
+    analyzingImage,
     zoomVisible,
     setZoomVisible,
     linkableDocs,
@@ -381,6 +457,8 @@ export function useMedicalAddForm() {
     isDiagnosis,
     isLabOrXray,
     isImage,
+    generateAiInsight,
+    setGenerateAiInsight,
     pickFromCamera,
     pickFromGallery,
     pickFromFiles,

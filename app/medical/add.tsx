@@ -2,7 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, ArrowRight, Camera, FileText, Image as ImageIcon, Plus, X, ZoomIn } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
+import { getApiLang } from "@/domains/i18n/store";
 import {
+  analyzeMedicalRecordImage,
   createDiagnosis,
   createPatientMedicalDocument,
   fetchAllMedicalHistory,
@@ -77,10 +79,13 @@ export default function AddMedicalScreen() {
   const [symptomLines, setSymptomLines] = useState<string[]>([""]);
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
   const [zoomVisible, setZoomVisible] = useState(false);
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [generateAiInsight, setGenerateAiInsight] = useState(false);
+  const analyzeRunRef = useRef(0);
 
   const isDiagnosis = category === "diagnosis";
   const linkPatientId = isDoctor && selectedPatientUserId ? selectedPatientUserId : profile?.id;
@@ -128,6 +133,43 @@ export default function AddMedicalScreen() {
     selectedPatientUserId,
     role,
   ]);
+
+  useEffect(() => {
+    if (!isLabOrXray || !generateAiInsight || !attached || !accessToken) {
+      setAnalyzingImage(false);
+      return;
+    }
+    let cancelled = false;
+    const runId = ++analyzeRunRef.current;
+    setAnalyzingImage(true);
+    void analyzeMedicalRecordImage(
+      attached.uri,
+      attached.mimeType,
+      attached.name,
+      accessToken,
+      getApiLang(),
+    )
+      .then((analyzed) => {
+        if (cancelled || analyzeRunRef.current !== runId) return;
+        setCategory(analyzed.type);
+        setTitle(analyzed.title);
+        setNotes(analyzed.notes);
+      })
+      .catch((err) => {
+        if (cancelled || analyzeRunRef.current !== runId) return;
+        Alert.alert(
+          isRTL ? "تعذر تحليل الصورة" : "Could not analyze image",
+          err instanceof Error ? err.message : undefined,
+        );
+      })
+      .finally(() => {
+        if (cancelled || analyzeRunRef.current !== runId) return;
+        setAnalyzingImage(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, attached, generateAiInsight, isLabOrXray, isRTL]);
 
   const toggleDocumentLink = (docId: string) => {
     setSelectedDocumentIds((prev) =>
@@ -224,6 +266,15 @@ export default function AddMedicalScreen() {
       Alert.alert("Sign in first");
       return;
     }
+    if (analyzingImage) {
+      Alert.alert(
+        isRTL ? "يرجى الانتظار" : "Please wait",
+        isRTL
+          ? "جارٍ تحليل الصورة لاستخراج العنوان والوصف."
+          : "Image analysis is still extracting the title and description.",
+      );
+      return;
+    }
     if (isDiagnosis) {
       if (!canAddDiagnosis || !doctorId) {
         Alert.alert(
@@ -262,16 +313,16 @@ export default function AddMedicalScreen() {
     }
 
     if (isLabOrXray) {
-      if (!title.trim()) {
+      if (!attached) {
+        Alert.alert("Image required", "Take a photo or choose one from your gallery.");
+        return;
+      }
+      if (!generateAiInsight && !title.trim()) {
         Alert.alert("Title required", "Please enter a title for this record.");
         return;
       }
-      if (!notes.trim()) {
+      if (!generateAiInsight && !notes.trim()) {
         Alert.alert("Description required", "Please enter a description for this record.");
-        return;
-      }
-      if (!attached) {
-        Alert.alert("Image required", "Take a photo or choose one from your gallery.");
         return;
       }
       if (isDoctor && !selectedPatientUserId) {
@@ -283,6 +334,25 @@ export default function AddMedicalScreen() {
       }
       setUploading(true);
       try {
+        let resolvedTitle = title.trim();
+        let resolvedNotes = notes.trim();
+        let resolvedInsight = undefined;
+
+        if (generateAiInsight) {
+          const analyzed = await analyzeMedicalRecordImage(
+            attached.uri,
+            attached.mimeType,
+            attached.name,
+            accessToken,
+            getApiLang(),
+          );
+          resolvedTitle = analyzed.title;
+          resolvedNotes = analyzed.notes;
+          resolvedInsight = analyzed.ai_insight;
+          setTitle(analyzed.title);
+          setNotes(analyzed.notes);
+        }
+
         const uploaded = await uploadFile(
           attached.uri,
           attached.mimeType,
@@ -297,8 +367,11 @@ export default function AddMedicalScreen() {
           type: category as "lab" | "xray",
           file_url: uploaded.url,
           file_name: fileName,
-          notes: notes.trim(),
-          title: title.trim(),
+          notes: resolvedNotes,
+          title: resolvedTitle,
+          ai_insight: resolvedInsight,
+          generate_ai_insight: generateAiInsight,
+          lang: getApiLang(),
         };
         if (isDoctor && selectedPatientUserId) {
           await createPatientMedicalDocument(
@@ -374,8 +447,8 @@ export default function AddMedicalScreen() {
                 ? "إضافة للسجل"
                 : "Add to history"}
         </Text>
-        <Pressable onPress={submit} disabled={uploading} style={{ padding: 4 }}>
-          {uploading ? (
+        <Pressable onPress={submit} disabled={uploading || analyzingImage} style={{ padding: 4 }}>
+          {uploading || analyzingImage ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Text style={[styles.save, { color: colors.primary }]}>Save</Text>
@@ -556,7 +629,7 @@ export default function AddMedicalScreen() {
               }
               colors={colors}
               textAlign={textAlign}
-              required
+              required={!generateAiInsight}
             />
             <Field
               label={isRTL ? "الوصف" : "Description"}
@@ -566,7 +639,7 @@ export default function AddMedicalScreen() {
               multiline
               colors={colors}
               textAlign={textAlign}
-              required
+              required={!generateAiInsight}
             />
           </>
         ) : (
@@ -583,6 +656,45 @@ export default function AddMedicalScreen() {
             <Text style={[styles.label, { color: colors.foreground }]}>
               Image <Text style={{ color: "#ef4444" }}>*</Text>
             </Text>
+
+            <Pressable
+              onPress={() => setGenerateAiInsight((value) => !value)}
+              style={[
+                styles.insightCard,
+                {
+                  borderColor: generateAiInsight ? colors.primary : colors.border,
+                  backgroundColor: colors.card,
+                  flexDirection: dir,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.insightCheckbox,
+                  {
+                    borderColor: generateAiInsight ? colors.primary : colors.border,
+                    backgroundColor: generateAiInsight ? colors.primary : "transparent",
+                  },
+                ]}
+              >
+                {generateAiInsight ? <Text style={styles.insightCheck}>✓</Text> : null}
+              </View>
+              <View style={styles.insightContent}>
+                <Text style={[styles.insightTitle, { color: colors.foreground, textAlign }]}>
+                  {isRTL ? "إنشاء تحليل ذكي" : "Generate AI insight"}
+                </Text>
+                <Text
+                  style={[
+                    styles.insightDescription,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
+                  {isRTL
+                    ? "حلل الصورة لاستخراج العنوان والوصف، ثم أنشئ ملخصًا ذكيًا ومؤشرات محتملة لهذا السجل."
+                    : "Analyze the image to extract the title and description, then create an AI summary and possible findings."}
+                </Text>
+              </View>
+            </Pressable>
 
             {attached ? (
               <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -640,10 +752,12 @@ export default function AddMedicalScreen() {
               </Pressable>
             )}
 
-            {uploading && (
+            {(uploading || analyzingImage) && (
               <View style={styles.uploadingRow}>
                 <ActivityIndicator color={colors.primary} />
-                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>Uploading document…</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                  {analyzingImage ? "Analyzing image…" : "Uploading document…"}
+                </Text>
               </View>
             )}
           </View>
@@ -745,6 +859,28 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: "700" },
   catRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, borderWidth: 1 },
+  insightCard: {
+    alignItems: "flex-start",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  insightCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  insightCheck: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  insightContent: { flex: 1, minWidth: 0, gap: 4 },
+  insightTitle: { fontSize: 14, fontWeight: "700" },
+  insightDescription: { fontSize: 13, lineHeight: 18 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   symptomRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   symptomInput: { flex: 1 },

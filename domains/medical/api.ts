@@ -468,6 +468,8 @@ export async function createPatientMedicalDocument(
     title: string;
     patient_user_id?: string;
     ai_insight?: MedicalAiInsight;
+    generate_ai_insight?: boolean;
+    lang?: "ar" | "en";
   },
   token: string,
 ): Promise<MedicalRecord> {
