@@ -23,9 +23,20 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { chatFlexRow } from "@/utils/rtl";
+import { showInfoToast } from "@/utils/toast";
+
+const MEETING_DURATION_SEC = 30 * 60;
+const WARNING_REMAINING_SEC = 5 * 60;
 
 function readParam(value?: string | string[]): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function formatRemainingTime(totalSeconds: number): string {
+  const clamped = Math.max(0, totalSeconds);
+  const minutes = Math.floor(clamped / 60);
+  const seconds = clamped % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 export default function VideoCallScreen() {
@@ -50,11 +61,24 @@ export default function VideoCallScreen() {
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<"accept" | "reject" | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerSessionKeyRef = useRef<string | null>(null);
+  const warningShownRef = useRef(false);
+  const endingRef = useRef(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(MEETING_DURATION_SEC);
+  const [meetingExpired, setMeetingExpired] = useState(false);
 
   const clearPoll = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
+    }
+  }, []);
+
+  const clearMeetingTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
   }, []);
 
@@ -106,8 +130,11 @@ export default function VideoCallScreen() {
 
   useEffect(() => {
     void loadSession();
-    return clearPoll;
-  }, [loadSession, clearPoll]);
+    return () => {
+      clearPoll();
+      clearMeetingTimer();
+    };
+  }, [loadSession, clearMeetingTimer, clearPoll]);
 
   useEffect(() => {
     clearPoll();
@@ -128,7 +155,8 @@ export default function VideoCallScreen() {
   }, [accessToken, clearPoll, isPatient, session?.id, session?.status]);
 
   const handleLeave = () => {
-    if (accessToken && session?.id) {
+    clearMeetingTimer();
+    if (accessToken && session?.id && session.id !== "direct") {
       void endVideoCall(accessToken, session.id).catch(() => undefined);
     }
     router.back();
@@ -177,11 +205,74 @@ export default function VideoCallScreen() {
       ? session.patientName
       : session?.doctorName ?? (isRTL ? "الطبيب" : "Doctor");
   const displayName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
-  const canJoin = !!session?.roomUrl && session.status === "accepted";
+  const canJoin = !!session?.roomUrl && session.status === "accepted" && !meetingExpired;
   const waitingForDoctor =
     !!session && isPatient && session.status === "ringing";
   const incomingForDoctor =
     !!session && isDoctor && session.status === "ringing";
+  const countdownLabel = formatRemainingTime(remainingSeconds);
+
+  const endMeetingForTimeout = useCallback(() => {
+    if (endingRef.current) return;
+    endingRef.current = true;
+    clearMeetingTimer();
+    setMeetingExpired(true);
+    setRemainingSeconds(0);
+    if (accessToken && session?.id && session.id !== "direct") {
+      void endVideoCall(accessToken, session.id)
+        .then((next) => setSession(next))
+        .catch(() => undefined);
+    }
+  }, [accessToken, clearMeetingTimer, session?.id]);
+
+  useEffect(() => {
+    if (!canJoin || !session?.roomUrl) {
+      clearMeetingTimer();
+      if (!meetingExpired) {
+        setRemainingSeconds(MEETING_DURATION_SEC);
+      }
+      return;
+    }
+
+    const sessionKey = `${session.id}:${session.roomUrl}`;
+    if (timerSessionKeyRef.current !== sessionKey) {
+      timerSessionKeyRef.current = sessionKey;
+      warningShownRef.current = false;
+      endingRef.current = false;
+      setMeetingExpired(false);
+      setRemainingSeconds(MEETING_DURATION_SEC);
+    }
+
+    clearMeetingTimer();
+    timerRef.current = setInterval(() => {
+      setRemainingSeconds((current) => {
+        const next = Math.max(0, current - 1);
+        if (next <= WARNING_REMAINING_SEC && next > 0 && !warningShownRef.current) {
+          warningShownRef.current = true;
+          showInfoToast(
+            isRTL ? "ستنتهي المكالمة قريبًا" : "Meeting ending soon",
+            isRTL
+              ? "سيتم إغلاق الاجتماع بعد 5 دقائق."
+              : "This meeting will be closed after 5 minutes.",
+          );
+        }
+        if (next === 0) {
+          endMeetingForTimeout();
+        }
+        return next;
+      });
+    }, 1000);
+
+    return clearMeetingTimer;
+  }, [
+    canJoin,
+    clearMeetingTimer,
+    endMeetingForTimeout,
+    isRTL,
+    meetingExpired,
+    session?.id,
+    session?.roomUrl,
+  ]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -219,6 +310,25 @@ export default function VideoCallScreen() {
             </Text>
           </View>
         </View>
+
+        {canJoin ? (
+          <View
+            style={[
+              styles.timerBadge,
+              {
+                backgroundColor: colors.muted,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>
+              {isRTL ? "الوقت المتبقي" : "Time left"}
+            </Text>
+            <Text style={[styles.timerValue, { color: colors.foreground }]}>
+              {countdownLabel}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.body}>
@@ -250,6 +360,17 @@ export default function VideoCallScreen() {
           <View style={styles.center}>
             <Text style={[styles.errorTitle, { color: colors.foreground }]}>
               {isRTL ? "لم يتم الرد على المكالمة" : "Call was not answered"}
+            </Text>
+          </View>
+        ) : meetingExpired ? (
+          <View style={styles.center}>
+            <Text style={[styles.errorTitle, { color: colors.foreground }]}>
+              {isRTL ? "انتهى وقت الاجتماع" : "Meeting time ended"}
+            </Text>
+            <Text style={[styles.errorBody, { color: colors.mutedForeground }]}>
+              {isRTL
+                ? "تم إغلاق غرفة الاجتماع بعد 30 دقيقة."
+                : "The meeting room was closed after 30 minutes."}
             </Text>
           </View>
         ) : waitingForDoctor ? (
@@ -340,6 +461,23 @@ const styles = StyleSheet.create({
   brandText: {
     flex: 1,
     minWidth: 0,
+  },
+  timerBadge: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: "flex-end",
+    minWidth: 92,
+  },
+  timerLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  timerValue: {
+    marginTop: 2,
+    fontSize: 16,
+    fontWeight: "800",
   },
   appName: {
     fontSize: 16,

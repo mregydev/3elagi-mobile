@@ -156,7 +156,7 @@ export function ChatComposer({
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
   const [medicalImageOptions, setMedicalImageOptions] =
     useState<MedicalImageAttachOptionsValue>({
-      addToMedicalRecords: false,
+      addToMedicalRecords: true,
       generateAiInsight: true,
     });
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
@@ -166,6 +166,14 @@ export function ChatComposer({
   const sendInFlightRef = useRef(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const rowDir = chatFlexRow();
+
+  useEffect(() => {
+    if (pendingAttachment?.type !== "image" || !canStoreImageInMedicalRecord) return;
+    setMedicalImageOptions({
+      addToMedicalRecords: true,
+      generateAiInsight: true,
+    });
+  }, [pendingAttachment?.uri, pendingAttachment?.type, canStoreImageInMedicalRecord]);
 
   useEffect(() => {
     recordingRef.current = recording;
@@ -301,7 +309,7 @@ export function ChatComposer({
     });
     if (media === "image") {
       setMedicalImageOptions({
-        addToMedicalRecords: false,
+        addToMedicalRecords: true,
         generateAiInsight: true,
       });
     }

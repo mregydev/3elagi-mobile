@@ -94,7 +94,7 @@ export function AssistantWebView({
   const [pendingImage, setPendingImage] = useState<AssistantPendingImage | null>(null);
   const [medicalImageOptions, setMedicalImageOptions] =
     useState<MedicalImageAttachOptionsValue>({
-      addToMedicalRecords: false,
+      addToMedicalRecords: true,
       generateAiInsight: true,
     });
   const listRef = useRef<FlatList<AiMessage>>(null);
@@ -106,6 +106,14 @@ export function AssistantWebView({
       ? conversations.find((c) => c.messages.some((m) => m.pending))?.messages ?? []
       : []);
   const lastMessage = messages[messages.length - 1];
+
+  useEffect(() => {
+    if (!pendingImage) return;
+    setMedicalImageOptions({
+      addToMedicalRecords: true,
+      generateAiInsight: true,
+    });
+  }, [pendingImage?.uri]);
 
   const voice = useAssistantVoiceChat({
     messages,
@@ -192,7 +200,7 @@ export function AssistantWebView({
       webFile: asset.file as File | undefined,
     });
     setMedicalImageOptions({
-      addToMedicalRecords: false,
+      addToMedicalRecords: true,
       generateAiInsight: true,
     });
   }, [isDoctor, onSubmitMedicalImage]);
@@ -214,7 +222,7 @@ export function AssistantWebView({
       });
       setPendingImage(null);
       setMedicalImageOptions({
-        addToMedicalRecords: false,
+        addToMedicalRecords: true,
         generateAiInsight: true,
       });
     },

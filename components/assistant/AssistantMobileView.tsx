@@ -102,7 +102,7 @@ export function AssistantMobileView({
   const [pendingImage, setPendingImage] = useState<AssistantPendingImage | null>(null);
   const [medicalImageOptions, setMedicalImageOptions] =
     useState<MedicalImageAttachOptionsValue>({
-      addToMedicalRecords: false,
+      addToMedicalRecords: true,
       generateAiInsight: true,
     });
   const [dictatedText, setDictatedText] = useState<string | null>(null);
@@ -115,6 +115,14 @@ export function AssistantMobileView({
       ? conversations.find((c) => c.messages.some((m) => m.pending))?.messages ?? []
       : []);
   const lastMessage = messages[messages.length - 1];
+
+  useEffect(() => {
+    if (!pendingImage) return;
+    setMedicalImageOptions({
+      addToMedicalRecords: true,
+      generateAiInsight: true,
+    });
+  }, [pendingImage?.uri]);
 
   const scrollToBottom = useCallback((animated = true) => {
     if (!listRef.current) return;
@@ -227,7 +235,7 @@ export function AssistantMobileView({
       webFile: asset.file as File | undefined,
     });
     setMedicalImageOptions({
-      addToMedicalRecords: false,
+      addToMedicalRecords: true,
       generateAiInsight: true,
     });
   }, [isDoctor, onSubmitMedicalImage]);
@@ -249,7 +257,7 @@ export function AssistantMobileView({
       });
       setPendingImage(null);
       setMedicalImageOptions({
-        addToMedicalRecords: false,
+        addToMedicalRecords: true,
         generateAiInsight: true,
       });
     },
