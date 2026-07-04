@@ -8,6 +8,7 @@ export interface AppointmentReminderPayload {
   sessionId?: string;
   meetingLink?: string;
   when: string;
+  otherParticipantName?: string;
 }
 
 export interface AppointmentUpdatedPayload {

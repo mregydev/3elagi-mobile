@@ -4,7 +4,8 @@ export type PushNotificationType =
   | "incoming_video_call"
   | "appointment_request"
   | "appointment_status"
-  | "appointment_reminder";
+  | "appointment_reminder"
+  | "system_notification";
 
 export type ChatPushData = {
   type: "chat";
@@ -26,11 +27,18 @@ export type IncomingVideoCallPushData = {
   callerName?: string;
 };
 
+export type AppointmentRequestPushData = {
+  type: "appointment_request";
+  appointmentId?: string;
+  chatId: string;
+};
+
 export type AppointmentReminderPushData = {
   type: "appointment_reminder";
   sessionId: string;
   appointmentId?: string;
   meetingLink?: string;
+  otherParticipantName?: string;
 };
 
 export type AppointmentStatusPushData = {
@@ -39,12 +47,18 @@ export type AppointmentStatusPushData = {
   action?: "confirm" | "reject" | "cancel";
 };
 
+export type SystemNotificationPushData = {
+  type: "system_notification";
+};
+
 export type PushNotificationData =
   | ChatPushData
   | AiPushData
   | IncomingVideoCallPushData
+  | AppointmentRequestPushData
   | AppointmentReminderPushData
-  | AppointmentStatusPushData;
+  | AppointmentStatusPushData
+  | SystemNotificationPushData;
 
 function readString(
   data: Record<string, unknown>,
@@ -106,6 +120,8 @@ export function parsePushNotificationData(
       sessionId: sessionId || "direct",
       appointmentId: readString(data, "appointmentId", "appointment_id") || undefined,
       meetingLink,
+      otherParticipantName:
+        readString(data, "otherParticipantName", "other_participant_name") || undefined,
     };
   }
 
@@ -117,8 +133,24 @@ export function parsePushNotificationData(
     };
   }
 
+  if (type === "system_notification") {
+    return {
+      type: "system_notification",
+    };
+  }
+
   const chatId = readString(data, "chatId", "chat_id", "threadId", "thread_id");
   const messageId = readString(data, "messageId", "message_id");
+
+  if (type === "appointment_request") {
+    if (!chatId) return null;
+    return {
+      type: "appointment_request",
+      appointmentId: readString(data, "appointmentId", "appointment_id") || undefined,
+      chatId,
+    };
+  }
+
   if (!chatId) return null;
 
   const senderId = readString(data, "senderId", "sender_id") || chatId;

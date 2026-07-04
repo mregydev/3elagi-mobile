@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Redirect } from "expo-router";
+import { Redirect, router } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -142,6 +142,23 @@ export default function AppointmentsTab() {
               {statusLabel(item.status, isRTL)}
             </Text>
           </View>
+          {item.meeting_link ? (
+            <View style={styles.linkWrap}>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/video-call",
+                    params: { meetingUrl: item.meeting_link! },
+                  })
+                }
+                style={[styles.openLinkBtn, { borderColor: colors.primary }]}
+              >
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
+                  {isRTL ? "فتح الغرفة" : "Open room"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <Pressable
@@ -221,7 +238,16 @@ const styles = StyleSheet.create({
   info: { flex: 1, gap: 2 },
   name: { fontSize: 15, fontWeight: "700" },
   statusRow: { alignItems: "center", gap: 4, marginTop: 2 },
+  linkWrap: { marginTop: 6, gap: 4, width: "100%" },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
+  openLinkBtn: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 2,
+  },
   cancelBtn: {
     width: 34,
     height: 34,

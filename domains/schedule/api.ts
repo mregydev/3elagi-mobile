@@ -138,7 +138,7 @@ export function defaultWeekRows(): DoctorScheduleRow[] {
     day_of_week,
     start_time: "09:00",
     end_time: "17:00",
-    slot_minutes: 30,
+    slot_minutes: 10,
     is_active: day_of_week >= 1 && day_of_week <= 5,
   }));
 }

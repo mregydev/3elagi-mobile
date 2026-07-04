@@ -45,6 +45,7 @@ let onAppointmentReminderHandler:
       session_id?: string;
       meeting_link?: string;
       when: string;
+      other_participant_name?: string;
     }) => void)
   | null = null;
 let onAppointmentUpdatedHandler:
@@ -57,6 +58,19 @@ let onAppointmentUpdatedHandler:
       date?: string;
       time?: string;
       status?: string;
+    }) => void)
+  | null = null;
+let onIncomingVideoCallHandler:
+  | ((payload: {
+      session_id: string;
+      caller_id?: string;
+      caller_name?: string;
+    }) => void)
+  | null = null;
+let onSystemNotificationHandler:
+  | ((payload: {
+      title?: string;
+      body: string;
     }) => void)
   | null = null;
 
@@ -115,6 +129,7 @@ export function onAppointmentReminder(
         session_id?: string;
         meeting_link?: string;
         when: string;
+        other_participant_name?: string;
       }) => void)
     | null,
 ) {
@@ -136,6 +151,29 @@ export function onAppointmentUpdated(
     | null,
 ) {
   onAppointmentUpdatedHandler = handler;
+}
+
+export function onIncomingVideoCall(
+  handler:
+    | ((payload: {
+        session_id: string;
+        caller_id?: string;
+        caller_name?: string;
+      }) => void)
+    | null,
+) {
+  onIncomingVideoCallHandler = handler;
+}
+
+export function onSystemNotification(
+  handler:
+    | ((payload: {
+        title?: string;
+        body: string;
+      }) => void)
+    | null,
+) {
+  onSystemNotificationHandler = handler;
 }
 
 export function emitChatTyping(recipientId: string, userId: string) {
@@ -168,6 +206,27 @@ function bindListeners(client: Socket) {
       usePresenceStore.getState().setUsers(payload.users);
     }
   });
+
+  client.on(
+    "appointment:reminder",
+    (payload: {
+      appointment_id?: string;
+      session_id?: string;
+      meeting_link?: string;
+      when?: string;
+      other_participant_name?: string;
+    }) => {
+      if (payload?.appointment_id && payload?.when) {
+        onAppointmentReminderHandler?.({
+          appointment_id: payload.appointment_id,
+          session_id: payload.session_id,
+          meeting_link: payload.meeting_link,
+          when: payload.when,
+          other_participant_name: payload.other_participant_name,
+        });
+      }
+    },
+  );
 
   client.on(
     "message:new",
@@ -226,25 +285,6 @@ function bindListeners(client: Socket) {
   });
 
   client.on(
-    "appointment:reminder",
-    (payload: {
-      appointment_id?: string;
-      session_id?: string;
-      meeting_link?: string;
-      when?: string;
-    }) => {
-      if (payload?.appointment_id && payload?.when) {
-        onAppointmentReminderHandler?.({
-          appointment_id: payload.appointment_id,
-          session_id: payload.session_id,
-          meeting_link: payload.meeting_link,
-          when: payload.when,
-        });
-      }
-    },
-  );
-
-  client.on(
     "appointment:updated",
     (payload: {
       appointment_id?: string;
@@ -257,6 +297,38 @@ function bindListeners(client: Socket) {
       status?: string;
     }) => {
       onAppointmentUpdatedHandler?.(payload);
+    },
+  );
+
+  client.on(
+    "video-call:incoming",
+    (payload: {
+      session_id?: string;
+      caller_id?: string;
+      caller_name?: string;
+    }) => {
+      if (payload?.session_id) {
+        onIncomingVideoCallHandler?.({
+          session_id: payload.session_id,
+          caller_id: payload.caller_id,
+          caller_name: payload.caller_name,
+        });
+      }
+    },
+  );
+
+  client.on(
+    "system:notification",
+    (payload: {
+      title?: string;
+      body?: string;
+    }) => {
+      if (payload?.body) {
+        onSystemNotificationHandler?.({
+          title: payload.title,
+          body: payload.body,
+        });
+      }
     },
   );
 }

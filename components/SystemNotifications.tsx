@@ -1,33 +1,23 @@
-import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { CHAT_EVENTS, type ChatMessageReceivedPayload } from "@/domains/chat/events";
-import { chatNotificationTitle } from "@/utils/chatNotifications";
+import {
+  SYSTEM_NOTIFICATION_EVENTS,
+  type SystemNotificationPayload,
+} from "@/domains/system-notifications/events";
 import { on } from "@/utils/eventBus";
-import { useI18n } from "@/hooks/useI18n";
 import { useColors } from "@/hooks/useColors";
 
 const DISMISS_MS = 5000;
 
-export function ChatNotifications() {
+export function SystemNotifications() {
   const colors = useColors();
-  const { isRTL } = useI18n();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [notice, setNotice] = useState<ChatMessageReceivedPayload | null>(null);
+  const [notice, setNotice] = useState<SystemNotificationPayload | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-12)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const recentIds = useRef<Set<string>>(new Set());
 
   const hide = useCallback(() => {
     Animated.parallel([
@@ -45,7 +35,7 @@ export function ChatNotifications() {
   }, [opacity, translateY]);
 
   const show = useCallback(
-    (payload: ChatMessageReceivedPayload) => {
+    (payload: SystemNotificationPayload) => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       setNotice(payload);
       Animated.parallel([
@@ -65,49 +55,12 @@ export function ChatNotifications() {
     [hide, opacity, translateY],
   );
 
-  const showBrowserNotification = useCallback(
-    async (payload: ChatMessageReceivedPayload) => {
-      if (Platform.OS !== "web" || typeof window === "undefined") return false;
-      if (!("Notification" in window)) return false;
-
-      if (Notification.permission === "default") {
-        await Notification.requestPermission();
-      }
-      if (Notification.permission !== "granted") return false;
-
-      // Prefer native browser notifications when the tab is in the background.
-      if (!document.hidden) return false;
-
-      const title = chatNotificationTitle(payload.senderName);
-      const notification = new Notification(title, {
-        body: payload.preview,
-        tag: `chat-${payload.peerId}`,
-      });
-      notification.onclick = () => {
-        window.focus();
-        router.push(`/chat/${payload.peerId}`);
-        notification.close();
-      };
-      return true;
-    },
-    [router],
-  );
-
   useEffect(() => {
-    const unsubscribe = on(CHAT_EVENTS.MESSAGE_RECEIVED, (payload) => {
-      if (payload.messageId && recentIds.current.has(payload.messageId)) return;
-      if (payload.messageId) {
-        recentIds.current.add(payload.messageId);
-        setTimeout(() => recentIds.current.delete(payload.messageId), 8000);
-      }
-
-      void (async () => {
-        const usedBrowser = await showBrowserNotification(payload);
-        if (!usedBrowser) show(payload);
-      })();
+    const unsubscribe = on(SYSTEM_NOTIFICATION_EVENTS.RECEIVED, (payload) => {
+      show(payload as SystemNotificationPayload);
     });
     return unsubscribe;
-  }, [show, showBrowserNotification]);
+  }, [show]);
 
   useEffect(
     () => () => {
@@ -117,10 +70,6 @@ export function ChatNotifications() {
   );
 
   if (!notice) return null;
-
-  const title = chatNotificationTitle(notice.senderName);
-  const actionLabel = isRTL ? "فتح المحادثة" : "Open chat";
-  const brandLabel = "3elagi";
 
   return (
     <Animated.View
@@ -135,10 +84,7 @@ export function ChatNotifications() {
       ]}
     >
       <Pressable
-        onPress={() => {
-          hide();
-          router.push(`/chat/${notice.peerId}`);
-        }}
+        onPress={hide}
         style={[
           styles.card,
           {
@@ -159,16 +105,13 @@ export function ChatNotifications() {
           </View>
           <View style={styles.content}>
             <Text style={[styles.brand, { color: colors.primary }]} numberOfLines={1}>
-              {brandLabel}
+              3elagi
             </Text>
             <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
-              {title}
+              {notice.title?.trim() || "Notification"}
             </Text>
             <Text style={[styles.preview, { color: colors.mutedForeground }]} numberOfLines={2}>
-              {notice.preview}
-            </Text>
-            <Text style={[styles.link, { color: colors.primary }]} numberOfLines={1}>
-              {actionLabel}
+              {notice.body}
             </Text>
           </View>
         </View>
@@ -182,8 +125,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    zIndex: 10000,
-    elevation: 10000,
+    zIndex: 10001,
+    elevation: 10001,
     alignItems: "center",
   },
   card: {
@@ -228,10 +171,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     lineHeight: 18,
-  },
-  link: {
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: "700",
   },
 });

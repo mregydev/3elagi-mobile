@@ -83,32 +83,23 @@ export function AppointmentNotifications() {
   const title =
     notice.kind === "reminder"
       ? isRTL
-        ? "موعدك الآن"
-        : "Your appointment is starting"
+        ? "موعدك بعد 5 دقائق"
+        : "Your meeting is in 5 minutes"
       : isRTL
         ? "تم إلغاء الموعد"
         : "Appointment cancelled";
   const body =
     notice.kind === "reminder"
       ? isRTL
-        ? `اجتماعك في ${notice.payload.when} جاهز. اضغط للانضمام.`
-        : `Your meeting at ${notice.payload.when} is ready. Tap to join.`
+        ? `موعدك مع ${notice.payload.otherParticipantName ?? "الطرف الآخر"} بعد 5 دقائق. اذهب إلى المواعيد للعثور على رابط الغرفة.`
+        : `Your meeting with ${notice.payload.otherParticipantName ?? "the other participant"} is in 5 minutes. Go to Appointments to find the room link.`
       : isRTL
         ? `${notice.payload.actorName ?? "الطرف الآخر"} ألغى موعد ${notice.payload.date ?? ""} ${notice.payload.time ?? ""}`.trim()
         : `${notice.payload.actorName ?? "The other person"} cancelled your appointment ${notice.payload.date ?? ""} ${notice.payload.time ?? ""}`.trim();
 
   const openMeeting = () => {
     hide();
-    if (notice.kind !== "reminder") {
-      router.push("/(tabs)/appointments");
-      return;
-    }
-    router.push({
-      pathname: "/video-call",
-      params: notice.payload.meetingLink
-        ? { meetingUrl: notice.payload.meetingLink }
-        : { sessionId: notice.payload.sessionId ?? "" },
-    });
+    router.push("/(tabs)/appointments");
   };
 
   return (

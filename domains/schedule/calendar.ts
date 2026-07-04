@@ -133,7 +133,7 @@ export function defaultDayHours(date: string): DayHours {
     is_active: dow >= 1 && dow <= 5,
     start_time: "09:00",
     end_time: "17:00",
-    slot_minutes: 30,
+    slot_minutes: 10,
   };
 }
 
@@ -173,7 +173,7 @@ export function dayHoursFromOverrides(
       is_active: false,
       start_time: "09:00",
       end_time: "17:00",
-      slot_minutes: 30,
+      slot_minutes: 10,
     };
   }
   const open = hit.find((o) => !o.is_closed && o.start_time && o.end_time);
@@ -183,7 +183,7 @@ export function dayHoursFromOverrides(
     is_active: true,
     start_time: open.start_time.slice(0, 5),
     end_time: open.end_time.slice(0, 5),
-    slot_minutes: open.slot_minutes ?? 30,
+    slot_minutes: open.slot_minutes ?? 10,
   };
 }
 
@@ -278,12 +278,12 @@ export const BOOKING_HORIZON_DAYS = 90;
 export const WEEKDAY_LABELS_EN = ["S", "M", "T", "W", "T", "F", "S"];
 export const WEEKDAY_LABELS_AR = ["ح", "ن", "ث", "ر", "خ", "ج", "س"];
 
-export const DEFAULT_SLOT_MINUTES = 30;
+export const DEFAULT_SLOT_MINUTES = 10;
 
-export function generate30MinSlots(): string[] {
+export function generateDefaultSlots(): string[] {
   const slots: string[] = [];
   for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 30) {
+    for (let m = 0; m < 60; m += DEFAULT_SLOT_MINUTES) {
       slots.push(
         `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
       );
@@ -292,4 +292,4 @@ export function generate30MinSlots(): string[] {
   return slots;
 }
 
-export const ALL_30_MIN_SLOTS = generate30MinSlots();
+export const ALL_TIME_SLOTS = generateDefaultSlots();

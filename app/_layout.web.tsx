@@ -15,6 +15,9 @@ import { AppointmentSync } from "@/components/AppointmentSync";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
+import { IncomingVideoCallOverlay } from "@/components/IncomingVideoCallOverlay";
+import { SystemNotifications } from "@/components/SystemNotifications";
+import { SystemNotificationSync } from "@/components/SystemNotificationSync";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
 import { PresenceSocket } from "@/components/PresenceSocket";
@@ -106,8 +109,11 @@ export default function RootLayout() {
           <PresenceChatSync />
           <ChatMessageSync />
           <AppointmentSync />
+          <SystemNotificationSync />
           <ChatNotifications />
           <AppointmentNotifications />
+          <SystemNotifications />
+          <IncomingVideoCallOverlay />
           <WebChatNotificationsBootstrap />
           <HardwareBackHandler />
           <AuthRedirect />
@@ -119,6 +125,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
             <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
             <Stack.Screen name="chat/[id]" />
+            <Stack.Screen name="video-call" />
             <Stack.Screen name="ai/[id]" />
             <Stack.Screen name="doctor/[doctorId]" />
             <Stack.Screen name="patients/[userId]" />

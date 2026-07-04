@@ -450,10 +450,16 @@ export function ChatMessageBubble({
     const meta = item.appointmentAction;
     const status = appointmentStatus?.status ?? meta.status ?? "pending";
     const meetingLink = appointmentStatus?.meetingLink ?? meta.meeting_link;
+    const joinableStatuses = new Set(["confirmed", "waiting", "active"]);
     const canRespond =
       meta.action === "request" && status === "pending" && isDoctor && !mine;
     const canCancel =
       showAppointmentControls && (status === "pending" || status === "confirmed");
+    const canJoinMeeting =
+      !!meetingLink &&
+      showAppointmentControls &&
+      !canRespond &&
+      joinableStatuses.has(status);
 
     return (
       <View style={styles.accessRow}>
@@ -498,7 +504,7 @@ export function ChatMessageBubble({
               </Text>
             </Pressable>
           ) : null}
-          {meetingLink && showAppointmentControls ? (
+          {canJoinMeeting ? (
             <Pressable
               onPress={() =>
                 router.push({

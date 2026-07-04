@@ -33,6 +33,7 @@ Notifications.setNotificationHandler({
     }
     if (
       data?.type === "incoming_video_call" ||
+      data?.type === "system_notification" ||
       data?.type === "appointment_reminder" ||
       data?.type === "appointment_status"
     ) {
@@ -109,7 +110,7 @@ export class ExpoPushProvider implements PushProvider {
         content.data as Record<string, unknown>,
       );
       if (shouldSuppressForegroundAiPush(data)) return;
-      if (data?.type !== "chat") return;
+      if (data?.type !== "chat" && data?.type !== "appointment_request") return;
       onForegroundChat({
         peerId: String(
           data.chatId ?? data.chat_id ?? data.threadId ?? data.thread_id ?? "",

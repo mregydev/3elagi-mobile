@@ -12,8 +12,11 @@ import { AppointmentNotifications } from "@/components/AppointmentNotifications"
 import { AppointmentSync } from "@/components/AppointmentSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
+import { IncomingVideoCallOverlay } from "@/components/IncomingVideoCallOverlay";
 import { AppSplash } from "@/components/SplashScreen";
 import { NavLoadingOverlay } from "@/components/NavLoadingOverlay";
+import { SystemNotifications } from "@/components/SystemNotifications";
+import { SystemNotificationSync } from "@/components/SystemNotificationSync";
 import { LocaleBootstrap } from "@/components/LocaleBootstrap";
 import { LocaleAuthSync } from "@/components/LocaleAuthSync";
 import { AuthRedirect } from "@/components/AuthRedirect";
@@ -111,8 +114,11 @@ export default function RootLayout() {
       <PresenceChatSync />
       <ChatMessageSync />
       <AppointmentSync />
+      <SystemNotificationSync />
       <ChatNotifications />
       <AppointmentNotifications />
+      <SystemNotifications />
+      <IncomingVideoCallOverlay />
       <HardwareBackHandler />
       {showSplash ? (
         <AppSplash onDone={handleSplashDone} />

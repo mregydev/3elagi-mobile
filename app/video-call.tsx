@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Phone, PhoneOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import { WherebyMeetingEmbed } from "@/components/video-call/WherebyMeetingEmbed
 import { useAuthStore } from "@/domains/auth/store";
 import {
   acceptVideoCall,
+  declineVideoCall,
   endVideoCall,
   fetchVideoCallSession,
   toWherebyEmbedUrl,
@@ -47,6 +48,7 @@ export default function VideoCallScreen() {
   const [session, setSession] = useState<VideoCallSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [acting, setActing] = useState<"accept" | "reject" | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearPoll = useCallback(() => {
@@ -86,11 +88,7 @@ export default function VideoCallScreen() {
         );
       }
 
-      let next = await fetchVideoCallSession(accessToken, sessionId);
-      if (isDoctor && next.status === "ringing") {
-        next = await acceptVideoCall(accessToken, next.id);
-      }
-
+      const next = await fetchVideoCallSession(accessToken, sessionId);
       setSession(next);
     } catch (e) {
       setSession(null);
@@ -136,17 +134,54 @@ export default function VideoCallScreen() {
     router.back();
   };
 
+  const handleAccept = async () => {
+    if (!accessToken || !session || acting) return;
+    setActing("accept");
+    try {
+      const next = await acceptVideoCall(accessToken, session.id);
+      setSession(next);
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تعذر قبول المكالمة"
+            : "Could not accept the call",
+      );
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!accessToken || !session || acting) return;
+    setActing("reject");
+    try {
+      await declineVideoCall(accessToken, session.id);
+      router.back();
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تعذر رفض المكالمة"
+            : "Could not reject the call",
+      );
+      setActing(null);
+    }
+  };
+
   const rowDir = chatFlexRow();
   const peerName =
     session && isDoctor
       ? session.patientName
       : session?.doctorName ?? (isRTL ? "الطبيب" : "Doctor");
   const displayName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
-  const canJoin =
-    !!session?.roomUrl &&
-    (session.status === "accepted" || (isDoctor && session.status !== "declined"));
+  const canJoin = !!session?.roomUrl && session.status === "accepted";
   const waitingForDoctor =
     !!session && isPatient && session.status === "ringing";
+  const incomingForDoctor =
+    !!session && isDoctor && session.status === "ringing";
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -226,6 +261,51 @@ export default function VideoCallScreen() {
                 : `Calling ${peerName}…`}
             </Text>
           </View>
+        ) : incomingForDoctor ? (
+          <View style={styles.center}>
+            <Logo3elagi height={72} centered />
+            <Text style={[styles.errorTitle, { color: colors.foreground, marginTop: 18 }]}>
+              {isRTL ? "مكالمة فيديو واردة" : "Incoming video call"}
+            </Text>
+            <Text style={[styles.callerName, { color: colors.foreground }]}>
+              {peerName}
+            </Text>
+            <Text style={[styles.statusText, { color: colors.mutedForeground }]}>
+              {isRTL ? "اضغط قبول لبدء المكالمة" : "Tap accept to start the call"}
+            </Text>
+            <View style={styles.incomingActions}>
+              <Pressable
+                onPress={() => void handleReject()}
+                disabled={!!acting}
+                style={[styles.callActionBtn, { backgroundColor: "#ef4444", opacity: acting ? 0.7 : 1 }]}
+              >
+                {acting === "reject" ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <PhoneOff size={28} color="#fff" />
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => void handleAccept()}
+                disabled={!!acting}
+                style={[styles.callActionBtn, { backgroundColor: "#22c55e", opacity: acting ? 0.7 : 1 }]}
+              >
+                {acting === "accept" ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Phone size={28} color="#fff" />
+                )}
+              </Pressable>
+            </View>
+            <View style={styles.incomingLabels}>
+              <Text style={[styles.incomingLabel, { color: colors.mutedForeground }]}>
+                {isRTL ? "رفض" : "Reject"}
+              </Text>
+              <Text style={[styles.incomingLabel, { color: colors.mutedForeground }]}>
+                {isRTL ? "قبول" : "Accept"}
+              </Text>
+            </View>
+          </View>
         ) : canJoin ? (
           <WherebyMeetingEmbed
             roomUrl={session.roomUrl}
@@ -283,6 +363,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
+  callerName: {
+    fontSize: 28,
+    fontWeight: "800",
+    textAlign: "center",
+  },
   errorTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -303,5 +388,31 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 14,
+  },
+  incomingActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 32,
+    marginTop: 24,
+  },
+  callActionBtn: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  incomingLabels: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 58,
+    marginTop: 12,
+  },
+  incomingLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    minWidth: 82,
+    textAlign: "center",
   },
 });

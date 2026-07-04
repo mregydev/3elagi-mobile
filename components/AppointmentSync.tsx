@@ -27,6 +27,7 @@ export function AppointmentSync() {
           sessionId: payload.session_id,
           meetingLink: payload.meeting_link,
           when: payload.when,
+          otherParticipantName: payload.other_participant_name,
         };
         emit(APPOINTMENT_EVENTS.REMINDER, notice);
       });

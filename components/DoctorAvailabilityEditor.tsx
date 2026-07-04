@@ -19,7 +19,7 @@ import {
   type DoctorScheduleRow,
 } from "@/domains/schedule/api";
 import {
-  ALL_30_MIN_SLOTS,
+  ALL_TIME_SLOTS,
   DEFAULT_SLOT_MINUTES,
 } from "@/domains/schedule/calendar";
 import { useColors } from "@/hooks/useColors";
@@ -31,12 +31,12 @@ interface Props {
 
 function slotsInRange(start: string, end: string): Set<string> {
   const set = new Set<string>();
-  const a = ALL_30_MIN_SLOTS.indexOf(start);
-  const b = ALL_30_MIN_SLOTS.indexOf(end);
+  const a = ALL_TIME_SLOTS.indexOf(start);
+  const b = ALL_TIME_SLOTS.indexOf(end);
   if (a < 0 || b < 0) return set;
   const lo = Math.min(a, b);
   const hi = Math.max(a, b);
-  for (let i = lo; i <= hi; i++) set.add(ALL_30_MIN_SLOTS[i]);
+  for (let i = lo; i <= hi; i++) set.add(ALL_TIME_SLOTS[i]);
   return set;
 }
 
@@ -59,7 +59,7 @@ function TimeSlotGrid({
 }) {
   return (
     <View style={[tStyles.grid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-      {ALL_30_MIN_SLOTS.map((slot) => {
+      {ALL_TIME_SLOTS.map((slot) => {
         const active = selected.has(slot);
         return (
           <Pressable
@@ -131,11 +131,11 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
 
       const first = merged.find((r) => r.is_active);
       if (first) {
-        const endIdx = ALL_30_MIN_SLOTS.indexOf(first.end_time.slice(0, 5));
+        const endIdx = ALL_TIME_SLOTS.indexOf(first.end_time.slice(0, 5));
         setSelectedSlots(
           slotsInRange(
             first.start_time.slice(0, 5),
-            endIdx > 0 ? ALL_30_MIN_SLOTS[endIdx - 1] : first.end_time.slice(0, 5),
+            endIdx > 0 ? ALL_TIME_SLOTS[endIdx - 1] : first.end_time.slice(0, 5),
           ),
         );
       }
@@ -192,10 +192,10 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
     setSaving(true);
     try {
       const range = rangeFromSlots(selectedSlots);
-      const nextEndIdx = ALL_30_MIN_SLOTS.indexOf(range.end) + 1;
+      const nextEndIdx = ALL_TIME_SLOTS.indexOf(range.end) + 1;
       const endTime =
-        nextEndIdx < ALL_30_MIN_SLOTS.length
-          ? ALL_30_MIN_SLOTS[nextEndIdx]
+        nextEndIdx < ALL_TIME_SLOTS.length
+          ? ALL_TIME_SLOTS[nextEndIdx]
           : "24:00";
       const items: DoctorScheduleRow[] = Array.from({ length: 7 }, (_, day) => ({
         day_of_week: day,
@@ -239,8 +239,8 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
       </Text>
       <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
         {isRTL
-          ? "اختر الأيام ثم اضغط على وقتين لتحديد نطاق، أو اضغط على كل وقت. كل فترة ٣٠ دقيقة."
-          : "Pick days, then tap two slots to select a range, or tap individually. Each slot is 30 min."}
+          ? "اختر الأيام ثم اضغط على وقتين لتحديد نطاق، أو اضغط على كل وقت. كل فترة ١٠ دقائق."
+          : "Pick days, then tap two slots to select a range, or tap individually. Each slot is 10 min."}
       </Text>
 
       <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>

@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -561,20 +562,27 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     if (!id || !accessToken || !profile?.id || appointmentActionBusy) return;
 
     if (action === "cancel") {
-      const ok = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          isRTL ? "إلغاء الموعد" : "Cancel appointment",
-          isRTL ? "هل تريد إلغاء هذا الموعد؟" : "Cancel this appointment?",
-          [
-            { text: isRTL ? "لا" : "No", style: "cancel", onPress: () => resolve(false) },
-            {
-              text: isRTL ? "نعم" : "Yes",
-              style: "destructive",
-              onPress: () => resolve(true),
-            },
-          ],
-        );
-      });
+      const ok =
+        Platform.OS === "web"
+          ? confirm(isRTL ? "هل تريد إلغاء هذا الموعد؟" : "Cancel this appointment?")
+          : await new Promise<boolean>((resolve) => {
+              Alert.alert(
+                isRTL ? "إلغاء الموعد" : "Cancel appointment",
+                isRTL ? "هل تريد إلغاء هذا الموعد؟" : "Cancel this appointment?",
+                [
+                  {
+                    text: isRTL ? "لا" : "No",
+                    style: "cancel",
+                    onPress: () => resolve(false),
+                  },
+                  {
+                    text: isRTL ? "نعم" : "Yes",
+                    style: "destructive",
+                    onPress: () => resolve(true),
+                  },
+                ],
+              );
+            });
       if (!ok) return;
     }
 

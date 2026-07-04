@@ -8,13 +8,16 @@ export function getPushNotificationPath(data: PushNotificationData): string {
     return `/video-call?sessionId=${encodeURIComponent(data.sessionId)}`;
   }
   if (data.type === "appointment_reminder") {
-    if (data.meetingLink) {
-      return `/video-call?meetingUrl=${encodeURIComponent(data.meetingLink)}`;
-    }
-    return `/video-call?sessionId=${encodeURIComponent(data.sessionId)}`;
+    return "/(tabs)/appointments";
   }
   if (data.type === "appointment_status") {
     return "/(tabs)/appointments";
+  }
+  if (data.type === "system_notification") {
+    return "/(tabs)";
+  }
+  if (data.type === "appointment_request") {
+    return `/chat/${data.chatId}`;
   }
   if (data.type === "chat") return `/chat/${data.chatId}`;
   return `/ai/${data.chatId}`;
@@ -33,17 +36,22 @@ export function navigateFromPushNotification(
   }
 
   if (data.type === "appointment_reminder") {
-    router.push({
-      pathname: "/video-call",
-      params: data.meetingLink
-        ? { meetingUrl: data.meetingLink }
-        : { sessionId: data.sessionId },
-    });
+    router.push("/(tabs)/appointments");
     return;
   }
 
   if (data.type === "appointment_status") {
     router.push("/(tabs)/appointments");
+    return;
+  }
+
+  if (data.type === "system_notification") {
+    router.push("/(tabs)");
+    return;
+  }
+
+  if (data.type === "appointment_request") {
+    router.push(`/chat/${data.chatId}`);
     return;
   }
 

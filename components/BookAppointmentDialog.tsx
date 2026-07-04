@@ -34,6 +34,10 @@ interface Props {
   onBooked: () => void;
 }
 
+function isFutureSlot(date: string, time: string): boolean {
+  return new Date(`${date}T${time}:00`).getTime() > Date.now();
+}
+
 export function BookAppointmentDialog({
   visible,
   isRTL,
@@ -75,7 +79,7 @@ export function BookAppointmentDialog({
     setError(null);
     try {
       const rows = await fetchDoctorSlots(doctorEntityId, selectedDate);
-      setSlots(rows.filter((s) => !s.taken));
+      setSlots(rows.filter((s) => !s.taken && isFutureSlot(selectedDate, s.time)));
       setSelectedTime(null);
     } catch (e) {
       setSlots([]);
