@@ -16,7 +16,11 @@ import {
   uploadFile,
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
-import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
+import type {
+  MedicalAiInsight,
+  MedicalCategory,
+  MedicalRecord,
+} from "@/domains/medical/types";
 import { useI18n } from "@/hooks/useI18n";
 import { getAddMedicalCategories } from "@/components/records/medicalRecordCategories";
 import { isDoctorAddingForPatient, resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
@@ -68,6 +72,7 @@ export function useMedicalAddForm() {
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [generateAiInsight, setGenerateAiInsight] = useState(false);
+  const [draftAiInsight, setDraftAiInsight] = useState<MedicalAiInsight | null>(null);
 
   const isDiagnosis = category === "diagnosis";
   const isLabOrXray = category === "lab" || category === "xray";
@@ -110,6 +115,7 @@ export function useMedicalAddForm() {
   useEffect(() => {
     if (!isLabOrXray || !generateAiInsight || !attached || !accessToken) {
       setAnalyzingImage(false);
+      setDraftAiInsight(null);
       return;
     }
     let cancelled = false;
@@ -128,9 +134,11 @@ export function useMedicalAddForm() {
         setCategory(analyzed.type);
         setTitle(analyzed.title);
         setNotes(analyzed.notes);
+        setDraftAiInsight(analyzed.ai_insight);
       })
       .catch((err) => {
         if (cancelled || analyzeRunRef.current !== runId) return;
+        setDraftAiInsight(null);
         showAppAlert(
           isRTL ? "تعذر تحليل الصورة" : "Could not analyze image",
           err instanceof Error ? err.message : undefined,
@@ -326,9 +334,9 @@ export function useMedicalAddForm() {
       try {
         let resolvedTitle = title.trim();
         let resolvedNotes = notes.trim();
-        let resolvedInsight = undefined;
+        let resolvedInsight = draftAiInsight ?? undefined;
 
-        if (generateAiInsight) {
+        if (generateAiInsight && !resolvedInsight) {
           const analyzed = await analyzeMedicalRecordImage(
             attached.uri,
             attached.mimeType,
@@ -340,6 +348,7 @@ export function useMedicalAddForm() {
           resolvedTitle = analyzed.title;
           resolvedNotes = analyzed.notes;
           resolvedInsight = analyzed.ai_insight;
+          setDraftAiInsight(analyzed.ai_insight);
           setTitle(analyzed.title);
           setNotes(analyzed.notes);
         }

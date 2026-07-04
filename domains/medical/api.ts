@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
 import type { DiagnosisSymptom, MedicalAiInsight, MedicalRecord, PrescriptionMedication } from "./types";
+import { fetchIntakeExamsForPatient } from "@/domains/intake-exams/api";
 
 function mapAiInsight(raw: unknown): MedicalAiInsight | null | undefined {
   if (!raw || typeof raw !== "object") return undefined;
@@ -437,19 +438,21 @@ export async function fetchAllMedicalHistory(
 ): Promise<MedicalRecord[]> {
   const isDoctor = role?.toLowerCase() === "doctor";
   if (isDoctor) {
-    const [documents, diagnoses, prescriptions] = await Promise.all([
+    const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
       fetchDocumentsForPatientUser(patientId, token),
       fetchDiagnosesForPatientUser(patientId, token).catch(() => [] as MedicalRecord[]),
       fetchPrescriptionsForPatientUser(patientId, token),
+      fetchIntakeExamsForPatient(patientId, token).catch(() => [] as MedicalRecord[]),
     ]);
-    return [...diagnoses, ...prescriptions, ...documents];
+    return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
   }
-  const [documents, diagnoses, prescriptions] = await Promise.all([
+  const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
     fetchPatientDocuments(patientId, token),
     fetchPatientDiagnoses(token).catch(() => [] as MedicalRecord[]),
     fetchPrescriptionsForPatientUser(patientId, token),
+    fetchIntakeExamsForPatient(patientId, token).catch(() => [] as MedicalRecord[]),
   ]);
-  return [...diagnoses, ...prescriptions, ...documents];
+  return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
 }
 
 export async function deletePatientMedicalDocument(

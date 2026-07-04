@@ -13,6 +13,7 @@ import {
 import React from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Pressable,
   ScrollView,
@@ -23,6 +24,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
+import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
 import {
@@ -182,6 +184,15 @@ export function MedicalRecordWebView() {
     saveDiagnosisEdit,
     submitSymptom,
     confirmDelete,
+    intakeAnswersDraft,
+    setIntakeAnswersDraft,
+    savingIntake,
+    saveIntakeDraft,
+    submitIntakeExam,
+    resetIntakeExam,
+    isIntakeExam,
+    canTakeIntakeExam,
+    accessToken,
     openLinkedDoc,
     goBack,
   } = detail;
@@ -555,6 +566,72 @@ export function MedicalRecordWebView() {
             {isRTL ? "لا توجد أدوية مسجلة" : "No medications recorded"}
           </Text>
         )}
+      </SectionCard>
+    );
+  };
+
+  const renderIntakeExam = () => {
+    if (!isIntakeExam || !record?.intakeExam) return null;
+    const exam = record.intakeExam;
+    const readOnly = isDoctorView || !canTakeIntakeExam;
+
+    return (
+      <SectionCard
+        testID="medical-record-intake-exam"
+        title={
+          readOnly
+            ? isRTL
+              ? "إجابات المريض"
+              : "Patient answers"
+            : isRTL
+              ? "أكمل الفحص"
+              : "Complete exam"
+        }
+        icon={<FileText size={18} color={color} />}
+        accent={color}
+        colors={colors}
+        textAlign={textAlign}
+        dir={dir}
+      >
+        <IntakeExamTaker
+          isRTL={isRTL}
+          questions={exam.questions}
+          answers={readOnly ? exam.answers : intakeAnswersDraft}
+          readOnly={readOnly}
+          accessToken={accessToken ?? undefined}
+          onChange={setIntakeAnswersDraft}
+        />
+        {canTakeIntakeExam ? (
+          <View style={{ gap: 10, marginTop: 12, flexDirection: dir, flexWrap: "wrap" }}>
+            <Pressable
+              onPress={() => void saveIntakeDraft()}
+              disabled={savingIntake}
+              style={[styles.addSymptomBtn, { backgroundColor: colors.muted }]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "700" }}>
+                {isRTL ? "حفظ مسودة" : "Save draft"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void submitIntakeExam()}
+              disabled={savingIntake}
+              style={[styles.addSymptomBtn, { backgroundColor: color }]}
+            >
+              {savingIntake ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.addSymptomBtnText}>
+                  {isRTL ? "إرسال الفحص" : "Submit exam"}
+                </Text>
+              )}
+            </Pressable>
+            <Pressable onPress={resetIntakeExam}>
+              <Text style={{ color: "#ef4444", fontWeight: "700" }}>
+                {isRTL ? "إعادة تعيين" : "Reset"}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </SectionCard>
     );
   };
@@ -938,6 +1015,7 @@ export function MedicalRecordWebView() {
 
           {/* Full-width sections */}
           <View style={styles.sections}>
+            {renderIntakeExam()}
             {renderLabDetailsEdit()}
             {renderDiagnosisEdit()}
             {renderLinkedDocs()}

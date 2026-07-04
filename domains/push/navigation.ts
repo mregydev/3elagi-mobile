@@ -16,6 +16,9 @@ export function getPushNotificationPath(data: PushNotificationData): string {
   if (data.type === "system_notification") {
     return "/(tabs)";
   }
+  if (data.type === "intake_exam_reminder") {
+    return `/medical/${data.instanceId}`;
+  }
   if (data.type === "appointment_request") {
     return `/chat/${data.chatId}`;
   }
@@ -47,6 +50,11 @@ export function navigateFromPushNotification(
 
   if (data.type === "system_notification") {
     router.push("/(tabs)");
+    return;
+  }
+
+  if (data.type === "intake_exam_reminder") {
+    router.push(`/medical/${data.instanceId}`);
     return;
   }
 

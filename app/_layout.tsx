@@ -10,6 +10,8 @@ import { WebChatNotificationsBootstrap } from "@/components/WebChatNotifications
 import { AppToast } from "@/components/AppToast";
 import { AppointmentNotifications } from "@/components/AppointmentNotifications";
 import { AppointmentSync } from "@/components/AppointmentSync";
+import { IntakeExamNotifications } from "@/components/IntakeExamNotifications";
+import { IntakeExamSync } from "@/components/IntakeExamSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { IncomingVideoCallOverlay } from "@/components/IncomingVideoCallOverlay";
@@ -114,9 +116,11 @@ export default function RootLayout() {
       <PresenceChatSync />
       <ChatMessageSync />
       <AppointmentSync />
+      <IntakeExamSync />
       <SystemNotificationSync />
       <ChatNotifications />
       <AppointmentNotifications />
+      <IntakeExamNotifications />
       <SystemNotifications />
       <IncomingVideoCallOverlay />
       <HardwareBackHandler />

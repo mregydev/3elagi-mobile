@@ -6,6 +6,7 @@ import {
   Coins,
   History,
   Home,
+  ListChecks,
   LogOut,
   Star,
   User,
@@ -36,7 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/(tabs)",
     labelKey: "home",
-    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("appointments") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant"),
+    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("appointments") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant") && !path.includes("intake") && !path.includes("reviews"),
     Icon: Home,
   },
   {
@@ -56,6 +57,13 @@ const NAV_ITEMS: NavItem[] = [
     labelKey: "reviews",
     match: (path) => path.includes("reviews"),
     Icon: Star,
+    doctorOnly: true,
+  },
+  {
+    href: "/(tabs)/intake",
+    labelKey: "intake",
+    match: (path) => path.includes("intake"),
+    Icon: ListChecks,
     doctorOnly: true,
   },
   {
@@ -97,6 +105,8 @@ function isHomePath(path: string) {
       !path.includes("points") &&
       !path.includes("profile") &&
       !path.includes("assistant") &&
+      !path.includes("intake") &&
+      !path.includes("reviews") &&
       !path.includes("patients"))
   );
 }

@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from "expo-router";
-import { Bot, CalendarClock, ClipboardList, Coins, History, Home, Star, User, Users } from "lucide-react-native";
+import { Bot, CalendarClock, ClipboardList, Coins, History, Home, ListChecks, Star, User, Users } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -90,6 +90,14 @@ export default function TabsLayoutWeb() {
           title: t.tabs.reviews,
           href: isDoctor ? undefined : null,
           tabBarIcon: ({ color, size }) => <Star color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="intake"
+        options={{
+          title: t.tabs.intake,
+          href: isDoctor ? undefined : null,
+          tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} />,
         }}
       />
       <Tabs.Screen

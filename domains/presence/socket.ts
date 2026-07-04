@@ -48,6 +48,16 @@ let onAppointmentReminderHandler:
       other_participant_name?: string;
     }) => void)
   | null = null;
+let onIntakeExamReminderHandler:
+  | ((payload: {
+      instanceId: string;
+      examName: string;
+      doctorName: string;
+      deadlineAt: string;
+      title: string;
+      body: string;
+    }) => void)
+  | null = null;
 let onAppointmentUpdatedHandler:
   | ((payload: {
       appointment_id?: string;
@@ -134,6 +144,21 @@ export function onAppointmentReminder(
     | null,
 ) {
   onAppointmentReminderHandler = handler;
+}
+
+export function onIntakeExamReminder(
+  handler:
+    | ((payload: {
+        instanceId: string;
+        examName: string;
+        doctorName: string;
+        deadlineAt: string;
+        title: string;
+        body: string;
+      }) => void)
+    | null,
+) {
+  onIntakeExamReminderHandler = handler;
 }
 
 export function onAppointmentUpdated(
@@ -223,6 +248,29 @@ function bindListeners(client: Socket) {
           meeting_link: payload.meeting_link,
           when: payload.when,
           other_participant_name: payload.other_participant_name,
+        });
+      }
+    },
+  );
+
+  client.on(
+    "intake-exam:reminder",
+    (payload: {
+      instanceId?: string;
+      examName?: string;
+      doctorName?: string;
+      deadlineAt?: string;
+      title?: string;
+      body?: string;
+    }) => {
+      if (payload?.instanceId && payload?.deadlineAt) {
+        onIntakeExamReminderHandler?.({
+          instanceId: payload.instanceId,
+          examName: payload.examName ?? "Intake exam",
+          doctorName: payload.doctorName ?? "Doctor",
+          deadlineAt: payload.deadlineAt,
+          title: payload.title ?? "Intake exam reminder",
+          body: payload.body ?? "",
         });
       }
     },

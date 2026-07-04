@@ -230,6 +230,17 @@ export function ProfileEditor({
             ) : null}
 
             {isDoctor ? (
+              <Pressable
+                onPress={() => router.push("/(tabs)/intake")}
+                style={[styles.sectionLink, { borderColor: colors.border }]}
+              >
+                <Text style={{ color: colors.primary, fontWeight: "700", textAlign }}>
+                  {isRTL ? "منشئ فحوصات المتابعة" : "Follow-up exam builder"}
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {isDoctor ? (
               <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
             ) : null}
 
@@ -435,6 +446,13 @@ const styles = StyleSheet.create({
   },
   sectionBody: {
     gap: 14,
+  },
+  sectionLink: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
   },
   block: {
     gap: 8,

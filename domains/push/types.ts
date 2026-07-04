@@ -5,6 +5,7 @@ export type PushNotificationType =
   | "appointment_request"
   | "appointment_status"
   | "appointment_reminder"
+  | "intake_exam_reminder"
   | "system_notification";
 
 export type ChatPushData = {
@@ -51,6 +52,11 @@ export type SystemNotificationPushData = {
   type: "system_notification";
 };
 
+export type IntakeExamReminderPushData = {
+  type: "intake_exam_reminder";
+  instanceId: string;
+};
+
 export type PushNotificationData =
   | ChatPushData
   | AiPushData
@@ -58,6 +64,7 @@ export type PushNotificationData =
   | AppointmentRequestPushData
   | AppointmentReminderPushData
   | AppointmentStatusPushData
+  | IntakeExamReminderPushData
   | SystemNotificationPushData;
 
 function readString(
@@ -137,6 +144,12 @@ export function parsePushNotificationData(
     return {
       type: "system_notification",
     };
+  }
+
+  if (type === "intake_exam_reminder") {
+    const instanceId = readString(data, "instanceId", "instance_id");
+    if (!instanceId) return null;
+    return { type: "intake_exam_reminder", instanceId };
   }
 
   const chatId = readString(data, "chatId", "chat_id", "threadId", "thread_id");

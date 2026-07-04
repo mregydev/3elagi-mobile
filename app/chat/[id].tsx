@@ -21,6 +21,7 @@ import { ChatAccessTemplates } from "@/components/ChatAccessTemplates";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
+import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
 import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
@@ -46,6 +47,7 @@ import { sendAppointmentAction } from "@/domains/appointments/api";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
+import { mapInstance } from "@/domains/intake-exams/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
@@ -98,6 +100,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const doctorId = useAuthStore((s) => s.doctorId);
   const medicalRecords = useMedicalStore((s) => s.records);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
+  const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const [contactsReady, setContactsReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [medicalPickerOpen, setMedicalPickerOpen] = useState(false);
@@ -108,6 +111,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [replacingMedicalMessage, setReplacingMedicalMessage] = useState<ChatMessage | null>(null);
   const [medicalPickerMode, setMedicalPickerMode] = useState<"share" | "replace">("share");
   const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
+  const [intakeExamModalOpen, setIntakeExamModalOpen] = useState(false);
+  const [assigningIntakeExam, setAssigningIntakeExam] = useState(false);
   const [createMedicalRecordOpen, setCreateMedicalRecordOpen] = useState(false);
   const [reactionTarget, setReactionTarget] = useState<ChatMessage | null>(null);
   const [reactionAnchor, setReactionAnchor] = useState<ReactionAnchor | null>(null);
@@ -612,6 +617,28 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
   };
 
+  const handleIntakeExamAssigned = async (
+    instance: Awaited<ReturnType<typeof import("@/domains/intake-exams/api").assignIntakeExam>>,
+  ) => {
+    if (!id || !accessToken || !profile?.id) return;
+    const mapped = mapInstance(instance);
+    const meta: MedicalLinkMeta = {
+      record_type: "intake",
+      record_id: mapped.id,
+      title: mapped.title,
+    };
+    await handleSend({
+      recipientId: id,
+      type: "medical_link",
+      content: mapped.title,
+      medicalLink: meta,
+    });
+    notifyMedicalHistoryChanged(id);
+    void fetchAllMedicalHistory(id, accessToken, role ?? undefined).then((rows) =>
+      setRecordsFromApi(rows, id),
+    );
+  };
+
   const handleDiagnosisSubmit = async (payload: {
     description: string;
     symptoms: string[];
@@ -988,6 +1015,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           medicalActionsDisabled={chatBlocked}
           onAccessAction={(action) => void handleAccessAction(action)}
           onDiagnosisPress={openDiagnosisModal}
+          onAssignIntakeExam={() => setIntakeExamModalOpen(true)}
           onAddMedicalRecord={() => setCreateMedicalRecordOpen(true)}
           onShareMedicalRecord={() => void openMedicalPicker()}
           onBookAppointment={
@@ -1061,6 +1089,27 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             setDiagnosisModalOpen(false);
           }}
           onSubmit={(payload) => void handleDiagnosisSubmit(payload)}
+        />
+      ) : null}
+
+      {id && accessToken && isDoctor ? (
+        <AssignIntakeExamDialog
+          visible={intakeExamModalOpen}
+          isRTL={isRTL}
+          patientUserId={id}
+          accessToken={accessToken}
+          saving={assigningIntakeExam}
+          onClose={() => {
+            if (assigningIntakeExam) return;
+            setIntakeExamModalOpen(false);
+          }}
+          onAssigned={(instance) => {
+            setAssigningIntakeExam(true);
+            void handleIntakeExamAssigned(instance).finally(() => {
+              setAssigningIntakeExam(false);
+              setIntakeExamModalOpen(false);
+            });
+          }}
         />
       ) : null}
 

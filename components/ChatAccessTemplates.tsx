@@ -24,6 +24,7 @@ interface Props {
   medicalActionsDisabled?: boolean;
   onAccessAction: (action: AccessActionType) => void;
   onDiagnosisPress?: () => void;
+  onAssignIntakeExam?: () => void;
   onAddMedicalRecord?: () => void;
   onShareMedicalRecord?: () => void;
   onBookAppointment?: () => void;
@@ -38,6 +39,7 @@ export function ChatAccessTemplates({
   medicalActionsDisabled = false,
   onAccessAction,
   onDiagnosisPress,
+  onAssignIntakeExam,
   onAddMedicalRecord,
   onShareMedicalRecord,
   onBookAppointment,
@@ -53,6 +55,13 @@ export function ChatAccessTemplates({
         label: isRTL ? "تشخيص جديد" : "New diagnosis",
         icon: <Stethoscope size={15} color={colors.primary} />,
         onPress: onDiagnosisPress,
+        tone: "primary",
+      });
+      chips.push({
+        key: "intake_exam",
+        label: isRTL ? "فحص متابعة" : "Follow-up exam",
+        icon: <ClipboardList size={15} color={colors.primary} />,
+        onPress: onAssignIntakeExam,
         tone: "primary",
       });
     }

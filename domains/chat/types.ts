@@ -35,7 +35,7 @@ export interface AppointmentActionMeta {
 }
 
 export interface MedicalLinkMeta {
-  record_type: "lab" | "xray" | "diagnosis";
+  record_type: "lab" | "xray" | "diagnosis" | "intake";
   record_id: string;
   title: string;
   note?: string;

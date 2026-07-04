@@ -21,6 +21,13 @@ import {
   updateDiagnosis,
   updatePatientMedicalDocument,
 } from "@/domains/medical/api";
+import {
+  deleteIntakeExamInstance,
+  fetchIntakeExamInstance,
+  mapInstance,
+  resetIntakeExamAnswers,
+  saveIntakeExamAnswers,
+} from "@/domains/intake-exams/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { getApiLang } from "@/domains/i18n/store";
 import type { MedicalRecord } from "@/domains/medical/types";
@@ -64,6 +71,8 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const [editNotes, setEditNotes] = useState("");
   const [savingLabDetails, setSavingLabDetails] = useState(false);
   const [generatingDetails, setGeneratingDetails] = useState(false);
+  const [intakeAnswersDraft, setIntakeAnswersDraft] = useState<Record<string, string[]>>({});
+  const [savingIntake, setSavingIntake] = useState(false);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
 
@@ -105,14 +114,17 @@ export function useMedicalRecordDetail(isRTL: boolean) {
 
     const cacheOnly =
       cached &&
+      cached.category !== "intake" &&
       (isDoctorView
-        ? cached.category === "intake"
+        ? false
         : cached.category === "lab" ||
           cached.category === "xray" ||
-          cached.category === "intake" ||
           cached.category === "prescription");
 
     if (cacheOnly) {
+      if (cached?.category === "intake" && cached.intakeExam) {
+        setIntakeAnswersDraft(cached.intakeExam.answers ?? {});
+      }
       setLoadState("done");
       return;
     }
@@ -124,6 +136,18 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       setLoadingDetail(false);
       setLoadState("done");
     };
+
+    if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
+      fetchIntakeExamInstance(id, accessToken)
+        .then((raw) => {
+          const mapped = mapInstance(raw);
+          setDetail(mapped);
+          setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+        })
+        .catch(() => undefined)
+        .finally(finish);
+      return;
+    }
 
     if (isDoctorView) {
       if (cached?.category === "prescription" && patientUserId) {
@@ -215,6 +239,8 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         isPrescription: false,
         isLabOrXray: false,
         isDocImage: false,
+        isIntakeExam: false,
+        canTakeIntakeExam: false,
       };
     }
 
@@ -237,6 +263,12 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       isLabOrXray,
       isDocImage,
       canEditLabDetails: isLabOrXray && !isDoctorView && !!accessToken,
+      isIntakeExam: record.category === "intake" && !!record.intakeExam,
+      canTakeIntakeExam:
+        record.category === "intake" &&
+        !!record.intakeExam &&
+        !isDoctorView &&
+        record.intakeExam.status !== "completed",
     };
   }, [record, isRTL, permissionCtx, isDoctorView, accessToken]);
 
@@ -346,8 +378,10 @@ export function useMedicalRecordDetail(isRTL: boolean) {
                   accessToken
                 ) {
                   await deletePatientMedicalDocument(record.id, accessToken);
-                  await refetchListsAfterChange();
+                } else if (record.category === "intake" && accessToken) {
+                  await deleteIntakeExamInstance(record.id, accessToken);
                 }
+                await refetchListsAfterChange();
                 remove(profile.id, record.id);
                 router.back();
               } catch (e) {
@@ -355,6 +389,79 @@ export function useMedicalRecordDetail(isRTL: boolean) {
                   isRTL ? "فشل الحذف" : "Delete failed",
                   (e as Error).message,
                 );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
+
+  const saveIntakeDraft = async () => {
+    if (!record?.intakeExam || !accessToken || isDoctorView) return;
+    setSavingIntake(true);
+    try {
+      const updated = await saveIntakeExamAnswers(
+        record.id,
+        { answers: intakeAnswersDraft, complete: false },
+        accessToken,
+      );
+      const mapped = mapInstance(updated);
+      setDetail(mapped);
+      setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+      await refetchListsAfterChange();
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+    } finally {
+      setSavingIntake(false);
+    }
+  };
+
+  const submitIntakeExam = async () => {
+    if (!record?.intakeExam || !accessToken || isDoctorView) return;
+    setSavingIntake(true);
+    try {
+      const updated = await saveIntakeExamAnswers(
+        record.id,
+        { answers: intakeAnswersDraft, complete: true },
+        accessToken,
+      );
+      const mapped = mapInstance(updated);
+      setDetail(mapped);
+      setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+      await refetchListsAfterChange();
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الإرسال" : "Submit failed", (e as Error).message);
+    } finally {
+      setSavingIntake(false);
+    }
+  };
+
+  const resetIntakeExam = () => {
+    if (!record?.intakeExam || !accessToken || isDoctorView) return;
+    Alert.alert(
+      isRTL ? "إعادة تعيين الإجابات" : "Reset answers",
+      isRTL
+        ? "سيتم مسح جميع إجاباتك لهذا الفحص."
+        : "This will clear all your answers for this exam.",
+      [
+        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+        {
+          text: isRTL ? "إعادة تعيين" : "Reset",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setSavingIntake(true);
+              try {
+                const updated = await resetIntakeExamAnswers(record.id, accessToken);
+                const mapped = mapInstance(updated);
+                setDetail(mapped);
+                setIntakeAnswersDraft({});
+                await refetchListsAfterChange();
+              } catch (e) {
+                Alert.alert(isRTL ? "فشل" : "Failed", (e as Error).message);
+              } finally {
+                setSavingIntake(false);
               }
             })();
           },
@@ -406,6 +513,12 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     generatingDetails,
     saveLabDetails,
     generateLabDetails,
+    intakeAnswersDraft,
+    setIntakeAnswersDraft,
+    savingIntake,
+    saveIntakeDraft,
+    submitIntakeExam,
+    resetIntakeExam,
     ...derived,
     saveDiagnosisEdit,
     submitSymptom,

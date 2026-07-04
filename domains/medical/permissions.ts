@@ -40,11 +40,13 @@ export function canDeleteMedicalRecord(
   ctx: MedicalRecordPermissionContext,
 ): boolean {
   if (record.category === "diagnosis") return false;
-  if (isDoctorContext(ctx)) return false;
 
   if (record.category === "intake") {
-    return record.ownerId === ctx.userId;
+    if (ctx.isDoctorView && isDoctorContext(ctx)) return true;
+    return !isDoctorContext(ctx) && record.ownerId === ctx.userId;
   }
+
+  if (isDoctorContext(ctx)) return false;
 
   if (record.category === "lab" || record.category === "xray") {
     return record.ownerId === ctx.userId;

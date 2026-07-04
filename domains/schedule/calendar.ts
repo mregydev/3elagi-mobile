@@ -105,11 +105,16 @@ export function datesBetween(startYmd: string, endYmd: string): string[] {
   return out;
 }
 
-export function buildMonthGrid(year: number, month: number): (string | null)[][] {
+export function buildMonthGrid(
+  year: number,
+  month: number,
+  weekStartsOn = 0,
+): (string | null)[][] {
   const first = startOfMonth(year, month);
   const last = endOfMonth(year, month);
   const weeks: (string | null)[][] = [];
-  let week: (string | null)[] = Array(first.getDay()).fill(null);
+  const leading = (first.getDay() - weekStartsOn + 7) % 7;
+  let week: (string | null)[] = Array(leading).fill(null);
 
   for (let day = 1; day <= last.getDate(); day++) {
     const date = new Date(year, month, day, 12, 0, 0, 0);
@@ -124,6 +129,15 @@ export function buildMonthGrid(year: number, month: number): (string | null)[][]
     weeks.push(week);
   }
   return weeks;
+}
+
+/** Sunday-first (US) vs Saturday-first (Arabic ar-EG). */
+export function calendarWeekStartsOn(isRTL: boolean): number {
+  return isRTL ? 6 : 0;
+}
+
+export function weekdayLabels(isRTL: boolean): string[] {
+  return isRTL ? WEEKDAY_LABELS_AR : WEEKDAY_LABELS_EN;
 }
 
 export function defaultDayHours(date: string): DayHours {
@@ -276,7 +290,8 @@ export function isDateBeyond(ymd: string, maxDays: number): boolean {
 export const BOOKING_HORIZON_DAYS = 90;
 
 export const WEEKDAY_LABELS_EN = ["S", "M", "T", "W", "T", "F", "S"];
-export const WEEKDAY_LABELS_AR = ["ح", "ن", "ث", "ر", "خ", "ج", "س"];
+/** Saturday → Friday (ar-EG week start). */
+export const WEEKDAY_LABELS_AR = ["س", "ح", "ن", "ث", "ر", "خ", "ج"];
 
 export const DEFAULT_SLOT_MINUTES = 10;
 

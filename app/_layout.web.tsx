@@ -12,6 +12,8 @@ import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridg
 import { NativeWebViewPushNavigation } from "@/components/web/NativeWebViewPushNavigation.web";
 import { AppointmentNotifications } from "@/components/AppointmentNotifications";
 import { AppointmentSync } from "@/components/AppointmentSync";
+import { IntakeExamNotifications } from "@/components/IntakeExamNotifications";
+import { IntakeExamSync } from "@/components/IntakeExamSync";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
@@ -109,9 +111,11 @@ export default function RootLayout() {
           <PresenceChatSync />
           <ChatMessageSync />
           <AppointmentSync />
+          <IntakeExamSync />
           <SystemNotificationSync />
           <ChatNotifications />
           <AppointmentNotifications />
+          <IntakeExamNotifications />
           <SystemNotifications />
           <IncomingVideoCallOverlay />
           <WebChatNotificationsBootstrap />

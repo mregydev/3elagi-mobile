@@ -25,8 +25,8 @@ export const MEDICAL_RECORD_CATEGORIES: MedicalRecordCategoryMeta[] = [
   { key: "intake", labelEn: "Intake", labelAr: "فحص الاستقبال", Icon: ClipboardList, color: "#3057F2" },
 ];
 
-/** Temporarily hide intake exam records from medical history UI. */
-export const SHOW_INTAKE_RECORDS = false;
+/** Show intake exam records from API in medical history UI. */
+export const SHOW_INTAKE_RECORDS = true;
 
 export function getDisplayMedicalRecordCategories(): MedicalRecordCategoryMeta[] {
   return SHOW_INTAKE_RECORDS

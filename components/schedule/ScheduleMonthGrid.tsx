@@ -1,16 +1,17 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import {
   buildMonthGrid,
+  calendarWeekStartsOn,
   monthLabel,
   parseYmd,
   weekRangeForDate,
-  WEEKDAY_LABELS_AR,
-  WEEKDAY_LABELS_EN,
+  weekdayLabels,
   type ScheduleScopeMode,
 } from "@/domains/schedule/calendar";
 import { useColors } from "@/hooks/useColors";
-import { flexRow } from "@/utils/rtl";
+import { flexRow, localeTag } from "@/utils/rtl";
 
 interface Props {
   isRTL: boolean;
@@ -26,6 +27,31 @@ interface Props {
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+}
+
+function MonthNavButton({
+  onPress,
+  icon: Icon,
+  colors,
+}: {
+  onPress: () => void;
+  icon: typeof ChevronLeft;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={12}
+      accessibilityRole="button"
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        styles.navBtn,
+        Platform.OS === "web" && styles.navBtnWeb,
+        (pressed || hovered) && { backgroundColor: `${colors.primary}14` },
+      ]}
+    >
+      <Icon size={28} color={colors.primary} strokeWidth={2.5} />
+    </Pressable>
+  );
 }
 
 export function ScheduleMonthGrid({
@@ -45,8 +71,16 @@ export function ScheduleMonthGrid({
 }: Props) {
   const colors = useColors();
   const dir = flexRow(isRTL);
-  const weekdayLabels = isRTL ? WEEKDAY_LABELS_AR : WEEKDAY_LABELS_EN;
-  const weeks = useMemo(() => buildMonthGrid(year, month), [year, month]);
+  const weekStartsOn = calendarWeekStartsOn(isRTL);
+  const labels = weekdayLabels(isRTL);
+  const rowDir = isRTL ? "row-reverse" : "row";
+  const dateLocale = localeTag(isRTL);
+  const PrevIcon = isRTL ? ChevronRight : ChevronLeft;
+  const NextIcon = isRTL ? ChevronLeft : ChevronRight;
+  const weeks = useMemo(
+    () => buildMonthGrid(year, month, weekStartsOn),
+    [year, month, weekStartsOn],
+  );
 
   const isInSelectedWeek = (date: string) => {
     if (mode !== "week") return false;
@@ -64,15 +98,13 @@ export function ScheduleMonthGrid({
     return (
       <View style={styles.wrap}>
         <View style={[styles.navRow, { flexDirection: dir }]}>
-          <Pressable onPress={onPrevMonth} hitSlop={8}>
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>‹</Text>
-          </Pressable>
-          <Text style={[styles.monthTitle, { color: colors.foreground }]}>{year}</Text>
-          <Pressable onPress={onNextMonth} hitSlop={8}>
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>›</Text>
-          </Pressable>
+          <MonthNavButton onPress={onPrevMonth} icon={PrevIcon} colors={colors} />
+          <Text style={[styles.monthTitle, { color: colors.foreground, writingDirection: isRTL ? "rtl" : "ltr" }]}>
+            {monthLabel(month, isRTL)} {year.toLocaleString(dateLocale)}
+          </Text>
+          <MonthNavButton onPress={onNextMonth} icon={NextIcon} colors={colors} />
         </View>
-        <View style={[styles.yearGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <View style={[styles.yearGrid, { flexDirection: rowDir }]}>
           {years.map((y) => (
             <Pressable
               key={y}
@@ -89,7 +121,7 @@ export function ScheduleMonthGrid({
             </Pressable>
           ))}
         </View>
-        <View style={[styles.monthsGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <View style={[styles.monthsGrid, { flexDirection: rowDir }]}>
           {Array.from({ length: 12 }, (_, m) => (
             <Pressable
               key={m}
@@ -115,19 +147,15 @@ export function ScheduleMonthGrid({
   return (
     <View style={styles.wrap}>
       <View style={[styles.navRow, { flexDirection: dir }]}>
-        <Pressable onPress={onPrevMonth} hitSlop={8}>
-          <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>‹</Text>
-        </Pressable>
-        <Text style={[styles.monthTitle, { color: colors.foreground }]}>
-          {monthLabel(month, isRTL)} {year}
+        <MonthNavButton onPress={onPrevMonth} icon={PrevIcon} colors={colors} />
+        <Text style={[styles.monthTitle, { color: colors.foreground, writingDirection: isRTL ? "rtl" : "ltr" }]}>
+          {monthLabel(month, isRTL)} {year.toLocaleString(dateLocale)}
         </Text>
-        <Pressable onPress={onNextMonth} hitSlop={8}>
-          <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 18 }}>›</Text>
-        </Pressable>
+        <MonthNavButton onPress={onNextMonth} icon={NextIcon} colors={colors} />
       </View>
 
-      <View style={[styles.weekdayRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-        {weekdayLabels.map((label, i) => (
+      <View style={[styles.weekdayRow, { flexDirection: rowDir }]}>
+        {labels.map((label, i) => (
           <Text key={`${label}-${i}`} style={[styles.weekday, { color: colors.mutedForeground }]}>
             {label}
           </Text>
@@ -135,7 +163,7 @@ export function ScheduleMonthGrid({
       </View>
 
       {weeks.map((week, wi) => (
-        <View key={wi} style={[styles.weekRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <View key={wi} style={[styles.weekRow, { flexDirection: rowDir }]}>
           {week.map((date, di) => {
             if (!date) {
               return <View key={`empty-${wi}-${di}`} style={styles.dayCell} />;
@@ -172,7 +200,7 @@ export function ScheduleMonthGrid({
                     fontSize: 13,
                   }}
                 >
-                  {parseYmd(date).getDate()}
+                  {parseYmd(date).getDate().toLocaleString(dateLocale)}
                 </Text>
                 {marked ? (
                   <View style={[styles.dot, { backgroundColor: colors.primary }]} />
@@ -193,6 +221,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 4,
   },
+  navBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+  },
+  navBtnWeb: {
+    cursor: "pointer",
+  } as ViewStyle,
   monthTitle: {
     fontSize: 16,
     fontWeight: "800",

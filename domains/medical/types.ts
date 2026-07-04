@@ -24,6 +24,20 @@ export interface LinkedDiagnosisSummary {
   title: string;
 }
 
+export interface IntakeExamDetail {
+  instanceId: string;
+  assignmentId: string;
+  intakeTestId: string;
+  deadlineAt: string;
+  status: "pending" | "in_progress" | "completed";
+  questions: import("@/domains/intake-exams/types").IntakeQuestion[];
+  answers: Record<string, string[]>;
+  instanceNumber: number;
+  recurrenceType: import("@/domains/intake-exams/types").IntakeExamRecurrence;
+  recurrenceInterval: number;
+  completedAt: string | null;
+}
+
 export interface MedicalRecord {
   id: string;
   ownerId: string;
@@ -57,4 +71,6 @@ export interface MedicalRecord {
   imageUrl?: string | null;
   /** AI-generated summary and possible conditions */
   aiInsight?: MedicalAiInsight | null;
+  /** Intake exam instance metadata when category is intake */
+  intakeExam?: IntakeExamDetail;
 }

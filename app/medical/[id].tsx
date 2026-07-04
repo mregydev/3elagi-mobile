@@ -46,7 +46,15 @@ import {
   updateDiagnosis,
   updatePatientMedicalDocument,
 } from "@/domains/medical/api";
+import {
+  deleteIntakeExamInstance,
+  fetchIntakeExamInstance,
+  mapInstance,
+  resetIntakeExamAnswers,
+  saveIntakeExamAnswers,
+} from "@/domains/intake-exams/api";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
+import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
 import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
@@ -106,6 +114,8 @@ export default function MedicalRecordDetail() {
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
   const [generatingInsight, setGeneratingInsight] = useState(false);
+  const [intakeAnswersDraft, setIntakeAnswersDraft] = useState<Record<string, string[]>>({});
+  const [savingIntake, setSavingIntake] = useState(false);
   const [editingLabDetails, setEditingLabDetails] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -154,11 +164,11 @@ export default function MedicalRecordDetail() {
 
     const cacheOnly =
       cached &&
+      cached.category !== "intake" &&
       (isDoctorView
-        ? cached.category === "intake"
+        ? false
         : cached.category === "lab" ||
           cached.category === "xray" ||
-          cached.category === "intake" ||
           cached.category === "prescription");
 
     if (cacheOnly) {
@@ -173,6 +183,18 @@ export default function MedicalRecordDetail() {
       setLoadingDetail(false);
       setLoadState("done");
     };
+
+    if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
+      fetchIntakeExamInstance(id, accessToken)
+        .then((raw) => {
+          const mapped = mapInstance(raw);
+          setDetail(mapped);
+          setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+        })
+        .catch(() => undefined)
+        .finally(finish);
+      return;
+    }
 
     if (isDoctorView) {
       if (cached?.category === "prescription" && patientUserId) {
@@ -427,8 +449,10 @@ export default function MedicalRecordDetail() {
                   accessToken
                 ) {
                   await deletePatientMedicalDocument(record.id, accessToken);
-                  await refetchListsAfterChange();
+                } else if (record.category === "intake" && accessToken) {
+                  await deleteIntakeExamInstance(record.id, accessToken);
                 }
+                await refetchListsAfterChange();
                 remove(profile!.id, record.id);
                 router.back();
               } catch (e) {
@@ -720,6 +744,122 @@ export default function MedicalRecordDetail() {
                 : undefined
             }
           />
+        ) : null}
+
+        {record.category === "intake" && record.intakeExam ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
+              {isDoctorView || record.intakeExam.status === "completed"
+                ? isRTL
+                  ? "إجابات المريض"
+                  : "Patient answers"
+                : isRTL
+                  ? "أكمل الفحص"
+                  : "Complete exam"}
+            </Text>
+            <IntakeExamTaker
+              isRTL={isRTL}
+              questions={record.intakeExam.questions}
+              answers={
+                isDoctorView || record.intakeExam.status === "completed"
+                  ? record.intakeExam.answers
+                  : intakeAnswersDraft
+              }
+              readOnly={isDoctorView || record.intakeExam.status === "completed"}
+              accessToken={accessToken ?? undefined}
+              onChange={setIntakeAnswersDraft}
+            />
+            {!isDoctorView && record.intakeExam.status !== "completed" ? (
+              <View style={{ gap: 10, marginTop: 12 }}>
+                <Pressable
+                  onPress={() => {
+                    if (!accessToken) return;
+                    setSavingIntake(true);
+                    void saveIntakeExamAnswers(
+                      record.id,
+                      { answers: intakeAnswersDraft, complete: false },
+                      accessToken,
+                    )
+                      .then((raw) => {
+                        const mapped = mapInstance(raw);
+                        setDetail(mapped);
+                        setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+                        void refetchListsAfterChange();
+                      })
+                      .catch((e) =>
+                        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message),
+                      )
+                      .finally(() => setSavingIntake(false));
+                  }}
+                  disabled={savingIntake}
+                  style={[styles.addSymptomBtn, { backgroundColor: colors.muted, alignSelf: "flex-start" }]}
+                >
+                  <Text style={{ color: colors.foreground, fontWeight: "700" }}>
+                    {isRTL ? "حفظ مسودة" : "Save draft"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    if (!accessToken) return;
+                    setSavingIntake(true);
+                    void saveIntakeExamAnswers(
+                      record.id,
+                      { answers: intakeAnswersDraft, complete: true },
+                      accessToken,
+                    )
+                      .then((raw) => {
+                        const mapped = mapInstance(raw);
+                        setDetail(mapped);
+                        setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+                        void refetchListsAfterChange();
+                      })
+                      .catch((e) =>
+                        Alert.alert(isRTL ? "فشل الإرسال" : "Submit failed", (e as Error).message),
+                      )
+                      .finally(() => setSavingIntake(false));
+                  }}
+                  disabled={savingIntake}
+                  style={[styles.addSymptomBtn, { backgroundColor: colors.primary, alignSelf: "flex-start" }]}
+                >
+                  {savingIntake ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.addSymptomBtnText}>
+                      {isRTL ? "إرسال الفحص" : "Submit exam"}
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    if (!accessToken) return;
+                    Alert.alert(
+                      isRTL ? "إعادة تعيين" : "Reset",
+                      isRTL ? "مسح جميع الإجابات؟" : "Clear all answers?",
+                      [
+                        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+                        {
+                          text: isRTL ? "إعادة تعيين" : "Reset",
+                          style: "destructive",
+                          onPress: () => {
+                            void resetIntakeExamAnswers(record.id, accessToken).then((raw) => {
+                              const mapped = mapInstance(raw);
+                              setDetail(mapped);
+                              setIntakeAnswersDraft({});
+                              void refetchListsAfterChange();
+                            });
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                >
+                  <Text style={{ color: colors.destructive, fontWeight: "700" }}>
+                    {isRTL ? "إعادة تعيين الإجابات" : "Reset answers"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         ) : null}
 
         {canEditDiagnosisRecord && (
