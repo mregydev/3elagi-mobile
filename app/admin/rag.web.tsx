@@ -18,7 +18,7 @@ import {
   createAdminRagText,
   deleteAdminRagSource,
   fetchAdminRagSources,
-  uploadAdminRagFile,
+  trainAdminRagDocument,
   type AdminRagSourceRow,
 } from "@/domains/admin/api";
 import { getPostLogoutRoute } from "@/domains/auth/navigation";
@@ -117,17 +117,12 @@ export default function AdminRagWeb() {
     setUploadPhase("uploading");
     setUploadProgress(0);
     try {
-      const uploaded = await uploadAdminRagFile(accessToken, selectedFile, ({ phase, percent }) => {
-        setUploadPhase(phase);
-        setUploadProgress(percent);
-      });
-      setUploadPhase("processing");
-      setUploadProgress(100);
-      const created = await createAdminRagDocument(accessToken, {
+      const created = await trainAdminRagDocument(accessToken, selectedFile, {
         title: fileTitle.trim() || undefined,
-        file_url: uploaded.url,
-        file_name: selectedFile.name,
-        mime_type: selectedFile.type || undefined,
+        onProgress: ({ phase, percent }) => {
+          setUploadPhase(phase);
+          setUploadProgress(percent);
+        },
       });
       setSources((prev) => [created, ...prev]);
       setFileTitle("");
@@ -145,7 +140,9 @@ export default function AdminRagWeb() {
 
   const handleDelete = async (row: AdminRagSourceRow) => {
     if (!accessToken) return;
-    const ok = confirmAction(`Remove "${row.title}" from the RAG system?`);
+    const ok = confirmAction(
+      `Remove training for "${row.title}"? The file is not stored — upload it again to re-train.`,
+    );
     if (!ok) return;
     setDeletingId(row.id);
     try {
@@ -227,6 +224,10 @@ export default function AdminRagWeb() {
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Add document knowledge</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 18 }}>
+            PDF/DOCX is used for training only. The file is not stored. Delete a source to untrain;
+            upload again to re-train.
+          </Text>
           <TextInput
             value={fileTitle}
             onChangeText={setFileTitle}

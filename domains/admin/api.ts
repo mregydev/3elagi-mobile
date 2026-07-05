@@ -1,5 +1,4 @@
 import { API_BASE } from "@/constants/api";
-import { uploadFile } from "@/domains/medical/api";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
@@ -90,50 +89,14 @@ export async function createAdminRagText(
   });
 }
 
-export async function createAdminRagDocument(
-  token: string,
-  payload: {
-    title?: string;
-    file_url: string;
-    file_name: string;
-    mime_type?: string;
-  },
-): Promise<AdminRagSourceRow> {
-  return authJson<AdminRagSourceRow>("/admin/rag-sources/document", token, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-}
+const RAG_CHUNK_SIZE = 2 * 1024 * 1024;
 
-export async function deleteAdminRagSource(
-  token: string,
-  id: string,
-): Promise<void> {
-  await authJson(`/admin/rag-sources/${id}`, token, {
-    method: "DELETE",
-  });
-}
-
-export async function uploadAdminRagFile(
+async function uploadRagChunks(
   token: string,
   file: File,
-  onProgress?: (progress: { phase: "uploading" | "processing"; percent: number }) => void,
-): Promise<{ objectPath: string; url: string }> {
-  const CHUNK_SIZE = 2 * 1024 * 1024;
-  const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
-
-  if (file.size <= CHUNK_SIZE) {
-    onProgress?.({ phase: "uploading", percent: 0 });
-    const result = await uploadFile(
-      `blob:${file.name}`,
-      file.type || "application/octet-stream",
-      file.name,
-      token,
-      file,
-    );
-    onProgress?.({ phase: "uploading", percent: 100 });
-    return result;
-  }
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  const totalChunks = Math.max(1, Math.ceil(file.size / RAG_CHUNK_SIZE));
 
   const initRes = await fetch(`${API_BASE}/uploads/chunk/init`, {
     method: "POST",
@@ -163,11 +126,11 @@ export async function uploadAdminRagFile(
   }
 
   let uploadedBytes = 0;
-  onProgress?.({ phase: "uploading", percent: 0 });
+  onProgress?.(0);
 
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-    const start = chunkIndex * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const start = chunkIndex * RAG_CHUNK_SIZE;
+    const end = Math.min(start + RAG_CHUNK_SIZE, file.size);
     const blob = file.slice(start, end);
 
     const formData = new FormData();
@@ -192,29 +155,73 @@ export async function uploadAdminRagFile(
     }
 
     uploadedBytes += end - start;
-    const percent = Math.min(100, Math.round((uploadedBytes / file.size) * 100));
+    onProgress?.(Math.min(100, Math.round((uploadedBytes / file.size) * 100)));
+  }
+
+  return uploadId;
+}
+
+/** Train RAG from a PDF/DOCX without storing the file. */
+export async function trainAdminRagDocument(
+  token: string,
+  file: File,
+  options?: {
+    title?: string;
+    onProgress?: (progress: { phase: "uploading" | "processing"; percent: number }) => void;
+  },
+): Promise<AdminRagSourceRow> {
+  const title = options?.title;
+  const onProgress = options?.onProgress;
+  const useChunks = file.size > RAG_CHUNK_SIZE;
+
+  if (!useChunks) {
+    onProgress?.({ phase: "uploading", percent: 0 });
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    if (title?.trim()) {
+      formData.append("title", title.trim());
+    }
+
+    const res = await fetch(`${API_BASE}/admin/rag-sources/document/train`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(
+        (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
+          data?.error ??
+          `Training failed (${res.status})`,
+      );
+    }
+    onProgress?.({ phase: "uploading", percent: 100 });
+    return data as AdminRagSourceRow;
+  }
+
+  const uploadId = await uploadRagChunks(token, file, (percent) => {
     onProgress?.({ phase: "uploading", percent });
-  }
-
-  const completeRes = await fetch(`${API_BASE}/uploads/chunk/complete`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ upload_id: uploadId }),
   });
-  const completeData = await completeRes.json().catch(() => ({}));
-  if (!completeRes.ok) {
-    throw new Error(
-      (Array.isArray(completeData?.message)
-        ? completeData.message.join(", ")
-        : completeData?.message) ??
-        completeData?.error ??
-        `Upload finalize failed (${completeRes.status})`,
-    );
-  }
 
-  onProgress?.({ phase: "uploading", percent: 100 });
-  return completeData as { objectPath: string; url: string };
+  onProgress?.({ phase: "processing", percent: 100 });
+  return authJson<AdminRagSourceRow>("/admin/rag-sources/document/train-chunk", token, {
+    method: "PUT",
+    body: JSON.stringify({
+      upload_id: uploadId,
+      title: title?.trim() || undefined,
+      file_name: file.name,
+      mime_type: file.type || undefined,
+    }),
+  });
+}
+
+export async function deleteAdminRagSource(
+  token: string,
+  id: string,
+): Promise<void> {
+  await authJson(`/admin/rag-sources/${id}`, token, {
+    method: "DELETE",
+  });
 }
