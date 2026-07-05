@@ -32,6 +32,12 @@ function confirmAction(message: string): boolean {
   return true;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function AdminRagWeb() {
   const colors = useColors();
   const router = useRouter();
@@ -44,6 +50,8 @@ export default function AdminRagWeb() {
   const [loading, setLoading] = useState(true);
   const [trainingText, setTrainingText] = useState(false);
   const [trainingFile, setTrainingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<"uploading" | "processing" | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [textTitle, setTextTitle] = useState("");
   const [textContent, setTextContent] = useState("");
@@ -106,8 +114,15 @@ export default function AdminRagWeb() {
       return;
     }
     setTrainingFile(true);
+    setUploadPhase("uploading");
+    setUploadProgress(0);
     try {
-      const uploaded = await uploadAdminRagFile(accessToken, selectedFile);
+      const uploaded = await uploadAdminRagFile(accessToken, selectedFile, ({ phase, percent }) => {
+        setUploadPhase(phase);
+        setUploadProgress(percent);
+      });
+      setUploadPhase("processing");
+      setUploadProgress(100);
       const created = await createAdminRagDocument(accessToken, {
         title: fileTitle.trim() || undefined,
         file_url: uploaded.url,
@@ -123,6 +138,8 @@ export default function AdminRagWeb() {
       showErrorToast("Training failed", (e as Error).message);
     } finally {
       setTrainingFile(false);
+      setUploadPhase(null);
+      setUploadProgress(0);
     }
   };
 
@@ -238,9 +255,31 @@ export default function AdminRagWeb() {
               </Text>
             </Pressable>
             <Text style={{ color: colors.mutedForeground, flex: 1 }}>
-              {selectedFile ? selectedFile.name : "No file selected"}
+              {selectedFile
+                ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})`
+                : "No file selected"}
             </Text>
           </View>
+          {trainingFile && uploadPhase ? (
+            <View style={styles.progressWrap}>
+              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${uploadProgress}%`,
+                      backgroundColor: uploadPhase === "processing" ? "#16a34a" : colors.primary,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                {uploadPhase === "processing"
+                  ? `Processing document… ${uploadProgress}%`
+                  : `Uploading… ${uploadProgress}%`}
+              </Text>
+            </View>
+          ) : null}
           <Pressable
             disabled={trainingFile}
             onPress={() => void handleTrainFile()}
@@ -391,6 +430,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fileRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  progressWrap: { gap: 6 },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
   list: { gap: 12 },
   sourceRow: {
     borderWidth: 1,

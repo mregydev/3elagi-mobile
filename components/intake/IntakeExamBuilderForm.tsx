@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react-native";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +13,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { IntakeExamPreview } from "@/components/intake/IntakeExamPreview";
 import type { IntakeQuestion, IntakeQuestionType } from "@/domains/intake-exams/types";
 import { useColors } from "@/hooks/useColors";
 
@@ -57,6 +58,8 @@ export interface IntakeExamBuilderFormProps {
   onCancel?: () => void;
 }
 
+type BuilderMode = "edit" | "preview";
+
 export function IntakeExamBuilderForm({
   isRTL,
   initialName = "",
@@ -76,6 +79,7 @@ export function IntakeExamBuilderForm({
   const [questions, setQuestions] = useState<IntakeQuestion[]>(
     initialQuestions.length ? initialQuestions : [newQuestion()],
   );
+  const [mode, setMode] = useState<BuilderMode>("edit");
 
   const canSave = useMemo(
     () =>
@@ -136,6 +140,61 @@ export function IntakeExamBuilderForm({
 
   return (
     <View style={styles.root}>
+      <View style={[styles.modeRow, { borderBottomColor: colors.border }]}>
+        <Pressable
+          onPress={() => setMode("edit")}
+          style={[
+            styles.modeBtn,
+            {
+              backgroundColor: mode === "edit" ? `${colors.primary}18` : "transparent",
+              borderColor: mode === "edit" ? colors.primary : colors.border,
+            },
+          ]}
+        >
+          <Pencil size={14} color={mode === "edit" ? colors.primary : colors.mutedForeground} />
+          <Text
+            style={{
+              color: mode === "edit" ? colors.primary : colors.foreground,
+              fontWeight: "700",
+              fontSize: 13,
+            }}
+          >
+            {isRTL ? "تعديل" : "Edit"}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setMode("preview")}
+          style={[
+            styles.modeBtn,
+            {
+              backgroundColor: mode === "preview" ? `${colors.primary}18` : "transparent",
+              borderColor: mode === "preview" ? colors.primary : colors.border,
+            },
+          ]}
+        >
+          <Eye size={14} color={mode === "preview" ? colors.primary : colors.mutedForeground} />
+          <Text
+            style={{
+              color: mode === "preview" ? colors.primary : colors.foreground,
+              fontWeight: "700",
+              fontSize: 13,
+            }}
+          >
+            {isRTL ? "معاينة المريض" : "Patient preview"}
+          </Text>
+        </Pressable>
+      </View>
+
+      {mode === "preview" ? (
+        <View style={styles.previewWrap}>
+          <IntakeExamPreview
+            isRTL={isRTL}
+            name={name}
+            description={description}
+            questions={questions}
+          />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
         {isRTL ? "اسم الفحص" : "Exam name"}
@@ -319,6 +378,7 @@ export function IntakeExamBuilderForm({
         </Text>
       </Pressable>
       </ScrollView>
+      )}
 
       {onCancel ? (
         <Pressable
@@ -338,6 +398,20 @@ export function IntakeExamBuilderForm({
       ) : null}
 
       <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+        {mode === "preview" ? (
+          <Pressable
+            onPress={() => setMode("edit")}
+            style={[
+              styles.primaryBtn,
+              isWeb && styles.actionBtnWeb,
+              { backgroundColor: colors.primary },
+            ]}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700" }}>
+              {isRTL ? "العودة للتعديل" : "Back to edit"}
+            </Text>
+          </Pressable>
+        ) : (
         <Pressable
           onPress={submit}
           disabled={!canSave}
@@ -355,6 +429,7 @@ export function IntakeExamBuilderForm({
             </Text>
           )}
         </Pressable>
+        )}
       </View>
     </View>
   );
@@ -362,6 +437,25 @@ export function IntakeExamBuilderForm({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  modeRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  previewWrap: { flex: 1 },
   content: { padding: 16, gap: 10, paddingBottom: 16 },
   label: { fontSize: 13, fontWeight: "600", marginTop: 4 },
   sectionTitle: { fontSize: 16, fontWeight: "800", marginTop: 12 },

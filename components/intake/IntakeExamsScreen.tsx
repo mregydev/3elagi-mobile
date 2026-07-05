@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
 import { IntakeExamBuilderForm } from "@/components/intake/IntakeExamBuilderForm";
+import { IntakeExamPreview } from "@/components/intake/IntakeExamPreview";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   createIntakeTest,
@@ -38,6 +39,8 @@ export function IntakeExamsScreen({ showBack = false }: IntakeExamsScreenProps) 
   const [tests, setTests] = useState<IntakeTestTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewTest, setPreviewTest] = useState<IntakeTestTemplate | null>(null);
   const [editing, setEditing] = useState<IntakeTestTemplate | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -65,6 +68,11 @@ export function IntakeExamsScreen({ showBack = false }: IntakeExamsScreenProps) 
   const openEdit = (test: IntakeTestTemplate) => {
     setEditing(test);
     setEditorOpen(true);
+  };
+
+  const openPreview = (test: IntakeTestTemplate) => {
+    setPreviewTest(test);
+    setPreviewOpen(true);
   };
 
   const handleSave = async (payload: {
@@ -174,6 +182,11 @@ export function IntakeExamsScreen({ showBack = false }: IntakeExamsScreenProps) 
                 {test.is_active ? t.intakeExams.active : t.intakeExams.inactive}
               </Text>
               <View style={[styles.cardActions, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <Pressable onPress={() => openPreview(test)}>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                    {t.intakeExams.preview}
+                  </Text>
+                </Pressable>
                 <Pressable onPress={() => openEdit(test)}>
                   <Text style={{ color: colors.primary, fontWeight: "700" }}>
                     {t.intakeExams.edit}
@@ -189,6 +202,31 @@ export function IntakeExamsScreen({ showBack = false }: IntakeExamsScreenProps) 
           ))}
         </ScrollView>
       )}
+
+      <Modal visible={previewOpen} animationType="slide" onRequestClose={() => setPreviewOpen(false)}>
+        <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={{ color: colors.foreground, fontWeight: "800", fontSize: 18 }}>
+              {t.intakeExams.patientPreview}
+            </Text>
+            <Pressable onPress={() => setPreviewOpen(false)}>
+              <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                {t.intakeExams.close}
+              </Text>
+            </Pressable>
+          </View>
+          {previewTest ? (
+            <IntakeExamPreview
+              isRTL={isRTL}
+              name={previewTest.name}
+              description={previewTest.description ?? undefined}
+              questions={previewTest.questions ?? []}
+              previewHint={t.intakeExams.previewHint}
+              emptyHint={t.intakeExams.previewEmpty}
+            />
+          ) : null}
+        </View>
+      </Modal>
 
       <Modal visible={editorOpen} animationType="slide" onRequestClose={() => setEditorOpen(false)}>
         <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>

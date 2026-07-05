@@ -21,6 +21,7 @@ interface Props {
   questions: IntakeQuestion[];
   answers: Record<string, string[]>;
   readOnly?: boolean;
+  previewMode?: boolean;
   accessToken?: string;
   onChange: (answers: Record<string, string[]>) => void;
 }
@@ -30,6 +31,7 @@ export function IntakeExamTaker({
   questions,
   answers,
   readOnly = false,
+  previewMode = false,
   accessToken,
   onChange,
 }: Props) {
@@ -219,6 +221,19 @@ export function IntakeExamTaker({
             {q.type === "video" || q.type === "audio" ? (
               <View style={{ gap: 8, marginTop: 8 }}>
                 {!readOnly ? (
+                  previewMode ? (
+                    <View style={[styles.mediaBtn, { borderColor: colors.border, opacity: 0.7 }]}>
+                      <Text style={{ color: colors.mutedForeground, fontWeight: "600", textAlign }}>
+                        {q.type === "video"
+                          ? isRTL
+                            ? "رفع / تسجيل فيديو (معاينة فقط)"
+                            : "Upload / record video (preview only)"
+                          : isRTL
+                            ? "تسجيل صوت (معاينة فقط)"
+                            : "Record audio (preview only)"}
+                      </Text>
+                    </View>
+                  ) : (
                   <Pressable
                     onPress={() =>
                       void (q.type === "video" ? pickVideo(q.id) : recordAudio(q.id))
@@ -240,6 +255,7 @@ export function IntakeExamTaker({
                       </Text>
                     )}
                   </Pressable>
+                  )
                 ) : null}
                 {value[0] ? (
                   <Pressable onPress={() => void Linking.openURL(value[0])}>

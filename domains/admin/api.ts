@@ -117,12 +117,104 @@ export async function deleteAdminRagSource(
 export async function uploadAdminRagFile(
   token: string,
   file: File,
+  onProgress?: (progress: { phase: "uploading" | "processing"; percent: number }) => void,
 ): Promise<{ objectPath: string; url: string }> {
-  return uploadFile(
-    `blob:${file.name}`,
-    file.type || "application/octet-stream",
-    file.name,
-    token,
-    file,
-  );
+  const CHUNK_SIZE = 2 * 1024 * 1024;
+  const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+
+  if (file.size <= CHUNK_SIZE) {
+    onProgress?.({ phase: "uploading", percent: 0 });
+    const result = await uploadFile(
+      `blob:${file.name}`,
+      file.type || "application/octet-stream",
+      file.name,
+      token,
+      file,
+    );
+    onProgress?.({ phase: "uploading", percent: 100 });
+    return result;
+  }
+
+  const initRes = await fetch(`${API_BASE}/uploads/chunk/init`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      filename: file.name,
+      mime_type: file.type || "application/octet-stream",
+      total_size: file.size,
+      total_chunks: totalChunks,
+    }),
+  });
+  const initData = await initRes.json().catch(() => ({}));
+  if (!initRes.ok) {
+    throw new Error(
+      (Array.isArray(initData?.message) ? initData.message.join(", ") : initData?.message) ??
+        initData?.error ??
+        `Upload init failed (${initRes.status})`,
+    );
+  }
+
+  const uploadId = initData.upload_id as string;
+  if (!uploadId) {
+    throw new Error("Upload session was not created");
+  }
+
+  let uploadedBytes = 0;
+  onProgress?.({ phase: "uploading", percent: 0 });
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+    const start = chunkIndex * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const blob = file.slice(start, end);
+
+    const formData = new FormData();
+    formData.append("upload_id", uploadId);
+    formData.append("chunk_index", String(chunkIndex));
+    formData.append("chunk", blob, `${file.name}.part${chunkIndex}`);
+
+    const chunkRes = await fetch(`${API_BASE}/uploads/chunk`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const chunkData = await chunkRes.json().catch(() => ({}));
+    if (!chunkRes.ok) {
+      throw new Error(
+        (Array.isArray(chunkData?.message) ? chunkData.message.join(", ") : chunkData?.message) ??
+          chunkData?.error ??
+          `Chunk upload failed (${chunkRes.status})`,
+      );
+    }
+
+    uploadedBytes += end - start;
+    const percent = Math.min(100, Math.round((uploadedBytes / file.size) * 100));
+    onProgress?.({ phase: "uploading", percent });
+  }
+
+  const completeRes = await fetch(`${API_BASE}/uploads/chunk/complete`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ upload_id: uploadId }),
+  });
+  const completeData = await completeRes.json().catch(() => ({}));
+  if (!completeRes.ok) {
+    throw new Error(
+      (Array.isArray(completeData?.message)
+        ? completeData.message.join(", ")
+        : completeData?.message) ??
+        completeData?.error ??
+        `Upload finalize failed (${completeRes.status})`,
+    );
+  }
+
+  onProgress?.({ phase: "uploading", percent: 100 });
+  return completeData as { objectPath: string; url: string };
 }

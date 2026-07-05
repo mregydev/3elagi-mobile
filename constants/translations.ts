@@ -282,6 +282,11 @@ const en = {
     editExam: "Edit exam",
     newExam: "New exam",
     close: "Close",
+    preview: "Preview",
+    patientPreview: "Patient preview",
+    backToEdit: "Back to edit",
+    previewHint: "Patient preview — this is how the exam appears to patients. Try answers without saving.",
+    previewEmpty: "Add at least one question to preview the exam.",
   },
   records: {
     title: "Your health records",
@@ -623,6 +628,11 @@ const ar: typeof en = {
     editExam: "تعديل الفحص",
     newExam: "فحص جديد",
     close: "إغلاق",
+    preview: "معاينة",
+    patientPreview: "معاينة المريض",
+    backToEdit: "العودة للتعديل",
+    previewHint: "معاينة — هكذا يرى المريض الفحص. يمكنك تجربة الإجابات دون حفظ.",
+    previewEmpty: "أضف سؤالًا واحدًا على الأقل لمعاينة الفحص.",
   },
   records: {
     title: "سجلك الطبي",
