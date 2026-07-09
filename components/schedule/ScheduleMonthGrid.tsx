@@ -23,6 +23,10 @@ interface Props {
   selectedMonth: number;
   selectedYear: number;
   markedDates?: Set<string>;
+  /** When provided, highlights every date in the set (multi-select mode). */
+  selectedDates?: Set<string>;
+  /** Dates that already have booked appointments — dimmed with an amber dot. */
+  bookedDates?: Set<string>;
   singleDaySelection?: boolean;
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
@@ -64,6 +68,8 @@ export function ScheduleMonthGrid({
   selectedMonth,
   selectedYear,
   markedDates,
+  selectedDates,
+  bookedDates,
   singleDaySelection = false,
   onSelectDate,
   onPrevMonth,
@@ -169,15 +175,18 @@ export function ScheduleMonthGrid({
               return <View key={`empty-${wi}-${di}`} style={styles.dayCell} />;
             }
             const inMonth = parseYmd(date).getMonth() === month;
-            const selected = singleDaySelection
-              ? selectedDate === date
-              : mode === "month"
-                ? parseYmd(date).getMonth() === selectedMonth &&
-                  parseYmd(date).getFullYear() === selectedYear
-                : mode === "week"
-                  ? isInSelectedWeek(date)
-                  : selectedDate === date;
+            const selected = selectedDates
+              ? selectedDates.has(date)
+              : singleDaySelection
+                ? selectedDate === date
+                : mode === "month"
+                  ? parseYmd(date).getMonth() === selectedMonth &&
+                    parseYmd(date).getFullYear() === selectedYear
+                  : mode === "week"
+                    ? isInSelectedWeek(date)
+                    : selectedDate === date;
             const marked = markedDates?.has(date);
+            const booked = bookedDates?.has(date);
 
             return (
               <Pressable
@@ -185,6 +194,7 @@ export function ScheduleMonthGrid({
                 onPress={() => onSelectDate(date)}
                 style={[
                   styles.dayCell,
+                  booked && !selected && { backgroundColor: "#f59e0b1A" },
                   selected && {
                     backgroundColor: `${colors.primary}22`,
                     borderColor: colors.primary,
@@ -195,7 +205,11 @@ export function ScheduleMonthGrid({
               >
                 <Text
                   style={{
-                    color: selected ? colors.primary : colors.foreground,
+                    color: selected
+                      ? colors.primary
+                      : booked
+                        ? colors.mutedForeground
+                        : colors.foreground,
                     fontWeight: selected ? "800" : "500",
                     fontSize: 13,
                   }}
@@ -204,6 +218,8 @@ export function ScheduleMonthGrid({
                 </Text>
                 {marked ? (
                   <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+                ) : booked ? (
+                  <View style={[styles.dot, { backgroundColor: "#f59e0b" }]} />
                 ) : null}
               </Pressable>
             );

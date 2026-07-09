@@ -33,6 +33,12 @@ interface Props {
   colors: ReturnType<typeof useColors>;
 }
 
+const VIDEO_DURATIONS = [
+  { m: 30, en: "30 min", ar: "٣٠ دقيقة" },
+  { m: 60, en: "1 hour", ar: "ساعة" },
+  { m: 120, en: "2 hours", ar: "ساعتان" },
+];
+
 function gridColumns(isWide: boolean, isDesktop: boolean, isTablet: boolean) {
   if (isWide) return 3;
   if (isDesktop || isTablet) return 2;
@@ -94,6 +100,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setSpecialityId,
     consultationPrice,
     setConsultationPrice,
+    videoConsultationMinutes,
+    setVideoConsultationMinutes,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -485,6 +493,42 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
           ) : null}
 
           {isDoctor ? (
+            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
+                {isRTL ? "مدة استشارة الفيديو" : "Video consultation duration"}
+              </Text>
+              <View style={{ flexDirection: dir, gap: 8, flexWrap: "wrap" }}>
+                {VIDEO_DURATIONS.map((opt) => {
+                  const on = videoConsultationMinutes === opt.m;
+                  return (
+                    <Pressable
+                      key={opt.m}
+                      onPress={() => setVideoConsultationMinutes(opt.m)}
+                      style={[
+                        styles.durationChip,
+                        {
+                          backgroundColor: on ? `${colors.primary}18` : colors.muted,
+                          borderColor: on ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: on ? colors.primary : colors.foreground,
+                          fontWeight: "700",
+                          fontSize: 14,
+                        }}
+                      >
+                        {isRTL ? opt.ar : opt.en}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
+          {isDoctor ? (
             <View
               style={[
                 styles.card,
@@ -733,6 +777,12 @@ const styles = StyleSheet.create({
   inputMultiline: {
     minHeight: 104,
     paddingTop: 12,
+  },
+  durationChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   stackedField: {
     marginTop: 16,

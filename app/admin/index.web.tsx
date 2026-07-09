@@ -271,6 +271,12 @@ export default function AdminPanelWeb() {
             >
               <Text style={{ color: colors.foreground, fontWeight: "700" }}>RAG Sources</Text>
             </Pressable>
+            <Pressable
+              onPress={() => router.push("/admin/complaints")}
+              style={[styles.navBtn, { borderColor: colors.border }]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "700" }}>Complaints</Text>
+            </Pressable>
           </View>
         </View>
         <Pressable

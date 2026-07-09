@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Wallet } from "lucide-react-native";
+import { router } from "expo-router";
+import { ChevronLeft, ChevronRight, Wallet } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -159,8 +160,25 @@ export function ConsultationsSection() {
       renderItem={({ item }) => {
         const s = statusMeta(item.status);
         const date = new Date(item.created_at).toLocaleDateString(isRTL ? "ar-EG" : "en-US");
+        const Chevron = isRTL ? ChevronLeft : ChevronRight;
         return (
-          <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: dir }]}>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/chat/[id]",
+                params: { id: item.patient_id, consultationId: item.id },
+              })
+            }
+            style={({ pressed }) => [
+              styles.row,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                flexDirection: dir,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[styles.name, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]} numberOfLines={1}>
                 {item.patient_name}
@@ -180,7 +198,8 @@ export function ConsultationsSection() {
             <View style={[styles.badge, { backgroundColor: `${s.color}1F` }]}>
               <Text style={{ color: s.color, fontWeight: "800", fontSize: 12 }}>{s.text}</Text>
             </View>
-          </View>
+            <Chevron size={18} color={colors.mutedForeground} />
+          </Pressable>
         );
       }}
     />

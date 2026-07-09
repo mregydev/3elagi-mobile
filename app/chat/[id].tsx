@@ -76,8 +76,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const { isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const role = useAuthStore((s) => s.role);
-  const { id: rawPeerId } = useLocalSearchParams<{ id: string }>();
+  const { id: rawPeerId, consultationId: rawConsultationId } =
+    useLocalSearchParams<{ id: string; consultationId?: string }>();
   const id = Array.isArray(rawPeerId) ? rawPeerId[0] : rawPeerId;
+  const consultationId = Array.isArray(rawConsultationId)
+    ? rawConsultationId[0]
+    : rawConsultationId;
   const messages = useChatStore((s) => s.messages[id] ?? EMPTY_MESSAGES);
   const messagesLoading = useChatStore((s) => s.messagesLoading[id] ?? false);
   const conversations = useChatStore((s) => s.conversations);
@@ -244,6 +248,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [id]);
 
   const chatMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const scrolledConsultationRef = useRef<string | null>(null);
+  const [highlightConsultationId, setHighlightConsultationId] = useState<string | null>(null);
   const latestAppointmentMessageIds = useMemo(() => {
     const map = new Map<string, string>();
     for (const message of messages) {
@@ -300,6 +306,28 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     const isInitialBatch = prevToken === "" || prevToken === "empty";
     scrollToLatest(!isInitialBatch);
   }, [id, messages, messagesLoading, scrollToLatest]);
+
+  // Deep-link from the doctor's consultation list: scroll to and highlight it.
+  useEffect(() => {
+    if (!consultationId || messagesLoading) return;
+    if (scrolledConsultationRef.current === consultationId) return;
+    const index = chatMessages.findIndex(
+      (m) => m.consultationAction?.consultation_id === consultationId,
+    );
+    if (index < 0) return;
+    scrolledConsultationRef.current = consultationId;
+    stickToBottomRef.current = false;
+    setHighlightConsultationId(consultationId);
+    requestAnimationFrame(() => {
+      try {
+        listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+      } catch {
+        // ignore — onScrollToIndexFailed will retry
+      }
+    });
+    const t = setTimeout(() => setHighlightConsultationId(null), 3000);
+    return () => clearTimeout(t);
+  }, [consultationId, messagesLoading, chatMessages]);
 
   if (!isSignedIn(profile, accessToken)) {
     return <Redirect href="/welcome" />;
@@ -883,6 +911,19 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           onScrollBeginDrag={closeReactionPicker}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              try {
+                listRef.current?.scrollToIndex({
+                  index: info.index,
+                  viewPosition: 0.5,
+                  animated: true,
+                });
+              } catch {
+                // give up silently
+              }
+            }, 300);
+          }}
           onContentSizeChange={() => {
             if (stickToBottomRef.current) scrollToLatest(false);
           }}
@@ -987,7 +1028,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                     highlighted={
                       editingMessage?.id === item.id ||
                       replacingMedicalMessage?.id === item.id ||
-                      reactionTarget?.id === item.id
+                      reactionTarget?.id === item.id ||
+                      (!!highlightConsultationId &&
+                        item.consultationAction?.consultation_id ===
+                          highlightConsultationId)
                     }
                   />
                 </View>

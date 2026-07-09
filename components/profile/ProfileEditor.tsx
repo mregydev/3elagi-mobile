@@ -24,6 +24,12 @@ import { useProfileEditor } from "@/hooks/useProfileEditor";
 
 const AVATAR_SIZE = 76;
 
+const VIDEO_DURATIONS = [
+  { m: 30, en: "30 min", ar: "٣٠ دقيقة" },
+  { m: 60, en: "1 hour", ar: "ساعة" },
+  { m: 120, en: "2 hours", ar: "ساعتان" },
+];
+
 export function ProfileEditor({
   accessToken,
   role,
@@ -68,6 +74,8 @@ export function ProfileEditor({
     setSpecialityId,
     consultationPrice,
     setConsultationPrice,
+    videoConsultationMinutes,
+    setVideoConsultationMinutes,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -342,6 +350,43 @@ export function ProfileEditor({
               <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
             ) : null}
 
+            {isDoctor ? (
+              <SectionCard
+                title={isRTL ? "مدة استشارة الفيديو" : "Video consultation duration"}
+                colors={colors}
+                textAlign={textAlign}
+              >
+                <View style={[{ flexDirection: dir, gap: 8, flexWrap: "wrap" }]}>
+                  {VIDEO_DURATIONS.map((opt) => {
+                    const on = videoConsultationMinutes === opt.m;
+                    return (
+                      <Pressable
+                        key={opt.m}
+                        onPress={() => setVideoConsultationMinutes(opt.m)}
+                        style={[
+                          styles.durationChip,
+                          {
+                            backgroundColor: on ? `${colors.primary}18` : colors.muted,
+                            borderColor: on ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: on ? colors.primary : colors.foreground,
+                            fontWeight: "700",
+                            fontSize: 14,
+                          }}
+                        >
+                          {isRTL ? opt.ar : opt.en}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </SectionCard>
+            ) : null}
+
             <SectionCard
               title={isRTL ? "التفضيلات" : "Preferences"}
               colors={colors}
@@ -600,6 +645,12 @@ const styles = StyleSheet.create({
   inputMultiline: {
     minHeight: 96,
     paddingTop: 12,
+  },
+  durationChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   certCard: {
     gap: 10,

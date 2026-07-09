@@ -23,6 +23,11 @@ import {
 } from "react-native";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
 import { uploadFile } from "@/domains/medical/api";
+import {
+  fetchComplaintStatus,
+  fileComplaint,
+  type ComplaintStatus,
+} from "@/domains/complaints/api";
 import { mimeFromUri, resolveWebVoiceFile } from "@/utils/chatMedia";
 import {
   cancelConsultation,
@@ -101,6 +106,11 @@ export function ConsultationBar({
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const recordingStartedAt = useRef(0);
 
+  // complaint state (patient, after an ended consultation)
+  const [complaintStatus, setComplaintStatus] = useState<ComplaintStatus | null>(null);
+  const [complaintModal, setComplaintModal] = useState(false);
+  const [complaintReason, setComplaintReason] = useState("");
+
   // form state
   const [description, setDescription] = useState("");
   const [note, setNote] = useState("");
@@ -145,6 +155,19 @@ export function ConsultationBar({
   useEffect(() => {
     onOpenChange?.(active?.status === "open");
   }, [active, onOpenChange]);
+
+  // A patient may complain about the most recently ended consultation.
+  const endedConsultationId =
+    latestAction?.action === "end" ? latestAction.consultation_id : null;
+  useEffect(() => {
+    if (!isPatient || !endedConsultationId) {
+      setComplaintStatus(null);
+      return;
+    }
+    fetchComplaintStatus(token, endedConsultationId)
+      .then((r) => setComplaintStatus(r.exists ? r.status ?? null : null))
+      .catch(() => setComplaintStatus(null));
+  }, [isPatient, endedConsultationId, token]);
 
   // Load the patient's own records once the start dialog opens.
   useEffect(() => {
@@ -342,8 +365,35 @@ export function ConsultationBar({
     }
   };
 
+  const submitComplaint = async () => {
+    if (!endedConsultationId || complaintReason.trim().length < 3) {
+      showErrorToast(label("Reason required", "السبب مطلوب"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const r = await fileComplaint(token, endedConsultationId, complaintReason.trim());
+      setComplaintStatus(r.status);
+      setComplaintModal(false);
+      setComplaintReason("");
+      showSuccessToast(label("Complaint submitted", "تم إرسال الشكوى"));
+    } catch (e) {
+      showErrorToast(label("Could not submit", "تعذر الإرسال"), (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const dir = isRTL ? "row-reverse" : "row";
   const isOpen = active?.status === "open";
+  const complaintLabel =
+    complaintStatus === "pending"
+      ? label("Complaint under review", "الشكوى قيد المراجعة")
+      : complaintStatus === "accepted"
+        ? label("Complaint accepted — refunded", "تم قبول الشكوى — تم الاسترداد")
+        : complaintStatus === "rejected"
+          ? label("Complaint rejected", "تم رفض الشكوى")
+          : null;
 
   return (
     <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
@@ -359,6 +409,16 @@ export function ConsultationBar({
         <Text style={[styles.status, { color: colors.mutedForeground }]}>
           {label("Consultation in progress", "الاستشارة جارية")}
         </Text>
+      ) : null}
+      {isPatient && endedConsultationId && !complaintStatus ? (
+        <Pill
+          label={label("File complaint", "تقديم شكوى")}
+          color="#dc2626"
+          onPress={() => setComplaintModal(true)}
+        />
+      ) : null}
+      {isPatient && complaintLabel ? (
+        <Text style={[styles.status, { color: colors.mutedForeground }]}>{complaintLabel}</Text>
       ) : null}
       {isDoctor && isOpen ? (
         <>
@@ -595,6 +655,34 @@ export function ConsultationBar({
           onChangeText={setReason}
           multiline
           placeholder={label("Add details (required for Other)...", "أضف تفاصيل (مطلوب لأخرى)...")}
+          colors={colors}
+          isRTL={isRTL}
+        />
+      </FormModal>
+
+      {/* Complaint modal (patient) */}
+      <FormModal
+        visible={complaintModal}
+        title={label("File a complaint", "تقديم شكوى")}
+        onClose={() => setComplaintModal(false)}
+        onSubmit={submitComplaint}
+        submitting={submitting}
+        submitLabel={label("Submit complaint", "إرسال الشكوى")}
+        destructive
+        colors={colors}
+        isRTL={isRTL}
+      >
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          {label(
+            "Explain what went wrong. An admin will review the consultation and may refund your points.",
+            "اشرح ما حدث. سيقوم المشرف بمراجعة الاستشارة وقد يعيد نقاطك.",
+          )}
+        </Text>
+        <Input
+          value={complaintReason}
+          onChangeText={setComplaintReason}
+          multiline
+          placeholder={label("Describe the issue...", "صف المشكلة...")}
           colors={colors}
           isRTL={isRTL}
         />

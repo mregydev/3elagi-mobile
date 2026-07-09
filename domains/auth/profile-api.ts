@@ -57,6 +57,7 @@ interface RawDoctor {
   speciality_name_ar?: string | null;
   message_price?: number | null;
   consultation_price?: number | null;
+  video_consultation_minutes?: number | null;
 }
 
 export interface DoctorCertification {
@@ -79,6 +80,7 @@ export interface AccountProfile {
   specialityNameAr?: string;
   messagePrice?: number;
   consultationPrice?: number;
+  videoConsultationMinutes?: number;
   photoUrl?: string;
   role: string;
 }
@@ -112,6 +114,7 @@ export async function fetchAccountProfile(
       specialityNameAr: doctor.speciality_name_ar ?? undefined,
       messagePrice: doctor.message_price ?? 1,
       consultationPrice: Math.min(5, Math.max(1, doctor.consultation_price ?? 1)),
+      videoConsultationMinutes: doctor.video_consultation_minutes ?? 30,
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
     };
@@ -143,6 +146,7 @@ export async function updateAccountProfile(
     specialityId?: string;
     messagePrice?: number;
     consultationPrice?: number;
+    videoConsultationMinutes?: number;
     photoUrl?: string | null;
   },
 ): Promise<PatientProfile> {
@@ -169,6 +173,7 @@ export async function updateAccountProfile(
         speciality_id: payload.specialityId ?? undefined,
         message_price: payload.messagePrice ?? undefined,
         consultation_price: payload.consultationPrice ?? undefined,
+        video_consultation_minutes: payload.videoConsultationMinutes ?? undefined,
       }),
     });
     return {
