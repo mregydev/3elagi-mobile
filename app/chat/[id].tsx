@@ -16,6 +16,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { ChatReactionOverlay, type ReactionAnchor } from "@/components/ChatReactionOverlay";
 import { Avatar } from "@/components/Avatar";
 import { ChatComposer } from "@/components/ChatComposer";
+import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { ChatAccessTemplates } from "@/components/ChatAccessTemplates";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
@@ -150,6 +151,18 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const isDoctorPatientChat =
     (isDoctor && peer?.role === "patient") || (isPatient && peer?.role === "doctor");
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
+  const latestConsultationAction = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (m.type === "consultation_action" && m.consultationAction) {
+        return m.consultationAction;
+      }
+    }
+    return null;
+  }, [messages]);
+  const [consultationOpen, setConsultationOpen] = useState(false);
+  // Doctor↔patient can only message while a consultation is open.
+  const needsConsultation = isDoctorPatientChat && !consultationOpen;
   const canUseDiagnosisTemplates = canOpenPatientRecord;
   const chatBlocked = !!accessStatus?.is_blocked;
   const patientUserIdForLinks =
@@ -1005,6 +1018,21 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       </View>
 
       <View style={[styles.chatFooter, desktopLayout && styles.chatFooterDesktop]}>
+      {isDoctorPatientChat && !chatBlocked ? (
+        <ConsultationBar
+          peerId={id}
+          isPatient={isPatient}
+          isDoctor={isDoctor}
+          enabled={isDoctorPatientChat}
+          token={accessToken}
+          isRTL={isRTL}
+          colors={colors}
+          selfId={profile!.id}
+          selfRole={role ?? "patient"}
+          latestAction={latestConsultationAction}
+          onOpenChange={setConsultationOpen}
+        />
+      ) : null}
       {isDoctorPatientChat && !editingMessage && !replacingMedicalMessage ? (
         <ChatAccessTemplates
           isRTL={isRTL}
@@ -1041,9 +1069,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         editingMessage={editingMessage}
         onCancelEdit={() => setEditingMessage(null)}
         onEdit={handleEditMessage}
-        disabled={chatBlocked}
+        disabled={chatBlocked || needsConsultation}
         disabledHint={
-          chatBlocked
+          needsConsultation && !chatBlocked
+            ? isPatient
+              ? isRTL
+                ? "ابدأ استشارة لإرسال الرسائل."
+                : "Start a consultation to send messages."
+              : isRTL
+                ? "لا يمكن المراسلة حتى يبدأ المريض استشارة."
+                : "Messaging opens once the patient starts a consultation."
+            : chatBlocked
             ? isDoctor && accessStatus?.blocked_by_doctor
               ? isRTL
                 ? "لقد حظرت هذه المحادثة. استخدم «إلغاء الحظر» للمتابعة."

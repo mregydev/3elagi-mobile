@@ -49,10 +49,19 @@ interface RawDoctor {
   phone?: string | null;
   photo_url?: string | null;
   professional_title?: string | null;
+  description?: string | null;
+  personal_clinic_location?: string | null;
+  certification_urls?: DoctorCertification[] | null;
   speciality_id?: string | null;
   speciality_name_en?: string | null;
   speciality_name_ar?: string | null;
   message_price?: number | null;
+  consultation_price?: number | null;
+}
+
+export interface DoctorCertification {
+  url: string;
+  description: string;
 }
 
 export interface AccountProfile {
@@ -62,10 +71,14 @@ export interface AccountProfile {
   phone: string;
   birthDate?: string;
   professionalTitle?: string;
+  info?: string;
+  location?: string;
+  certifications?: DoctorCertification[];
   specialityId?: string;
   specialityNameEn?: string;
   specialityNameAr?: string;
   messagePrice?: number;
+  consultationPrice?: number;
   photoUrl?: string;
   role: string;
 }
@@ -89,10 +102,16 @@ export async function fetchAccountProfile(
       name: doctor.name,
       phone: doctor.phone ?? "",
       professionalTitle: doctor.professional_title ?? undefined,
+      info: doctor.description ?? undefined,
+      location: doctor.personal_clinic_location ?? undefined,
+      certifications: Array.isArray(doctor.certification_urls)
+        ? doctor.certification_urls
+        : [],
       specialityId: doctor.speciality_id ?? undefined,
       specialityNameEn: doctor.speciality_name_en ?? undefined,
       specialityNameAr: doctor.speciality_name_ar ?? undefined,
       messagePrice: doctor.message_price ?? 1,
+      consultationPrice: Math.min(5, Math.max(1, doctor.consultation_price ?? 1)),
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
     };
@@ -118,8 +137,12 @@ export async function updateAccountProfile(
     phone: string;
     birthDate?: string;
     professionalTitle?: string;
+    info?: string;
+    location?: string;
+    certifications?: DoctorCertification[];
     specialityId?: string;
     messagePrice?: number;
+    consultationPrice?: number;
     photoUrl?: string | null;
   },
 ): Promise<PatientProfile> {
@@ -140,8 +163,12 @@ export async function updateAccountProfile(
         phone: payload.phone.trim(),
         photo_url: payload.photoUrl ?? undefined,
         professional_title: payload.professionalTitle?.trim() || null,
+        description: payload.info?.trim() || null,
+        personal_clinic_location: payload.location?.trim() || null,
+        certification_urls: payload.certifications ?? undefined,
         speciality_id: payload.specialityId ?? undefined,
         message_price: payload.messagePrice ?? undefined,
+        consultation_price: payload.consultationPrice ?? undefined,
       }),
     });
     return {

@@ -1,3 +1,4 @@
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
@@ -5,6 +6,7 @@ import {
   fetchAccountProfile,
   updateAccountProfile,
   type AccountProfile,
+  type DoctorCertification,
 } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
 import { uploadFile } from "@/domains/medical/api";
@@ -27,9 +29,14 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [professionalTitle, setProfessionalTitle] = useState("");
+  const [info, setInfo] = useState("");
+  const [location, setLocation] = useState("");
+  const [certifications, setCertifications] = useState<DoctorCertification[]>([]);
+  const [certUploading, setCertUploading] = useState(false);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
   const [messagePrice, setMessagePrice] = useState(1);
+  const [consultationPrice, setConsultationPrice] = useState(1);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [photoDirty, setPhotoDirty] = useState(false);
@@ -43,8 +50,12 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhone(data.phone);
       setBirthDate(data.birthDate ?? "");
       setProfessionalTitle(data.professionalTitle ?? "");
+      setInfo(data.info ?? "");
+      setLocation(data.location ?? "");
+      setCertifications(data.certifications ?? []);
       setSpecialityId(data.specialityId ?? "");
       setMessagePrice(data.messagePrice ?? 1);
+      setConsultationPrice(data.consultationPrice ?? 1);
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
@@ -87,6 +98,41 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     }
   };
 
+  const addCertification = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/*"],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setCertUploading(true);
+    try {
+      const uploaded = await uploadFile(
+        asset.uri,
+        asset.mimeType ?? "application/pdf",
+        asset.name || `certification-${Date.now()}`,
+        accessToken,
+        // On web the picked File is needed to build the upload body.
+        asset.file,
+      );
+      setCertifications((prev) => [...prev, { url: uploaded.url, description: "" }]);
+    } catch (e) {
+      showErrorToast(isRTL ? "فشل الرفع" : "Upload failed", (e as Error).message);
+    } finally {
+      setCertUploading(false);
+    }
+  };
+
+  const removeCertification = (url: string) => {
+    setCertifications((prev) => prev.filter((c) => c.url !== url));
+  };
+
+  const setCertificationDescription = (url: string, description: string) => {
+    setCertifications((prev) =>
+      prev.map((c) => (c.url === url ? { ...c, description } : c)),
+    );
+  };
+
   const save = async () => {
     if (!name.trim()) {
       showErrorToast(isRTL ? "الاسم مطلوب" : "Name required");
@@ -117,8 +163,12 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         phone,
         birthDate: birthDate.trim() || undefined,
         professionalTitle: isDoctor ? professionalTitle : undefined,
+        info: isDoctor ? info : undefined,
+        location: isDoctor ? location : undefined,
+        certifications: isDoctor ? certifications : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         messagePrice: isDoctor ? messagePrice : undefined,
+        consultationPrice: isDoctor ? consultationPrice : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
 
@@ -151,11 +201,22 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setBirthDate,
     professionalTitle,
     setProfessionalTitle,
+    info,
+    setInfo,
+    location,
+    setLocation,
+    certifications,
+    certUploading,
+    addCertification,
+    removeCertification,
+    setCertificationDescription,
     specialities,
     specialityId,
     setSpecialityId,
     messagePrice,
     setMessagePrice,
+    consultationPrice,
+    setConsultationPrice,
     isDoctor,
     displayPhoto: photoUri ?? photoUrl,
     pickPhoto,

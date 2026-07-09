@@ -6,7 +6,7 @@ export {
 } from './api'
 export { doctorsToConversations } from './doctorConversations'
 export { localizeAdvertisement } from './localizeAdvertisement'
-export { resolveSpecialityImageSource, SPECIALITY_IMAGE_SOURCES } from './specialityImages'
+export { specialityVisual } from './specialityVisuals'
 export type {
   Advertisement,
   Speciality,

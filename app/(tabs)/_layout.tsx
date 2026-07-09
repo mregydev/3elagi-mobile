@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from "expo-router";
-import { Bot, CalendarClock, ClipboardList, Coins, History, Home, ListChecks, Star, User, Users } from "lucide-react-native";
+import { Activity, Bot, CalendarClock, ClipboardList, Coins, History, Home, ListChecks, Star, User, Users } from "lucide-react-native";
 import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -61,9 +61,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="activity"
+        options={{
+          title: t.tabs.activity,
+          // Patient-only hub for appointments, chats and records.
+          href: isDoctor ? null : undefined,
+          tabBarIcon: ({ color, size }) => <Activity color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
           title: t.tabs.history,
+          // Now lives inside the Patients (doctor) / Activity (patient) hub.
+          href: null,
           tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
         }}
       />
@@ -71,7 +82,7 @@ export default function TabsLayout() {
         name="patients"
         options={{
           title: t.tabs.patients,
-          href: null,
+          href: isDoctor ? undefined : null,
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
@@ -79,7 +90,8 @@ export default function TabsLayout() {
         name="reviews"
         options={{
           title: t.tabs.reviews,
-          href: isDoctor ? undefined : null,
+          // Now a section of the Patients hub.
+          href: null,
           tabBarIcon: ({ color, size }) => <Star color={color} size={size} />,
         }}
       />
@@ -87,7 +99,8 @@ export default function TabsLayout() {
         name="intake"
         options={{
           title: t.tabs.intake,
-          href: isDoctor ? undefined : null,
+          // Now a section of the Patients hub.
+          href: null,
           tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} />,
         }}
       />
@@ -95,6 +108,8 @@ export default function TabsLayout() {
         name="appointments"
         options={{
           title: t.tabs.appointments,
+          // Now inside the Patients (doctor) / Activity (patient) hub.
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <CalendarClock color={color} size={size} />
           ),
@@ -104,6 +119,8 @@ export default function TabsLayout() {
         name="records"
         options={{
           title: t.tabs.records,
+          // Removed for doctors; inside the Activity hub for patients.
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <ClipboardList color={color} size={size} />
           ),
@@ -113,6 +130,8 @@ export default function TabsLayout() {
         name="points"
         options={{
           title: t.tabs.points,
+          // Doctors manage earnings inside Patients → Consultations.
+          href: isDoctor ? null : undefined,
           tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
         }}
       />

@@ -71,30 +71,28 @@ function MobileAddBar({
               onPress={() => onAdd(key)}
               style={({ pressed }) => [
                 styles.mobileAction,
-                {
-                  backgroundColor: pressed ? colors.card : "transparent",
-                },
+                { backgroundColor: `${color}14`, borderColor: `${color}33` },
                 pressed && styles.actionPressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel={getLocalizedCategoryLabel(key, t)}
             >
               <View style={styles.iconSlot}>
-                <View style={[styles.iconCircle, { backgroundColor: colors.card }]}>
-                  <Icon size={18} color={color} strokeWidth={2.2} />
+                <View style={[styles.iconCircle, { backgroundColor: color }]}>
+                  <Icon size={18} color="#fff" strokeWidth={2.2} />
                 </View>
                 <View
                   style={[
                     styles.plusBadge,
                     isRTL ? styles.plusBadgeRtl : styles.plusBadgeLtr,
-                    { backgroundColor: color, borderColor: colors.muted },
+                    { backgroundColor: "#fff", borderColor: `${color}14` },
                   ]}
                 >
-                  <Plus size={10} color="#fff" strokeWidth={3} />
+                  <Plus size={10} color={color} strokeWidth={3.2} />
                 </View>
               </View>
               <Text
-                style={[styles.mobileActionLabel, { color: colors.mutedForeground }]}
+                style={[styles.mobileActionLabel, { color }]}
                 numberOfLines={1}
               >
                 {getLocalizedCategoryLabel(key, t)}
@@ -151,23 +149,30 @@ function WebAddBar({
               styles.webButton,
               {
                 flexDirection: dir,
-                borderColor: color,
-                backgroundColor: pressed ? `${color}18` : `${color}10`,
-                opacity: pressed ? 0.92 : 1,
-                transform: hovered ? [{ translateY: -1 }] : undefined,
+                backgroundColor: color,
+                shadowColor: color,
+                opacity: pressed ? 0.9 : 1,
+                transform: hovered ? [{ translateY: -2 }] : undefined,
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel={getLocalizedAddLabel(key, t)}
           >
-            <View style={[styles.webIconBubble, { backgroundColor: `${color}20` }]}>
-              <Icon size={18} color={color} strokeWidth={2.2} />
+            <View style={styles.webIconSlot}>
+              <View style={styles.webIconBubble}>
+                <Icon size={18} color="#fff" strokeWidth={2.4} />
+              </View>
+              <View
+                style={[
+                  styles.webPlusBadge,
+                  isRTL ? styles.webPlusBadgeRtl : styles.webPlusBadgeLtr,
+                ]}
+              >
+                <Plus size={11} color={color} strokeWidth={3.2} />
+              </View>
             </View>
             <Text
-              style={[
-                styles.webButtonLabel,
-                { color: colors.foreground, textAlign },
-              ]}
+              style={[styles.webButtonLabel, { textAlign }]}
               numberOfLines={2}
             >
               {getLocalizedAddLabel(key, t)}
@@ -225,8 +230,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   actionPressed: {
     opacity: 0.85,
@@ -296,13 +302,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 10,
     minHeight: 68,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
-    borderWidth: 1.5,
     cursor: "pointer" as "auto",
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  webIconSlot: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   webIconBubble: {
     width: 32,
@@ -310,10 +325,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
+  webPlusBadge: {
+    position: "absolute",
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  webPlusBadgeLtr: { right: -5, bottom: -3 },
+  webPlusBadgeRtl: { left: -5, bottom: -3 },
   webButtonLabel: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 13.5,
+    fontWeight: "800",
     lineHeight: 17,
+    color: "#fff",
   },
 });

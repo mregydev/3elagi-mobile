@@ -1,7 +1,8 @@
-import { Plus } from "lucide-react-native";
+import { Plus, Wallet } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -17,16 +18,22 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Redirect } from "expo-router";
+import { reimbursePoints } from "@/domains/points/api";
+import { usePointsStore } from "@/domains/points/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { usePointsPage } from "@/hooks/usePointsPage";
 import { flexRow } from "@/utils/rtl";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 export default function PointsTab() {
   const colors = useColors();
   const { isRTL } = useI18n();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const isDoctor = role?.toLowerCase() === "doctor";
+  const loadPoints = usePointsStore((s) => s.loadPoints);
   const tabBarHeight = useBottomTabBarHeight();
   const dir = flexRow(isRTL);
 
@@ -40,6 +47,40 @@ export default function PointsTab() {
   } = usePointsPage(isRTL);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [reimbursing, setReimbursing] = useState(false);
+
+  const doReimburse = async () => {
+    if (!accessToken) return;
+    setReimbursing(true);
+    try {
+      const updated = await reimbursePoints(accessToken);
+      await loadPoints(accessToken);
+      showSuccessToast(
+        isRTL ? "تم طلب الاسترداد" : "Reimbursement requested",
+        isRTL
+          ? `تم استرداد ${updated.points_reimbursed_total ?? 0} نقطة إجمالاً`
+          : `${updated.points_reimbursed_total ?? 0} points reimbursed in total`,
+      );
+    } catch (e) {
+      showErrorToast(isRTL ? "تعذر الاسترداد" : "Reimburse failed", (e as Error).message);
+    } finally {
+      setReimbursing(false);
+    }
+  };
+
+  const confirmReimburse = () => {
+    if (displaySummary.message_points <= 0) return;
+    Alert.alert(
+      isRTL ? "استرداد النقاط" : "Reimburse points",
+      isRTL
+        ? `سيتم استرداد ${displaySummary.message_points} نقطة متاحة.`
+        : `Cash out your ${displaySummary.message_points} available points.`,
+      [
+        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+        { text: isRTL ? "استرداد" : "Reimburse", onPress: () => void doReimburse() },
+      ],
+    );
+  };
 
   if (!isSignedIn(profile, accessToken)) {
     return <Redirect href="/welcome" />;
@@ -96,16 +137,45 @@ export default function PointsTab() {
           </View>
         </View>
 
-        <Pressable
-          onPress={() => setModalOpen(true)}
-          style={({ pressed }) => [
-            styles.addBtn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1, flexDirection: dir },
-          ]}
-        >
-          <Plus size={20} color="#fff" />
-          <Text style={styles.addBtnText}>{isRTL ? "إضافة نقاط" : "Add points"}</Text>
-        </Pressable>
+        {isDoctor ? (
+          <Pressable
+            onPress={confirmReimburse}
+            disabled={reimbursing || displaySummary.message_points <= 0}
+            style={({ pressed }) => [
+              styles.addBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity:
+                  reimbursing || displaySummary.message_points <= 0
+                    ? 0.5
+                    : pressed
+                      ? 0.9
+                      : 1,
+                flexDirection: dir,
+              },
+            ]}
+          >
+            {reimbursing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Wallet size={20} color="#fff" />
+                <Text style={styles.addBtnText}>{isRTL ? "استرداد النقاط" : "Reimburse points"}</Text>
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => setModalOpen(true)}
+            style={({ pressed }) => [
+              styles.addBtn,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1, flexDirection: dir },
+            ]}
+          >
+            <Plus size={20} color="#fff" />
+            <Text style={styles.addBtnText}>{isRTL ? "إضافة نقاط" : "Add points"}</Text>
+          </Pressable>
+        )}
       </KeyboardSafeScrollView>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>

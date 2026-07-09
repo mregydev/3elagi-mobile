@@ -1,4 +1,4 @@
-import { Beaker, ScanLine, Stethoscope, X } from "lucide-react-native";
+import { Beaker, ClipboardList, ScanLine, Stethoscope, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -37,6 +37,13 @@ const SECTIONS: {
   { key: "xray", labelEn: "X-rays & scans", labelAr: "الأشعة والمسح", Icon: ScanLine },
 ];
 
+const INTAKE_SECTION = {
+  key: "intake" as MedicalCategory,
+  labelEn: "Intake exams",
+  labelAr: "فحوصات الاستقبال",
+  Icon: ClipboardList,
+};
+
 function formatDate(iso: string, isRTL: boolean): string {
   try {
     return new Date(iso).toLocaleDateString(isRTL ? "ar-EG" : "en-GB", {
@@ -56,6 +63,8 @@ interface Props {
   isRTL: boolean;
   mode?: "share" | "replace";
   initialNote?: string;
+  /** Also offer intake exams as a shareable category. */
+  includeIntake?: boolean;
   onClose: () => void;
   onSelect: (record: MedicalRecord, note?: string) => void;
 }
@@ -67,9 +76,11 @@ export function MedicalRecordPicker({
   isRTL,
   mode = "share",
   initialNote = "",
+  includeIntake = false,
   onClose,
   onSelect,
 }: Props) {
+  const allSections = includeIntake ? [...SECTIONS, INTAKE_SECTION] : SECTIONS;
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isMobile } = useWebLayout();
@@ -101,7 +112,7 @@ export function MedicalRecordPicker({
   );
 
   const sections = useMemo(() => {
-    return SECTIONS.map((section) => ({
+    return allSections.map((section) => ({
       title: isRTL ? section.labelAr : section.labelEn,
       Icon: section.Icon,
       data: filteredRecords.filter((r) => r.category === section.key),
@@ -158,7 +169,7 @@ export function MedicalRecordPicker({
   };
 
   if (selectedRecord) {
-    const section = SECTIONS.find((s) => s.key === selectedRecord.category);
+    const section = allSections.find((s) => s.key === selectedRecord.category);
     const RecordIcon = section?.Icon ?? Stethoscope;
     const typeLabel = isRTL
       ? section?.labelAr ?? "سجل طبي"

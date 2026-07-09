@@ -1,81 +1,80 @@
-import { Stethoscope } from "lucide-react-native";
-import React, { useState } from "react";
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import type { Speciality } from "@/domains/home/api";
-import { resolveSpecialityImageSource } from "@/domains/home/specialityImages";
+import {
+  specialityGradient,
+  specialityVisual,
+} from "@/domains/home/specialityVisuals";
 import { useColors } from "@/hooks/useColors";
 import { useWebLayout } from "@/hooks/useWebLayout";
-
-const SPECIALITY_COLORS: Record<string, string> = {
-  "General Medicine": "#3057F2",
-  Cardiology: "#dc2626",
-  Dermatology: "#0284c7",
-  Pediatrics: "#f59e0b",
-  Orthopedics: "#4f46e5",
-  Neurology: "#7c3aed",
-  Ophthalmology: "#0891b2",
-  Dentistry: "#0d9488",
-  Surgery: "#be123c",
-};
 
 function SpecialityTile({
   item,
   isRTL,
+  index,
   onPress,
   tileWidth,
 }: {
   item: Speciality;
   isRTL: boolean;
+  index: number;
   onPress: () => void;
   tileWidth: `${number}%`;
 }) {
   const colors = useColors();
   const label = isRTL ? item.nameAr : item.nameEn;
-  const tint = SPECIALITY_COLORS[item.nameEn] ?? colors.primary;
-  const localSource = resolveSpecialityImageSource(item.nameEn);
-  const [remoteFailed, setRemoteFailed] = useState(false);
-  const useRemote = !localSource && item.imageUrl && !remoteFailed;
+  const { icon: Icon, color } = specialityVisual(item.nameEn);
+  const scale = useSharedValue(1);
+  const orbStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-        styles.tile,
-        {
-          width: tileWidth,
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          opacity: pressed ? 0.85 : hovered ? 0.95 : 1,
-        },
-      ]}
+    <Animated.View
+      entering={FadeInDown.delay(index * 55).springify().damping(14)}
+      style={[styles.tile, { width: tileWidth }]}
     >
-      {localSource ? (
-        <Image source={localSource} style={styles.tileImage} resizeMode="cover" />
-      ) : useRemote ? (
-        <Image
-          source={{ uri: item.imageUrl }}
-          style={styles.tileImage}
-          resizeMode="cover"
-          onError={() => setRemoteFailed(true)}
-        />
-      ) : (
-        <View style={[styles.tileImage, styles.tileFallback, { backgroundColor: tint }]}>
-          <Stethoscope size={32} color="#fff" />
-        </View>
-      )}
-      <Text
-        style={[styles.tileLabel, { color: colors.foreground }]}
-        numberOfLines={2}
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => {
+          scale.value = withSpring(0.86, { damping: 12 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 10 });
+        }}
+        onHoverIn={() => {
+          scale.value = withSpring(1.1, { damping: 12 });
+        }}
+        onHoverOut={() => {
+          scale.value = withSpring(1, { damping: 12 });
+        }}
+        style={styles.pressable}
       >
-        {label}
-      </Text>
-    </Pressable>
+        <Animated.View style={[styles.orbShadow, { shadowColor: color }, orbStyle]}>
+          <LinearGradient
+            colors={specialityGradient(color)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.orb}
+          >
+            <Icon size={26} color="#fff" />
+          </LinearGradient>
+        </Animated.View>
+        <Text
+          style={[styles.tileLabel, { color: colors.foreground }]}
+          numberOfLines={2}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -90,33 +89,34 @@ export function SpecialityGrid({
   isRTL,
   onSelect,
 }: SpecialityGridProps) {
-  const colors = useColors();
   const { gridColumns } = useWebLayout();
-  const textAlign = isRTL ? "right" : "left";
-  const gap = 12;
-  const tileWidth =
-    gridColumns === 4
-      ? "23.5%"
-      : gridColumns === 3
-        ? "31.5%"
-        : "47%";
+  const columns = Math.max(gridColumns, 4);
+  const tileWidth = `${100 / columns}%` as `${number}%`;
 
   return (
     <View style={styles.wrap}>
-      <Text
+      <View
         style={[
-          styles.heading,
-          { color: colors.foreground, textAlign },
+          styles.headingRow,
+          { flexDirection: isRTL ? "row-reverse" : "row" },
         ]}
       >
-        {isRTL ? "التخصصات الطبية" : "Medical Specialities"}
-      </Text>
-      <View style={[styles.grid, { gap }]}>
-        {specialities.map((item) => (
+        <Image
+          source={require("@/assets/images/splash-mark.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.heading}>
+          {isRTL ? "التخصصات الطبية" : "Medical Specialities"}
+        </Text>
+      </View>
+      <View style={styles.grid}>
+        {specialities.map((item, index) => (
           <SpecialityTile
             key={item.id}
             item={item}
             isRTL={isRTL}
+            index={index}
             tileWidth={tileWidth}
             onPress={() => onSelect(item)}
           />
@@ -127,29 +127,47 @@ export function SpecialityGrid({
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
-  heading: { fontSize: 18, fontWeight: "800", marginBottom: 12 },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
+  wrap: {
+    marginHorizontal: 12,
+    marginVertical: 8,
+    paddingHorizontal: 8,
+    paddingTop: 20,
+    paddingBottom: 20,
+    backgroundColor: "#F4F7FF",
+    borderRadius: 24,
   },
-  tile: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    paddingBottom: 10,
-  },
-  tileImage: { width: "100%", height: 112 },
-  tileFallback: {
+  headingRow: {
     alignItems: "center",
     justifyContent: "center",
+    gap: 10,
+    marginBottom: 48,
   },
-  tileLabel: {
-    fontSize: 13,
-    fontWeight: "700",
+  logo: { width: 30, height: 30 },
+  heading: {
+    fontSize: 21,
+    fontWeight: "800",
     textAlign: "center",
-    paddingHorizontal: 8,
-    marginTop: 8,
+    letterSpacing: 0.3,
+    color: "#1D4ED8",
   },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  tile: { paddingVertical: 12, paddingHorizontal: 4 },
+  pressable: { alignItems: "center" },
+  orbShadow: {
+    borderRadius: 30,
+    marginBottom: 9,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.4,
+    shadowRadius: 9,
+    elevation: 7,
+  },
+  orb: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  tileLabel: { fontSize: 12, fontWeight: "600", textAlign: "center" },
 });

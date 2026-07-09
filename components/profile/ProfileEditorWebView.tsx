@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
-import { Camera, LogOut, UserRound } from "lucide-react-native";
+import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
 import { MessagePricePicker } from "@/components/MessagePricePicker";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
@@ -80,11 +80,20 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setBirthDate,
     professionalTitle,
     setProfessionalTitle,
+    info,
+    setInfo,
+    location,
+    setLocation,
+    certifications,
+    certUploading,
+    addCertification,
+    removeCertification,
+    setCertificationDescription,
     specialities,
     specialityId,
     setSpecialityId,
-    messagePrice,
-    setMessagePrice,
+    consultationPrice,
+    setConsultationPrice,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -341,14 +350,37 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                 </View>
                 <View style={[spanStyle(Math.min(columns, 2), 1), styles.messagePriceCell]}>
                   <MessagePricePicker
-                    value={messagePrice}
-                    onChange={setMessagePrice}
+                    value={consultationPrice}
+                    onChange={setConsultationPrice}
                     isRTL={isRTL}
                     dir={dir}
-                    label={isRTL ? "سعر الرسالة (نقاط)" : "Message price (points)"}
-                    hint={isRTL ? "من 1 إلى 5 نقاط لكل رسالة" : "From 1 to 5 points per message"}
+                    label={isRTL ? "سعر الاستشارة (نقاط)" : "Consultation price (points)"}
+                    hint={isRTL ? "من 1 إلى 5 نقاط لكل استشارة" : "From 1 to 5 points per consultation"}
                   />
                 </View>
+              </View>
+              <View style={styles.stackedField}>
+                <ProfileField
+                  label={isRTL ? "الموقع" : "Location"}
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholder={isRTL ? "المدينة، العنوان" : "City, address"}
+                  colors={colors}
+                  isRTL={isRTL}
+                />
+              </View>
+              <View style={styles.stackedField}>
+                <ProfileField
+                  label={isRTL ? "نبذة عن الطبيب" : "About / doctor info"}
+                  value={info}
+                  onChangeText={setInfo}
+                  placeholder={
+                    isRTL ? "خبرات، اهتمامات طبية..." : "Experience, focus areas..."
+                  }
+                  multiline
+                  colors={colors}
+                  isRTL={isRTL}
+                />
               </View>
               <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
                 {isRTL ? "التخصص" : "Speciality"}
@@ -382,6 +414,69 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                   );
                 })}
               </View>
+
+              <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
+                {isRTL ? "الشهادات" : "Certifications"}
+              </Text>
+              {certifications.map((cert, i) => (
+                <View
+                  key={cert.url}
+                  style={[styles.certCard, { borderColor: colors.border }]}
+                >
+                  <View style={[styles.certHead, { flexDirection: dir }]}>
+                    <FileText size={18} color={colors.primary} />
+                    <Text
+                      style={[styles.certName, { color: colors.foreground, textAlign }]}
+                      numberOfLines={1}
+                    >
+                      {certFileName(cert.url, i)}
+                    </Text>
+                    <Pressable
+                      onPress={() => removeCertification(cert.url)}
+                      accessibilityRole="button"
+                      accessibilityLabel={isRTL ? "حذف" : "Remove"}
+                    >
+                      <X size={18} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                  <TextInput
+                    value={cert.description}
+                    onChangeText={(v) => setCertificationDescription(cert.url, v)}
+                    placeholder={
+                      isRTL ? "وصف الشهادة (اختياري)" : "Certificate description (optional)"
+                    }
+                    placeholderTextColor={colors.mutedForeground}
+                    style={[
+                      styles.input,
+                      {
+                        color: colors.foreground,
+                        borderColor: colors.border,
+                        backgroundColor: colors.muted,
+                        textAlign,
+                      },
+                    ]}
+                  />
+                </View>
+              ))}
+              <Pressable
+                onPress={() => void addCertification()}
+                disabled={certUploading}
+                style={[
+                  styles.certAddBtn,
+                  { borderColor: colors.primary, flexDirection: dir },
+                ]}
+              >
+                {certUploading ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <>
+                    <Plus size={18} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                      {isRTL ? "إضافة شهادة" : "Add certification"}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
             </View>
           ) : null}
 
@@ -424,6 +519,18 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
   );
 }
 
+function certFileName(url: string, index: number): string {
+  try {
+    const raw = decodeURIComponent(url.split("?")[0].split("/").pop() ?? "");
+    // Uploads are stored as `<uuid>-<original>`; drop the uuid prefix.
+    const cleaned = raw.replace(/^[0-9a-f-]{36}-/i, "");
+    if (cleaned) return cleaned;
+  } catch {
+    // fall through to generic label
+  }
+  return `Certificate ${index + 1}`;
+}
+
 function ProfileField({
   label,
   value,
@@ -431,6 +538,7 @@ function ProfileField({
   editable = true,
   placeholder,
   keyboardType,
+  multiline = false,
   colors,
   isRTL,
 }: {
@@ -440,6 +548,7 @@ function ProfileField({
   editable?: boolean;
   placeholder?: string;
   keyboardType?: "default" | "phone-pad";
+  multiline?: boolean;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
 }) {
@@ -453,13 +562,16 @@ function ProfileField({
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}
         keyboardType={keyboardType}
+        multiline={multiline}
         style={[
           styles.input,
+          multiline && styles.inputMultiline,
           {
             color: editable ? colors.foreground : colors.mutedForeground,
             borderColor: colors.border,
             backgroundColor: editable ? colors.muted : `${colors.muted}88`,
             textAlign: isRTL ? "right" : "left",
+            textAlignVertical: multiline ? "top" : "center",
           },
         ]}
       />
@@ -617,6 +729,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
     fontSize: 15,
+  },
+  inputMultiline: {
+    minHeight: 104,
+    paddingTop: 12,
+  },
+  stackedField: {
+    marginTop: 16,
+  },
+  certCard: {
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  certHead: {
+    alignItems: "center",
+    gap: 10,
+  },
+  certName: { flex: 1, fontSize: 14, fontWeight: "600" },
+  certAddBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderRadius: 12,
+    paddingVertical: 13,
+    marginTop: 4,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,

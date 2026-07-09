@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Camera, LogOut, UserRound } from "lucide-react-native";
+import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
 import React from "react";
 import {
   ActivityIndicator,
@@ -54,11 +54,20 @@ export function ProfileEditor({
     setBirthDate,
     professionalTitle,
     setProfessionalTitle,
+    info,
+    setInfo,
+    location,
+    setLocation,
+    certifications,
+    certUploading,
+    addCertification,
+    removeCertification,
+    setCertificationDescription,
     specialities,
     specialityId,
     setSpecialityId,
-    messagePrice,
-    setMessagePrice,
+    consultationPrice,
+    setConsultationPrice,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -177,6 +186,25 @@ export function ProfileEditor({
                   colors={colors}
                   isRTL={isRTL}
                 />
+                <Field
+                  label={isRTL ? "الموقع" : "Location"}
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholder={isRTL ? "المدينة، العنوان" : "City, address"}
+                  colors={colors}
+                  isRTL={isRTL}
+                />
+                <Field
+                  label={isRTL ? "نبذة عن الطبيب" : "About / doctor info"}
+                  value={info}
+                  onChangeText={setInfo}
+                  placeholder={
+                    isRTL ? "خبرات، اهتمامات طبية..." : "Experience, focus areas..."
+                  }
+                  multiline
+                  colors={colors}
+                  isRTL={isRTL}
+                />
                 <View style={styles.block}>
                   <Text
                     style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
@@ -219,13 +247,83 @@ export function ProfileEditor({
                   </ScrollView>
                 </View>
                 <MessagePricePicker
-                  value={messagePrice}
-                  onChange={setMessagePrice}
+                  value={consultationPrice}
+                  onChange={setConsultationPrice}
                   isRTL={isRTL}
                   dir={dir}
                   compact
-                  label={isRTL ? "سعر الرسالة (نقاط)" : "Message price (points)"}
+                  label={isRTL ? "سعر الاستشارة (نقاط)" : "Consultation price (points)"}
+                  hint={isRTL ? "من 1 إلى 5 نقاط لكل استشارة" : "1 to 5 points per consultation"}
                 />
+              </SectionCard>
+            ) : null}
+
+            {isDoctor ? (
+              <SectionCard
+                title={isRTL ? "الشهادات" : "Certifications"}
+                colors={colors}
+                textAlign={textAlign}
+              >
+                {certifications.map((cert, i) => (
+                  <View
+                    key={cert.url}
+                    style={[styles.certCard, { borderColor: colors.border }]}
+                  >
+                    <View style={[styles.certHead, { flexDirection: dir }]}>
+                      <FileText size={18} color={colors.primary} />
+                      <Text
+                        style={[styles.certName, { color: colors.foreground, textAlign }]}
+                        numberOfLines={1}
+                      >
+                        {certFileName(cert.url, i)}
+                      </Text>
+                      <Pressable
+                        onPress={() => removeCertification(cert.url)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={isRTL ? "حذف" : "Remove"}
+                      >
+                        <X size={18} color={colors.mutedForeground} />
+                      </Pressable>
+                    </View>
+                    <TextInput
+                      value={cert.description}
+                      onChangeText={(v) => setCertificationDescription(cert.url, v)}
+                      placeholder={
+                        isRTL ? "وصف الشهادة (اختياري)" : "Certificate description (optional)"
+                      }
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[
+                        styles.input,
+                        {
+                          color: colors.foreground,
+                          borderColor: colors.border,
+                          backgroundColor: colors.background,
+                          textAlign,
+                        },
+                      ]}
+                    />
+                  </View>
+                ))}
+                <Pressable
+                  onPress={() => void addCertification()}
+                  disabled={certUploading}
+                  style={[
+                    styles.certAddBtn,
+                    { borderColor: colors.primary, flexDirection: dir },
+                  ]}
+                >
+                  {certUploading ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <>
+                      <Plus size={18} color={colors.primary} />
+                      <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                        {isRTL ? "إضافة شهادة" : "Add certification"}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
               </SectionCard>
             ) : null}
 
@@ -333,6 +431,18 @@ function SectionCard({
   );
 }
 
+function certFileName(url: string, index: number): string {
+  try {
+    const raw = decodeURIComponent(url.split("?")[0].split("/").pop() ?? "");
+    // Uploads are stored as `<uuid>-<original>`; drop the uuid prefix.
+    const cleaned = raw.replace(/^[0-9a-f-]{36}-/i, "");
+    if (cleaned) return cleaned;
+  } catch {
+    // fall through to generic label
+  }
+  return `Certificate ${index + 1}`;
+}
+
 function Field({
   label,
   value,
@@ -340,6 +450,7 @@ function Field({
   editable = true,
   placeholder,
   keyboardType,
+  multiline = false,
   colors,
   isRTL,
 }: {
@@ -349,6 +460,7 @@ function Field({
   editable?: boolean;
   placeholder?: string;
   keyboardType?: "default" | "phone-pad";
+  multiline?: boolean;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
 }) {
@@ -366,13 +478,16 @@ function Field({
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}
         keyboardType={keyboardType}
+        multiline={multiline}
         style={[
           styles.input,
+          multiline && styles.inputMultiline,
           {
             color: editable ? colors.foreground : colors.mutedForeground,
             borderColor: colors.border,
             backgroundColor: editable ? colors.background : colors.muted,
             textAlign,
+            textAlignVertical: multiline ? "top" : "center",
           },
         ]}
       />
@@ -481,6 +596,31 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     minHeight: 46,
+  },
+  inputMultiline: {
+    minHeight: 96,
+    paddingTop: 12,
+  },
+  certCard: {
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  certHead: {
+    alignItems: "center",
+    gap: 10,
+  },
+  certName: { flex: 1, fontSize: 14, fontWeight: "600" },
+  certAddBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderRadius: 12,
+    paddingVertical: 12,
   },
   actions: {
     gap: 10,

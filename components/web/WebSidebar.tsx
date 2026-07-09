@@ -1,15 +1,12 @@
 import { Href, usePathname, useRouter } from "expo-router";
 import {
+  Activity,
   Bot,
-  CalendarClock,
-  ClipboardList,
   Coins,
-  History,
   Home,
-  ListChecks,
   LogOut,
-  Star,
   User,
+  Users,
 } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -31,13 +28,14 @@ type NavItem = {
   match: (path: string) => boolean;
   Icon: typeof Home;
   doctorOnly?: boolean;
+  hideForDoctor?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/(tabs)",
     labelKey: "home",
-    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("appointments") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant") && !path.includes("intake") && !path.includes("reviews"),
+    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("appointments") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant") && !path.includes("intake") && !path.includes("reviews") && !path.includes("activity") && !path.includes("patients"),
     Icon: Home,
   },
   {
@@ -47,43 +45,30 @@ const NAV_ITEMS: NavItem[] = [
     Icon: Bot,
   },
   {
-    href: "/(tabs)/history",
-    labelKey: "history",
-    match: (path) => path.includes("history"),
-    Icon: History,
-  },
-  {
-    href: "/(tabs)/reviews",
-    labelKey: "reviews",
-    match: (path) => path.includes("reviews"),
-    Icon: Star,
+    href: "/(tabs)/patients",
+    labelKey: "patients",
+    match: (path) => path.includes("patients"),
+    Icon: Users,
     doctorOnly: true,
   },
   {
-    href: "/(tabs)/intake",
-    labelKey: "intake",
-    match: (path) => path.includes("intake"),
-    Icon: ListChecks,
-    doctorOnly: true,
-  },
-  {
-    href: "/(tabs)/appointments",
-    labelKey: "appointments",
-    match: (path) => path.includes("appointments"),
-    Icon: CalendarClock,
-  },
-  {
-    href: "/(tabs)/records",
-    labelKey: "records",
+    href: "/(tabs)/activity",
+    labelKey: "activity",
     match: (path) =>
-      path.includes("records") || path.includes("/medical") || path.includes("/patients"),
-    Icon: ClipboardList,
+      path.includes("activity") ||
+      path.includes("history") ||
+      path.includes("appointments") ||
+      path.includes("records") ||
+      path.includes("/medical"),
+    Icon: Activity,
+    hideForDoctor: true,
   },
   {
     href: "/(tabs)/points",
     labelKey: "points",
     match: (path) => path.includes("points"),
     Icon: Coins,
+    hideForDoctor: true,
   },
   {
     href: "/(tabs)/profile",
@@ -107,7 +92,8 @@ function isHomePath(path: string) {
       !path.includes("assistant") &&
       !path.includes("intake") &&
       !path.includes("reviews") &&
-      !path.includes("patients"))
+      !path.includes("patients") &&
+      !path.includes("activity"))
   );
 }
 
@@ -133,7 +119,9 @@ export function WebSidebar() {
 
   const isDoctor = role?.toLowerCase() === "doctor";
 
-  const items = NAV_ITEMS.filter((item) => !item.doctorOnly || isDoctor).map(
+  const items = NAV_ITEMS.filter(
+    (item) => (!item.doctorOnly || isDoctor) && !(item.hideForDoctor && isDoctor),
+  ).map(
     (item) => ({
       ...item,
       active: item.Icon === Home ? isHomePath(pathname) : item.match(pathname),

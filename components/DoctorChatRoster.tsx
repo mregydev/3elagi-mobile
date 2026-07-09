@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -124,21 +125,25 @@ export function DoctorChatRoster({
           ) : (
             <ArrowLeft size={20} color={colors.primary} />
           )}
-          <View style={styles.headerTextCol}>
-            <Text style={[styles.backText, { color: colors.primary, textAlign: isRTL ? "right" : "left" }]}>
-              {backLabel}
-            </Text>
-            <Text
-              style={[
-                styles.title,
-                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-              ]}
-              numberOfLines={1}
-            >
-              {label}
-            </Text>
-          </View>
+          <Text style={[styles.backText, { color: colors.primary }]}>
+            {backLabel}
+          </Text>
         </Pressable>
+        <View
+          style={[
+            styles.titleRow,
+            { flexDirection: isRTL ? "row-reverse" : "row" },
+          ]}
+        >
+          <Image
+            source={require("@/assets/images/splash-mark.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
       </View>
 
       {loading ? (
@@ -191,15 +196,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   backRow: {
-    alignItems: "flex-start",
-    gap: 8,
+    alignItems: "center",
+    gap: 6,
   },
-  headerTextCol: {
-    flex: 1,
-    gap: 2,
+  titleRow: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 8,
   },
+  logo: { width: 26, height: 26 },
   backText: { fontSize: 14, fontWeight: "600" },
-  title: { fontSize: 20, fontWeight: "800" },
+  title: {
+    fontSize: 21,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    color: "#1D4ED8",
+    flexShrink: 1,
+  },
   row: {
     alignItems: "center",
     gap: 12,

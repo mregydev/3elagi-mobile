@@ -9,7 +9,25 @@ export type ChatMessageType =
   | "voice"
   | "medical_link"
   | "access_action"
-  | "appointment_action";
+  | "appointment_action"
+  | "consultation_action";
+
+export type ConsultationStatus = "open" | "ended" | "cancelled";
+export type ConsultationActionType = "start" | "end" | "cancel";
+export type ConsultationCancelReasonType =
+  | "video_consultation"
+  | "onsite_visit"
+  | "other";
+
+export interface ConsultationActionMeta {
+  consultation_id: string;
+  action: ConsultationActionType;
+  status: ConsultationStatus;
+  reserved_points?: number;
+  cancel_reason_type?: ConsultationCancelReasonType;
+  cancel_reason?: string;
+  diagnosis_id?: string | null;
+}
 
 export type AccessActionType =
   | "grant_records"
@@ -67,6 +85,7 @@ export interface ChatMessage {
   medicalLink?: MedicalLinkMeta | null;
   accessAction?: AccessActionMeta | null;
   appointmentAction?: AppointmentActionMeta | null;
+  consultationAction?: ConsultationActionMeta | null;
   pending?: boolean;
   failed?: boolean;
   editedAt?: string | null;

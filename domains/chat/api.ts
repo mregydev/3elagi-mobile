@@ -7,6 +7,7 @@ import type {
   ChatMessage,
   ChatMessageType,
   ChatUser,
+  ConsultationActionMeta,
   MedicalLinkMeta,
   SendMessageInput,
 } from "./types";
@@ -32,7 +33,12 @@ export interface MessageRow {
   recipient: string;
   datetime: string;
   attachment_url?: string | null;
-  attachment_meta?: MedicalLinkMeta | AccessActionMeta | AppointmentActionMeta | null;
+  attachment_meta?:
+    | MedicalLinkMeta
+    | AccessActionMeta
+    | AppointmentActionMeta
+    | ConsultationActionMeta
+    | null;
   read_at?: string | null;
   edited_at?: string | null;
   points_balance?: number;
@@ -85,6 +91,10 @@ export function mapMessageRow(
     appointmentAction:
       row.type === "appointment_action"
         ? (row.attachment_meta as AppointmentActionMeta | undefined) ?? null
+        : null,
+    consultationAction:
+      row.type === "consultation_action"
+        ? (row.attachment_meta as ConsultationActionMeta | undefined) ?? null
         : null,
     editedAt: row.edited_at ?? null,
     pointsBalance: row.points_balance,

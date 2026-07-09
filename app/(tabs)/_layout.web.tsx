@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from "expo-router";
-import { Bot, CalendarClock, ClipboardList, Coins, History, Home, ListChecks, Star, User, Users } from "lucide-react-native";
+import { Activity, Bot, CalendarClock, ClipboardList, Coins, History, Home, ListChecks, Star, User, Users } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -70,9 +70,18 @@ export default function TabsLayoutWeb() {
         }}
       />
       <Tabs.Screen
+        name="activity"
+        options={{
+          title: t.tabs.activity,
+          href: isDoctor ? null : undefined,
+          tabBarIcon: ({ color, size }) => <Activity color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
           title: t.tabs.history,
+          href: null,
           tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
         }}
       />
@@ -80,7 +89,7 @@ export default function TabsLayoutWeb() {
         name="patients"
         options={{
           title: t.tabs.patients,
-          href: null,
+          href: isDoctor ? undefined : null,
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
@@ -88,7 +97,7 @@ export default function TabsLayoutWeb() {
         name="reviews"
         options={{
           title: t.tabs.reviews,
-          href: isDoctor ? undefined : null,
+          href: null,
           tabBarIcon: ({ color, size }) => <Star color={color} size={size} />,
         }}
       />
@@ -96,7 +105,7 @@ export default function TabsLayoutWeb() {
         name="intake"
         options={{
           title: t.tabs.intake,
-          href: isDoctor ? undefined : null,
+          href: null,
           tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} />,
         }}
       />
@@ -104,6 +113,7 @@ export default function TabsLayoutWeb() {
         name="appointments"
         options={{
           title: t.tabs.appointments,
+          href: null,
           tabBarIcon: ({ color, size }) => <CalendarClock color={color} size={size} />,
         }}
       />
@@ -111,6 +121,7 @@ export default function TabsLayoutWeb() {
         name="records"
         options={{
           title: t.tabs.records,
+          href: null,
           tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
         }}
       />
@@ -118,6 +129,7 @@ export default function TabsLayoutWeb() {
         name="points"
         options={{
           title: t.tabs.points,
+          href: isDoctor ? null : undefined,
           tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
         }}
       />

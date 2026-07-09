@@ -1,4 +1,4 @@
-import { Coins, Plus, TrendingDown, TrendingUp, Zap } from "lucide-react-native";
+import { Coins, Plus, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +19,11 @@ import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePa
 import { useI18n } from "@/hooks/useI18n";
 import { usePointsPage } from "@/hooks/usePointsPage";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { useAuthStore } from "@/domains/auth/store";
+import { usePointsStore } from "@/domains/points/store";
+import { reimbursePoints } from "@/domains/points/api";
+import { webConfirm } from "@/utils/webConfirm";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 function gridColumns(isWide: boolean, isDesktop: boolean, isTablet: boolean) {
   if (isWide) return 3;
@@ -247,6 +252,11 @@ export function PointsWebView() {
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [reimbursing, setReimbursing] = useState(false);
+  const role = useAuthStore((s) => s.role);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const loadPoints = usePointsStore((s) => s.loadPoints);
+  const isDoctor = role?.toLowerCase() === "doctor";
 
   const {
     loading,
@@ -256,6 +266,27 @@ export function PointsWebView() {
     setAmountText,
     parseAmount,
   } = usePointsPage(isRTL);
+
+  const handleReimburse = async () => {
+    if (!accessToken || displaySummary.message_points <= 0) return;
+    const ok = webConfirm(
+      isRTL ? "استرداد النقاط" : "Reimburse points",
+      isRTL
+        ? `سيتم استرداد ${displaySummary.message_points} نقطة متاحة.`
+        : `Cash out your ${displaySummary.message_points} available points.`,
+    );
+    if (!ok) return;
+    setReimbursing(true);
+    try {
+      await reimbursePoints(accessToken);
+      await loadPoints(accessToken);
+      showSuccessToast(isRTL ? "تم طلب الاسترداد" : "Reimbursement requested");
+    } catch (e) {
+      showErrorToast(isRTL ? "تعذر الاسترداد" : "Reimburse failed", (e as Error).message);
+    } finally {
+      setReimbursing(false);
+    }
+  };
 
   const chartSize = isWide ? 280 : isDesktop ? 252 : 220;
   const containerGap = useSplitLayout ? 28 : 20;
@@ -417,7 +448,33 @@ export function PointsWebView() {
                 </View>
               </View>
 
-              {isMobile ? (
+              {isDoctor ? (
+                <Pressable
+                  testID="points-reimburse"
+                  onPress={() => void handleReimburse()}
+                  disabled={reimbursing || displaySummary.message_points <= 0}
+                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                    styles.addBtnMobile,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity:
+                        reimbursing || displaySummary.message_points <= 0
+                          ? 0.5
+                          : pressed
+                            ? 0.92
+                            : hovered
+                              ? 0.96
+                              : 1,
+                      flexDirection: dir,
+                    },
+                  ]}
+                >
+                  <Wallet size={20} color="#fff" />
+                  <Text style={styles.addBtnMobileText}>
+                    {isRTL ? "استرداد النقاط" : "Reimburse points"}
+                  </Text>
+                </Pressable>
+              ) : isMobile ? (
                 <Pressable
                   testID="points-add-open"
                   onPress={() => setAddModalOpen(true)}

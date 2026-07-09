@@ -111,6 +111,7 @@ export function ChatMessageBubble({
 
   const isAccessAction = item.type === "access_action";
   const isAppointmentAction = item.type === "appointment_action";
+  const isConsultationAction = item.type === "consultation_action";
   const isImage = item.type === "image" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
@@ -433,6 +434,107 @@ export function ChatMessageBubble({
       <Text style={{ color: "#ef4444", fontSize: 13 }}>
         {isRTL ? "تعذر إرسال الرسالة" : "Failed to send"}
       </Text>
+    );
+  }
+
+  if (isConsultationAction && item.consultationAction) {
+    const meta = item.consultationAction;
+    const title =
+      meta.action === "start"
+        ? isRTL
+          ? "بدأت الاستشارة"
+          : "Consultation started"
+        : meta.action === "end"
+          ? isRTL
+            ? "انتهت الاستشارة"
+            : "Consultation ended"
+          : isRTL
+            ? "أُلغيت الاستشارة"
+            : "Consultation cancelled";
+    const reasonType = meta.cancel_reason_type;
+    const reasonLabel =
+      reasonType === "video_consultation"
+        ? isRTL
+          ? "يتطلب استشارة فيديو"
+          : "Needs a video consultation"
+        : reasonType === "onsite_visit"
+          ? isRTL
+            ? "يتطلب زيارة العيادة"
+            : "Needs an on-site visit"
+          : reasonType === "other"
+            ? isRTL
+              ? "سبب آخر"
+              : "Other reason"
+            : null;
+    const accent =
+      meta.action === "cancel"
+        ? "#dc2626"
+        : meta.action === "end"
+          ? "#0d9488"
+          : colors.primary;
+    const detail =
+      meta.action === "start" && meta.reserved_points
+        ? isRTL
+          ? `تم حجز ${meta.reserved_points} نقطة`
+          : `${meta.reserved_points} points reserved`
+        : reasonLabel;
+    body = (
+      <View style={styles.medicalBody}>
+        <View
+          style={[
+            styles.medicalCard,
+            {
+              flexDirection: rowDir,
+              backgroundColor: `${accent}0F`,
+              borderColor: `${accent}33`,
+            },
+          ]}
+        >
+          <View style={[styles.medicalIconWrap, { backgroundColor: `${accent}22` }]}>
+            <Stethoscope size={20} color={accent} />
+          </View>
+          <View style={styles.medicalTextWrap}>
+            <Text
+              style={[
+                styles.medicalType,
+                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {isRTL ? "استشارة" : "Consultation"}
+            </Text>
+            <Text
+              style={[
+                styles.medicalTitle,
+                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+              ]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+            {detail ? (
+              <Text
+                style={[
+                  styles.medicalHint,
+                  { color: accent, textAlign: isRTL ? "right" : "left" },
+                ]}
+              >
+                {detail}
+              </Text>
+            ) : null}
+            {item.text?.trim() ? (
+              <Text
+                style={[
+                  styles.medicalType,
+                  { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                ]}
+                numberOfLines={3}
+              >
+                {item.text.trim()}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
     );
   }
 

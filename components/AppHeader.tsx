@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useColors } from "@/hooks/useColors";
+import { useHubEmbedded } from "@/hooks/useHubEmbedded";
 
 interface Props {
   /** Optional content rendered below the brand row (e.g. a search bar). */
@@ -17,22 +18,31 @@ interface Props {
 export function AppHeader({ children, surface = "background" }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  // Inside the Patients hub the hub owns the brand header, so drop the logo
+  // here (and skip entirely when there's nothing else to show).
+  const embedded = useHubEmbedded();
+
+  if (embedded && !children) return null;
 
   return (
     <View
       style={[
         styles.root,
         {
-          paddingTop: insets.top + 10,
+          paddingTop: embedded ? 8 : insets.top + 10,
           backgroundColor: surface === "card" ? colors.card : colors.background,
           borderBottomColor: colors.border,
         },
       ]}
     >
-      <View style={styles.brandRow}>
-        <Logo3elagi height={LOGO_HEIGHT.header} />
-      </View>
-      {children ? <View style={styles.below}>{children}</View> : null}
+      {embedded ? null : (
+        <View style={styles.brandRow}>
+          <Logo3elagi height={LOGO_HEIGHT.header} />
+        </View>
+      )}
+      {children ? (
+        <View style={embedded ? undefined : styles.below}>{children}</View>
+      ) : null}
     </View>
   );
 }

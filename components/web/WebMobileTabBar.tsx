@@ -1,13 +1,11 @@
 import { Link, usePathname } from "expo-router";
 import {
+  Activity,
   Bot,
-  CalendarClock,
-  ClipboardList,
   Coins,
-  History,
   Home,
-  Star,
   User,
+  Users,
   type LucideIcon,
 } from "lucide-react-native";
 import React from "react";
@@ -50,35 +48,25 @@ export function WebMobileTabBar({ height, bottomGap }: Props) {
       isActive: (path) => path.includes("/assistant") || path.includes("/ai/"),
     },
     {
-      href: "/(tabs)/history",
-      title: t.tabs.history,
-      Icon: History,
-      isActive: (path) => path.includes("/history"),
-    },
-    {
-      href: "/(tabs)/reviews",
-      title: t.tabs.reviews,
-      Icon: Star,
-      isActive: (path) => path.includes("/reviews"),
+      href: "/(tabs)/patients",
+      title: t.tabs.patients,
+      Icon: Users,
+      isActive: (path) => path.includes("/patients"),
       hidden: !isDoctor,
     },
     {
-      href: "/(tabs)/appointments",
-      title: t.tabs.appointments,
-      Icon: CalendarClock,
-      isActive: (path) => path.includes("/appointments"),
-    },
-    {
-      href: "/(tabs)/records",
-      title: t.tabs.records,
-      Icon: ClipboardList,
-      isActive: (path) => path.includes("/records") || path.includes("/medical"),
+      href: "/(tabs)/activity",
+      title: t.tabs.activity,
+      Icon: Activity,
+      isActive: (path) => path.includes("/activity"),
+      hidden: isDoctor,
     },
     {
       href: "/(tabs)/points",
       title: t.tabs.points,
       Icon: Coins,
       isActive: (path) => path.includes("/points"),
+      hidden: isDoctor,
     },
     {
       href: "/(tabs)/profile",
