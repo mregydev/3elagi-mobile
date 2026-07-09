@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
@@ -70,7 +71,7 @@ function ReviewRow({ item, isRTL }: { item: DoctorReviewItem; isRTL: boolean }) 
 
 export default function DoctorProfileScreen() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
@@ -134,7 +135,7 @@ export default function DoctorProfileScreen() {
         specialty: doctor.specialty ?? doctor.professionalTitle ?? undefined,
         rating: doctor.ratingAverage,
         ratingTotal: doctor.ratingTotal,
-        messagePrice: doctor.messagePrice,
+        consultationPrice: doctor.consultationPrice,
         doctorEntityId: doctor.id,
       },
     ]);
@@ -204,9 +205,9 @@ export default function DoctorProfileScreen() {
             </View>
             <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Coins size={16} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: "800" }}>{doctor.messagePrice}</Text>
+              <Text style={{ color: colors.primary, fontWeight: "800" }}>{doctor.consultationPrice}</Text>
               <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                {isRTL ? "نقطة/رسالة" : "pts/message"}
+                {t.doctor.egpPerConsultation}
               </Text>
             </View>
           </View>
@@ -240,7 +241,7 @@ export default function DoctorProfileScreen() {
                   : "Add your review"}
             </Text>
             <StarPicker value={reviewRating} onChange={setReviewRating} />
-            <TextInput
+            <AppTextInput
               value={reviewComment}
               onChangeText={setReviewComment}
               placeholder={isRTL ? "تعليق اختياري…" : "Optional comment…"}

@@ -17,6 +17,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import {
   MedicalRecordAddBar,
@@ -179,7 +181,7 @@ export function RecordsWebView() {
               ]}
             >
               <Search size={18} color={colors.mutedForeground} />
-              <TextInput
+              <AppTextInput
                 value={filters.text}
                 onChangeText={(text) => setFilters({ ...filters, text })}
                 placeholder={t.records.searchPlaceholder}
@@ -250,7 +252,7 @@ export function RecordsWebView() {
                   ]}
                 >
                   <Stethoscope size={16} color={colors.mutedForeground} />
-                  <TextInput
+                  <AppTextInput
                     value={filters.doctorName}
                     onChangeText={(doctorName) => setFilters({ ...filters, doctorName })}
                     placeholder={t.records.doctorName}
@@ -458,7 +460,7 @@ function DateInput({
           { flexDirection: dir, borderColor: colors.border, backgroundColor: colors.background },
         ]}
       >
-        <TextInput
+        <AppTextInput
           value={formatWebDate(value)}
           onChangeText={(text) => onChange(parseWebDate(text))}
           placeholder="YYYY-MM-DD"

@@ -11,6 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { ChatAttachMenu } from "@/components/chat/ChatAttachMenu";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
@@ -685,7 +687,7 @@ export function ChatComposer({
   ) : null;
 
   const messageInput = (
-    <TextInput
+    <AppTextInput
       value={text}
       onChangeText={(value) => {
         setText(value);

@@ -180,7 +180,7 @@ export const authRepository = {
           name: input.name.trim(),
           phone: input.phone ?? "",
           speciality_id: input.specialityId,
-          message_price: input.messagePrice ?? 1,
+          consultation_price: input.consultationPrice ?? 1,
         })
       : await post<RawAuthResponse>("/auth/register/patient", {
           email,

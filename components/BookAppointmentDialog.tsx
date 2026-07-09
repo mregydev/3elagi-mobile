@@ -20,8 +20,11 @@ import {
   isDateInPast,
   parseYmd,
 } from "@/domains/schedule/calendar";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { useColors } from "@/hooks/useColors";
 import { chatFlexRow } from "@/utils/rtl";
+import { usePointsStore, selectPointsBalance } from "@/domains/points/store";
+import { formatEgp } from "@/utils/credits";
 
 interface Props {
   visible: boolean;
@@ -30,6 +33,7 @@ interface Props {
   selfId: string;
   doctorUserId: string;
   doctorEntityId: string;
+  videoConsultationPrice?: number;
   onClose: () => void;
   onBooked: () => void;
 }
@@ -44,12 +48,18 @@ export function BookAppointmentDialog({
   token,
   doctorUserId,
   doctorEntityId,
+  videoConsultationPrice = 1,
   onClose,
   onBooked,
 }: Props) {
   const colors = useColors();
   const dir = chatFlexRow();
   const today = useMemo(() => new Date(), []);
+  const pointsSummary = usePointsStore((s) => s.summary);
+  const loadPoints = usePointsStore((s) => s.loadPoints);
+  const balance = selectPointsBalance(pointsSummary);
+  const price = Math.min(100_000, Math.max(1, videoConsultationPrice));
+  const hasEnoughCredits = balance >= price;
 
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -67,7 +77,8 @@ export function BookAppointmentDialog({
     const parsed = parseYmd(now);
     setViewYear(parsed.getFullYear());
     setViewMonth(parsed.getMonth());
-  }, [visible]);
+    void loadPoints(token);
+  }, [visible, token, loadPoints]);
 
   const loadSlots = useCallback(async () => {
     if (!doctorEntityId || !selectedDate) return;
@@ -110,11 +121,12 @@ export function BookAppointmentDialog({
   });
 
   const handleBook = async () => {
-    if (!selectedTime || booking) return;
+    if (!selectedTime || booking || !hasEnoughCredits) return;
     setBooking(true);
     setError(null);
     try {
       await bookChatAppointment(token, doctorUserId, selectedDate, selectedTime);
+      await loadPoints(token);
       onBooked();
       onClose();
     } catch (e) {
@@ -125,7 +137,14 @@ export function BookAppointmentDialog({
   };
 
   const { width: screenWidth } = useWindowDimensions();
+  const { isMobile } = useWebLayout();
   const isWeb = Platform.OS === "web";
+
+  const sheetWidth = isWeb
+    ? isMobile
+      ? screenWidth - 32
+      : Math.min(Math.max(320, screenWidth * 0.28), 420)
+    : screenWidth - 40;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -136,12 +155,18 @@ export function BookAppointmentDialog({
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
-              ...(isWeb ? { width: screenWidth * 0.25, alignSelf: "center" } : {}),
+              width: sheetWidth,
+              maxWidth: "100%",
+              alignSelf: "center",
             },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={[styles.header, { flexDirection: dir }]}>
               <View style={[styles.titleRow, { flexDirection: dir }]}>
                 <Calendar size={20} color={colors.primary} />
@@ -158,28 +183,31 @@ export function BookAppointmentDialog({
               {isRTL ? "اختر اليوم من التقويم" : "Pick a day on the calendar"}
             </Text>
 
-            <ScheduleMonthGrid
-              isRTL={isRTL}
-              year={viewYear}
-              month={viewMonth}
-              mode="month"
-              singleDaySelection
-              selectedDate={selectedDate}
-              selectedWeekStart={selectedDate}
-              selectedMonth={viewMonth}
-              selectedYear={viewYear}
-              onSelectDate={handleSelectDate}
-              onPrevMonth={() => {
-                const next = new Date(viewYear, viewMonth - 1, 1);
-                setViewYear(next.getFullYear());
-                setViewMonth(next.getMonth());
-              }}
-              onNextMonth={() => {
-                const next = new Date(viewYear, viewMonth + 1, 1);
-                setViewYear(next.getFullYear());
-                setViewMonth(next.getMonth());
-              }}
-            />
+            <View style={styles.calendarWrap}>
+              <ScheduleMonthGrid
+                isRTL={isRTL}
+                year={viewYear}
+                month={viewMonth}
+                mode="month"
+                responsive
+                singleDaySelection
+                selectedDate={selectedDate}
+                selectedWeekStart={selectedDate}
+                selectedMonth={viewMonth}
+                selectedYear={viewYear}
+                onSelectDate={handleSelectDate}
+                onPrevMonth={() => {
+                  const next = new Date(viewYear, viewMonth - 1, 1);
+                  setViewYear(next.getFullYear());
+                  setViewMonth(next.getMonth());
+                }}
+                onNextMonth={() => {
+                  const next = new Date(viewYear, viewMonth + 1, 1);
+                  setViewYear(next.getFullYear());
+                  setViewMonth(next.getMonth());
+                }}
+              />
+            </View>
 
             <Text style={[styles.selectedDay, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
               {selectedLabel}
@@ -222,30 +250,73 @@ export function BookAppointmentDialog({
               </View>
             )}
 
-            {error ? (
-              <Text style={{ color: colors.destructive, marginTop: 8, textAlign: "center" }}>{error}</Text>
-            ) : null}
-
-            <Pressable
-              onPress={() => void handleBook()}
-              disabled={!selectedTime || booking}
+            <View
               style={[
-                styles.bookBtn,
+                styles.priceRow,
                 {
-                  backgroundColor: colors.primary,
-                  opacity: !selectedTime || booking ? 0.55 : 1,
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
                 },
               ]}
             >
-              {booking ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.bookBtnText}>
-                  {isRTL ? "إرسال طلب الحجز" : "Send booking request"}
+              <Text style={{ color: colors.foreground, fontWeight: "700", textAlign: isRTL ? "right" : "left" }}>
+                {isRTL
+                  ? `استشارة الفيديو: ${formatEgp(price)}`
+                  : `Video consultation: ${formatEgp(price)}`}
+              </Text>
+              <Text
+                style={{
+                  color: hasEnoughCredits ? colors.mutedForeground : colors.destructive,
+                  fontWeight: "600",
+                  marginTop: 4,
+                  textAlign: isRTL ? "right" : "left",
+                }}
+              >
+                {isRTL
+                  ? `رصيدك: ${formatEgp(balance)}`
+                  : `Your balance: ${formatEgp(balance)}`}
+              </Text>
+              {!hasEnoughCredits ? (
+                <Text
+                  style={{
+                    color: colors.destructive,
+                    fontWeight: "600",
+                    marginTop: 6,
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {isRTL
+                    ? "رصيدك غير كافٍ لحجز استشارة الفيديو"
+                    : "Insufficient credits to book this video appointment"}
                 </Text>
-              )}
-            </Pressable>
+              ) : null}
+            </View>
+
           </ScrollView>
+
+          {error ? (
+            <Text style={{ color: colors.destructive, marginTop: 8, textAlign: "center" }}>{error}</Text>
+          ) : null}
+
+          <Pressable
+            onPress={() => void handleBook()}
+            disabled={!selectedTime || booking || !hasEnoughCredits}
+            style={[
+              styles.bookBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: !selectedTime || booking || !hasEnoughCredits ? 0.55 : 1,
+              },
+            ]}
+          >
+            {booking ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.bookBtnText}>
+                {isRTL ? "إرسال طلب الحجز" : "Send booking request"}
+              </Text>
+            )}
+          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
@@ -257,7 +328,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
-    padding: 20,
+    padding: 16,
   },
   sheet: {
     borderRadius: 16,
@@ -265,6 +336,10 @@ const styles = StyleSheet.create({
     padding: 16,
     maxHeight: "90%",
   },
+  calendarWrap: {
+    width: "100%",
+  },
+  scroll: { flexShrink: 1 },
   header: {
     alignItems: "center",
     justifyContent: "space-between",
@@ -302,6 +377,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     minWidth: 72,
     alignItems: "center",
+  },
+  priceRow: {
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   bookBtn: {
     marginTop: 8,

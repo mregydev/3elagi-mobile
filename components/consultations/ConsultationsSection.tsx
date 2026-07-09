@@ -22,21 +22,22 @@ import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { webConfirm } from "@/utils/webConfirm";
+import { formatEgp } from "@/utils/credits";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
+import { flexRow } from "@/utils/rtl";
 
 export function ConsultationsSection() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { t, isRTL, locale } = useI18n();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const dir = isRTL ? "row-reverse" : "row";
+  const dir = flexRow(isRTL);
+  const textAlign = isRTL ? "right" : "left";
 
   const [items, setItems] = useState<DoctorConsultation[]>([]);
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reimbursing, setReimbursing] = useState(false);
-
-  const label = (en: string, ar: string) => (isRTL ? ar : en);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -48,12 +49,11 @@ export function ConsultationsSection() {
       setItems(list);
       setPoints(summary.message_points ?? 0);
     } catch (e) {
-      showErrorToast(label("Error", "خطأ"), (e as Error).message);
+      showErrorToast(t.common.error, (e as Error).message);
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]);
+  }, [accessToken, t.common.error]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,9 +73,9 @@ export function ConsultationsSection() {
     try {
       await reimbursePoints(accessToken);
       await load();
-      showSuccessToast(label("Reimbursement requested", "تم طلب الاسترداد"));
+      showSuccessToast(t.consultations.reimbursementRequested);
     } catch (e) {
-      showErrorToast(label("Reimburse failed", "تعذر الاسترداد"), (e as Error).message);
+      showErrorToast(t.consultations.reimburseFailed, (e as Error).message);
     } finally {
       setReimbursing(false);
     }
@@ -83,34 +83,33 @@ export function ConsultationsSection() {
 
   const confirmReimburse = () => {
     if (points <= 0) return;
-    const title = label("Reimburse points", "استرداد النقاط");
-    const msg = label(
-      `Cash out your ${points} available points.`,
-      `سيتم استرداد ${points} نقطة متاحة.`,
-    );
+    const title = t.consultations.reimburseTitle;
+    const msg = t.consultations.reimburseConfirm(formatEgp(points, t));
     if (Platform.OS === "web") {
       if (webConfirm(title, msg)) void doReimburse();
       return;
     }
     Alert.alert(title, msg, [
-      { text: label("Cancel", "إلغاء"), style: "cancel" },
-      { text: label("Reimburse", "استرداد"), onPress: () => void doReimburse() },
+      { text: t.common.cancel, style: "cancel" },
+      { text: t.consultations.reimburse, onPress: () => void doReimburse() },
     ]);
   };
 
   const statusMeta = (status: DoctorConsultation["status"]) => {
-    if (status === "open") return { color: colors.primary, text: label("Open", "مفتوحة") };
-    if (status === "ended") return { color: "#0d9488", text: label("Completed", "مكتملة") };
-    return { color: "#dc2626", text: label("Cancelled", "ملغاة") };
+    if (status === "open") return { color: colors.primary, text: t.consultations.open };
+    if (status === "ended") return { color: "#0d9488", text: t.consultations.completed };
+    return { color: "#dc2626", text: t.consultations.cancelled };
   };
 
   const header = (
     <View style={[styles.reimburseCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[styles.reimburseLabel, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-        {label("Reimbursable points", "نقاط قابلة للاسترداد")}
+      <Text style={[styles.reimburseLabel, { color: colors.mutedForeground, textAlign }]}>
+        {t.consultations.reimbursableCredits}
       </Text>
       <View style={[styles.reimburseRow, { flexDirection: dir }]}>
-        <Text style={[styles.reimburseValue, { color: colors.primary }]}>{points}</Text>
+        <Text style={[styles.reimburseValue, { color: colors.primary }]}>
+          {formatEgp(points, t)}
+        </Text>
         <Pressable
           onPress={confirmReimburse}
           disabled={reimbursing || points <= 0}
@@ -128,13 +127,13 @@ export function ConsultationsSection() {
           ) : (
             <>
               <Wallet size={16} color="#fff" />
-              <Text style={styles.reimburseBtnText}>{label("Reimburse", "استرداد")}</Text>
+              <Text style={styles.reimburseBtnText}>{t.consultations.reimburse}</Text>
             </>
           )}
         </Pressable>
       </View>
-      <Text style={[styles.listTitle, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
-        {label("My consultations", "استشاراتي")}
+      <Text style={[styles.listTitle, { color: colors.foreground, textAlign }]}>
+        {t.consultations.myConsultations}
       </Text>
     </View>
   );
@@ -154,12 +153,13 @@ export function ConsultationsSection() {
       }
       ListEmptyComponent={
         <Text style={[styles.empty, { color: colors.mutedForeground }]}>
-          {label("No consultations yet", "لا توجد استشارات بعد")}
+          {t.consultations.noConsultations}
         </Text>
       }
       renderItem={({ item }) => {
         const s = statusMeta(item.status);
-        const date = new Date(item.created_at).toLocaleDateString(isRTL ? "ar-EG" : "en-US");
+        const refunded = item.complaint_status === "accepted";
+        const date = new Date(item.created_at).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US");
         const Chevron = isRTL ? ChevronLeft : ChevronRight;
         return (
           <Pressable
@@ -180,23 +180,32 @@ export function ConsultationsSection() {
             ]}
           >
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={[styles.name, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]} numberOfLines={1}>
+              <Text style={[styles.name, { color: colors.foreground, textAlign }]} numberOfLines={1}>
                 {item.patient_name}
               </Text>
               {item.description ? (
                 <Text
-                  style={[styles.desc, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}
+                  style={[styles.desc, { color: colors.mutedForeground, textAlign }]}
                   numberOfLines={1}
                 >
                   {item.description}
                 </Text>
               ) : null}
-              <Text style={[styles.date, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-                {date} · {item.reserved_points} {label("pts", "نقطة")}
+              <Text style={[styles.date, { color: colors.mutedForeground, textAlign }]}>
+                {date} · {formatEgp(item.reserved_points, t)}
               </Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: `${s.color}1F` }]}>
-              <Text style={{ color: s.color, fontWeight: "800", fontSize: 12 }}>{s.text}</Text>
+            <View style={styles.badges}>
+              <View style={[styles.badge, { backgroundColor: `${s.color}1F` }]}>
+                <Text style={{ color: s.color, fontWeight: "800", fontSize: 12 }}>{s.text}</Text>
+              </View>
+              {refunded ? (
+                <View style={[styles.badge, { backgroundColor: "#dc26261F" }]}>
+                  <Text style={{ color: "#dc2626", fontWeight: "800", fontSize: 12 }}>
+                    {t.consultations.refunded}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Chevron size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -237,6 +246,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: "700" },
   desc: { fontSize: 13 },
   date: { fontSize: 12 },
+  badges: { alignItems: "flex-end", gap: 6 },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 5,

@@ -13,14 +13,16 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
-import { MessagePricePicker } from "@/components/MessagePricePicker";
+import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
+import { useI18n } from "@/hooks/useI18n";
 
 const AVATAR_SIZE = 76;
 
@@ -44,6 +46,7 @@ export function ProfileEditor({
   showLogout?: boolean;
 }) {
   const logout = useAuthStore((s) => s.logout);
+  const { t } = useI18n();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
 
@@ -74,6 +77,8 @@ export function ProfileEditor({
     setSpecialityId,
     consultationPrice,
     setConsultationPrice,
+    videoConsultationPrice,
+    setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
     isDoctor,
@@ -254,14 +259,11 @@ export function ProfileEditor({
                     })}
                   </ScrollView>
                 </View>
-                <MessagePricePicker
+                <EgpPriceInput
                   value={consultationPrice}
                   onChange={setConsultationPrice}
-                  isRTL={isRTL}
-                  dir={dir}
+                  label={t.auth.consultationPrice}
                   compact
-                  label={isRTL ? "سعر الاستشارة (نقاط)" : "Consultation price (points)"}
-                  hint={isRTL ? "من 1 إلى 5 نقاط لكل استشارة" : "1 to 5 points per consultation"}
                 />
               </SectionCard>
             ) : null}
@@ -294,7 +296,7 @@ export function ProfileEditor({
                         <X size={18} color={colors.mutedForeground} />
                       </Pressable>
                     </View>
-                    <TextInput
+                    <AppTextInput
                       value={cert.description}
                       onChangeText={(v) => setCertificationDescription(cert.url, v)}
                       placeholder={
@@ -347,7 +349,14 @@ export function ProfileEditor({
             ) : null}
 
             {isDoctor ? (
-              <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
+              <View
+                style={[
+                  styles.sectionCard,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} embedded />
+              </View>
             ) : null}
 
             {isDoctor ? (
@@ -384,6 +393,12 @@ export function ProfileEditor({
                     );
                   })}
                 </View>
+                <EgpPriceInput
+                  value={videoConsultationPrice}
+                  onChange={setVideoConsultationPrice}
+                  label={t.auth.videoConsultationPrice}
+                  compact
+                />
               </SectionCard>
             ) : null}
 
@@ -516,7 +531,7 @@ function Field({
       <Text style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}>
         {label}
       </Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChangeText}
         editable={editable}

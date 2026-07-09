@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
@@ -514,7 +515,7 @@ export default function AddMedicalScreen() {
             </Text>
             {symptomLines.map((line, index) => (
               <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
-                <TextInput
+                <AppTextInput
                   value={line}
                   onChangeText={(t) => updateSymptomLine(index, t)}
                   placeholder={isRTL ? `عرض ${index + 1}` : `Symptom ${index + 1}`}
@@ -833,7 +834,7 @@ function Field({
         {label}
         {required ? <Text style={{ color: "#ef4444" }}> *</Text> : null}
       </Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}

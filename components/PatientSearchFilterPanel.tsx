@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react-native";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import {
   EMPTY_PATIENT_FILTERS,
   hasActivePatientFilters,
@@ -92,7 +93,7 @@ export function PatientSearchFilterPanel({
             ]}
           >
             <Search size={16} color={colors.mutedForeground} />
-            <TextInput
+            <AppTextInput
               value={filters.text}
               onChangeText={(text) => onChange({ ...filters, text })}
               placeholder={

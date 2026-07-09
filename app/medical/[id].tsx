@@ -23,6 +23,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
@@ -591,7 +593,7 @@ export default function MedicalRecordDetail() {
             </Text>
             {editingLabDetails ? (
               <View style={{ gap: 10 }}>
-                <TextInput
+                <AppTextInput
                   value={editTitle}
                   onChangeText={setEditTitle}
                   placeholder={isRTL ? "العنوان" : "Title"}
@@ -606,7 +608,7 @@ export default function MedicalRecordDetail() {
                     },
                   ]}
                 />
-                <TextInput
+                <AppTextInput
                   value={editNotes}
                   onChangeText={setEditNotes}
                   multiline
@@ -869,7 +871,7 @@ export default function MedicalRecordDetail() {
             </Text>
             {editingDiagnosis ? (
               <View style={{ gap: 10 }}>
-                <TextInput
+                <AppTextInput
                   value={editDesc}
                   onChangeText={setEditDesc}
                   multiline
@@ -1078,7 +1080,7 @@ export default function MedicalRecordDetail() {
             )}
             {canAddSymptom && (
               <View style={[styles.addSymptomRow, { flexDirection: dir }]}>
-                <TextInput
+                <AppTextInput
                   value={newSymptom}
                   onChangeText={setNewSymptom}
                   placeholder={isRTL ? "عرض جديد…" : "New symptom…"}

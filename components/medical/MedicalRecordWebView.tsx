@@ -23,6 +23,8 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
 import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
@@ -476,7 +478,7 @@ export function MedicalRecordWebView() {
 
         {!isDoctorView && canAddSymptom && (
           <View style={[styles.addSymptomRow, { flexDirection: dir }]}>
-            <TextInput
+            <AppTextInput
               value={newSymptom}
               onChangeText={setNewSymptom}
               placeholder={isRTL ? "عرض جديد…" : "New symptom…"}
@@ -650,7 +652,7 @@ export function MedicalRecordWebView() {
       >
         {editingLabDetails ? (
           <View style={{ gap: 12 }}>
-            <TextInput
+            <AppTextInput
               value={editTitle}
               onChangeText={setEditTitle}
               placeholder={isRTL ? "العنوان" : "Title"}
@@ -665,7 +667,7 @@ export function MedicalRecordWebView() {
                 },
               ]}
             />
-            <TextInput
+            <AppTextInput
               value={editNotes}
               onChangeText={setEditNotes}
               multiline
@@ -769,7 +771,7 @@ export function MedicalRecordWebView() {
       >
         {editingDiagnosis ? (
           <View style={{ gap: 12 }}>
-            <TextInput
+            <AppTextInput
               value={editDesc}
               onChangeText={setEditDesc}
               multiline

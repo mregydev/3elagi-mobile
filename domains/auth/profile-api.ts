@@ -55,8 +55,8 @@ interface RawDoctor {
   speciality_id?: string | null;
   speciality_name_en?: string | null;
   speciality_name_ar?: string | null;
-  message_price?: number | null;
   consultation_price?: number | null;
+  video_consultation_price?: number | null;
   video_consultation_minutes?: number | null;
 }
 
@@ -78,8 +78,8 @@ export interface AccountProfile {
   specialityId?: string;
   specialityNameEn?: string;
   specialityNameAr?: string;
-  messagePrice?: number;
   consultationPrice?: number;
+  videoConsultationPrice?: number;
   videoConsultationMinutes?: number;
   photoUrl?: string;
   role: string;
@@ -112,8 +112,11 @@ export async function fetchAccountProfile(
       specialityId: doctor.speciality_id ?? undefined,
       specialityNameEn: doctor.speciality_name_en ?? undefined,
       specialityNameAr: doctor.speciality_name_ar ?? undefined,
-      messagePrice: doctor.message_price ?? 1,
-      consultationPrice: Math.min(5, Math.max(1, doctor.consultation_price ?? 1)),
+      consultationPrice: Math.min(100_000, Math.max(1, doctor.consultation_price ?? 1)),
+      videoConsultationPrice: Math.min(
+        100_000,
+        Math.max(1, doctor.video_consultation_price ?? 1),
+      ),
       videoConsultationMinutes: doctor.video_consultation_minutes ?? 30,
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
@@ -144,8 +147,8 @@ export async function updateAccountProfile(
     location?: string;
     certifications?: DoctorCertification[];
     specialityId?: string;
-    messagePrice?: number;
     consultationPrice?: number;
+    videoConsultationPrice?: number;
     videoConsultationMinutes?: number;
     photoUrl?: string | null;
   },
@@ -171,8 +174,8 @@ export async function updateAccountProfile(
         personal_clinic_location: payload.location?.trim() || null,
         certification_urls: payload.certifications ?? undefined,
         speciality_id: payload.specialityId ?? undefined,
-        message_price: payload.messagePrice ?? undefined,
         consultation_price: payload.consultationPrice ?? undefined,
+        video_consultation_price: payload.videoConsultationPrice ?? undefined,
         video_consultation_minutes: payload.videoConsultationMinutes ?? undefined,
       }),
     });

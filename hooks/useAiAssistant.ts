@@ -174,7 +174,7 @@ async function streamAssistantReply(input: {
         );
       }
       if (event.type === "error") {
-        const formatted = formatAiChatError(event.error, event.code, isRTL);
+        const formatted = formatAiChatError(event.error, event.code, t);
         setChatError(formatted.message);
         setRateLimitReached(formatted.isRateLimit);
         setCanRetry(formatted.canRetry);
@@ -242,7 +242,7 @@ export function useAiAssistant() {
   const notifyMedicalHistoryChanged = useMedicalStore(
     (s) => s.notifyMedicalHistoryChanged,
   );
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const isEn = !isRTL;
   const [conversations, setConversations] = useState<AiConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -434,7 +434,7 @@ export function useAiAssistant() {
               const formatted = formatAiChatError(
                 event.error,
                 event.code,
-                isRTL,
+                t,
               );
               setChatError(formatted.message);
               setRateLimitReached(formatted.isRateLimit);
@@ -460,7 +460,7 @@ export function useAiAssistant() {
         const formatted = formatAiChatError(
           err instanceof Error ? err.message : undefined,
           code,
-          isRTL,
+          t,
         );
         setChatError(formatted.message);
         setRateLimitReached(formatted.isRateLimit);

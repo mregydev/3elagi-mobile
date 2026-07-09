@@ -105,7 +105,7 @@ function ConversationRow({
             <DoctorTrailingMeta
               isRTL={isRTL}
               rating={item.user.rating}
-              messagePrice={item.user.messagePrice}
+              consultationPrice={item.user.consultationPrice}
             />
           ) : null}
         </View>

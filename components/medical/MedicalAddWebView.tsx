@@ -21,6 +21,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
@@ -95,7 +96,7 @@ function FormField({
         {label}
         {required ? <Text style={{ color: "#ef4444" }}> *</Text> : null}
       </Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
@@ -261,7 +262,7 @@ export function MedicalAddWebView() {
       <View style={styles.symptomList}>
         {symptomLines.map((line, index) => (
           <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
-            <TextInput
+            <AppTextInput
               value={line}
               onChangeText={(t) => updateSymptomLine(index, t)}
               placeholder={isRTL ? `عرض ${index + 1}` : `Symptom ${index + 1}`}

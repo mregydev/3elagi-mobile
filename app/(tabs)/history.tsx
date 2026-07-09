@@ -7,10 +7,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { AppHeader } from "@/components/AppHeader";
 import { ChatHistoryList } from "@/components/ChatHistoryList";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -28,7 +31,7 @@ export default function HistoryTab() {
   const [query, setQuery] = useState("");
 
   const refresh = useCallback(() => {
-    if (!accessToken || !profile?.id) return;
+    if (!accessToken || !profile?.id || !canUseChat(role)) return;
     void loadConversations(accessToken, profile.id, role);
   }, [accessToken, profile?.id, role, loadConversations]);
 
@@ -72,7 +75,7 @@ export default function HistoryTab() {
           ]}
         >
           <Search size={16} color={colors.mutedForeground} />
-          <TextInput
+          <AppTextInput
             value={query}
             onChangeText={setQuery}
             placeholder={t.common.search}

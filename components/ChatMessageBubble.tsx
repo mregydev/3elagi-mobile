@@ -18,6 +18,8 @@ import type { MessageEmotionType } from "@/domains/emotions/types";
 import { ChatInlineVideo } from "@/components/chat/ChatInlineVideo";
 import { MessageEmotionsBar } from "@/components/MessageEmotionsBar";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+import { formatEgp } from "@/utils/credits";
 
 interface Props {
   item: ChatMessage;
@@ -62,6 +64,7 @@ export function ChatMessageBubble({
   highlighted = false,
 }: Props) {
   const colors = useColors();
+  const { t } = useI18n();
   const { width: screenWidth } = useWindowDimensions();
   const [playing, setPlaying] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -116,6 +119,7 @@ export function ChatMessageBubble({
   const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
   const medicalBubbleWidth = Math.min(300, maxBubbleWidth);
+  const consultationBubbleWidth = Math.min(400, maxBubbleWidth);
   const videoWidth = imageWidth;
   const videoHeight = Math.round(imageWidth * 0.75);
   const responsiveMediaWidth = useMemo(() => {
@@ -144,7 +148,7 @@ export function ChatMessageBubble({
               borderWidth: 1,
             }
         : { backgroundColor: "transparent" }
-      : isMedicalLink
+      : isMedicalLink || isConsultationAction
       ? {
           backgroundColor: colors.card,
           borderColor: colors.border,
@@ -474,9 +478,7 @@ export function ChatMessageBubble({
           : colors.primary;
     const detail =
       meta.action === "start" && meta.reserved_points
-        ? isRTL
-          ? `تم حجز ${meta.reserved_points} نقطة`
-          : `${meta.reserved_points} points reserved`
+        ? t.consultations.reservedInThread(formatEgp(meta.reserved_points, t))
         : reasonLabel;
     body = (
       <View style={styles.medicalBody}>
@@ -494,43 +496,104 @@ export function ChatMessageBubble({
             <Stethoscope size={20} color={accent} />
           </View>
           <View style={styles.medicalTextWrap}>
-            <Text
-              style={[
-                styles.medicalType,
-                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-              ]}
-            >
-              {isRTL ? "استشارة" : "Consultation"}
-            </Text>
-            <Text
-              style={[
-                styles.medicalTitle,
-                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-              ]}
-              numberOfLines={2}
-            >
-              {title}
-            </Text>
-            {detail ? (
+            <View style={[styles.consultRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               <Text
-                style={[
-                  styles.medicalHint,
-                  { color: accent, textAlign: isRTL ? "right" : "left" },
-                ]}
+                style={[styles.medicalTitle, { color: colors.foreground }]}
+                numberOfLines={1}
               >
-                {detail}
+                {title}
               </Text>
-            ) : null}
+              {detail ? (
+                <Text style={[styles.consultMeta, { color: accent }]} numberOfLines={1}>
+                  {detail}
+                </Text>
+              ) : null}
+            </View>
             {item.text?.trim() ? (
               <Text
                 style={[
-                  styles.medicalType,
-                  { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                  styles.consultDesc,
+                  { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
                 ]}
-                numberOfLines={3}
               >
                 {item.text.trim()}
               </Text>
+            ) : null}
+            {meta.action === "end" && meta.diagnosis_summary ? (
+              <View style={styles.consultDiagnosis}>
+                <Text
+                  style={[
+                    styles.consultDiagnosisHeading,
+                    { color: accent, textAlign: isRTL ? "right" : "left" },
+                  ]}
+                >
+                  {isRTL ? "التشخيص" : "Diagnosis"}
+                </Text>
+                <Text
+                  style={[
+                    styles.consultDiagnosisDesc,
+                    { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+                  ]}
+                >
+                  {meta.diagnosis_summary.desc}
+                </Text>
+                {meta.diagnosis_summary.symptoms?.length ? (
+                  <View style={styles.consultDiagnosisBlock}>
+                    <Text
+                      style={[
+                        styles.consultDiagnosisSub,
+                        { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                      ]}
+                    >
+                      {isRTL ? "الأعراض" : "Symptoms"}
+                    </Text>
+                    {meta.diagnosis_summary.symptoms.map((symptom, index) => (
+                      <Text
+                        key={`${symptom.desc}-${index}`}
+                        style={[
+                          styles.consultDiagnosisLine,
+                          { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+                        ]}
+                      >
+                        • {symptom.desc}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
+                {meta.diagnosis_summary.linked_records?.length ? (
+                  <View style={styles.consultDiagnosisBlock}>
+                    <Text
+                      style={[
+                        styles.consultDiagnosisSub,
+                        { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                      ]}
+                    >
+                      {isRTL ? "نتائج مرتبطة" : "Linked results"}
+                    </Text>
+                    {meta.diagnosis_summary.linked_records.map((record) => {
+                      const typeLabel =
+                        record.record_type === "lab"
+                          ? isRTL
+                            ? "مختبر"
+                            : "Lab"
+                          : isRTL
+                            ? "أشعة"
+                            : "X-ray";
+                      return (
+                        <Text
+                          key={record.id}
+                          style={[
+                            styles.consultDiagnosisLine,
+                            { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+                          ]}
+                        >
+                          {typeLabel}: {record.title}
+                        </Text>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </View>
             ) : null}
           </View>
         </View>
@@ -654,8 +717,10 @@ export function ChatMessageBubble({
           isImage && styles.imageBubble,
           isVideo && styles.imageBubble,
           isMedicalLink && styles.medicalBubble,
+          isConsultationAction && styles.medicalBubble,
           bubbleColors,
           isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" },
+          isConsultationAction && { width: consultationBubbleWidth, maxWidth: "100%" },
           highlighted && {
             borderWidth: 2,
             borderColor: colors.primary,
@@ -774,6 +839,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     marginTop: 2,
+  },
+  consultRow: {
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  consultMeta: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  consultDesc: {
+    fontSize: 13,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  consultDiagnosis: {
+    marginTop: 10,
+    gap: 4,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.08)",
+  },
+  consultDiagnosisHeading: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  consultDiagnosisDesc: {
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 19,
+  },
+  consultDiagnosisBlock: {
+    marginTop: 6,
+    gap: 2,
+  },
+  consultDiagnosisSub: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  consultDiagnosisLine: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   accessRow: {
     width: "100%",

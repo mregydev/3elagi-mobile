@@ -6,11 +6,12 @@ import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { HubEmbeddedProvider } from "@/hooks/useHubEmbedded";
 import { useI18n } from "@/hooks/useI18n";
+import { PatientConsultationsSection } from "@/components/consultations/PatientConsultationsSection";
 import AppointmentsTab from "./appointments";
 import HistoryTab from "./history";
 import RecordsTab from "./records";
 
-type SectionKey = "appointments" | "history" | "records";
+type SectionKey = "appointments" | "consultations" | "history" | "records";
 
 export default function ActivityTab() {
   const colors = useColors();
@@ -23,6 +24,11 @@ export default function ActivityTab() {
 
   const sections: { key: SectionKey; label: string; Comp: React.ComponentType }[] = [
     { key: "appointments", label: t.tabs.appointments, Comp: AppointmentsTab },
+    {
+      key: "consultations",
+      label: isRTL ? "الاستشارات" : "Consultations",
+      Comp: PatientConsultationsSection,
+    },
     { key: "history", label: t.tabs.history, Comp: HistoryTab },
     { key: "records", label: t.tabs.records, Comp: RecordsTab },
   ];

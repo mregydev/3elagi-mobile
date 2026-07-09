@@ -11,7 +11,7 @@ export interface PublicDoctorProfile {
   description?: string | null;
   experienceYears?: number | null;
   consultationFeeEgp?: number | null;
-  messagePrice: number;
+  consultationPrice: number;
   specialty?: string | null;
   specialtyAr?: string | null;
   ratingAverage: number;
@@ -81,7 +81,7 @@ export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorP
     description: (data.description as string | null) ?? null,
     experienceYears: (data.experience_years as number | null) ?? null,
     consultationFeeEgp: (data.consultation_fee_egp as number | null) ?? null,
-    messagePrice: Number(data.message_price ?? 1),
+    consultationPrice: Number(data.consultation_price ?? 1),
     specialty: (data.specialty as string | null) ?? null,
     specialtyAr: (data.specialty_ar as string | null) ?? null,
     ratingAverage: Number(data.rating_average ?? 0),

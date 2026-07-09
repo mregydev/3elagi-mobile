@@ -10,6 +10,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import {
   MedicalImageAttachOptions,
@@ -266,7 +268,8 @@ export function AssistantComposer({
         ]}
       >
         {previewBlock}
-        <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>          <TextInput
+        <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>
+          <AppTextInput
             value={text}
             onChangeText={setText}
             placeholder={placeholder}
@@ -302,7 +305,8 @@ export function AssistantComposer({
     >
       {previewBlock}
       <View style={styles.composerRow}>
-      <TextInput        value={text}
+        <AppTextInput
+          value={text}
         onChangeText={setText}
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}

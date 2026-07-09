@@ -11,6 +11,8 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { router } from "expo-router";
 import { PointsPieChart } from "@/components/PointsPieChart";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -24,6 +26,8 @@ import { usePointsStore } from "@/domains/points/store";
 import { reimbursePoints } from "@/domains/points/api";
 import { webConfirm } from "@/utils/webConfirm";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
+import type { Translations } from "@/constants/translations";
+import { flexRow } from "@/utils/rtl";
 
 function gridColumns(isWide: boolean, isDesktop: boolean, isTablet: boolean) {
   if (isWide) return 3;
@@ -72,13 +76,12 @@ function DashboardCard({
   );
 }
 
-const QUICK_POINT_AMOUNTS = [10, 25, 50, 100] as const;
-
 function AddPointsForm({
   amountText,
   setAmountText,
   parseAmount,
   colors,
+  t,
   isRTL,
   useSplitLayout,
   onSubmitted,
@@ -87,11 +90,12 @@ function AddPointsForm({
   setAmountText: (value: string) => void;
   parseAmount: () => number | null;
   colors: ReturnType<typeof useColors>;
+  t: Translations;
   isRTL: boolean;
   useSplitLayout: boolean;
   onSubmitted?: () => void;
 }) {
-  const dir = isRTL ? "row-reverse" : "row";
+  const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
   const handleContinue = () => {
@@ -105,39 +109,8 @@ function AddPointsForm({
     <View style={{ gap: 16 }}>
       <View style={styles.addCardIntro}>
         <Text style={[styles.addCardHint, { color: colors.mutedForeground, textAlign }]}>
-          {isRTL
-            ? "اختر مبلغًا سريعًا أو أدخل عدد النقاط، ثم تابع إلى صفحة الدفع."
-            : "Pick a quick amount or enter a custom value, then continue to checkout."}
+          {t.credits.creditAmountHint}
         </Text>
-
-        <View style={[styles.quickAmountRow, { flexDirection: dir }]}>
-          {QUICK_POINT_AMOUNTS.map((amount) => {
-            const selected = amountText === String(amount);
-            return (
-              <Pressable
-                key={amount}
-                onPress={() => setAmountText(String(amount))}
-                style={[
-                  styles.quickAmountChip,
-                  {
-                    backgroundColor: selected ? `${colors.primary}14` : colors.background,
-                    borderColor: selected ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: selected ? colors.primary : colors.foreground,
-                    fontWeight: "700",
-                    fontSize: 14,
-                  }}
-                >
-                  {amount}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
       </View>
 
       <View
@@ -149,13 +122,13 @@ function AddPointsForm({
         <View style={[styles.addCardForm, useSplitLayout && styles.addCardFormSplit]}>
         <View style={styles.addFieldBlock}>
           <Text style={[styles.addFieldLabel, { color: colors.foreground, textAlign }]}>
-            {isRTL ? "عدد النقاط" : "Points amount"}
+            {t.credits.creditAmount}
           </Text>
-          <TextInput
+          <AppTextInput
             value={amountText}
             onChangeText={setAmountText}
             keyboardType="number-pad"
-            placeholder={isRTL ? "مثال: 50" : "e.g. 50"}
+            placeholder={t.credits.amountPlaceholder}
             placeholderTextColor={colors.mutedForeground}
             style={[
               styles.addInput,
@@ -182,7 +155,7 @@ function AddPointsForm({
         >
           <Plus size={18} color="#fff" />
           <Text style={styles.addSubmitText}>
-            {isRTL ? "متابعة للدفع" : "Continue to checkout"}
+            {t.credits.continueCheckout}
           </Text>
         </Pressable>
         </View>
@@ -196,6 +169,7 @@ function AddPointsCard({
   setAmountText,
   parseAmount,
   colors,
+  t,
   isRTL,
   useSplitLayout,
 }: {
@@ -203,10 +177,11 @@ function AddPointsCard({
   setAmountText: (value: string) => void;
   parseAmount: () => number | null;
   colors: ReturnType<typeof useColors>;
+  t: Translations;
   isRTL: boolean;
   useSplitLayout: boolean;
 }) {
-  const dir = isRTL ? "row-reverse" : "row";
+  const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
   return (
@@ -226,7 +201,7 @@ function AddPointsCard({
             <Plus size={18} color={colors.primary} />
           </View>
           <Text style={[styles.addCardTitle, { color: colors.foreground, textAlign }]}>
-            {isRTL ? "إضافة نقاط" : "Add points"}
+            {t.credits.addCredits}
           </Text>
         </View>
         <AddPointsForm
@@ -234,6 +209,7 @@ function AddPointsCard({
           setAmountText={setAmountText}
           parseAmount={parseAmount}
           colors={colors}
+          t={t}
           isRTL={isRTL}
           useSplitLayout={useSplitLayout}
         />
@@ -249,7 +225,7 @@ export function PointsWebView() {
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const columns = gridColumns(isWide, isDesktop, isTablet);
   const useSplitLayout = isDesktop || isTablet;
-  const dir = isRTL ? "row-reverse" : "row";
+  const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [reimbursing, setReimbursing] = useState(false);
@@ -265,24 +241,23 @@ export function PointsWebView() {
     amountText,
     setAmountText,
     parseAmount,
-  } = usePointsPage(isRTL);
+    t,
+  } = usePointsPage();
 
   const handleReimburse = async () => {
     if (!accessToken || displaySummary.message_points <= 0) return;
     const ok = webConfirm(
-      isRTL ? "استرداد النقاط" : "Reimburse points",
-      isRTL
-        ? `سيتم استرداد ${displaySummary.message_points} نقطة متاحة.`
-        : `Cash out your ${displaySummary.message_points} available points.`,
+      t.credits.reimburse,
+      t.credits.reimburseConfirm(displaySummary.message_points),
     );
     if (!ok) return;
     setReimbursing(true);
     try {
       await reimbursePoints(accessToken);
       await loadPoints(accessToken);
-      showSuccessToast(isRTL ? "تم طلب الاسترداد" : "Reimbursement requested");
+      showSuccessToast(t.credits.reimbursementRequested);
     } catch (e) {
-      showErrorToast(isRTL ? "تعذر الاسترداد" : "Reimburse failed", (e as Error).message);
+      showErrorToast(t.credits.reimburseFailed, (e as Error).message);
     } finally {
       setReimbursing(false);
     }
@@ -321,12 +296,10 @@ export function PointsWebView() {
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>
-                  {isRTL ? "نقاط الرسائل" : "Message points"}
+                  {t.credits.title}
                 </Text>
                 <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign }]}>
-                  {isRTL
-                    ? "كل رسالة للمساعد الذكي تستهلك نقطة واحدة. أضف نقاطًا لمواصلة استخدام المساعد."
-                    : "Each AI assistant message costs 1 point. Top up your balance to keep using the assistant."}
+                  {t.credits.subtitle}
                 </Text>
               </View>
             </View>
@@ -341,7 +314,7 @@ export function PointsWebView() {
                   textAlign={textAlign}
                   color={colors.mutedForeground}
                 >
-                  {isRTL ? "نظرة عامة" : "Overview"}
+                  {t.credits.overview}
                 </SectionLabel>
                 <View
                   style={[
@@ -366,7 +339,7 @@ export function PointsWebView() {
                     <Text
                       style={[styles.balanceEyebrow, { color: colors.mutedForeground, textAlign }]}
                     >
-                      {isRTL ? "الرصيد الحالي" : "Current balance"}
+                      {t.credits.currentBalance}
                     </Text>
                     <Text
                       style={[
@@ -378,13 +351,13 @@ export function PointsWebView() {
                       {displaySummary.message_points}
                     </Text>
                     <Text style={[styles.balanceUnit, { color: colors.foreground, textAlign }]}>
-                      {isRTL ? "نقطة متاحة للرسائل" : "points available for messages"}
+                      {t.credits.availableForMessages}
                     </Text>
                     <View style={[styles.balanceMeta, { flexDirection: dir }]}>
                       <View style={[styles.metaPill, { backgroundColor: `${colors.primary}10` }]}>
                         <Zap size={14} color={colors.primary} />
                         <Text style={[styles.metaPillText, { color: colors.primary }]}>
-                          {isRTL ? "1 نقطة / رسالة AI" : "1 point / AI message"}
+                          {t.credits.perAiMessage}
                         </Text>
                       </View>
                     </View>
@@ -399,22 +372,22 @@ export function PointsWebView() {
                     ]}
                   >
                     <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
-                      {isRTL ? "توزيع الاستخدام" : "Usage breakdown"}
+                      {t.credits.usageBreakdown}
                     </Text>
-                    <PointsPieChart summary={displaySummary} isRTL={isRTL} size={chartSize} />
+                    <PointsPieChart summary={displaySummary} size={chartSize} />
                   </DashboardCard>
                 </View>
               </View>
 
               <View style={styles.sectionBlock}>
                 <SectionLabel textAlign={textAlign} color={colors.mutedForeground}>
-                  {isRTL ? "ملخص النشاط" : "Activity summary"}
+                  {t.credits.activitySummary}
                 </SectionLabel>
                 <View style={isMobile ? [styles.statsRowMobile, { flexDirection: dir }] : gridStyle(columns)}>
                   <StatCard
                     testID="points-stat-card"
                     icon={TrendingUp}
-                    label={isRTL ? "إجمالي المُشترى" : "Total purchased"}
+                    label={t.credits.totalPurchased}
                     value={displaySummary.points_purchased_total}
                     accent={colors.foreground}
                     colors={colors}
@@ -425,7 +398,7 @@ export function PointsWebView() {
                   <StatCard
                     testID="points-stat-card"
                     icon={TrendingDown}
-                    label={isRTL ? "إجمالي المستخدم" : "Total used"}
+                    label={t.credits.totalUsed}
                     value={displaySummary.points_spent_total}
                     accent={colors.mutedForeground}
                     colors={colors}
@@ -436,9 +409,9 @@ export function PointsWebView() {
                   <StatCard
                     testID="points-stat-card"
                     icon={Zap}
-                    label={isRTL ? "تكلفة رسالة AI" : "Per AI message"}
+                    label={t.credits.perAiMessageLabel}
                     value={1}
-                    suffix={isRTL ? "نقطة" : "pt"}
+                    suffix={t.credits.currencySuffix}
                     accent={colors.primary}
                     colors={colors}
                     isRTL={isRTL}
@@ -471,7 +444,7 @@ export function PointsWebView() {
                 >
                   <Wallet size={20} color="#fff" />
                   <Text style={styles.addBtnMobileText}>
-                    {isRTL ? "استرداد النقاط" : "Reimburse points"}
+                    {t.credits.reimburse}
                   </Text>
                 </Pressable>
               ) : isMobile ? (
@@ -489,13 +462,13 @@ export function PointsWebView() {
                 >
                   <Plus size={20} color="#fff" />
                   <Text style={styles.addBtnMobileText}>
-                    {isRTL ? "إضافة نقاط" : "Add points"}
+                    {t.credits.addCredits}
                   </Text>
                 </Pressable>
               ) : (
                 <View style={[styles.sectionBlock, styles.addSectionBlock]}>
                   <SectionLabel textAlign={textAlign} color={colors.mutedForeground}>
-                    {isRTL ? "إضافة نقاط" : "Add points"}
+                    {t.credits.addCredits}
                   </SectionLabel>
                   <AddPointsCard
                     amountText={amountText}
@@ -504,6 +477,7 @@ export function PointsWebView() {
                     colors={colors}
                     isRTL={isRTL}
                     useSplitLayout={useSplitLayout}
+                    t={t}
                   />
                 </View>
               )}
@@ -525,7 +499,7 @@ export function PointsWebView() {
               onPress={(event) => event.stopPropagation()}
             >
               <Text style={[styles.modalTitle, { color: colors.foreground, textAlign }]}>
-                {isRTL ? "إضافة نقاط" : "Add points"}
+                {t.credits.addCredits}
               </Text>
               <AddPointsForm
                 amountText={amountText}
@@ -534,6 +508,7 @@ export function PointsWebView() {
                 colors={colors}
                 isRTL={isRTL}
                 useSplitLayout={false}
+                t={t}
                 onSubmitted={() => setAddModalOpen(false)}
               />
               <Pressable
@@ -541,7 +516,7 @@ export function PointsWebView() {
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={{ color: colors.foreground, fontWeight: "700" }}>
-                  {isRTL ? "إلغاء" : "Cancel"}
+                  {t.common.cancel}
                 </Text>
               </Pressable>
             </Pressable>

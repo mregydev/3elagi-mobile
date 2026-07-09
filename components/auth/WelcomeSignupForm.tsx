@@ -13,7 +13,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { MessagePricePicker } from "@/components/MessagePricePicker";
+import { AppTextInput } from "@/components/AppTextInput";
+import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
@@ -52,7 +53,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const [workPermit, setWorkPermit] = useState<LocalFile | null>(null);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
-  const [messagePrice, setMessagePrice] = useState(1);
+  const [consultationPrice, setConsultationPrice] = useState(1);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
@@ -190,7 +191,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         graduationCert: isDoctor ? graduationCert ?? undefined : undefined,
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
-        messagePrice: isDoctor ? messagePrice : undefined,
+        consultationPrice: isDoctor ? consultationPrice : undefined,
       });
       const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
       router.replace(getPostAuthRoute(signedRole, doctorApprovalStatus));
@@ -350,13 +351,10 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
               {fieldErrors.specialityId}
             </Text>
           ) : null}
-          <MessagePricePicker
-            value={messagePrice}
-            onChange={setMessagePrice}
-            isRTL={isRTL}
-            dir={dir}
-            label={t.auth.messagePrice}
-            hint={t.auth.messagePriceHint}
+          <EgpPriceInput
+            value={consultationPrice}
+            onChange={setConsultationPrice}
+            label={t.auth.consultationPrice}
           />
           <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
             {t.auth.documentsOptional}

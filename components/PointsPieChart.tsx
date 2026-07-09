@@ -3,10 +3,11 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { G, Path } from "react-native-svg";
 import type { PointsSummary } from "@/domains/points/api";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+import { flexRow } from "@/utils/rtl";
 
 interface Props {
   summary: PointsSummary;
-  isRTL: boolean;
   size?: number;
 }
 
@@ -25,8 +26,10 @@ function slicePath(cx: number, cy: number, r: number, start: number, end: number
   return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${large} 0 ${e.x} ${e.y} Z`;
 }
 
-export function PointsPieChart({ summary, isRTL, size = 220 }: Props) {
+export function PointsPieChart({ summary, size = 220 }: Props) {
   const colors = useColors();
+  const { t, isRTL } = useI18n();
+  const dir = flexRow(isRTL);
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.38;
@@ -71,20 +74,20 @@ export function PointsPieChart({ summary, isRTL, size = 220 }: Props) {
       <View style={[styles.centerLabel, { width: size, height: size }]}>
         <Text style={[styles.balance, { color: colors.foreground }]}>{available}</Text>
         <Text style={[styles.balanceHint, { color: colors.mutedForeground }]}>
-          {isRTL ? "نقطة متاحة" : "points left"}
+          {t.credits.creditsLeft}
         </Text>
       </View>
-      <View style={[styles.legend, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-        <View style={[styles.legendItem, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+      <View style={[styles.legend, { flexDirection: dir }]}>
+        <View style={[styles.legendItem, { flexDirection: dir }]}>
           <View style={[styles.dot, { backgroundColor: colors.primary }]} />
           <Text style={{ color: colors.foreground, fontSize: 13 }}>
-            {isRTL ? `متاح (${available})` : `Available (${available})`}
+            {t.credits.availableLegend(available)}
           </Text>
         </View>
-        <View style={[styles.legendItem, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <View style={[styles.legendItem, { flexDirection: dir }]}>
           <View style={[styles.dot, { backgroundColor: `${colors.mutedForeground}55` }]} />
           <Text style={{ color: colors.foreground, fontSize: 13 }}>
-            {isRTL ? `مستخدم (${spent})` : `Used (${spent})`}
+            {t.credits.usedLegend(spent)}
           </Text>
         </View>
       </View>

@@ -18,6 +18,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { DoctorProfilePhoto } from "@/components/doctor/DoctorProfilePhoto";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { chatRepository } from "@/domains/chat/repository";
@@ -90,7 +91,7 @@ function gridStyle(columns: number): ViewStyle {
 
 export function DoctorWebView() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const { isDesktop, isTablet } = useWebLayout();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -163,7 +164,7 @@ export function DoctorWebView() {
         specialty: doctor.specialty ?? doctor.professionalTitle ?? undefined,
         rating: doctor.ratingAverage,
         ratingTotal: doctor.ratingTotal,
-        messagePrice: doctor.messagePrice,
+        consultationPrice: doctor.consultationPrice,
         doctorEntityId: doctor.id,
       },
     ]);
@@ -272,10 +273,10 @@ export function DoctorWebView() {
                 <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
                   <Coins size={18} color={colors.primary} />
                   <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 18 }}>
-                    {doctor.messagePrice}
+                    {doctor.consultationPrice}
                   </Text>
                   <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
-                    {isRTL ? "نقطة/رسالة" : "pts/message"}
+                    {t.doctor.egpPerConsultation}
                   </Text>
                 </View>
               </View>
@@ -316,7 +317,7 @@ export function DoctorWebView() {
                     : "Add your review"}
               </Text>
               <StarPicker value={reviewRating} onChange={setReviewRating} />
-              <TextInput
+              <AppTextInput
                 value={reviewComment}
                 onChangeText={setReviewComment}
                 placeholder={isRTL ? "تعليق اختياري…" : "Optional comment…"}

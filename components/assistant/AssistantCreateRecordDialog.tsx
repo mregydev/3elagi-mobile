@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import {
   analyzeMedicalRecordImage,
   createPatientMedicalDocument,
@@ -244,7 +245,7 @@ export function AssistantCreateRecordDialog({
             </Text>
           </Pressable>
 
-          <TextInput
+          <AppTextInput
             value={title}
             onChangeText={setTitle}
             placeholder={isEn ? "Title" : "العنوان"}
@@ -258,7 +259,7 @@ export function AssistantCreateRecordDialog({
               },
             ]}
           />
-          <TextInput
+          <AppTextInput
             value={notes}
             onChangeText={setNotes}
             placeholder={isEn ? "Description" : "الوصف"}

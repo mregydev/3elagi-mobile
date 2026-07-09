@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { FileText, Trash2, Upload } from "lucide-react-native";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -187,14 +188,14 @@ export default function AdminRagWeb() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Add text knowledge</Text>
-          <TextInput
+          <AppTextInput
             value={textTitle}
             onChangeText={setTextTitle}
             placeholder="Optional title"
             placeholderTextColor={colors.mutedForeground}
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
           />
-          <TextInput
+          <AppTextInput
             value={textContent}
             onChangeText={setTextContent}
             multiline
@@ -228,7 +229,7 @@ export default function AdminRagWeb() {
             PDF/DOCX is used for training only. The file is not stored. Delete a source to untrain;
             upload again to re-train.
           </Text>
-          <TextInput
+          <AppTextInput
             value={fileTitle}
             onChangeText={setFileTitle}
             placeholder="Optional title"

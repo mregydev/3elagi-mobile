@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { useAuthStore } from "@/domains/auth/store";
 import { getPostAuthRoute } from "@/domains/auth/navigation";

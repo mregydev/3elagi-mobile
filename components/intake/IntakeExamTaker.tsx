@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { uploadFile } from "@/domains/medical/api";
 import type { IntakeQuestion } from "@/domains/intake-exams/types";
 import { useColors } from "@/hooks/useColors";
@@ -149,7 +150,7 @@ export function IntakeExamTaker({
             </Text>
 
             {q.type === "text" ? (
-              <TextInput
+              <AppTextInput
                 value={value[0] ?? ""}
                 onChangeText={(text) => setAnswer(q.id, text ? [text] : [])}
                 editable={!readOnly}

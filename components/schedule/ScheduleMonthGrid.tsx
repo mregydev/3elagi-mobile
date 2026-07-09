@@ -28,6 +28,12 @@ interface Props {
   /** Dates that already have booked appointments — dimmed with an amber dot. */
   bookedDates?: Set<string>;
   singleDaySelection?: boolean;
+  /** Day cell size in px (default 36). */
+  cellSize?: number;
+  /** Center the grid horizontally with even gaps between days. */
+  centered?: boolean;
+  /** Size day cells to fill the container width (mobile-friendly). */
+  responsive?: boolean;
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
@@ -71,6 +77,9 @@ export function ScheduleMonthGrid({
   selectedDates,
   bookedDates,
   singleDaySelection = false,
+  cellSize = 36,
+  centered = false,
+  responsive = false,
   onSelectDate,
   onPrevMonth,
   onNextMonth,
@@ -87,6 +96,28 @@ export function ScheduleMonthGrid({
     () => buildMonthGrid(year, month, weekStartsOn),
     [year, month, weekStartsOn],
   );
+  const dayCellStyle = responsive
+    ? styles.dayCellFlex
+    : {
+        width: cellSize,
+        height: cellSize,
+        borderRadius: cellSize / 2,
+      };
+  const weekdayStyle = responsive
+    ? styles.weekdayFlex
+    : {
+        width: cellSize,
+        textAlign: "center" as const,
+        fontSize: cellSize >= 44 ? 12 : 11,
+        fontWeight: "700" as const,
+      };
+  const cellGap = responsive ? 6 : centered ? 8 : 0;
+  const gridWidth = cellSize * 7 + cellGap * 6;
+  const rowLayout = responsive
+    ? ({ gap: cellGap } as ViewStyle)
+    : centered
+      ? ({ justifyContent: "center", gap: cellGap } as ViewStyle)
+      : ({ justifyContent: "space-between" } as ViewStyle);
 
   const isInSelectedWeek = (date: string) => {
     if (mode !== "week") return false;
@@ -151,28 +182,44 @@ export function ScheduleMonthGrid({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View
+      style={[
+        styles.wrap,
+        responsive && styles.wrapResponsive,
+        centered && !responsive && { width: "100%", maxWidth: gridWidth, alignSelf: "center" },
+      ]}
+    >
       <View style={[styles.navRow, { flexDirection: dir }]}>
         <MonthNavButton onPress={onPrevMonth} icon={PrevIcon} colors={colors} />
-        <Text style={[styles.monthTitle, { color: colors.foreground, writingDirection: isRTL ? "rtl" : "ltr" }]}>
+        <Text
+          style={[
+            styles.monthTitle,
+            responsive && styles.monthTitleResponsive,
+            { color: colors.foreground, writingDirection: isRTL ? "rtl" : "ltr" },
+          ]}
+          numberOfLines={1}
+        >
           {monthLabel(month, isRTL)} {year.toLocaleString(dateLocale)}
         </Text>
         <MonthNavButton onPress={onNextMonth} icon={NextIcon} colors={colors} />
       </View>
 
-      <View style={[styles.weekdayRow, { flexDirection: rowDir }]}>
+      <View style={[styles.weekdayRow, { flexDirection: rowDir }, rowLayout]}>
         {labels.map((label, i) => (
-          <Text key={`${label}-${i}`} style={[styles.weekday, { color: colors.mutedForeground }]}>
+          <Text
+            key={`${label}-${i}`}
+            style={[weekdayStyle, { color: colors.mutedForeground }]}
+          >
             {label}
           </Text>
         ))}
       </View>
 
       {weeks.map((week, wi) => (
-        <View key={wi} style={[styles.weekRow, { flexDirection: rowDir }]}>
+        <View key={wi} style={[styles.weekRow, { flexDirection: rowDir }, rowLayout]}>
           {week.map((date, di) => {
             if (!date) {
-              return <View key={`empty-${wi}-${di}`} style={styles.dayCell} />;
+              return <View key={`empty-${wi}-${di}`} style={[styles.dayCell, dayCellStyle]} />;
             }
             const inMonth = parseYmd(date).getMonth() === month;
             const selected = selectedDates
@@ -194,6 +241,7 @@ export function ScheduleMonthGrid({
                 onPress={() => onSelectDate(date)}
                 style={[
                   styles.dayCell,
+                  dayCellStyle,
                   booked && !selected && { backgroundColor: "#f59e0b1A" },
                   selected && {
                     backgroundColor: `${colors.primary}22`,
@@ -211,7 +259,7 @@ export function ScheduleMonthGrid({
                         ? colors.mutedForeground
                         : colors.foreground,
                     fontWeight: selected ? "800" : "500",
-                    fontSize: 13,
+                    fontSize: responsive ? 12 : 13,
                   }}
                 >
                   {parseYmd(date).getDate().toLocaleString(dateLocale)}
@@ -232,6 +280,9 @@ export function ScheduleMonthGrid({
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
+  wrapResponsive: {
+    width: "100%",
+  },
   navRow: {
     alignItems: "center",
     justifyContent: "space-between",
@@ -251,23 +302,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+  monthTitleResponsive: {
+    flex: 1,
+    textAlign: "center",
+    marginHorizontal: 4,
+  },
   weekdayRow: {
-    justifyContent: "space-between",
     paddingHorizontal: 2,
   },
-  weekday: {
-    width: 36,
+  weekRow: {},
+  weekdayFlex: {
+    flex: 1,
+    minWidth: 0,
     textAlign: "center",
     fontSize: 11,
     fontWeight: "700",
   },
-  weekRow: {
-    justifyContent: "space-between",
-  },
   dayCell: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayCellFlex: {
+    flex: 1,
+    minWidth: 0,
+    aspectRatio: 1,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
   },

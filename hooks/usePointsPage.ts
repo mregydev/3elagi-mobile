@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { useAuthStore } from "@/domains/auth/store";
 import { usePointsStore } from "@/domains/points/store";
 import { DEFAULT_AVAILABLE_POINTS } from "@/domains/points/api";
+import { useI18n } from "@/hooks/useI18n";
 import { showErrorToast } from "@/utils/toast";
 
 const EMPTY_SUMMARY = {
@@ -11,7 +12,8 @@ const EMPTY_SUMMARY = {
   points_purchased_total: 0,
 };
 
-export function usePointsPage(isRTL: boolean) {
+export function usePointsPage() {
+  const { t } = useI18n();
   const accessToken = useAuthStore((s) => s.accessToken);
   const summary = usePointsStore((s) => s.summary);
   const loading = usePointsStore((s) => s.loading);
@@ -30,10 +32,7 @@ export function usePointsPage(isRTL: boolean) {
   const parseAmount = (rawAmount?: number): number | null => {
     const amount = rawAmount ?? parseInt(amountText.trim(), 10);
     if (!Number.isFinite(amount) || amount < 1) {
-      showErrorToast(
-        isRTL ? "مبلغ غير صالح" : "Invalid amount",
-        isRTL ? "أدخل عددًا صحيحًا أكبر من صفر." : "Enter a whole number greater than zero.",
-      );
+      showErrorToast(t.credits.invalidAmount, t.credits.invalidAmountHint);
       return null;
     }
     return amount;
@@ -47,5 +46,6 @@ export function usePointsPage(isRTL: boolean) {
     amountText,
     setAmountText,
     parseAmount,
+    t,
   };
 }

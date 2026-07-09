@@ -28,7 +28,7 @@ export interface SignupInput extends Credentials {
   graduationCert?: SignupFile;
   workPermit?: SignupFile;
   specialityId?: string;
-  messagePrice?: number;
+  consultationPrice?: number;
 }
 
 export type DoctorApprovalStatus = "pending" | "approved" | "rejected";

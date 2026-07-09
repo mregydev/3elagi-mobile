@@ -22,8 +22,17 @@ export interface PointsSummary {
   points_reimbursed_total?: number;
 }
 
+export type ComplaintStatus = "pending" | "accepted" | "rejected";
+
 export interface DoctorConsultation extends Consultation {
   patient_name: string;
+  created_at: string;
+  closed_at: string | null;
+  complaint_status: ComplaintStatus | null;
+}
+
+export interface PatientConsultation extends Consultation {
+  doctor_name: string;
   created_at: string;
   closed_at: string | null;
 }
@@ -70,6 +79,13 @@ export async function fetchMyConsultations(
   return Array.isArray(list) ? list : [];
 }
 
+export async function fetchPatientConsultations(
+  token: string,
+): Promise<PatientConsultation[]> {
+  const list = await authJson<PatientConsultation[]>(`/consultations/mine`, token);
+  return Array.isArray(list) ? list : [];
+}
+
 export async function startConsultation(
   doctorId: string,
   description: string,
@@ -83,7 +99,16 @@ export async function startConsultation(
 
 export async function endConsultation(
   consultationId: string,
-  payload: { note?: string; diagnosis?: string },
+  payload: {
+    note?: string;
+    /** @deprecated use diagnosis_details */
+    diagnosis?: string;
+    diagnosis_details?: {
+      desc: string;
+      symptoms?: { desc: string }[];
+      document_ids?: string[];
+    };
+  },
   token: string,
 ): Promise<{ consultation: Consultation }> {
   return authJson(`/consultations/${consultationId}/end`, token, {

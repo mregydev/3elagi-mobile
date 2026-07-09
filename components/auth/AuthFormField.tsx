@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import type { useColors } from "@/hooks/useColors";
 
 interface Props {
@@ -32,27 +33,24 @@ export const AuthFormField = React.forwardRef<TextInput, Props>(function AuthFor
   },
   ref,
 ) {
-  const borderColor = error ? colors.destructive : colors.border;
-
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-      <TextInput
+      <AppTextInput
         ref={ref}
         value={value}
         onChangeText={onChange}
         secureTextEntry={secure}
         placeholder={placeholder}
+        error={Boolean(error)}
         style={[
           styles.input,
           {
             backgroundColor: colors.card,
-            borderColor,
             color: colors.foreground,
             textAlign: isRTL ? "right" : "left",
           },
         ]}
-        placeholderTextColor={colors.mutedForeground}
         {...rest}
       />
       {error ? (

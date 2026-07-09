@@ -28,6 +28,8 @@ import { useColors } from "@/hooks/useColors";
 interface Props {
   isRTL: boolean;
   token: string;
+  /** Render inside a parent card (no outer border/background). */
+  embedded?: boolean;
 }
 
 /** 30-minute time options for the from/to dropdowns. */
@@ -109,7 +111,7 @@ function TimeSelect({
   );
 }
 
-export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
+export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Props) {
   const colors = useColors();
   const now = useMemo(() => new Date(), []);
   const weekStartsOn = calendarWeekStartsOn(isRTL);
@@ -250,8 +252,8 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
     return <ActivityIndicator style={{ marginVertical: 24 }} color={colors.primary} />;
   }
 
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+  const body = (
+    <>
       <Text style={[styles.title, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
         {isRTL ? "أوقات التوفر" : "Availability"}
       </Text>
@@ -267,6 +269,7 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
         style={[
           styles.wholeMonthBtn,
           {
+            alignSelf: isRTL ? "flex-end" : "flex-start",
             borderColor: wholeMonthSelected ? colors.primary : colors.border,
             backgroundColor: wholeMonthSelected ? `${colors.primary}14` : "transparent",
           },
@@ -289,22 +292,26 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
         </Text>
       </Pressable>
 
-      <ScheduleMonthGrid
-        isRTL={isRTL}
-        year={year}
-        month={month}
-        mode="week"
-        selectedDate=""
-        selectedWeekStart={`${year}-01-01`}
-        selectedMonth={month}
-        selectedYear={year}
-        selectedDates={selected}
-        markedDates={markedDates}
-        bookedDates={bookedDates}
-        onSelectDate={toggleDate}
-        onPrevMonth={() => goMonth(-1)}
-        onNextMonth={() => goMonth(1)}
-      />
+      <View style={styles.calendarWrap}>
+        <ScheduleMonthGrid
+          isRTL={isRTL}
+          year={year}
+          month={month}
+          mode="week"
+          cellSize={48}
+          centered
+          selectedDate=""
+          selectedWeekStart={`${year}-01-01`}
+          selectedMonth={month}
+          selectedYear={year}
+          selectedDates={selected}
+          markedDates={markedDates}
+          bookedDates={bookedDates}
+          onSelectDate={toggleDate}
+          onPrevMonth={() => goMonth(-1)}
+          onNextMonth={() => goMonth(1)}
+        />
+      </View>
 
       <View style={[styles.legendRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
         <View style={styles.legendItem}>
@@ -326,7 +333,12 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
         <TimeSelect label={isRTL ? "إلى" : "To"} value={toTime} onChange={setToTime} isRTL={isRTL} colors={colors} />
       </View>
 
-      <Text style={[styles.selectedCount, { color: colors.mutedForeground }]}>
+      <Text
+        style={[
+          styles.selectedCount,
+          { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+        ]}
+      >
         {selected.size > 0
           ? isRTL
             ? `${selected.size} يوم مختار`
@@ -347,24 +359,48 @@ export function DoctorAvailabilityEditor({ isRTL, token }: Props) {
           <Text style={styles.saveText}>{isRTL ? "حفظ كأيام متاحة" : "Save availability"}</Text>
         )}
       </Pressable>
+    </>
+  );
+
+  if (embedded) {
+    return <View style={styles.embedded}>{body}</View>;
+  }
+
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      {body}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  embedded: {
+    width: "100%",
+    gap: 14,
+  },
+  calendarWrap: {
+    width: "100%",
+    alignItems: "center",
+  },
   card: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 16,
-    gap: 10,
+    padding: 20,
+    gap: 14,
     width: "100%",
-    maxWidth: 380,
-    alignSelf: "center",
+    maxWidth: 560,
   },
   title: { fontSize: 16, fontWeight: "800" },
   hint: { fontSize: 13, lineHeight: 18 },
   wholeMonthBtn: {
-    alignSelf: "center",
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -387,11 +423,14 @@ const styles = StyleSheet.create({
   },
   selectedCount: { fontSize: 13, fontWeight: "600", marginTop: 4 },
   saveBtn: {
-    minHeight: 46,
+    width: "100%",
+    minHeight: 52,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
+    marginTop: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
   },
   saveText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   backdrop: {

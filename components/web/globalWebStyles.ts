@@ -25,6 +25,15 @@ body {
 
 input, textarea {
   outline: none;
+  box-shadow: none;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 @media (min-width: 1024px) {

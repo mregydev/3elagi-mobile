@@ -18,6 +18,17 @@ export function messagePreviewText(
       return message.text;
     case "appointment_action":
       return message.text;
+    case "consultation_action": {
+      const meta = message.consultationAction;
+      if (!meta) return message.text;
+      if (meta.action === "start") {
+        return isRTL ? "بدأت الاستشارة" : "Consultation started";
+      }
+      if (meta.action === "end") {
+        return isRTL ? "انتهت الاستشارة" : "Consultation ended";
+      }
+      return isRTL ? "أُلغيت الاستشارة" : "Consultation cancelled";
+    }
     default:
       return message.text;
   }

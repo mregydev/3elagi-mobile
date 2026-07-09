@@ -10,10 +10,12 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
-import { MessagePricePicker } from "@/components/MessagePricePicker";
+import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -100,6 +102,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setSpecialityId,
     consultationPrice,
     setConsultationPrice,
+    videoConsultationPrice,
+    setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
     isDoctor,
@@ -356,14 +360,12 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                     isRTL={isRTL}
                   />
                 </View>
-                <View style={[spanStyle(Math.min(columns, 2), 1), styles.messagePriceCell]}>
-                  <MessagePricePicker
+                <View style={spanStyle(Math.min(columns, 2), 1)}>
+                  <EgpPriceInput
+                    variant="field"
                     value={consultationPrice}
                     onChange={setConsultationPrice}
-                    isRTL={isRTL}
-                    dir={dir}
-                    label={isRTL ? "سعر الاستشارة (نقاط)" : "Consultation price (points)"}
-                    hint={isRTL ? "من 1 إلى 5 نقاط لكل استشارة" : "From 1 to 5 points per consultation"}
+                    label={t.auth.consultationPrice}
                   />
                 </View>
               </View>
@@ -447,7 +449,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                       <X size={18} color={colors.mutedForeground} />
                     </Pressable>
                   </View>
-                  <TextInput
+                  <AppTextInput
                     value={cert.description}
                     onChangeText={(v) => setCertificationDescription(cert.url, v)}
                     placeholder={
@@ -489,7 +491,14 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
           ) : null}
 
           {isDoctor && accessToken ? (
-            <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} />
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <DoctorAvailabilityEditor isRTL={isRTL} token={accessToken} embedded />
+            </View>
           ) : null}
 
           {isDoctor ? (
@@ -524,6 +533,14 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                     </Pressable>
                   );
                 })}
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <EgpPriceInput
+                  variant="field"
+                  value={videoConsultationPrice}
+                  onChange={setVideoConsultationPrice}
+                  label={t.auth.videoConsultationPrice}
+                />
               </View>
             </View>
           ) : null}
@@ -599,7 +616,7 @@ function ProfileField({
   return (
     <View style={styles.field}>
       <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChangeText}
         editable={editable}
@@ -634,13 +651,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    alignItems: "center",
+    alignItems: "stretch",
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 24,
   },
   container: {
     width: "100%",
+    alignSelf: "center",
     gap: 20,
   },
   pageHeader: {
@@ -756,9 +774,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1.5,
-  },
-  messagePriceCell: {
-    justifyContent: "flex-end",
   },
   field: {
     gap: 6,

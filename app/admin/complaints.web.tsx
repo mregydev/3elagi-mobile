@@ -18,6 +18,7 @@ import {
   type AdminComplaint,
   type ComplaintMessage,
 } from "@/domains/complaints/api";
+import { formatComplaintMessageText } from "@/domains/complaints/formatMessage";
 import { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
@@ -90,7 +91,7 @@ export default function AdminComplaintsWeb() {
     setActingId(id);
     try {
       await resolveComplaint(accessToken, id, action);
-      showSuccessToast(action === "accept" ? "Complaint accepted — points refunded" : "Complaint rejected");
+      showSuccessToast(action === "accept" ? "Complaint accepted — credits refunded" : "Complaint rejected");
       await load();
     } catch (e) {
       showErrorToast("Error", (e as Error).message);
@@ -156,7 +157,7 @@ export default function AdminComplaintsWeb() {
                       {c.patient_name} → {c.doctor_name}
                     </Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                      {fmt(c.created_at)} · {c.points} pts
+                      {fmt(c.created_at)} · {c.points} EGP
                     </Text>
                   </View>
                   <View style={[styles.badge, { backgroundColor: `${statusColor(c.status)}22` }]}>
@@ -197,8 +198,8 @@ export default function AdminComplaintsWeb() {
                             >
                               {m.from === "patient" ? "Patient" : "Doctor"}
                             </Text>
-                            <Text style={{ color: colors.foreground, flex: 1 }}>
-                              {m.type === "text" ? m.content : `[${m.type}] ${m.content}`}
+                            <Text style={{ color: colors.foreground, flex: 1, lineHeight: 20 }}>
+                              {formatComplaintMessageText(m)}
                             </Text>
                           </View>
                         ))

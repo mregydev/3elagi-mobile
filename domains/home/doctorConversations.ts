@@ -15,7 +15,7 @@ export function doctorsToConversations(
       specialty: (d.specialty ?? d.professionalTitle)?.trim() || undefined,
       rating: d.ratingAverage ?? undefined,
       ratingTotal: d.ratingTotal ?? undefined,
-      messagePrice: d.messagePrice ?? 1,
+      consultationPrice: d.consultationPrice ?? 1,
       doctorEntityId: d.doctorId,
     }),
   );

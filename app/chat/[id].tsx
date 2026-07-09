@@ -1228,6 +1228,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           selfId={profile.id}
           doctorUserId={id}
           doctorEntityId={peer.doctorEntityId}
+          videoConsultationPrice={peer.videoConsultationPrice}
           onClose={() => setBookAppointmentOpen(false)}
           onBooked={() => {
             if (accessToken && profile?.id) {

@@ -13,6 +13,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { IntakeExamPreview } from "@/components/intake/IntakeExamPreview";
 import type { IntakeQuestion, IntakeQuestionType } from "@/domains/intake-exams/types";
 import { useColors } from "@/hooks/useColors";
@@ -199,7 +200,7 @@ export function IntakeExamBuilderForm({
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
         {isRTL ? "اسم الفحص" : "Exam name"}
       </Text>
-      <TextInput
+      <AppTextInput
         value={name}
         onChangeText={setName}
         placeholder={isRTL ? "مثال: متابعة السكر" : "e.g. Diabetes follow-up"}
@@ -210,7 +211,7 @@ export function IntakeExamBuilderForm({
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
         {isRTL ? "الوصف" : "Description"}
       </Text>
-      <TextInput
+      <AppTextInput
         value={description}
         onChangeText={setDescription}
         multiline
@@ -274,7 +275,7 @@ export function IntakeExamBuilderForm({
             })}
           </ScrollView>
 
-          <TextInput
+          <AppTextInput
             value={q.text}
             onChangeText={(text) => updateQuestion(q.id, { text })}
             placeholder={isRTL ? "نص السؤال" : "Question text"}
@@ -297,7 +298,7 @@ export function IntakeExamBuilderForm({
             <View style={{ gap: 8, marginTop: 8 }}>
               {q.options.map((opt, optIndex) => (
                 <View key={opt.id} style={[styles.row, { gap: 8 }]}>
-                  <TextInput
+                  <AppTextInput
                     value={opt.text}
                     onChangeText={(text) =>
                       setQuestions((prev) =>

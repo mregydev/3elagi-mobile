@@ -19,6 +19,17 @@ export type ConsultationCancelReasonType =
   | "onsite_visit"
   | "other";
 
+export interface ConsultationDiagnosisSummary {
+  id: string;
+  desc: string;
+  symptoms?: { desc: string }[];
+  linked_records?: {
+    id: string;
+    title: string;
+    record_type: "lab" | "xray";
+  }[];
+}
+
 export interface ConsultationActionMeta {
   consultation_id: string;
   action: ConsultationActionType;
@@ -27,6 +38,7 @@ export interface ConsultationActionMeta {
   cancel_reason_type?: ConsultationCancelReasonType;
   cancel_reason?: string;
   diagnosis_id?: string | null;
+  diagnosis_summary?: ConsultationDiagnosisSummary | null;
 }
 
 export type AccessActionType =
@@ -69,7 +81,8 @@ export interface ChatUser {
   specialty?: string;
   rating?: number;
   ratingTotal?: number;
-  messagePrice?: number;
+  consultationPrice?: number;
+  videoConsultationPrice?: number;
   doctorEntityId?: string;
 }
 

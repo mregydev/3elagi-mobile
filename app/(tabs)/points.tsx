@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { router } from "expo-router";
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
@@ -36,6 +37,7 @@ export default function PointsTab() {
   const loadPoints = usePointsStore((s) => s.loadPoints);
   const tabBarHeight = useBottomTabBarHeight();
   const dir = flexRow(isRTL);
+  const textAlign = isRTL ? "right" : "left";
 
   const {
     loading,
@@ -44,7 +46,8 @@ export default function PointsTab() {
     setAmountText,
     parseAmount,
     summary,
-  } = usePointsPage(isRTL);
+    t,
+  } = usePointsPage();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [reimbursing, setReimbursing] = useState(false);
@@ -56,13 +59,11 @@ export default function PointsTab() {
       const updated = await reimbursePoints(accessToken);
       await loadPoints(accessToken);
       showSuccessToast(
-        isRTL ? "تم طلب الاسترداد" : "Reimbursement requested",
-        isRTL
-          ? `تم استرداد ${updated.points_reimbursed_total ?? 0} نقطة إجمالاً`
-          : `${updated.points_reimbursed_total ?? 0} points reimbursed in total`,
+        t.credits.reimbursementRequested,
+        t.credits.reimbursedTotal(updated.points_reimbursed_total ?? 0),
       );
     } catch (e) {
-      showErrorToast(isRTL ? "تعذر الاسترداد" : "Reimburse failed", (e as Error).message);
+      showErrorToast(t.credits.reimburseFailed, (e as Error).message);
     } finally {
       setReimbursing(false);
     }
@@ -71,13 +72,11 @@ export default function PointsTab() {
   const confirmReimburse = () => {
     if (displaySummary.message_points <= 0) return;
     Alert.alert(
-      isRTL ? "استرداد النقاط" : "Reimburse points",
-      isRTL
-        ? `سيتم استرداد ${displaySummary.message_points} نقطة متاحة.`
-        : `Cash out your ${displaySummary.message_points} available points.`,
+      t.credits.reimburse,
+      t.credits.reimburseConfirm(displaySummary.message_points),
       [
-        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-        { text: isRTL ? "استرداد" : "Reimburse", onPress: () => void doReimburse() },
+        { text: t.common.cancel, style: "cancel" },
+        { text: t.consultations.reimburse, onPress: () => void doReimburse() },
       ],
     );
   };
@@ -103,28 +102,24 @@ export default function PointsTab() {
         ]}
       >
         <View style={[styles.heading, { flexDirection: dir }]}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            {isRTL ? "نقاط الرسائل" : "Message points"}
-          </Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t.credits.title}</Text>
         </View>
 
-        <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-          {isRTL
-            ? "كل رسالة تستهلك نقطة واحدة. أضف نقاطًا لمواصلة المحادثة."
-            : "Each message costs 1 point. Add points to keep chatting."}
+        <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
+          {t.credits.mobileSubtitle}
         </Text>
 
         {loading && !summary ? (
           <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
         ) : (
-          <PointsPieChart summary={displaySummary} isRTL={isRTL} />
+          <PointsPieChart summary={displaySummary} />
         )}
 
         <View style={[styles.statsRow, { flexDirection: dir }]}>
           <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.statValue, { color: colors.primary }]}>{displaySummary.message_points}</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              {isRTL ? "المتاح" : "Available"}
+              {t.credits.available}
             </Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -132,7 +127,7 @@ export default function PointsTab() {
               {displaySummary.points_purchased_total}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              {isRTL ? "المُشترى" : "Purchased"}
+              {t.credits.purchased}
             </Text>
           </View>
         </View>
@@ -160,7 +155,7 @@ export default function PointsTab() {
             ) : (
               <>
                 <Wallet size={20} color="#fff" />
-                <Text style={styles.addBtnText}>{isRTL ? "استرداد النقاط" : "Reimburse points"}</Text>
+                <Text style={styles.addBtnText}>{t.credits.reimburse}</Text>
               </>
             )}
           </Pressable>
@@ -173,7 +168,7 @@ export default function PointsTab() {
             ]}
           >
             <Plus size={20} color="#fff" />
-            <Text style={styles.addBtnText}>{isRTL ? "إضافة نقاط" : "Add points"}</Text>
+            <Text style={styles.addBtnText}>{t.credits.addCredits}</Text>
           </Pressable>
         )}
       </KeyboardSafeScrollView>
@@ -184,24 +179,22 @@ export default function PointsTab() {
             style={[styles.modalCard, { backgroundColor: colors.card }]}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              {isRTL ? "إضافة نقاط" : "Add points"}
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.credits.addCredits}</Text>
+            <Text style={[styles.modalHint, { color: colors.mutedForeground, textAlign }]}>
+              {t.credits.creditAmountHint}
             </Text>
-            <Text style={[styles.modalHint, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-              {isRTL ? "أدخل عدد النقاط التي تريد إضافتها" : "Enter how many points you want to add"}
-            </Text>
-            <TextInput
+            <AppTextInput
               value={amountText}
               onChangeText={setAmountText}
               keyboardType="number-pad"
-              placeholder={isRTL ? "مثال: 50" : "e.g. 50"}
+              placeholder={t.credits.amountPlaceholder}
               placeholderTextColor={colors.mutedForeground}
               style={[
                 styles.input,
                 {
                   backgroundColor: colors.muted,
                   color: colors.foreground,
-                  textAlign: isRTL ? "right" : "left",
+                  textAlign,
                 },
               ]}
             />
@@ -210,17 +203,13 @@ export default function PointsTab() {
                 onPress={() => setModalOpen(false)}
                 style={[styles.modalBtn, { borderColor: colors.border }]}
               >
-                <Text style={{ color: colors.foreground, fontWeight: "700" }}>
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </Text>
+                <Text style={{ color: colors.foreground, fontWeight: "700" }}>{t.common.cancel}</Text>
               </Pressable>
               <Pressable
                 onPress={handleSubmit}
                 style={[styles.modalBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
               >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>
-                  {isRTL ? "متابعة" : "Continue"}
-                </Text>
+                <Text style={{ color: "#fff", fontWeight: "700" }}>{t.credits.continue}</Text>
               </Pressable>
             </View>
           </Pressable>

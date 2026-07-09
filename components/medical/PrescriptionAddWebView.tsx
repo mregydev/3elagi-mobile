@@ -13,6 +13,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useAuthStore } from "@/domains/auth/store";
 import {
@@ -115,7 +116,7 @@ function FormField({
         {label}
         {required ? <Text style={{ color: "#ef4444" }}> *</Text> : null}
       </Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}

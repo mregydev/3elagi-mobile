@@ -35,8 +35,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [certUploading, setCertUploading] = useState(false);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
-  const [messagePrice, setMessagePrice] = useState(1);
   const [consultationPrice, setConsultationPrice] = useState(1);
+  const [videoConsultationPrice, setVideoConsultationPrice] = useState(1);
   const [videoConsultationMinutes, setVideoConsultationMinutes] = useState(30);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
@@ -55,8 +55,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setLocation(data.location ?? "");
       setCertifications(data.certifications ?? []);
       setSpecialityId(data.specialityId ?? "");
-      setMessagePrice(data.messagePrice ?? 1);
       setConsultationPrice(data.consultationPrice ?? 1);
+      setVideoConsultationPrice(data.videoConsultationPrice ?? 1);
       setVideoConsultationMinutes(data.videoConsultationMinutes ?? 30);
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
@@ -169,8 +169,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         location: isDoctor ? location : undefined,
         certifications: isDoctor ? certifications : undefined,
         specialityId: isDoctor ? specialityId : undefined,
-        messagePrice: isDoctor ? messagePrice : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
+        videoConsultationPrice: isDoctor ? videoConsultationPrice : undefined,
         videoConsultationMinutes: isDoctor ? videoConsultationMinutes : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
@@ -216,10 +216,10 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     specialities,
     specialityId,
     setSpecialityId,
-    messagePrice,
-    setMessagePrice,
     consultationPrice,
     setConsultationPrice,
+    videoConsultationPrice,
+    setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
     isDoctor,

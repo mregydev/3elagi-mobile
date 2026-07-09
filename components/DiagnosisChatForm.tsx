@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { fetchDocumentsForPatientUser } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
@@ -21,6 +22,11 @@ export interface DiagnosisChatFormProps {
   patientUserId: string;
   accessToken: string;
   saving?: boolean;
+  title?: string;
+  submitLabel?: string;
+  noteLabel?: string;
+  notePlaceholder?: string;
+  requireDescription?: boolean;
   onClose: () => void;
   onSubmit: (payload: {
     description: string;
@@ -36,6 +42,11 @@ export function DiagnosisChatForm({
   patientUserId,
   accessToken,
   saving = false,
+  title,
+  submitLabel,
+  noteLabel,
+  notePlaceholder,
+  requireDescription = true,
   onClose,
   onSubmit,
 }: DiagnosisChatFormProps) {
@@ -85,9 +96,11 @@ export function DiagnosisChatForm({
 
   const submit = () => {
     const desc = description.trim();
-    if (!desc || saving) return;
-    const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
     const trimmedNote = note.trim();
+    if (saving) return;
+    if (requireDescription && !desc) return;
+    if (!requireDescription && !desc && !trimmedNote) return;
+    const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
     onSubmit({
       description: desc,
       symptoms,
@@ -95,6 +108,10 @@ export function DiagnosisChatForm({
       note: trimmedNote || undefined,
     });
   };
+
+  const canSubmit =
+    !saving &&
+    (requireDescription ? !!description.trim() : !!description.trim() || !!note.trim());
 
   return (
     <ScrollView
@@ -117,7 +134,7 @@ export function DiagnosisChatForm({
               textAlign: isRTL ? "right" : "left",
             }}
           >
-            {isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+            {title ?? (isRTL ? "إضافة تشخيص" : "Add diagnosis")}
           </Text>
         </View>
         <Pressable onPress={onClose} hitSlop={8} disabled={saving}>
@@ -127,8 +144,9 @@ export function DiagnosisChatForm({
 
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
         {isRTL ? "وصف التشخيص" : "Diagnosis description"}
+        {!requireDescription ? (isRTL ? " (اختياري)" : " (optional)") : null}
       </Text>
-      <TextInput
+      <AppTextInput
         value={description}
         onChangeText={setDescription}
         placeholder={isRTL ? "مثال: التهاب الشعب الهوائية" : "e.g. Acute bronchitis"}
@@ -151,7 +169,7 @@ export function DiagnosisChatForm({
       </Text>
       {symptomLines.map((line, index) => (
         <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
-          <TextInput
+          <AppTextInput
             value={line}
             onChangeText={(value) => {
               const next = [...symptomLines];
@@ -293,12 +311,14 @@ export function DiagnosisChatForm({
       )}
 
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-        {isRTL ? "رسالة للمريض (اختياري)" : "Message to patient (optional)"}
+        {noteLabel ?? (isRTL ? "رسالة للمريض (اختياري)" : "Message to patient (optional)")}
       </Text>
-      <TextInput
+      <AppTextInput
         value={note}
         onChangeText={setNote}
-        placeholder={isRTL ? "أضف رسالة…" : "Add a message…"}
+        placeholder={
+          notePlaceholder ?? (isRTL ? "أضف رسالة…" : "Add a message…")
+        }
         placeholderTextColor={colors.mutedForeground}
         style={[
           styles.input,
@@ -316,12 +336,12 @@ export function DiagnosisChatForm({
 
       <Pressable
         onPress={submit}
-        disabled={saving || !description.trim()}
+        disabled={!canSubmit}
         style={[
           styles.submitBtn,
           {
             backgroundColor: colors.primary,
-            opacity: saving || !description.trim() ? 0.6 : 1,
+            opacity: canSubmit ? 1 : 0.6,
           },
         ]}
       >
@@ -329,7 +349,8 @@ export function DiagnosisChatForm({
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-            {isRTL ? "حفظ وإرسال في المحادثة" : "Save & send in chat"}
+            {submitLabel ??
+              (isRTL ? "حفظ وإرسال في المحادثة" : "Save & send in chat")}
           </Text>
         )}
       </Pressable>

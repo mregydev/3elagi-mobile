@@ -1,12 +1,5 @@
 import { API_BASE } from "@/constants/api";
-
-export type AccessActionType =
-  | "grant_records"
-  | "revoke_records"
-  | "patient_block"
-  | "doctor_block"
-  | "patient_unblock"
-  | "doctor_unblock";
+import type { AccessActionType } from "./types";
 
 export interface DoctorPatientAccessStatus {
   patient_user_id: string;
@@ -26,13 +19,14 @@ export async function fetchDoctorPatientAccess(
   const res = await fetch(`${API_BASE}/doctor-patient-access/with/${peerId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = (await res.json().catch(() => ({}))) as DoctorPatientAccessStatus & {
-    message?: string;
-  };
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.message ?? `Failed to load access status (${res.status})`);
+    throw new Error(
+      (data as { message?: string }).message ??
+        `Failed to load access status (${res.status})`,
+    );
   }
-  return data;
+  return data as DoctorPatientAccessStatus;
 }
 
 export function canDoctorViewPatientRecords(
@@ -44,20 +38,10 @@ export function canDoctorViewPatientRecords(
 export function doctorAccessDeniedMessage(isRTL: boolean): string {
   return isRTL
     ? "المريض لم يمنحك صلاحية عرض السجل الطبي بعد. اطلب من المريض منح الصلاحية من المحادثة."
-    : "The patient has not granted permission to view medical records yet. Ask them to grant access in chat.";
+    : "The patient has not granted permission to view medical records yet. Ask the patient to grant access from the chat.";
 }
 
-export function isDoctorAccessDeniedError(message: string): boolean {
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("permission") ||
-    lower.includes("granted") ||
-    lower.includes("blocked") ||
-    lower.includes("403")
-  );
-}
-
-export function accessActionLabel(action: AccessActionType, isRTL: boolean): string {
+export function accessActionLabel(action: AccessActionType, isRTL = false): string {
   const labels: Record<AccessActionType, { en: string; ar: string }> = {
     grant_records: {
       en: "Granted access to medical records",
@@ -85,4 +69,10 @@ export function accessActionLabel(action: AccessActionType, isRTL: boolean): str
     },
   };
   return isRTL ? labels[action].ar : labels[action].en;
+}
+
+/** Doctor↔patient messaging is restricted to these roles on the API. */
+export function canUseChat(role: string | null | undefined): boolean {
+  const r = role?.toLowerCase();
+  return r === "doctor" || r === "patient";
 }

@@ -68,7 +68,7 @@ function ConversationRow({
             isRTL={isRTL}
             rating={item.user.rating}
             ratingTotal={item.user.ratingTotal}
-            messagePrice={item.user.messagePrice}
+            consultationPrice={item.user.consultationPrice}
             showReviewCount
           />
         </View>

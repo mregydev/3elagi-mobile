@@ -12,6 +12,7 @@ import {
   sendChatMessage,
   type MessageRow,
 } from "./api";
+import { canUseChat } from "./access";
 import { applyLivePresence } from "./presence";
 import { applyPresenceToConversations } from "./presenceConversations";
 import { emit, on } from "@/utils/eventBus";
@@ -329,7 +330,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
     })),
 
-  loadConversations: async (token, selfId, _selfRole) => {
+  loadConversations: async (token, selfId, selfRole) => {
     if (!token || !selfId) {
       baseConversations = [];
       chatRepository.clearUsers();
@@ -341,6 +342,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         error: null,
         selfId: null,
       });
+      return;
+    }
+
+    if (!canUseChat(selfRole)) {
+      if (selfRole) {
+        baseConversations = [];
+        chatRepository.clearUsers();
+        set({
+          conversations: [],
+          messages: {},
+          messagesLoading: {},
+          loading: false,
+          error: null,
+          selfId: null,
+        });
+      }
       return;
     }
 

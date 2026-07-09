@@ -28,7 +28,7 @@ export interface SpecialityDoctorRow {
   consultation_fee_egp?: number | null;
   rating_average?: number | null;
   rating_total?: number | null;
-  message_price?: number | null;
+  consultation_price?: number | null;
   role: "doctor";
 }
 
@@ -60,7 +60,7 @@ export interface SpecialityDoctor {
   consultationFeeEgp?: number | null;
   ratingAverage?: number | null;
   ratingTotal?: number | null;
-  messagePrice?: number | null;
+  consultationPrice?: number | null;
 }
 
 function mapAdvertisement(row: AdvertisementRow): Advertisement {
@@ -103,7 +103,7 @@ function mapDoctor(row: SpecialityDoctorRow): SpecialityDoctor {
     consultationFeeEgp: row.consultation_fee_egp ?? undefined,
     ratingAverage: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
-    messagePrice: row.message_price ?? 1,
+    consultationPrice: row.consultation_price ?? 1,
   };
 }
 

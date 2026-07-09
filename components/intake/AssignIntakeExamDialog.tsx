@@ -12,6 +12,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { IntakeExamBuilderForm } from "@/components/intake/IntakeExamBuilderForm";
 import {
   assignIntakeExam,
@@ -173,14 +174,14 @@ export function AssignIntakeExamDialog({
                   {isRTL ? "الموعد النهائي" : "Deadline"}
                 </Text>
                 <View style={[styles.row, { gap: 8 }]}>
-                  <TextInput
+                  <AppTextInput
                     value={deadlineDate}
                     onChangeText={setDeadlineDate}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={colors.mutedForeground}
                     style={[styles.input, { flex: 1, color: colors.foreground, borderColor: colors.border, textAlign }]}
                   />
-                  <TextInput
+                  <AppTextInput
                     value={deadlineTime}
                     onChangeText={setDeadlineTime}
                     placeholder="HH:mm"
@@ -220,7 +221,7 @@ export function AssignIntakeExamDialog({
                     <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
                       {isRTL ? "كل (عدد)" : "Every (count)"}
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       value={interval}
                       onChangeText={setInterval}
                       keyboardType="number-pad"

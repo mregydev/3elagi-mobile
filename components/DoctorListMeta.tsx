@@ -2,6 +2,8 @@ import { Star } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+import { formatEgpPerUnit } from "@/utils/credits";
 
 interface SubtitleProps {
   specialty?: string;
@@ -29,7 +31,7 @@ interface TrailingProps {
   isRTL: boolean;
   rating?: number;
   ratingTotal?: number;
-  messagePrice?: number;
+  consultationPrice?: number;
   showReviewCount?: boolean;
 }
 
@@ -37,12 +39,13 @@ export function DoctorTrailingMeta({
   isRTL,
   rating,
   ratingTotal,
-  messagePrice,
+  consultationPrice,
   showReviewCount = false,
 }: TrailingProps) {
   const colors = useColors();
+  const { t } = useI18n();
   const hasRating = rating != null && rating > 0;
-  const price = messagePrice ?? 1;
+  const price = consultationPrice ?? 1;
   const align = isRTL ? "flex-start" : "flex-end";
 
   return (
@@ -50,21 +53,19 @@ export function DoctorTrailingMeta({
       <View style={[styles.ratingLine, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
         <Star size={11} color={colors.warning} fill={hasRating ? colors.warning : "transparent"} />
         <Text style={[styles.ratingValue, { color: colors.foreground }]}>
-          {hasRating ? rating!.toFixed(1) : isRTL ? "جديد" : "New"}
+          {hasRating ? rating!.toFixed(1) : t.doctor.new}
         </Text>
       </View>
 
       {showReviewCount && hasRating && ratingTotal != null && ratingTotal > 0 ? (
         <Text style={[styles.reviewCount, { color: colors.mutedForeground, textAlign: isRTL ? "left" : "right" }]}>
-          {ratingTotal} {isRTL ? "تقييم" : "reviews"}
+          {ratingTotal} {t.doctor.reviews}
         </Text>
       ) : null}
 
       <Text style={[styles.priceLine, { textAlign: isRTL ? "left" : "right" }]}>
-        <Text style={[styles.priceValue, { color: colors.primary }]}>{price}</Text>
-        <Text style={[styles.priceUnit, { color: colors.mutedForeground }]}>
-          {" "}
-          {isRTL ? "نقطة/رسالة" : "pts/msg"}
+        <Text style={[styles.priceValue, { color: colors.primary }]}>
+          {formatEgpPerUnit(price, t)}
         </Text>
       </Text>
     </View>

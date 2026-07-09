@@ -20,7 +20,8 @@ export interface ChatContactRow {
   photo_url?: string | null;
   specialty?: string | null;
   doctor_id?: string | null;
-  message_price?: number | null;
+  consultation_price?: number | null;
+  video_consultation_price?: number | null;
   rating_average?: number | null;
   rating_total?: number | null;
 }
@@ -62,7 +63,8 @@ function mapContact(row: ChatContactRow): ChatUser {
     specialty: row.specialty?.trim() || undefined,
     rating: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
-    messagePrice: row.message_price ?? undefined,
+    consultationPrice: row.consultation_price ?? undefined,
+    videoConsultationPrice: row.video_consultation_price ?? undefined,
     doctorEntityId: row.doctor_id ?? undefined,
   };
 }

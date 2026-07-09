@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import {
   EMPTY_MEDICAL_FILTERS,
   hasActiveFilters,
@@ -269,7 +270,7 @@ export function MedicalHistoryFilterPanel({
         ]}
       >
         <Search size={16} color={colors.mutedForeground} />
-        <TextInput
+        <AppTextInput
           value={filters.text}
           onChangeText={(text) => onChange({ ...filters, text })}
           placeholder={isRTL ? "عنوان، وصف، أعراض…" : "Title, description, symptoms…"}
@@ -298,7 +299,7 @@ export function MedicalHistoryFilterPanel({
         ]}
       >
         <Stethoscope size={16} color={colors.mutedForeground} />
-        <TextInput
+        <AppTextInput
           value={filters.doctorName}
           onChangeText={(doctorName) => onChange({ ...filters, doctorName })}
           placeholder={isRTL ? "مثال: أحمد" : "e.g. Smith"}

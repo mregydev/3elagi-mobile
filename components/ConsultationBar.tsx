@@ -21,7 +21,15 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
+import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
+import {
+  ConsultationMediaPreview,
+  type ConsultationMediaItem,
+} from "@/components/consultations/ConsultationMediaPreview";
+import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { uploadFile } from "@/domains/medical/api";
 import {
   fetchComplaintStatus,
@@ -45,9 +53,11 @@ import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import type { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
+import { formatEgp } from "@/utils/credits";
+import { useI18n } from "@/hooks/useI18n";
 
 type SelectedRecord = { record: MedicalRecord; note?: string };
-type MediaAttachment = { type: "image" | "video" | "voice"; url: string };
+type MediaAttachment = ConsultationMediaItem;
 
 type Colors = ReturnType<typeof useColors>;
 
@@ -91,6 +101,7 @@ export function ConsultationBar({
   latestAction,
   onOpenChange,
 }: Props) {
+  const { t } = useI18n();
   const sendMessage = useChatStore((s) => s.sendMessage);
   const [active, setActive] = useState<Consultation | null>(null);
   const [modal, setModal] = useState<null | "start" | "end" | "cancel">(null);
@@ -105,6 +116,8 @@ export function ConsultationBar({
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const recordingStartedAt = useRef(0);
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
 
   // complaint state (patient, after an ended consultation)
   const [complaintStatus, setComplaintStatus] = useState<ComplaintStatus | null>(null);
@@ -113,8 +126,6 @@ export function ConsultationBar({
 
   // form state
   const [description, setDescription] = useState("");
-  const [note, setNote] = useState("");
-  const [diagnosis, setDiagnosis] = useState("");
   const [reasonType, setReasonType] = useState<ConsultationCancelReasonType>(
     "video_consultation",
   );
@@ -187,6 +198,8 @@ export function ConsultationBar({
     setModal(null);
     setSelectedRecords([]);
     setMedia([]);
+    setPreviewImageUri(null);
+    setPreviewVideoUri(null);
   };
 
   const pickMedia = async (kind: "image" | "video") => {
@@ -213,7 +226,10 @@ export function ConsultationBar({
         token,
         asset.file,
       );
-      setMedia((prev) => [...prev, { type: kind, url: uploaded.url }]);
+      setMedia((prev) => [
+        ...prev,
+        { type: kind, url: uploaded.url, previewUri: asset.uri },
+      ]);
     } catch (e) {
       showErrorToast(label("Upload failed", "تعذر الرفع"), (e as Error).message);
     } finally {
@@ -239,7 +255,7 @@ export function ConsultationBar({
           const ext = uri.split(".").pop() ?? "m4a";
           uploaded = await uploadFile(uri, mime, `voice-${Date.now()}.${ext}`, token);
         }
-        setMedia((prev) => [...prev, { type: "voice", url: uploaded.url }]);
+        setMedia((prev) => [...prev, { type: "voice", url: uploaded.url, previewUri: uri }]);
       } catch (e) {
         setRecording(null);
         showErrorToast(label("Recording failed", "تعذر التسجيل"), (e as Error).message);
@@ -315,28 +331,45 @@ export function ConsultationBar({
       setSelectedRecords([]);
       setMedia([]);
       showSuccessToast(
-        label("Consultation started", "بدأت الاستشارة"),
-        label(
-          `${res.consultation.reserved_points} points reserved`,
-          `تم حجز ${res.consultation.reserved_points} نقطة`,
-        ),
+        t.consultations.consultationStarted,
+        t.consultations.reservedToast(formatEgp(res.consultation.reserved_points, t)),
       );
     } catch (e) {
-      showErrorToast(label("Could not start", "تعذر البدء"), (e as Error).message);
+      showErrorToast(t.consultations.couldNotStart, (e as Error).message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const submitEnd = async () => {
+  const submitEnd = async (payload: {
+    description: string;
+    symptoms: string[];
+    documentIds: string[];
+    note?: string;
+  }) => {
     if (!active) return;
     setSubmitting(true);
     try {
-      await endConsultation(active.id, { note: note.trim(), diagnosis: diagnosis.trim() }, token);
+      const desc = payload.description.trim();
+      await endConsultation(
+        active.id,
+        {
+          note: payload.note?.trim(),
+          ...(desc
+            ? {
+                diagnosis_details: {
+                  desc,
+                  symptoms: payload.symptoms.map((s) => ({ desc: s })),
+                  document_ids:
+                    payload.documentIds.length > 0 ? payload.documentIds : undefined,
+                },
+              }
+            : {}),
+        },
+        token,
+      );
       setActive(null);
       setModal(null);
-      setNote("");
-      setDiagnosis("");
       showSuccessToast(label("Consultation ended", "انتهت الاستشارة"));
     } catch (e) {
       showErrorToast(label("Could not end", "تعذر الإنهاء"), (e as Error).message);
@@ -492,30 +525,15 @@ export function ConsultationBar({
           </Text>
         ) : null}
         {media.map((m, i) => (
-          <View
-            key={`${m.type}-${i}`}
-            style={[styles.recordRow, { flexDirection: dir, borderColor: colors.border }]}
-          >
-            {m.type === "image" ? (
-              <ImageIcon size={16} color={colors.primary} />
-            ) : m.type === "video" ? (
-              <VideoIcon size={16} color={colors.primary} />
-            ) : (
-              <Mic size={16} color={colors.primary} />
-            )}
-            <Text
-              style={[styles.recordName, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}
-            >
-              {m.type === "image"
-                ? label("Image", "صورة")
-                : m.type === "video"
-                  ? label("Video", "فيديو")
-                  : label("Voice message", "رسالة صوتية")}
-            </Text>
-            <Pressable onPress={() => setMedia((prev) => prev.filter((_, j) => j !== i))} hitSlop={8}>
-              <X size={16} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
+          <ConsultationMediaPreview
+            key={`${m.type}-${m.url}-${i}`}
+            item={m}
+            isRTL={isRTL}
+            colors={colors}
+            onRemove={() => setMedia((prev) => prev.filter((_, j) => j !== i))}
+            onExpandImage={setPreviewImageUri}
+            onExpandVideo={setPreviewVideoUri}
+          />
         ))}
 
         <FieldLabel colors={colors} isRTL={isRTL}>
@@ -555,6 +573,15 @@ export function ConsultationBar({
 
       </FormModal>
 
+      <FullscreenImageViewer
+        uri={previewImageUri}
+        onClose={() => setPreviewImageUri(null)}
+      />
+      <FullscreenVideoViewer
+        uri={previewVideoUri}
+        onClose={() => setPreviewVideoUri(null)}
+      />
+
       <MedicalRecordPicker
         visible={pickerOpen}
         records={records}
@@ -572,40 +599,24 @@ export function ConsultationBar({
         }}
       />
 
-      {/* End modal */}
-      <FormModal
+      {/* End modal — full diagnosis form like medical records */}
+      <DiagnosisChatModal
         visible={modal === "end"}
-        title={label("End consultation", "إنهاء الاستشارة")}
-        onClose={() => setModal(null)}
-        onSubmit={submitEnd}
-        submitting={submitting}
-        submitLabel={label("End", "إنهاء")}
-        colors={colors}
         isRTL={isRTL}
-      >
-        <FieldLabel colors={colors} isRTL={isRTL}>
-          {label("Closing note", "ملاحظة ختامية")}
-        </FieldLabel>
-        <Input
-          value={note}
-          onChangeText={setNote}
-          multiline
-          placeholder={label("Summary for the patient...", "ملخص للمريض...")}
-          colors={colors}
-          isRTL={isRTL}
-        />
-        <FieldLabel colors={colors} isRTL={isRTL}>
-          {label("Diagnosis (optional)", "التشخيص (اختياري)")}
-        </FieldLabel>
-        <Input
-          value={diagnosis}
-          onChangeText={setDiagnosis}
-          multiline
-          placeholder={label("Diagnosis details...", "تفاصيل التشخيص...")}
-          colors={colors}
-          isRTL={isRTL}
-        />
-      </FormModal>
+        patientUserId={peerId}
+        accessToken={token}
+        saving={submitting}
+        title={label("End consultation", "إنهاء الاستشارة")}
+        submitLabel={label("End consultation", "إنهاء الاستشارة")}
+        noteLabel={label("Closing note (optional)", "ملاحظة ختامية (اختياري)")}
+        notePlaceholder={label("Summary for the patient...", "ملخص للمريض...")}
+        requireDescription={false}
+        onClose={() => {
+          if (submitting) return;
+          setModal(null);
+        }}
+        onSubmit={(payload) => void submitEnd(payload)}
+      />
 
       {/* Cancel modal */}
       <FormModal
@@ -673,10 +684,7 @@ export function ConsultationBar({
         isRTL={isRTL}
       >
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          {label(
-            "Explain what went wrong. An admin will review the consultation and may refund your points.",
-            "اشرح ما حدث. سيقوم المشرف بمراجعة الاستشارة وقد يعيد نقاطك.",
-          )}
+          {t.consultations.complaintHint}
         </Text>
         <Input
           value={complaintReason}
@@ -850,7 +858,7 @@ function Input({
   isRTL: boolean;
 }) {
   return (
-    <TextInput
+    <AppTextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}

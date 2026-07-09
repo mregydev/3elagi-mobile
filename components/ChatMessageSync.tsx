@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { mapEmotionRows } from "@/domains/emotions/types";
 import { useAuthStore } from "@/domains/auth/store";
+import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
 import {
   getPresenceSocket,
@@ -14,6 +15,7 @@ import {
 
 export function ChatMessageSync() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
   const selfId = useAuthStore((s) => s.profile?.id ?? null);
   const activeChatPeerId = useChatStore((s) => s.activeChatPeerId);
   const handleIncomingMessage = useChatStore((s) => s.handleIncomingMessage);
@@ -23,7 +25,7 @@ export function ChatMessageSync() {
   const setPeerTyping = useChatStore((s) => s.setPeerTyping);
 
   useEffect(() => {
-    if (!accessToken || !selfId) return;
+    if (!accessToken || !selfId || !canUseChat(role)) return;
 
     const attachMessageHandlers = () => {
       onChatMessageNew((payload) => {
@@ -46,7 +48,7 @@ export function ChatMessageSync() {
     return () => {
       socket?.off("connect", onConnect);
     };
-  }, [accessToken, selfId, handleIncomingMessage, handleIncomingMessageDelete, handleIncomingMessageUpdate]);
+  }, [accessToken, selfId, role, handleIncomingMessage, handleIncomingMessageDelete, handleIncomingMessageUpdate]);
 
   useEffect(() => {
     onMessageEmotionUpdated((payload) => {

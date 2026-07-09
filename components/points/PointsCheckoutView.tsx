@@ -11,6 +11,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { showErrorToast } from "@/utils/toast";
+import { flexRow } from "@/utils/rtl";
 
 interface PointsCheckoutViewProps {
   amount: number;
@@ -19,10 +20,10 @@ interface PointsCheckoutViewProps {
 
 export function PointsCheckoutView({ amount, desktopLayout = false }: PointsCheckoutViewProps) {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
   const useWideLayout = desktopLayout || isDesktop;
-  const dir = isRTL ? "row-reverse" : "row";
+  const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
@@ -33,28 +34,23 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   }> = [
     {
       id: "vodafone_cash",
-      label: isRTL ? "فودافون كاش" : "Vodafone Cash",
-      subtitle: isRTL ? "ادفع من محفظة فودافون" : "Pay from your Vodafone wallet",
+      label: t.credits.vodafoneCash,
+      subtitle: t.credits.vodafoneCashHint,
     },
     {
       id: "fawry",
-      label: isRTL ? "فوري" : "Fawry",
-      subtitle: isRTL ? "ادفع عبر فوري" : "Pay through Fawry",
+      label: t.credits.fawry,
+      subtitle: t.credits.fawryHint,
     },
     {
       id: "credit_card",
-      label: isRTL ? "بطاقة ائتمان" : "Credit card",
-      subtitle: isRTL ? "Visa / Mastercard" : "Visa / Mastercard",
+      label: t.credits.creditCard,
+      subtitle: t.credits.creditCardHint,
     },
   ];
 
   const handlePayment = (_method: PaymentMethodId) => {
-    showErrorToast(
-      isRTL ? "غير متاح بعد" : "Not implemented yet",
-      isRTL
-        ? "طريقة الدفع هذه ستكون متاحة قريبًا."
-        : "This payment method will be available soon.",
-    );
+    showErrorToast(t.credits.paymentNotImplemented, t.credits.paymentNotImplementedHint);
   };
 
   return (
@@ -77,9 +73,7 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
             style={[styles.backRow, { flexDirection: dir }]}
           >
             <BackIcon size={18} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700" }}>
-              {isRTL ? "رجوع" : "Back"}
-            </Text>
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>{t.credits.back}</Text>
           </Pressable>
 
           <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -89,23 +83,25 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.summaryTitle, { color: colors.foreground, textAlign }]}>
-                  {isRTL ? "إتمام شراء النقاط" : "Points checkout"}
+                  {t.credits.checkoutTitle}
                 </Text>
                 <Text style={{ color: colors.mutedForeground, textAlign }}>
-                  {isRTL ? "راجع المبلغ واختر طريقة الدفع" : "Review your order and choose payment"}
+                  {t.credits.checkoutSubtitle}
                 </Text>
               </View>
             </View>
             <View style={[styles.amountRow, { borderTopColor: colors.border }]}>
               <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
-                {isRTL ? "عدد النقاط" : "Points"}
+                {t.credits.checkoutAmount}
               </Text>
-              <Text style={[styles.amountValue, { color: colors.primary }]}>{amount}</Text>
+              <Text style={[styles.amountValue, { color: colors.primary }]}>
+                {t.credits.egp(amount)}
+              </Text>
             </View>
           </View>
 
           <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
-            {isRTL ? "طريقة الدفع" : "Payment method"}
+            {t.credits.paymentMethod}
           </Text>
 
           <View style={styles.methods}>

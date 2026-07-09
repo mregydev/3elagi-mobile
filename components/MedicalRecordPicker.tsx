@@ -12,6 +12,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
+
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
@@ -277,7 +279,7 @@ export function MedicalRecordPicker({
               >
                 {isRTL ? "رسالة اختيارية" : "Optional message"}
               </Text>
-              <TextInput
+              <AppTextInput
                 value={note}
                 onChangeText={setNote}
                 placeholder={isRTL ? "أضف رسالة…" : "Add a message…"}

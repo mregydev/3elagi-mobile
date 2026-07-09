@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAuthStore } from "@/domains/auth/store";
+import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
 import { usePresenceStore } from "@/domains/presence/store";
 
@@ -21,6 +22,11 @@ export function PresenceChatSync() {
       return;
     }
 
+    if (!canUseChat(role)) {
+      if (role) clear();
+      return;
+    }
+
     void loadConversations(accessToken, profile.id, role);
   }, [hydrated, profile?.id, accessToken, role, loadConversations, clear]);
 
@@ -28,8 +34,9 @@ export function PresenceChatSync() {
 
   useEffect(() => {
     if (!hydrated || !profile || !accessToken) return;
+    if (!canUseChat(role)) return;
     syncPresence();
-  }, [hydrated, profile?.id, accessToken, onlineUserIds, syncPresence]);
+  }, [hydrated, profile?.id, accessToken, role, onlineUserIds, syncPresence]);
 
   return null;
 }
