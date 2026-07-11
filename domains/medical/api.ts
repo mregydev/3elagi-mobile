@@ -318,6 +318,34 @@ export async function fetchDoctorDiagnosisById(
   return mapDiagnosis(data);
 }
 
+/**
+ * Resolve a document/prescription by id for a doctor when the URL carries no
+ * patient context (a bare /medical/{id} link). The deployed backend has no
+ * doctor-scoped "record by id" endpoint, so we scan the doctor's patients'
+ * lists (existing endpoints) and match the id.
+ * ponytail: O(patients) fan-out; only runs on cold bare-URL loads, not in-app
+ * navigation (which passes patientUserId). Add a by-id endpoint if this gets hot.
+ */
+export async function findDoctorRecordById(
+  id: string,
+  token: string,
+): Promise<MedicalRecord | null> {
+  const patients = await fetchDoctorPatients(token).catch(() => []);
+  const lists = await Promise.all(
+    patients.map((p) =>
+      Promise.all([
+        fetchDocumentsForPatientUser(p.user_id, token),
+        fetchPrescriptionsForPatientUser(p.user_id, token),
+      ]).then(([docs, rx]) => [...docs, ...rx]),
+    ),
+  );
+  for (const list of lists) {
+    const hit = list.find((r) => r.id === id);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 export async function updateDiagnosis(
   id: string,
   payload: { desc: string },

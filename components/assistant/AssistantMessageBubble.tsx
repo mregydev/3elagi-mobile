@@ -9,7 +9,9 @@ import { AssistantMessageActions } from "@/components/assistant/AssistantMessage
 import type { AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useColors } from "@/hooks/useColors";
+import { AiBookingCard } from "@/components/assistant/AiBookingCard";
 import { handleAssistantLink } from "@/utils/assistantLinks";
+import { parseBookingDirective } from "@/utils/assistantBooking";
 import { prepareAssistantMarkdown } from "@/utils/assistantMarkdown";
 import { stripMarkdownForTts } from "@/utils/stripMarkdownForTts";
 import { splitSpokenWords } from "@/utils/spokenWords";
@@ -20,6 +22,7 @@ interface Props {
   selfUserId?: string | null;
   spokenWordIndex?: number | null;
   isReadingAloud?: boolean;
+  isRTL?: boolean;
   onFeedback?: (emotion: AiFeedbackType) => void;
   onReadAloud?: () => void;
 }
@@ -50,11 +53,19 @@ function AssistantMessageBubbleBase({
   selfUserId,
   spokenWordIndex = null,
   isReadingAloud = false,
+  isRTL = false,
   onFeedback,
   onReadAloud,
 }: Props) {
   const colors = useColors();
   const isUser = message.role === "user";
+  // In RTL locales the conversation mirrors: assistant on the right, user on the
+  // left, and text reads right-to-left.
+  const alignEnd = isUser ? !isRTL : isRTL;
+  const rowAlign = { alignItems: alignEnd ? "flex-end" : "flex-start" } as const;
+  // Align to the locale side; let each script keep its natural bidi order (no
+  // writingDirection override, which would mangle Latin text in RTL mode).
+  const textAlign = isRTL ? "right" : "left";
   const isLoading = message.pending && !message.content?.trim();
   const showFeedback = canReactToAiMessage(message);
   const showAssistantActions =
@@ -67,10 +78,15 @@ function AssistantMessageBubbleBase({
     ? splitSpokenWords(stripMarkdownForTts(message.content || ""))
     : [];
   const imageSource = message.imageUri ?? message.imageUrl;
+  // Assistant replies may carry an inline booking directive; split it out so the
+  // card renders below the text and the raw ```booking block never shows.
+  const booking = isUser
+    ? { directive: null, text: message.content || "" }
+    : parseBookingDirective(message.content || "");
 
   if (isLoading) {
     return (
-      <View style={[compact ? styles.rowCompact : styles.row, styles.rowAssistant]}>
+      <View style={[compact ? styles.rowCompact : styles.row, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
         <AssistantLoadingIndicator compact />
       </View>
     );
@@ -78,15 +94,12 @@ function AssistantMessageBubbleBase({
 
   return (
     <View
-      style={[
-        compact ? styles.rowCompact : styles.row,
-        isUser ? styles.rowUser : styles.rowAssistant,
-      ]}
+      style={[compact ? styles.rowCompact : styles.row, rowAlign]}
     >
       <View
         style={[
           styles.bubbleWrap,
-          isUser ? styles.bubbleWrapUser : styles.bubbleWrapAssistant,
+          rowAlign,
           { maxWidth: compact ? "90%" : "88%" },
         ]}
       >
@@ -127,6 +140,7 @@ function AssistantMessageBubbleBase({
                     {
                       color: colors.primaryForeground,
                       marginTop: imageSource ? 8 : 0,
+                      textAlign,
                     },
                   ]}
                 >
@@ -145,16 +159,92 @@ function AssistantMessageBubbleBase({
             <Markdown
               onLinkPress={handleAssistantLink}
               style={{
-                body: { color: colors.foreground, fontSize: 15, lineHeight: 22 },
-                paragraph: { marginTop: 0, marginBottom: 8 },
-                bullet_list: { marginBottom: 8 },
-                ordered_list: { marginBottom: 8 },
+                body: { color: colors.foreground, fontSize: 15, lineHeight: 25, textAlign },
+                textgroup: { textAlign },
+                paragraph: { marginTop: 0, marginBottom: 12, lineHeight: 25, textAlign },
+                heading1: {
+                  color: colors.foreground,
+                  fontSize: 21,
+                  fontWeight: "700",
+                  lineHeight: 30,
+                  marginTop: 6,
+                  marginBottom: 10,
+                },
+                heading2: {
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "700",
+                  lineHeight: 27,
+                  marginTop: 6,
+                  marginBottom: 8,
+                },
+                heading3: {
+                  color: colors.foreground,
+                  fontSize: 16,
+                  fontWeight: "700",
+                  lineHeight: 24,
+                  marginTop: 4,
+                  marginBottom: 6,
+                },
+                heading4: {
+                  color: colors.foreground,
+                  fontSize: 15,
+                  fontWeight: "700",
+                  lineHeight: 22,
+                  marginTop: 4,
+                  marginBottom: 6,
+                },
+                strong: { fontWeight: "700", color: colors.foreground },
+                em: { fontStyle: "italic" },
+                bullet_list: { marginTop: 2, marginBottom: 12 },
+                ordered_list: { marginTop: 2, marginBottom: 12 },
+                list_item: { marginBottom: 6, lineHeight: 25 },
+                bullet_list_icon: { marginRight: 8, color: colors.primary },
+                ordered_list_icon: { marginRight: 8, color: colors.primary },
+                blockquote: {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.primary,
+                  borderLeftWidth: 3,
+                  borderRadius: 8,
+                  marginVertical: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                },
+                hr: {
+                  backgroundColor: colors.border,
+                  height: StyleSheet.hairlineWidth,
+                  marginVertical: 12,
+                },
+                code_inline: {
+                  backgroundColor: colors.muted,
+                  color: colors.foreground,
+                  borderRadius: 5,
+                  paddingHorizontal: 5,
+                  fontSize: 14,
+                },
+                fence: {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginVertical: 8,
+                },
+                code_block: {
+                  backgroundColor: colors.muted,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginVertical: 8,
+                },
                 link: { color: colors.primary, textDecorationLine: "underline" },
               }}
             >
-              {prepareAssistantMarkdown(message.content || " ")}
+              {prepareAssistantMarkdown(booking.text || " ")}
             </Markdown>
           )}
+          {!isUser && booking.directive ? (
+            <AiBookingCard directive={booking.directive} />
+          ) : null}
           <Text
             style={[
               styles.time,
@@ -191,22 +281,15 @@ export const AssistantMessageBubble = React.memo(
     prev.compact === next.compact &&
     prev.selfUserId === next.selfUserId &&
     prev.spokenWordIndex === next.spokenWordIndex &&
-    prev.isReadingAloud === next.isReadingAloud,
+    prev.isReadingAloud === next.isReadingAloud &&
+    prev.isRTL === next.isRTL,
 );
 
 const styles = StyleSheet.create({
   row: { marginBottom: 12, paddingHorizontal: 16 },
   rowCompact: { marginBottom: 8, paddingHorizontal: 12 },
-  rowUser: { alignItems: "flex-end" },
-  rowAssistant: { alignItems: "flex-start" },
   bubbleWrap: {
     position: "relative",
-  },
-  bubbleWrapUser: {
-    alignItems: "flex-end",
-  },
-  bubbleWrapAssistant: {
-    alignItems: "flex-start",
   },
   bubble: {
     maxWidth: "100%",

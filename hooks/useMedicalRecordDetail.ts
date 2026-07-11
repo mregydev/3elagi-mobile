@@ -14,6 +14,7 @@ import {
   fetchAllMedicalHistory,
   fetchDiagnosisById,
   fetchDoctorDiagnosisById,
+  findDoctorRecordById,
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
@@ -189,6 +190,30 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       return;
     }
 
+    // A doctor opening a bare /medical/{id} link (no doctorView params — e.g. a
+    // shared URL or one without patient context): the /patient/* endpoints are
+    // patient-scoped and 404 for doctors, so use the doctor-scoped diagnosis
+    // endpoint (server enforces doctor-patient access).
+    if (role === "doctor") {
+      fetchDoctorDiagnosisById(id, accessToken)
+        .then((d) => {
+          setDetail(d);
+          setEditDesc(d.title);
+          upsertDiagnosis(d);
+        })
+        .catch(async () => {
+          // Not a diagnosis — may be a document/prescription of one of the
+          // doctor's patients (no patient context in a bare /medical/{id} link).
+          const found = await findDoctorRecordById(id, accessToken);
+          if (found) {
+            setDetail(found);
+            if (found.category === "prescription") upsertPrescription(found);
+          }
+        })
+        .finally(finish);
+      return;
+    }
+
     if (cached?.category === "prescription" && profile?.id) {
       fetchPrescriptionById(id, profile.id, accessToken)
         .then((rx) => {
@@ -234,6 +259,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     isDoctorView,
     patientUserId,
     profile?.id,
+    role,
     upsertDiagnosis,
     upsertPrescription,
     hasDoctorAccess,

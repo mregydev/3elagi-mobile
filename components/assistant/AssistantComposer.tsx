@@ -1,4 +1,4 @@
-import { FileText, Mic, Paperclip, Send, ImagePlus, X } from "lucide-react-native";
+import { FileText, Mic, Paperclip, Send, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,28 +9,15 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
-
-import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import {
-  MedicalImageAttachOptions,
-  type MedicalImageAttachOptionsValue,
-} from "@/components/medical/MedicalImageAttachOptions";import {
   MOBILE_WEB_COMPOSER_FOOTER_GAP,
   mobileWebComposerStyles,
 } from "@/constants/mobileWebComposer";
 import { useColors } from "@/hooks/useColors";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
-
-export interface AssistantPendingImage {
-  uri: string;
-  mimeType: string;
-  fileName: string;
-  webFile?: File;
-}
 
 interface Props {
   disabled?: boolean;
@@ -45,19 +32,7 @@ interface Props {
   micLoading?: boolean;
   dictatedText?: string | null;
   onDictatedTextConsumed?: () => void;
-  onAttachImage?: () => void;
-  attachLoading?: boolean;
-  pendingImage?: AssistantPendingImage | null;
-  onRemovePendingImage?: () => void;
-  medicalImageOptions?: MedicalImageAttachOptionsValue;
-  onMedicalImageOptionsChange?: (value: MedicalImageAttachOptionsValue) => void;
-  canAddMedicalRecord?: boolean;
-  onSendImage?: (input: {
-    text: string;
-    options: MedicalImageAttachOptionsValue;
-  }) => void;
   isRTL?: boolean;
-  onExpandPendingImage?: (uri: string) => void;
   /** General AI attachment (image or PDF) sent to the model with the caption. */
   aiAttachment?: { previewUri?: string; name: string; isPdf: boolean } | null;
   onAttachAiFile?: () => void;
@@ -76,16 +51,7 @@ export function AssistantComposer({
   micLoading = false,
   dictatedText,
   onDictatedTextConsumed,
-  onAttachImage,
-  attachLoading = false,
-  pendingImage = null,
-  onRemovePendingImage,
-  medicalImageOptions,
-  onMedicalImageOptionsChange,
-  canAddMedicalRecord = false,
-  onSendImage,
   isRTL = false,
-  onExpandPendingImage,
   aiAttachment = null,
   onAttachAiFile,
   aiAttachLoading = false,
@@ -115,11 +81,6 @@ export function AssistantComposer({
       setText("");
       return;
     }
-    if (pendingImage && onSendImage && medicalImageOptions) {
-      onSendImage({ text: value, options: medicalImageOptions });
-      setText("");
-      return;
-    }
     if (!value) return;
     onSend(value);
     setText("");
@@ -129,9 +90,7 @@ export function AssistantComposer({
     disabled || (micLoading && !isDictating) || sending;
 
   const sendDisabled =
-    disabled ||
-    sending ||
-    (!text.trim() && !pendingImage && !aiAttachment);
+    disabled || sending || (!text.trim() && !aiAttachment);
   useEffect(() => {
     if (!isDictating) {
       recordPulse.setValue(1);
@@ -203,28 +162,6 @@ export function AssistantComposer({
     </Animated.View>
   ) : null;
 
-  const attachImageButton = onAttachImage ? (    <Pressable
-      onPress={onAttachImage}
-      disabled={disabled || sending || attachLoading}
-      accessibilityRole="button"
-      accessibilityLabel="Attach medical image"
-      style={[
-        iconBtnStyle,
-        iconBtnMobile,
-        {
-          backgroundColor: colors.muted,
-          opacity: disabled || sending || attachLoading ? 0.45 : 1,
-        },
-      ]}
-    >
-      {attachLoading ? (
-        <ActivityIndicator color={colors.primary} size="small" />
-      ) : (
-        <ImagePlus color={colors.primary} size={glyphSize} />
-      )}
-    </Pressable>
-  ) : null;
-
   const aiAttachButton = onAttachAiFile ? (
     <Pressable
       onPress={onAttachAiFile}
@@ -251,7 +188,6 @@ export function AssistantComposer({
   const trailingActions = (
     <View style={styles.actionsRow}>
       {aiAttachButton}
-      {attachImageButton}
       {micButton}      <Pressable
         onPress={submit}
         disabled={sendDisabled}
@@ -290,28 +226,6 @@ export function AssistantComposer({
       </View>
     ) : null;
 
-  const previewBlock =
-    pendingImage && onRemovePendingImage ? (
-      <>
-        <ChatAttachmentPreview
-          attachment={{ uri: pendingImage.uri, type: "image" }}
-          isRTL={isRTL}
-          onRemove={onRemovePendingImage}
-          onReplace={onAttachImage ?? onRemovePendingImage}
-          onExpandImage={onExpandPendingImage ?? (() => {})}
-          onExpandVideo={() => {}}
-        />
-        {canAddMedicalRecord && medicalImageOptions && onMedicalImageOptionsChange ? (
-          <MedicalImageAttachOptions
-            isRTL={isRTL}
-            value={medicalImageOptions}
-            onChange={onMedicalImageOptionsChange}
-            disabled={disabled || sending || attachLoading}
-          />
-        ) : null}
-      </>
-    ) : null;
-
   if (isMobileWeb) {
     return (
       <View
@@ -325,7 +239,6 @@ export function AssistantComposer({
         ]}
       >
         {aiAttachmentPreview}
-        {previewBlock}
         <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>
           <AppTextInput
             value={text}
@@ -362,7 +275,6 @@ export function AssistantComposer({
       ]}
     >
       {aiAttachmentPreview}
-        {previewBlock}
       <View style={styles.composerRow}>
         <AppTextInput
           value={text}

@@ -1,8 +1,34 @@
+import type { Socket } from "socket.io-client";
 import type { AiConversation, AiStreamEvent } from "./types";
-import { getPresenceSocket } from "@/domains/presence";
+import { createSocket } from "@/domains/realtime/createSocket";
+
+// AI chat runs on its own dedicated socket, separate from the presence/main
+// socket that carries online users and normal-chat traffic.
+let aiSocket: Socket | null = null;
+
+export function connectAiSocket(accessToken?: string): Socket {
+  if (aiSocket?.connected) return aiSocket;
+  if (aiSocket) {
+    aiSocket.removeAllListeners();
+    aiSocket.disconnect();
+  }
+  aiSocket = createSocket(accessToken);
+  return aiSocket;
+}
+
+export function disconnectAiSocket(): void {
+  if (!aiSocket) return;
+  aiSocket.removeAllListeners();
+  aiSocket.disconnect();
+  aiSocket = null;
+}
+
+export function getAiSocket(): Socket | null {
+  return aiSocket;
+}
 
 export function requestAiHistory(): Promise<AiConversation[]> {
-  const socket = getPresenceSocket();
+  const socket = aiSocket;
   if (!socket?.connected) {
     return Promise.reject(new Error("Not connected to server"));
   }
@@ -45,7 +71,7 @@ export function sendAiMessageViaSocket(
   },
   onEvent: (event: AiStreamEvent) => void,
 ): Promise<void> {
-  const socket = getPresenceSocket();
+  const socket = aiSocket;
   if (!socket?.connected) {
     return Promise.reject(new Error("Not connected to server"));
   }
@@ -128,5 +154,5 @@ export function sendAiMessageViaSocket(
 }
 
 export function joinAiChat(chatId: string): void {
-  getPresenceSocket()?.emit("ai:chat:join", { chatId });
+  aiSocket?.emit("ai:chat:join", { chatId });
 }

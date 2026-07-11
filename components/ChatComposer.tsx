@@ -29,9 +29,9 @@ import {
   type MedicalImageAttachOptionsValue,
 } from "@/components/medical/MedicalImageAttachOptions";
 import {
-  emitChatStopTyping,
-  emitChatTyping,
-} from "@/domains/presence/socket";
+  emitConversationStopTyping,
+  emitConversationTyping,
+} from "@/domains/chat/conversationSocket";
 import { useColors } from "@/hooks/useColors";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
@@ -185,7 +185,7 @@ export function ChatComposer({
     return () => {
       if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
       if (isTypingRef.current) {
-        emitChatStopTyping(peerId, selfId);
+        emitConversationStopTyping(peerId, selfId);
       }
       if (recordingRef.current) {
         void recordingRef.current.stopAndUnloadAsync().catch(() => undefined);
@@ -203,12 +203,12 @@ export function ChatComposer({
   const notifyTyping = () => {
     if (!isTypingRef.current) {
       isTypingRef.current = true;
-      emitChatTyping(peerId, selfId);
+      emitConversationTyping(peerId, selfId);
     }
     if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
     typingStopTimer.current = setTimeout(() => {
       isTypingRef.current = false;
-      emitChatStopTyping(peerId, selfId);
+      emitConversationStopTyping(peerId, selfId);
     }, 2000);
   };
 
@@ -216,7 +216,7 @@ export function ChatComposer({
     if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
     if (isTypingRef.current) {
       isTypingRef.current = false;
-      emitChatStopTyping(peerId, selfId);
+      emitConversationStopTyping(peerId, selfId);
     }
   };
 

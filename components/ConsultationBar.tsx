@@ -429,44 +429,17 @@ export function ConsultationBar({
           : null;
 
   return (
-    <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
+    <>
+      {/* Only the Start-consultation pill remains; hide the bar when empty. */}
       {isPatient && !isOpen ? (
-        <Pill
-          label={label("Start consultation", "بدء استشارة")}
-          color={colors.primary}
-          filled
-          onPress={() => setModal("start")}
-        />
-      ) : null}
-      {isPatient && isOpen ? (
-        <Text style={[styles.status, { color: colors.mutedForeground }]}>
-          {label("Consultation in progress", "الاستشارة جارية")}
-        </Text>
-      ) : null}
-      {isPatient && endedConsultationId && !complaintStatus ? (
-        <Pill
-          label={label("File complaint", "تقديم شكوى")}
-          color="#dc2626"
-          onPress={() => setComplaintModal(true)}
-        />
-      ) : null}
-      {isPatient && complaintLabel ? (
-        <Text style={[styles.status, { color: colors.mutedForeground }]}>{complaintLabel}</Text>
-      ) : null}
-      {isDoctor && isOpen ? (
-        <>
+        <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
           <Pill
-            label={label("End consultation", "إنهاء الاستشارة")}
-            color="#0d9488"
+            label={label("Start consultation", "بدء استشارة")}
+            color={colors.primary}
             filled
-            onPress={() => setModal("end")}
+            onPress={() => setModal("start")}
           />
-          <Pill
-            label={label("Cancel consultation", "إلغاء الاستشارة")}
-            color="#dc2626"
-            onPress={() => setModal("cancel")}
-          />
-        </>
+        </View>
       ) : null}
 
       {/* Start modal */}
@@ -695,7 +668,7 @@ export function ConsultationBar({
           isRTL={isRTL}
         />
       </FormModal>
-    </View>
+    </>
   );
 }
 

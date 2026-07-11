@@ -6,8 +6,14 @@ import { formatAiChatError } from "@/domains/ai/errors";
 import { AI_EVENTS } from "@/domains/ai/events";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionItem, type MessageEmotionType, type AiFeedbackType } from "@/domains/emotions/types";
-import { requestAiHistory, sendAiMessageViaSocket } from "@/domains/ai/socket";
-import { getPresenceSocket, onMessageEmotionUpdated } from "@/domains/presence/socket";
+import {
+  connectAiSocket,
+  disconnectAiSocket,
+  getAiSocket,
+  requestAiHistory,
+  sendAiMessageViaSocket,
+} from "@/domains/ai/socket";
+import { onMessageEmotionUpdated } from "@/domains/presence/socket";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import { createMedicalRecordFromChatImage, uploadFile } from "@/domains/medical/api";
 import { getApiLang } from "@/domains/i18n/store";
@@ -210,7 +216,7 @@ async function streamAssistantReply(input: {
 }
 
 async function loadHistoryWithFallback(accessToken: string): Promise<AiConversation[]> {
-  const socket = getPresenceSocket();
+  const socket = getAiSocket();
   if (socket?.connected) {
     try {
       return await requestAiHistory();
@@ -290,6 +296,14 @@ export function useAiAssistant() {
     } finally {
       setLoadingHistory(false);
     }
+  }, [accessToken]);
+
+  // The AI chat has its own dedicated socket (separate from the presence/main
+  // socket); connect while the assistant is mounted, tear down on leave.
+  useEffect(() => {
+    if (!accessToken) return;
+    connectAiSocket(accessToken);
+    return () => disconnectAiSocket();
   }, [accessToken]);
 
   useEffect(() => {

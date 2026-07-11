@@ -6,7 +6,7 @@ import {
   connectPresenceSocket,
   disconnectPresenceSocket,
 } from "@/domains/presence/socket";
-import type { LoggedInUser } from "@/domains/presence/types";
+import { buildLoggedInUser } from "@/domains/presence/user";
 import { NATIVE_WEBVIEW_BRIDGE } from "@/constants/nativeWebViewBridge";
 import { isNativeWebViewShell } from "@/utils/nativeWebViewBridge";
 
@@ -17,26 +17,6 @@ import { isNativeWebViewShell } from "@/utils/nativeWebViewBridge";
  * Run instance active (and billing) for hours.
  */
 const BACKGROUND_DISCONNECT_MS = 45_000;
-
-function buildLoggedInUser(
-  profile: { id: string; name: string; email: string; avatarUrl?: string },
-  role: string | null,
-  specialty: string | null,
-  specialityId: string | null,
-  doctorId: string | null,
-): LoggedInUser {
-  const isDoctor = role?.toLowerCase() === "doctor";
-  return {
-    id: profile.id,
-    name: profile.name,
-    email: profile.email,
-    role: role ?? "patient",
-    photo_url: profile.avatarUrl ?? null,
-    specialty: isDoctor ? specialty : null,
-    speciality_id: isDoctor ? specialityId : null,
-    doctor_id: isDoctor ? doctorId : null,
-  };
-}
 
 export function PresenceSocket() {
   const hydrated = useAuthStore((s) => s.hydrated);

@@ -1,5 +1,4 @@
 import { History, Plus, RefreshCw } from "lucide-react-native";
-import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -14,9 +13,8 @@ import {
   KeyboardAvoidingView,
   KeyboardEvents,
 } from "react-native-keyboard-controller";
-import { AssistantComposer, type AssistantPendingImage } from "@/components/assistant/AssistantComposer";
+import { AssistantComposer } from "@/components/assistant/AssistantComposer";
 import { ChatMedicalRecordPills } from "@/components/chat/ChatMedicalRecordPills";
-import type { MedicalImageAttachOptionsValue } from "@/components/medical/MedicalImageAttachOptions";
 import { AssistantAvatar } from "@/components/assistant/AssistantAvatar";
 import { AssistantHistoryModal } from "@/components/assistant/AssistantHistoryModal";
 import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadingIndicator";
@@ -97,7 +95,6 @@ export function AssistantMobileView({
   selfUserId,
   onToggleMessageEmotion,
   medicalImageBusy = false,
-  onSubmitMedicalImage,
   onMedicalRecordCreated,
   bottomTabInset = 0,
 }: Props) {
@@ -109,12 +106,6 @@ export function AssistantMobileView({
   const accessToken = useAuthStore((s) => s.accessToken);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [createRecordOpen, setCreateRecordOpen] = useState(false);
-  const [pendingImage, setPendingImage] = useState<AssistantPendingImage | null>(null);
-  const [medicalImageOptions, setMedicalImageOptions] =
-    useState<MedicalImageAttachOptionsValue>({
-      addToMedicalRecords: true,
-      generateAiInsight: true,
-    });
   const [dictatedText, setDictatedText] = useState<string | null>(null);
   const listRef = useRef<FlatList<AiMessage>>(null);
   const isNearBottomRef = useRef(true);
@@ -125,14 +116,6 @@ export function AssistantMobileView({
       ? conversations.find((c) => c.messages.some((m) => m.pending))?.messages ?? []
       : []);
   const lastMessage = messages[messages.length - 1];
-
-  useEffect(() => {
-    if (!pendingImage) return;
-    setMedicalImageOptions({
-      addToMedicalRecords: true,
-      generateAiInsight: true,
-    });
-  }, [pendingImage?.uri]);
 
   const scrollToBottom = useCallback((animated = true) => {
     if (!listRef.current) return;
@@ -230,50 +213,6 @@ export function AssistantMobileView({
     [sending],
   );
 
-  const handleAttachMedicalImage = useCallback(async () => {
-    if (!onSubmitMedicalImage || isDoctor) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    setPendingImage({
-      uri: asset.uri,
-      mimeType: asset.mimeType ?? "image/jpeg",
-      fileName: asset.fileName ?? "medical-record.jpg",
-      webFile: asset.file as File | undefined,
-    });
-    setMedicalImageOptions({
-      addToMedicalRecords: true,
-      generateAiInsight: true,
-    });
-  }, [isDoctor, onSubmitMedicalImage]);
-
-  const handleSendImage = useCallback(
-    ({
-      text,
-      options,
-    }: {
-      text: string;
-      options: MedicalImageAttachOptionsValue;
-    }) => {
-      if (!pendingImage || !onSubmitMedicalImage) return;
-      onSubmitMedicalImage({
-        ...pendingImage,
-        caption: text.trim() || undefined,
-        addToMedicalRecords: options.addToMedicalRecords,
-        generateAiInsight: options.generateAiInsight,
-      });
-      setPendingImage(null);
-      setMedicalImageOptions({
-        addToMedicalRecords: true,
-        generateAiInsight: true,
-      });
-    },
-    [onSubmitMedicalImage, pendingImage],
-  );
-
   const voice = useAssistantVoiceChat({
     messages,
     sending,
@@ -341,6 +280,7 @@ export function AssistantMobileView({
           <AssistantMessageBubble
             message={item}
             compact
+            isRTL={isRTL}
             selfUserId={selfUserId}
             spokenWordIndex={
               voice.spokenHighlight?.messageId === item.id
@@ -499,18 +439,6 @@ export function AssistantMobileView({
           onMicPress={() =>
             voice.toggleDictation((text) => setDictatedText(text))
           }
-          onAttachImage={
-            !isDoctor && onSubmitMedicalImage
-              ? () => void handleAttachMedicalImage()
-              : undefined
-          }
-          attachLoading={medicalImageBusy}
-          pendingImage={pendingImage}
-          onRemovePendingImage={() => setPendingImage(null)}
-          medicalImageOptions={medicalImageOptions}
-          onMedicalImageOptionsChange={setMedicalImageOptions}
-          canAddMedicalRecord={!isDoctor}
-          onSendImage={handleSendImage}
           aiAttachment={
             aiFile.attachment
               ? {

@@ -37,6 +37,11 @@ import {
 } from "@/domains/chat/presence";
 import { useChatStore } from "@/domains/chat/store";
 import {
+  connectConversationSocket,
+  disconnectConversationSocket,
+} from "@/domains/chat/conversationSocket";
+import { buildLoggedInUser } from "@/domains/presence/user";
+import {
   canDoctorViewPatientRecords,
   fetchDoctorPatientAccess,
   type AccessActionType,
@@ -103,6 +108,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const doctorId = useAuthStore((s) => s.doctorId);
+  const specialty = useAuthStore((s) => s.specialty);
+  const specialityId = useAuthStore((s) => s.specialityId);
   const medicalRecords = useMedicalStore((s) => s.records);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
@@ -208,6 +215,19 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       setPeerTyping(id, false);
     };
   }, [id, setActiveChatPeerId, setPeerTyping]);
+
+  // Each open conversation gets its own dedicated socket (separate from the
+  // presence/main socket), connected while this screen is open.
+  useEffect(() => {
+    if (!id || !accessToken || !profile?.id) return;
+    connectConversationSocket({
+      peerId: id,
+      selfId: profile.id,
+      accessToken,
+      user: buildLoggedInUser(profile, role, specialty, specialityId, doctorId),
+    });
+    return () => disconnectConversationSocket();
+  }, [id, accessToken, profile?.id, role, specialty, specialityId, doctorId]);
 
   useEffect(() => {
     if (!id || !accessToken || !profile?.id) return;
@@ -1077,26 +1097,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           onOpenChange={setConsultationOpen}
         />
       ) : null}
-      {isDoctorPatientChat && !editingMessage && !replacingMedicalMessage ? (
-        <ChatAccessTemplates
-          isRTL={isRTL}
-          isDoctor={isDoctor}
-          access={accessStatus}
-          showDiagnosis={canOpenPatientRecord}
-          showMedicalRecordActions={canAddMedicalRecord}
-          medicalActionsDisabled={chatBlocked}
-          onAccessAction={(action) => void handleAccessAction(action)}
-          onDiagnosisPress={openDiagnosisModal}
-          onAssignIntakeExam={() => setIntakeExamModalOpen(true)}
-          onAddMedicalRecord={() => setCreateMedicalRecordOpen(true)}
-          onShareMedicalRecord={() => void openMedicalPicker()}
-          onBookAppointment={
-            isPatient && peer?.doctorEntityId && !chatBlocked
-              ? () => setBookAppointmentOpen(true)
-              : undefined
-          }
-        />
-      ) : null}
+      {/* Quick-action pill row removed — only the Start-consultation pill remains
+          (in ConsultationBar). */}
 
       <ChatComposer
         isRTL={isRTL}
