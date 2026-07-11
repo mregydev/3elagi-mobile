@@ -428,6 +428,7 @@ export function useAiAssistant() {
             patientUserId,
             attachment: socketAttachment,
             attachmentUrl,
+            fileName: attFileName ?? attachment?.name,
           },
           (event) => {
             if (event.type === "ack" && event.conversationId) {

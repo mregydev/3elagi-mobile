@@ -41,6 +41,7 @@ export function sendAiMessageViaSocket(
     patientUserId?: string;
     attachment?: { data: string; mimeType: string };
     attachmentUrl?: string;
+    fileName?: string;
   },
   onEvent: (event: AiStreamEvent) => void,
 ): Promise<void> {
@@ -121,6 +122,7 @@ export function sendAiMessageViaSocket(
       patientUserId: input.patientUserId,
       attachment: input.attachment,
       attachmentUrl: input.attachmentUrl,
+      fileName: input.fileName,
     });
   });
 }
