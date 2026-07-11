@@ -171,7 +171,19 @@ export function useMedicalRecordDetail(isRTL: boolean) {
           if (!patientUserId) return;
           const docs = await fetchDocumentsForPatientUser(patientUserId, accessToken);
           const doc = docs.find((d) => d.id === id);
-          if (doc) setDetail(doc);
+          if (doc) {
+            setDetail(doc);
+            return;
+          }
+          try {
+            const rx = await fetchPrescriptionById(id, patientUserId, accessToken);
+            if (rx) {
+              setDetail(rx);
+              upsertPrescription(rx);
+            }
+          } catch {
+            // not found
+          }
         })
         .finally(finish);
       return;
@@ -196,9 +208,22 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       })
       .catch(async () => {
         if (!profile?.id) return;
+        // AI links (uncached) may point to a document or a prescription.
         const docs = await fetchPatientDocuments(profile.id, accessToken);
         const doc = docs.find((d) => d.id === id);
-        if (doc) setDetail(doc);
+        if (doc) {
+          setDetail(doc);
+          return;
+        }
+        try {
+          const rx = await fetchPrescriptionById(id, profile.id, accessToken);
+          if (rx) {
+            setDetail(rx);
+            upsertPrescription(rx);
+          }
+        } catch {
+          // truly not found — leave detail null
+        }
       })
       .finally(finish);
   }, [

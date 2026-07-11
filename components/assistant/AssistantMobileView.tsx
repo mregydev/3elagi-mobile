@@ -31,6 +31,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useAssistantVoiceChat } from "@/hooks/useAssistantVoiceChat";
+import { useAiFileAttachment } from "@/hooks/useAiFileAttachment";
 
 const DISCLAIMER_EN =
   "For information only — not medical advice.";
@@ -50,7 +51,16 @@ interface Props {
   onSelectConversation: (id: string) => void;
   onNewChat: () => void;
   onDeleteConversation: (id: string) => void;
-  onSend: (text: string) => void;
+  onSend: (
+    text: string,
+    attachment?: {
+      data: string;
+      mimeType: string;
+      name?: string;
+      previewUri?: string;
+      isPdf?: boolean;
+    },
+  ) => void;
   onRetry: () => void;
   selfUserId?: string | null;
   onToggleMessageEmotion?: (messageId: string, emotion: AiFeedbackType) => void;
@@ -271,14 +281,16 @@ export function AssistantMobileView({
     onSend,
   });
 
+  const aiFile = useAiFileAttachment();
   const handleSend = useCallback(
     (text: string) => {
       isNearBottomRef.current = true;
       voice.armAutoSpeak();
-      onSend(text);
+      onSend(text, aiFile.attachment ?? undefined);
+      aiFile.clear();
       scrollToBottomWithRetries(false);
     },
-    [onSend, scrollToBottomWithRetries, voice],
+    [onSend, scrollToBottomWithRetries, voice, aiFile],
   );
 
   const handleNewChat = () => {
@@ -499,6 +511,18 @@ export function AssistantMobileView({
           onMedicalImageOptionsChange={setMedicalImageOptions}
           canAddMedicalRecord={!isDoctor}
           onSendImage={handleSendImage}
+          aiAttachment={
+            aiFile.attachment
+              ? {
+                  previewUri: aiFile.attachment.previewUri,
+                  name: aiFile.attachment.name,
+                  isPdf: aiFile.attachment.isPdf,
+                }
+              : null
+          }
+          onAttachAiFile={() => void aiFile.pickFile()}
+          aiAttachLoading={aiFile.loading}
+          onRemoveAiAttachment={aiFile.clear}
           dictatedText={dictatedText}
           onDictatedTextConsumed={() => setDictatedText(null)}
           placeholder={

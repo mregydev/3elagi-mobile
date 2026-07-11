@@ -1,15 +1,22 @@
-import { useEffect } from "react";
-import { Platform } from "react-native";
+import { useEffect, useRef } from "react";
+import { AppState, Platform } from "react-native";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   announcePresenceLogin,
-  announcePresenceLogout,
   connectPresenceSocket,
   disconnectPresenceSocket,
 } from "@/domains/presence/socket";
 import type { LoggedInUser } from "@/domains/presence/types";
 import { NATIVE_WEBVIEW_BRIDGE } from "@/constants/nativeWebViewBridge";
 import { isNativeWebViewShell } from "@/utils/nativeWebViewBridge";
+
+/**
+ * How long the app can be backgrounded / the tab hidden before we fully close
+ * the WebSocket. A short grace avoids reconnect churn on quick tab switches,
+ * while still killing "zombie" connections that would otherwise keep a Cloud
+ * Run instance active (and billing) for hours.
+ */
+const BACKGROUND_DISCONNECT_MS = 45_000;
 
 function buildLoggedInUser(
   profile: { id: string; name: string; email: string; avatarUrl?: string },
@@ -39,6 +46,8 @@ export function PresenceSocket() {
   const specialityId = useAuthStore((s) => s.specialityId);
   const doctorId = useAuthStore((s) => s.doctorId);
   const accessToken = useAuthStore((s) => s.accessToken);
+
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -74,59 +83,76 @@ export function PresenceSocket() {
     accessToken,
   ]);
 
+  // Disconnect the socket entirely when the app is hidden/backgrounded, and
+  // reconnect when it returns. Keeps idle tabs from holding a Cloud Run instance.
   useEffect(() => {
-    if (Platform.OS !== "web") return;
     if (!hydrated || !profile || !accessToken) return;
-    if (typeof document === "undefined") return;
 
     const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
+    const userId = profile.id;
 
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        announcePresenceLogout(profile.id);
-      } else {
-        announcePresenceLogin(user, accessToken);
+    const clearIdleTimer = () => {
+      if (idleTimer.current) {
+        clearTimeout(idleTimer.current);
+        idleTimer.current = null;
       }
     };
 
-    const onWindowFocus = () => {
-      announcePresenceLogin(user, accessToken);
+    const goInactive = () => {
+      if (idleTimer.current) return;
+      idleTimer.current = setTimeout(() => {
+        idleTimer.current = null;
+        disconnectPresenceSocket(userId);
+      }, BACKGROUND_DISCONNECT_MS);
     };
 
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("focus", onWindowFocus);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("focus", onWindowFocus);
+    const goActive = () => {
+      clearIdleTimer();
+      connectPresenceSocket(user, accessToken);
     };
-  }, [
-    hydrated,
-    profile?.id,
-    profile?.name,
-    profile?.email,
-    profile?.avatarUrl,
-    role,
-    specialty,
-    specialityId,
-    doctorId,
-    accessToken,
-  ]);
 
-  useEffect(() => {
-    if (!isNativeWebViewShell()) return;
-    if (!hydrated || !profile || !accessToken) return;
+    const cleanups: Array<() => void> = [];
 
-    const user = buildLoggedInUser(profile, role, specialty, specialityId, doctorId);
+    // Native app lifecycle.
+    if (Platform.OS !== "web") {
+      const sub = AppState.addEventListener("change", (state) => {
+        if (state === "active") goActive();
+        else goInactive();
+      });
+      cleanups.push(() => sub.remove());
+    }
 
-    const onBackground = () => announcePresenceLogout(profile.id);
-    const onForeground = () => announcePresenceLogin(user, accessToken);
+    // Browser tab visibility / focus.
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const onVisibility = () => (document.hidden ? goInactive() : goActive());
+      const onFocus = () => goActive();
+      const onBlur = () => {
+        // Only treat blur as inactive when the tab is actually hidden.
+        if (document.hidden) goInactive();
+      };
+      document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("focus", onFocus);
+      window.addEventListener("blur", onBlur);
+      cleanups.push(() => {
+        document.removeEventListener("visibilitychange", onVisibility);
+        window.removeEventListener("focus", onFocus);
+        window.removeEventListener("blur", onBlur);
+      });
+    }
 
-    window.addEventListener(NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND, onBackground);
-    window.addEventListener(NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND, onForeground);
+    // Native shell wrapping the web app.
+    if (isNativeWebViewShell()) {
+      window.addEventListener(NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND, goInactive);
+      window.addEventListener(NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND, goActive);
+      cleanups.push(() => {
+        window.removeEventListener(NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND, goInactive);
+        window.removeEventListener(NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND, goActive);
+      });
+    }
 
     return () => {
-      window.removeEventListener(NATIVE_WEBVIEW_BRIDGE.APP_BACKGROUND, onBackground);
-      window.removeEventListener(NATIVE_WEBVIEW_BRIDGE.APP_FOREGROUND, onForeground);
+      clearIdleTimer();
+      cleanups.forEach((fn) => fn());
     };
   }, [
     hydrated,

@@ -318,9 +318,27 @@ export function useAiAssistant() {
   );
 
   const sendMessage = useCallback(
-    async (text: string, patientUserId?: string) => {
-      if (!accessToken || !text.trim()) return;
+    async (
+      text: string,
+      patientUserId?: string,
+      attachment?: {
+        data: string;
+        mimeType: string;
+        name?: string;
+        previewUri?: string;
+        isPdf?: boolean;
+      },
+    ) => {
+      if (!accessToken || (!text.trim() && !attachment)) return;
       const question = text.trim();
+      const attImageUri =
+        attachment && !attachment.isPdf && attachment.mimeType.startsWith("image/")
+          ? attachment.previewUri ??
+            `data:${attachment.mimeType};base64,${attachment.data}`
+          : undefined;
+      const attFileName = attachment?.isPdf
+        ? attachment.name ?? "document.pdf"
+        : undefined;
 
       setLastQuestion(question);
       setChatError(null);
@@ -334,6 +352,8 @@ export function useAiAssistant() {
         role: "user",
         content: question,
         createdAt: new Date().toISOString(),
+        imageUri: attImageUri,
+        fileName: attFileName,
       };
       const assistantLocalId = makeId("assistant");
       const assistantMessage: AiMessage = {
@@ -382,6 +402,9 @@ export function useAiAssistant() {
             message: question,
             chatId: serverConversationId,
             patientUserId,
+            attachment: attachment
+              ? { data: attachment.data, mimeType: attachment.mimeType }
+              : undefined,
           },
           (event) => {
             if (event.type === "ack" && event.conversationId) {

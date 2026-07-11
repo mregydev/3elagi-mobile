@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { FileText } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
 import { SpokenHighlightText } from "@/components/assistant/SpokenHighlightText";
 import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadingIndicator";
@@ -107,6 +108,17 @@ function AssistantMessageBubbleBase({
                   contentFit="cover"
                   transition={120}
                 />
+              ) : null}
+              {!imageSource && message.fileName ? (
+                <View style={styles.fileChip}>
+                  <FileText color={colors.primaryForeground} size={18} />
+                  <Text
+                    style={{ color: colors.primaryForeground, fontSize: 13, flexShrink: 1 }}
+                    numberOfLines={1}
+                  >
+                    {message.fileName}
+                  </Text>
+                </View>
               ) : null}
               {message.content?.trim() ? (
                 <Text
@@ -217,6 +229,15 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 12,
     backgroundColor: "rgba(0,0,0,0.08)",
+  },
+  fileChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   time: { fontSize: 11, marginTop: 6, alignSelf: "flex-end" },
 });

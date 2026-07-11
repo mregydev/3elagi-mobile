@@ -57,7 +57,9 @@ export default function AssistantScreen() {
       onSelectConversation={assistant.setActiveId}
       onNewChat={assistant.startNewChat}
       onDeleteConversation={(id) => void assistant.removeConversation(id)}
-      onSend={(text) => void assistant.sendMessage(text)}
+      onSend={(text, attachment) =>
+        void assistant.sendMessage(text, undefined, attachment)
+      }
       onRetry={() => void assistant.retryLast()}
       selfUserId={assistant.selfUserId}
       onToggleMessageEmotion={(messageId, emotion) =>

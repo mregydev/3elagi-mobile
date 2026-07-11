@@ -399,6 +399,30 @@ export function useAssistantVoiceChat({
         const lang = resolveWebSpeechLang(
           opts?.lang ?? speechLocaleRef.current,
         );
+
+        // Fallback path: record audio and transcribe via the backend (Gemini /stt).
+        // Used when the browser has no Web Speech API, or it fails at runtime
+        // (e.g. `network` / `service-not-allowed` — common on Chrome by region).
+        const beginMediaFallback = async () => {
+          await stopPlayback();
+          try {
+            const session = new WebMediaRecorderSession();
+            await session.start();
+            webMediaRecorderRef.current = session;
+            setIsRecording(true);
+          } catch (err) {
+            setVoiceError(
+              (err as Error).message || "Microphone permission is required.",
+            );
+            setIsRecording(false);
+            if (dictationRef.current) {
+              dictationRef.current = false;
+              dictationCallbackRef.current = null;
+              setIsDictating(false);
+            }
+          }
+        };
+
         if (isWebSpeechRecognitionSupported()) {
           if (webSpeechSessionRef.current) return;
 
@@ -457,6 +481,15 @@ export function useAssistantVoiceChat({
                 }
                 return;
               }
+              // Chrome's cloud speech service can fail (network / region /
+              // corporate proxy). Recover by recording + backend transcription
+              // instead of leaving the user with a dead mic.
+              if (message === "network" || message === "service-not-allowed") {
+                webSpeechSessionRef.current = null;
+                setIsRecording(false);
+                void beginMediaFallback();
+                return;
+              }
               if (message !== "aborted") {
                 setVoiceError(message);
               }
@@ -476,17 +509,7 @@ export function useAssistantVoiceChat({
           }
         }
 
-        await stopPlayback();
-        try {
-          const session = new WebMediaRecorderSession();
-          await session.start();
-          webMediaRecorderRef.current = session;
-          setIsRecording(true);
-        } catch (err) {
-          setVoiceError(
-            (err as Error).message || "Microphone permission is required.",
-          );
-        }
+        await beginMediaFallback();
         return;
       }
 

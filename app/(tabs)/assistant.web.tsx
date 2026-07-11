@@ -61,7 +61,16 @@ export default function AssistantScreenWeb() {
     onSelectConversation: assistant.setActiveId,
     onNewChat: assistant.startNewChat,
     onDeleteConversation: (id: string) => void assistant.removeConversation(id),
-    onSend: (text: string) => void assistant.sendMessage(text),
+    onSend: (
+      text: string,
+      attachment?: {
+        data: string;
+        mimeType: string;
+        name?: string;
+        previewUri?: string;
+        isPdf?: boolean;
+      },
+    ) => void assistant.sendMessage(text, undefined, attachment),
     onRetry: () => void assistant.retryLast(),
     selfUserId: assistant.selfUserId,
     onToggleMessageEmotion: (messageId: string, emotion: AiFeedbackType) =>

@@ -1,12 +1,14 @@
-import { Mic, Send, ImagePlus } from "lucide-react-native";
+import { FileText, Mic, Paperclip, Send, ImagePlus, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from "react-native";
@@ -56,6 +58,11 @@ interface Props {
   }) => void;
   isRTL?: boolean;
   onExpandPendingImage?: (uri: string) => void;
+  /** General AI attachment (image or PDF) sent to the model with the caption. */
+  aiAttachment?: { previewUri?: string; name: string; isPdf: boolean } | null;
+  onAttachAiFile?: () => void;
+  aiAttachLoading?: boolean;
+  onRemoveAiAttachment?: () => void;
 }
 export function AssistantComposer({
   disabled,
@@ -79,6 +86,10 @@ export function AssistantComposer({
   onSendImage,
   isRTL = false,
   onExpandPendingImage,
+  aiAttachment = null,
+  onAttachAiFile,
+  aiAttachLoading = false,
+  onRemoveAiAttachment,
 }: Props) {  const colors = useColors();
   const [text, setText] = useState("");
   const recordPulse = useRef(new Animated.Value(1)).current;
@@ -99,6 +110,11 @@ export function AssistantComposer({
   const submit = () => {
     const value = text.trim();
     if (disabled || sending) return;
+    if (aiAttachment) {
+      onSend(value);
+      setText("");
+      return;
+    }
     if (pendingImage && onSendImage && medicalImageOptions) {
       onSendImage({ text: value, options: medicalImageOptions });
       setText("");
@@ -115,7 +131,7 @@ export function AssistantComposer({
   const sendDisabled =
     disabled ||
     sending ||
-    (!text.trim() && !pendingImage);
+    (!text.trim() && !pendingImage && !aiAttachment);
   useEffect(() => {
     if (!isDictating) {
       recordPulse.setValue(1);
@@ -209,8 +225,32 @@ export function AssistantComposer({
     </Pressable>
   ) : null;
 
+  const aiAttachButton = onAttachAiFile ? (
+    <Pressable
+      onPress={onAttachAiFile}
+      disabled={disabled || sending || aiAttachLoading}
+      accessibilityRole="button"
+      accessibilityLabel="Attach image or PDF"
+      style={[
+        iconBtnStyle,
+        iconBtnMobile,
+        {
+          backgroundColor: colors.muted,
+          opacity: disabled || sending || aiAttachLoading ? 0.45 : 1,
+        },
+      ]}
+    >
+      {aiAttachLoading ? (
+        <ActivityIndicator color={colors.primary} size="small" />
+      ) : (
+        <Paperclip color={colors.primary} size={glyphSize} />
+      )}
+    </Pressable>
+  ) : null;
+
   const trailingActions = (
     <View style={styles.actionsRow}>
+      {aiAttachButton}
       {attachImageButton}
       {micButton}      <Pressable
         onPress={submit}
@@ -232,6 +272,23 @@ export function AssistantComposer({
       </Pressable>
     </View>
   );
+
+  const aiAttachmentPreview =
+    aiAttachment && onRemoveAiAttachment ? (
+      <View style={[styles.aiPreview, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+        {aiAttachment.isPdf || !aiAttachment.previewUri ? (
+          <FileText color={colors.primary} size={20} />
+        ) : (
+          <Image source={{ uri: aiAttachment.previewUri }} style={styles.aiPreviewThumb} />
+        )}
+        <Text style={{ color: colors.foreground, fontSize: 13, flex: 1 }} numberOfLines={1}>
+          {aiAttachment.name}
+        </Text>
+        <Pressable onPress={onRemoveAiAttachment} hitSlop={8}>
+          <X color={colors.mutedForeground} size={16} />
+        </Pressable>
+      </View>
+    ) : null;
 
   const previewBlock =
     pendingImage && onRemovePendingImage ? (
@@ -267,6 +324,7 @@ export function AssistantComposer({
           },
         ]}
       >
+        {aiAttachmentPreview}
         {previewBlock}
         <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>
           <AppTextInput
@@ -303,7 +361,8 @@ export function AssistantComposer({
         },
       ]}
     >
-      {previewBlock}
+      {aiAttachmentPreview}
+        {previewBlock}
       <View style={styles.composerRow}>
         <AppTextInput
           value={text}
@@ -345,7 +404,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },  actionsRow: {
+  },
+  aiPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  aiPreviewThumb: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  actionsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

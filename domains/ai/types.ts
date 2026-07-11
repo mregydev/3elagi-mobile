@@ -11,6 +11,8 @@ export interface AiMessage {
   imageUri?: string;
   /** Remote image URL after upload (user messages). */
   imageUrl?: string;
+  /** Non-image attachment (e.g. PDF) filename, shown as a chip. */
+  fileName?: string;
   emotions?: import("@/domains/emotions/types").MessageEmotionItem[];
 }
 
