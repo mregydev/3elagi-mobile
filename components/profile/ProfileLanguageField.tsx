@@ -1,23 +1,40 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
+import { LanguageFlagRow } from "@/components/language/LanguageFlagRow";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 
 interface Props {
   embedded?: boolean;
   inFooter?: boolean;
-  /** Kept for API compatibility — always uses dropdown now. */
+  /** Inline flags on mobile profile (native + mobile web). */
   wideCards?: boolean;
+}
+
+function useProfileInlineFlags(): boolean {
+  const { isMobile } = useWebLayout();
+  return Platform.OS !== "web" || isMobile;
 }
 
 export function ProfileLanguageField({
   embedded = false,
   inFooter = false,
+  wideCards = false,
 }: Props) {
   const colors = useColors();
   const { isRTL, t } = useI18n();
+  const inlineFlags = useProfileInlineFlags();
   const dir = isRTL ? "row-reverse" : "row";
+
+  const languagePicker = inlineFlags ? (
+    <LanguageFlagRow fillWidth={wideCards || embedded} />
+  ) : embedded ? (
+    <LanguageDropdown showLabel />
+  ) : (
+    <LanguageDropdown compact />
+  );
 
   if (embedded || inFooter) {
     return (
@@ -36,7 +53,7 @@ export function ProfileLanguageField({
             { flexDirection: dir, alignSelf: isRTL ? "flex-end" : "flex-start" },
           ]}
         >
-          <LanguageDropdown showLabel />
+          {languagePicker}
         </View>
       </View>
     );
@@ -47,7 +64,7 @@ export function ProfileLanguageField({
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
         {t.settings.language}
       </Text>
-      <LanguageDropdown compact />
+      {languagePicker}
     </View>
   );
 }

@@ -5,12 +5,15 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { ScheduleMonthGrid } from "@/components/schedule/ScheduleMonthGrid";
+import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import { fetchMyAppointments } from "@/domains/appointments/api";
 import {
   fetchMyScheduleOverrides,
@@ -113,6 +116,14 @@ function TimeSelect({
 
 export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Props) {
   const colors = useColors();
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobileLayout =
+    Platform.OS !== "web" || screenWidth < WEB_BREAKPOINTS.tablet;
+  const calendarWidth = isMobileLayout ? screenWidth * 0.8 : undefined;
+  const calendarGap = 8;
+  const cellSize = calendarWidth
+    ? Math.max(32, Math.floor((calendarWidth - calendarGap * 6) / 7))
+    : 48;
   const now = useMemo(() => new Date(), []);
   const weekStartsOn = calendarWeekStartsOn(isRTL);
 
@@ -292,13 +303,18 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
         </Text>
       </Pressable>
 
-      <View style={styles.calendarWrap}>
+      <View
+        style={[
+          styles.calendarWrap,
+          isMobileLayout && styles.calendarWrapMobile,
+        ]}
+      >
         <ScheduleMonthGrid
           isRTL={isRTL}
           year={year}
           month={month}
           mode="week"
-          cellSize={48}
+          cellSize={cellSize}
           centered
           selectedDate=""
           selectedWeekStart={`${year}-01-01`}
@@ -389,6 +405,10 @@ const styles = StyleSheet.create({
   calendarWrap: {
     width: "100%",
     alignItems: "center",
+  },
+  calendarWrapMobile: {
+    width: "80%",
+    alignSelf: "center",
   },
   card: {
     borderWidth: 1,

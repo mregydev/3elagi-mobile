@@ -352,9 +352,10 @@ export function useAiAssistant() {
           ? attachment.previewUri ??
             `data:${attachment.mimeType};base64,${attachment.data}`
           : undefined;
-      const attFileName = attachment?.isPdf
-        ? attachment.name ?? "document.pdf"
-        : undefined;
+      const attFileName =
+        attachment && !attachment.mimeType.startsWith("image/")
+          ? attachment.name ?? "document"
+          : undefined;
 
       setLastQuestion(question);
       setChatError(null);
@@ -423,11 +424,26 @@ export function useAiAssistant() {
           const uploaded = await uploadFile(
             attachment.uploadUri,
             attachment.mimeType,
-            attachment.name ?? "document.pdf",
+            attachment.name ?? "document",
             accessToken,
             attachment.webFile,
           );
           attachmentUrl = uploaded.url;
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id !== conversationKey && c.id !== resolvedConversationId) {
+                return c;
+              }
+              return {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === userMessage.id
+                    ? { ...m, attachmentUrl: uploaded.url, fileName: attFileName }
+                    : m,
+                ),
+              };
+            }),
+          );
         } else if (attachment) {
           socketAttachment = {
             data: attachment.data,

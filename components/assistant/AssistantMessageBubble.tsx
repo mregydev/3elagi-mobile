@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { FileText } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
@@ -10,6 +10,9 @@ import type { AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useColors } from "@/hooks/useColors";
 import { AiBookingCard } from "@/components/assistant/AiBookingCard";
+import {
+  getAiUserMessageDisplay,
+} from "@/utils/aiMessageDisplay";
 import { handleAssistantLink } from "@/utils/assistantLinks";
 import { parseBookingDirective } from "@/utils/assistantBooking";
 import { prepareAssistantMarkdown } from "@/utils/assistantMarkdown";
@@ -83,6 +86,15 @@ function AssistantMessageBubbleBase({
   const booking = isUser
     ? { directive: null, text: message.content || "" }
     : parseBookingDirective(message.content || "");
+  const userDisplay = isUser ? getAiUserMessageDisplay(message) : null;
+  const userText = userDisplay?.text ?? "";
+  const attachmentLabel = userDisplay?.attachmentLabel ?? null;
+  const attachmentUrl = message.attachmentUrl?.trim() || null;
+
+  const openAttachment = () => {
+    if (!attachmentUrl) return;
+    void Linking.openURL(attachmentUrl);
+  };
 
   if (isLoading) {
     return (
@@ -122,29 +134,46 @@ function AssistantMessageBubbleBase({
                   transition={120}
                 />
               ) : null}
-              {!imageSource && message.fileName ? (
-                <View style={styles.fileChip}>
+              {!imageSource && attachmentLabel ? (
+                <Pressable
+                  onPress={attachmentUrl ? openAttachment : undefined}
+                  disabled={!attachmentUrl}
+                  accessibilityRole="link"
+                  accessibilityLabel={attachmentLabel}
+                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                    styles.fileChip,
+                    (pressed || hovered) && attachmentUrl
+                      ? styles.fileChipPressed
+                      : null,
+                  ]}
+                >
                   <FileText color={colors.primaryForeground} size={18} />
                   <Text
-                    style={{ color: colors.primaryForeground, fontSize: 13, flexShrink: 1 }}
+                    style={[
+                      styles.fileChipText,
+                      {
+                        color: colors.primaryForeground,
+                        textDecorationLine: attachmentUrl ? "underline" : "none",
+                      },
+                    ]}
                     numberOfLines={1}
                   >
-                    {message.fileName}
+                    {attachmentLabel}
                   </Text>
-                </View>
+                </Pressable>
               ) : null}
-              {message.content?.trim() ? (
+              {userText ? (
                 <Text
                   style={[
                     styles.text,
                     {
                       color: colors.primaryForeground,
-                      marginTop: imageSource ? 8 : 0,
+                      marginTop: imageSource || attachmentLabel ? 8 : 0,
                       textAlign,
                     },
                   ]}
                 >
-                  {message.content}
+                  {userText}
                 </Text>
               ) : null}
             </>
@@ -321,6 +350,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.18)",
+    cursor: "pointer" as "auto",
+  },
+  fileChipPressed: {
+    opacity: 0.85,
+  },
+  fileChipText: {
+    fontSize: 13,
+    flexShrink: 1,
+    fontWeight: "600",
   },
   time: { fontSize: 11, marginTop: 6, alignSelf: "flex-end" },
 });
