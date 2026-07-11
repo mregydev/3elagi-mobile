@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, FileText } from "lucide-react-native";
+import { ArrowLeft, Calendar, FileText } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -1098,7 +1098,28 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         />
       ) : null}
       {/* Quick-action pill row removed — only the Start-consultation pill remains
-          (in ConsultationBar). */}
+          (in ConsultationBar). Book appointment stays available to patients at
+          all times, even without a consultation. */}
+      {isPatient && peer?.doctorEntityId && !chatBlocked ? (
+        <View style={[styles.bookPillBar, { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: chatFlexRow() }]}>
+          <Pressable
+            onPress={() => setBookAppointmentOpen(true)}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                borderColor: colors.primary,
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Calendar size={15} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+              {isRTL ? "حجز موعد" : "Book appointment"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <ChatComposer
         isRTL={isRTL}
@@ -1282,6 +1303,21 @@ const styles = StyleSheet.create({
   },
   chatBodyDesktop: { backgroundColor: "transparent" },
   chatFooter: { flexShrink: 0 },
+  bookPillBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 10,
+    paddingBottom: 6,
+    paddingHorizontal: 14,
+  },
+  bookPill: {
+    alignSelf: "flex-start",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
   messageColumn: {
     flexShrink: 1,
     maxWidth: "82%",
