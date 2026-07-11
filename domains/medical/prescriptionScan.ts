@@ -1,3 +1,4 @@
+import type { Locale } from "@/domains/i18n/store";
 import { analyzePrescriptionImage } from "./api";
 import { MEDICAL_EVENTS } from "./events";
 import { emit } from "@/utils/eventBus";
@@ -36,7 +37,7 @@ export function normalizePrescriptionScanFile(
 export async function analyzePrescriptionScan(
   asset: PrescriptionScanAsset,
   accessToken: string,
-  lang: "ar" | "en",
+  lang: Locale,
 ): Promise<PrescriptionMedication[]> {
   const normalized = normalizePrescriptionScanFile(
     asset.uri,

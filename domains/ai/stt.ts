@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import type { Locale } from "@/domains/i18n/store";
 
 const STT_TIMEOUT_MS = 60_000;
 
@@ -18,7 +19,7 @@ export async function transcribeAssistantAudio(
   token: string,
   audioBase64: string,
   mimeType: string,
-  languageCode?: "ar" | "en",
+  languageCode?: Locale,
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);

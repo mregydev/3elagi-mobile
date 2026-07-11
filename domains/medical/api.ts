@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
+import type { Locale } from "@/domains/i18n/store";
 import type { DiagnosisSymptom, MedicalAiInsight, MedicalRecord, PrescriptionMedication } from "./types";
 import { fetchIntakeExamsForPatient } from "@/domains/intake-exams/api";
 
@@ -390,7 +391,7 @@ export async function analyzePrescriptionImage(
   mimeType: string,
   fileName: string,
   token: string,
-  lang: "ar" | "en" = "en",
+  lang: Locale = "en",
   webFile?: File | Blob,
 ): Promise<PrescriptionMedication[]> {
   const formData = new FormData();
@@ -500,7 +501,7 @@ export async function createPatientMedicalDocument(
     patient_user_id?: string;
     ai_insight?: MedicalAiInsight;
     generate_ai_insight?: boolean;
-    lang?: "ar" | "en";
+    lang?: Locale;
   },
   token: string,
 ): Promise<MedicalRecord> {
@@ -601,7 +602,7 @@ export async function analyzeMedicalRecordImage(
   mimeType: string,
   fileName: string,
   token: string,
-  lang: "ar" | "en",
+  lang: Locale,
   webFile?: File | Blob,
 ): Promise<AnalyzedMedicalRecordImage> {
   const formData = new FormData();
@@ -629,7 +630,7 @@ export async function createMedicalRecordFromImage(
   mimeType: string,
   fileName: string,
   token: string,
-  lang: "ar" | "en",
+  lang: Locale,
   webFile?: File | Blob,
   options?: { generateInsight?: boolean },
 ): Promise<MedicalRecord> {
@@ -671,7 +672,7 @@ export async function updatePatientMedicalDocument(
 export async function generateMedicalRecordDetails(
   record: MedicalRecord,
   token: string,
-  lang: "ar" | "en",
+  lang: Locale,
 ): Promise<MedicalRecord> {
   if (record.category !== "lab" && record.category !== "xray") {
     throw new Error("AI details are only supported for lab and imaging records");
@@ -695,7 +696,7 @@ export async function createMedicalRecordFromChatImage(
     generateInsight: boolean;
   },
   token: string,
-  lang: "ar" | "en",
+  lang: Locale,
 ): Promise<MedicalRecord> {
   if (input.generateInsight) {
     return createMedicalRecordFromImage(
@@ -752,7 +753,7 @@ export async function createMedicalRecordFromChatImage(
 export async function generateMedicalRecordAiInsight(
   record: MedicalRecord,
   token: string,
-  lang: "ar" | "en",
+  lang: Locale,
 ): Promise<MedicalRecord> {
   if (record.category === "lab" || record.category === "xray") {
     const data = await authJson<RawDocument>(

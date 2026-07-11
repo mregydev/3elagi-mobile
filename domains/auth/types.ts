@@ -33,7 +33,7 @@ export interface SignupInput extends Credentials {
 
 export type DoctorApprovalStatus = "pending" | "approved" | "rejected";
 
-export type PreferredLocale = "ar" | "en";
+export type PreferredLocale = "ar" | "en" | "de" | "es";
 
 export interface AuthSession {
   accessToken: string;

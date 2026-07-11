@@ -4,7 +4,12 @@ import { useAuthStore } from "@/domains/auth/store";
 import { applyLocaleAfterAuth, type Locale } from "@/domains/i18n/store";
 
 function readPreferredLocale(value: unknown): Locale | null {
-  return value === "ar" || value === "en" ? value : null;
+  return value === "ar" ||
+    value === "en" ||
+    value === "de" ||
+    value === "es"
+    ? value
+    : null;
 }
 
 /** Restores saved locale from the user profile when a session is rehydrated. */

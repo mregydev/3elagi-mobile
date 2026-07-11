@@ -1,6 +1,6 @@
 import { API_BASE } from "@/constants/api";
 import { uploadFile } from "@/domains/medical";
-import type { AuthSession, Credentials, DoctorApprovalStatus, SignupInput, SignupFile } from "./types";
+import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, SignupInput, SignupFile } from "./types";
 
 async function post<T>(path: string, body: object): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -44,7 +44,7 @@ interface RawAuthResponse {
   role: string;
   user_id: string;
   profile: Record<string, unknown>;
-  preferred_locale?: "ar" | "en" | null;
+  preferred_locale?: PreferredLocale | null;
 }
 
 function doctorSpecialtyFromProfile(profile: Record<string, unknown>): {

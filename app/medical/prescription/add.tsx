@@ -95,7 +95,7 @@ export default function AddPrescriptionScreen() {
       const extracted = await analyzePrescriptionScan(
         normalized,
         accessToken,
-        locale === "ar" ? "ar" : "en",
+        locale,
       );
       if (!extracted.length) {
         Alert.alert(

@@ -13,6 +13,8 @@ export const LANGUAGE_OPTIONS: {
 }[] = [
   { locale: "ar", label: "العربية", sublabel: "Arabic" },
   { locale: "en", label: "English", sublabel: "English" },
+  { locale: "de", label: "Deutsch", sublabel: "German" },
+  { locale: "es", label: "Español", sublabel: "Spanish" },
 ];
 
 export function FlagFrame({
@@ -100,6 +102,43 @@ function UKFlag({ w, h, clipId }: { w: number; h: number; clipId: string }) {
   );
 }
 
+function GermanyFlag({ w, h, clipId }: { w: number; h: number; clipId: string }) {
+  const stripe = 20;
+  const rx = 3.6;
+  return (
+    <Svg width={w} height={h} viewBox="0 0 90 60">
+      <Defs>
+        <ClipPath id={clipId}>
+          <Rect width="90" height="60" rx={rx} ry={rx} />
+        </ClipPath>
+      </Defs>
+      <G clipPath={`url(#${clipId})`}>
+        <Rect y="0" width="90" height={stripe} fill="#000000" />
+        <Rect y={stripe} width="90" height={stripe} fill="#DD0000" />
+        <Rect y={stripe * 2} width="90" height={stripe} fill="#FFCE00" />
+      </G>
+    </Svg>
+  );
+}
+
+function SpainFlag({ w, h, clipId }: { w: number; h: number; clipId: string }) {
+  const rx = 3.6;
+  return (
+    <Svg width={w} height={h} viewBox="0 0 90 60">
+      <Defs>
+        <ClipPath id={clipId}>
+          <Rect width="90" height="60" rx={rx} ry={rx} />
+        </ClipPath>
+      </Defs>
+      <G clipPath={`url(#${clipId})`}>
+        <Rect y="0" width="90" height="15" fill="#AA151B" />
+        <Rect y="15" width="90" height="30" fill="#F1BF00" />
+        <Rect y="45" width="90" height="15" fill="#AA151B" />
+      </G>
+    </Svg>
+  );
+}
+
 export function Flag({
   locale,
   w,
@@ -112,11 +151,16 @@ export function Flag({
   clipSuffix: string;
 }) {
   const clipId = `flag-${locale}-${clipSuffix}`;
-  return locale === "ar" ? (
-    <EgyptFlag w={w} h={h} clipId={clipId} />
-  ) : (
-    <UKFlag w={w} h={h} clipId={clipId} />
-  );
+  switch (locale) {
+    case "ar":
+      return <EgyptFlag w={w} h={h} clipId={clipId} />;
+    case "de":
+      return <GermanyFlag w={w} h={h} clipId={clipId} />;
+    case "es":
+      return <SpainFlag w={w} h={h} clipId={clipId} />;
+    default:
+      return <UKFlag w={w} h={h} clipId={clipId} />;
+  }
 }
 
 const styles = StyleSheet.create({

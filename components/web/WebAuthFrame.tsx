@@ -220,6 +220,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingBottom: 4,
     gap: 8,
+    overflow: "visible" as "hidden",
+    zIndex: 25,
   },
   pageTopBarMobile: {
     paddingBottom: 12,
@@ -229,6 +231,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flexShrink: 1,
+    overflow: "visible" as "hidden",
+    zIndex: 30,
   },
   backBtn: {
     padding: 6,

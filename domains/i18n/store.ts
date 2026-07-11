@@ -1,10 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { ar, en, type Translations } from "@/constants/translations";
+import { ar, de, en, es, type Translations } from "@/constants/translations";
 import { patchUserLocale } from "./serverSync";
 
-export type Locale = "en" | "ar";
+export type Locale = "en" | "ar" | "de" | "es";
 
 interface I18nState {
   locale: Locale;
@@ -45,7 +45,16 @@ export const useI18nStore = create<I18nState>()(
 );
 
 export function getDict(locale: Locale): Translations {
-  return locale === "ar" ? ar : en;
+  switch (locale) {
+    case "ar":
+      return ar;
+    case "de":
+      return de;
+    case "es":
+      return es;
+    default:
+      return en;
+  }
 }
 
 export function getApiLang(): Locale {
@@ -55,7 +64,12 @@ export function getApiLang(): Locale {
 export function applyLocaleAfterAuth(
   preferredLocale: Locale | null | undefined,
 ): void {
-  if (preferredLocale === "ar" || preferredLocale === "en") {
+  if (
+    preferredLocale === "ar" ||
+    preferredLocale === "en" ||
+    preferredLocale === "de" ||
+    preferredLocale === "es"
+  ) {
     useI18nStore.setState({ locale: preferredLocale });
     return;
   }

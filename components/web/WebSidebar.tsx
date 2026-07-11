@@ -12,6 +12,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { MobileAppLink } from "@/components/web/MobileAppLink.web";
+import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import type { Translations } from "@/constants/translations";
 import { useAuthStore } from "@/domains/auth/store";
@@ -179,6 +180,7 @@ export function WebSidebar() {
 
       <View style={styles.footer}>
         <MobileAppLink variant="nav" />
+        <LanguageDropdown compact showLabel fullWidth placement="top" />
 
         {role ? (
           <Text

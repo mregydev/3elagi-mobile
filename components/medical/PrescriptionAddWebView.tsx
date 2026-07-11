@@ -223,7 +223,7 @@ export function PrescriptionAddWebView() {
       const extracted = await analyzePrescriptionScan(
         { ...normalized, webFile: picked.webFile },
         accessToken,
-        locale === "ar" ? "ar" : "en",
+        locale,
       );
       if (!extracted.length) {
         showAppAlert(

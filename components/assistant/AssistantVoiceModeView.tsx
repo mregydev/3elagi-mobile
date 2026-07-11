@@ -14,7 +14,7 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import type { Locale } from "@/domains/i18n/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { speechLocaleLabel } from "@/utils/webSpeechLang";
+import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 
 interface Props {
   isRecording: boolean;
@@ -169,41 +169,20 @@ export function AssistantVoiceModeView({
         </View>
 
         <View style={styles.langRow}>
-          {(["ar", "en"] as Locale[]).map((code) => {
-            const selected = speechLocale === code;
-            return (
-              <Pressable
-                key={code}
-                onPress={() => onSpeechLocaleChange(code)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                style={[
-                  styles.langBtn,
-                  {
-                    backgroundColor: selected ? colors.primary : colors.muted,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.langBtnText,
-                    {
-                      color: selected
-                        ? colors.primaryForeground
-                        : colors.foreground,
-                    },
-                  ]}
-                >
-                  {speechLocaleLabel(code, uiLocale)}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <LanguageDropdown
+            compact
+            value={speechLocale}
+            onChange={onSpeechLocaleChange}
+          />
         </View>
         <Text style={[styles.langHint, { color: colors.mutedForeground }]}>
-          {isEn
-            ? "Choose the language you will speak"
-            : "اختر اللغة التي ستتحدث بها"}
+          {uiLocale === "ar"
+            ? "اختر اللغة التي ستتحدث بها"
+            : uiLocale === "de"
+              ? "Wählen Sie die Sprache, in der Sie sprechen"
+              : uiLocale === "es"
+                ? "Elige el idioma en el que hablarás"
+                : "Choose the language you will speak"}
         </Text>
 
         {voiceError ? (
