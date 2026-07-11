@@ -40,6 +40,7 @@ export function sendAiMessageViaSocket(
     chatId?: string;
     patientUserId?: string;
     attachment?: { data: string; mimeType: string };
+    attachmentUrl?: string;
   },
   onEvent: (event: AiStreamEvent) => void,
 ): Promise<void> {
@@ -48,7 +49,17 @@ export function sendAiMessageViaSocket(
     return Promise.reject(new Error("Not connected to server"));
   }
 
+  const hasAttachment = !!(input.attachment?.data || input.attachmentUrl);
+  const timeoutMs = hasAttachment ? 120_000 : 60_000;
+
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      const err = "AI request timed out";
+      onEvent({ type: "error", error: err });
+      reject(new Error(err));
+    }, timeoutMs);
+
     const onAck = (payload: {
       conversationId?: string;
       userMessageId?: string;
@@ -92,6 +103,7 @@ export function sendAiMessageViaSocket(
     };
 
     const cleanup = () => {
+      clearTimeout(timer);
       socket.off("ai:message:ack", onAck);
       socket.off("ai:message:token", onToken);
       socket.off("ai:message:done", onDone);
@@ -108,6 +120,7 @@ export function sendAiMessageViaSocket(
       chatId: input.chatId,
       patientUserId: input.patientUserId,
       attachment: input.attachment,
+      attachmentUrl: input.attachmentUrl,
     });
   });
 }

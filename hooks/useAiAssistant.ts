@@ -326,6 +326,8 @@ export function useAiAssistant() {
         mimeType: string;
         name?: string;
         previewUri?: string;
+        uploadUri?: string;
+        webFile?: File;
         isPdf?: boolean;
       },
     ) => {
@@ -371,7 +373,10 @@ export function useAiAssistant() {
       if (isDraft) {
         const draft: AiConversation = {
           id: conversationKey,
-          title: question.slice(0, 80) || "New chat",
+          title:
+            question.slice(0, 80) ||
+            attFileName?.slice(0, 80) ||
+            "New chat",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           messages: [userMessage, assistantMessage],
@@ -397,14 +402,32 @@ export function useAiAssistant() {
       let ackReceived = false;
 
       try {
+        let socketAttachment: { data: string; mimeType: string } | undefined;
+        let attachmentUrl: string | undefined;
+
+        if (attachment?.isPdf && attachment.uploadUri) {
+          const uploaded = await uploadFile(
+            attachment.uploadUri,
+            attachment.mimeType,
+            attachment.name ?? "document.pdf",
+            accessToken,
+            attachment.webFile,
+          );
+          attachmentUrl = uploaded.url;
+        } else if (attachment) {
+          socketAttachment = {
+            data: attachment.data,
+            mimeType: attachment.mimeType,
+          };
+        }
+
         await sendAiMessageViaSocket(
           {
             message: question,
             chatId: serverConversationId,
             patientUserId,
-            attachment: attachment
-              ? { data: attachment.data, mimeType: attachment.mimeType }
-              : undefined,
+            attachment: socketAttachment,
+            attachmentUrl,
           },
           (event) => {
             if (event.type === "ack" && event.conversationId) {
@@ -462,6 +485,19 @@ export function useAiAssistant() {
               setChatError(formatted.message);
               setRateLimitReached(formatted.isRateLimit);
               setCanRetry(formatted.canRetry);
+              setConversations((prev) =>
+                patchAssistantMessage(
+                  prev,
+                  conversationKey,
+                  assistantLocalId,
+                  {
+                    pending: false,
+                    error: true,
+                    content: formatted.message,
+                  },
+                  resolvedConversationId,
+                ),
+              );
             }
           },
         );

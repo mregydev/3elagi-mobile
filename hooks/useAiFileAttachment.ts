@@ -8,6 +8,9 @@ export interface AiFileAttachment {
   mimeType: string;
   name: string;
   previewUri?: string;
+  /** Local URI used for HTTP upload (documents). */
+  uploadUri?: string;
+  webFile?: File;
   isPdf: boolean;
 }
 
@@ -76,6 +79,8 @@ export function useAiFileAttachment() {
         mimeType: resolvedMime,
         name: asset.name ?? (isImage ? "image" : "document"),
         previewUri: isImage ? uri : undefined,
+        uploadUri: uri,
+        webFile: asset.file as File | undefined,
         // `isPdf` here means "render as a file chip" (non-image document).
         isPdf: !isImage,
       });
