@@ -23,7 +23,9 @@ function syncLocaleIfSignedIn(locale: Locale) {
 export const useI18nStore = create<I18nState>()(
   persist(
     (set, get) => ({
-      locale: "en",
+      // Default language is Arabic (web + mobile) until the user picks one or a
+      // server preference loads.
+      locale: "ar",
       hydrated: false,
       setLocale: (locale) => {
         set({ locale });

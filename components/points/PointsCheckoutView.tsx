@@ -1,12 +1,23 @@
 import { router } from "expo-router";
 import { ArrowLeft, ArrowRight, Coins } from "lucide-react-native";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import {
   PaymentMethodCard,
   type PaymentMethodId,
 } from "@/components/points/PaymentMethodCard";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { createVisaCheckout } from "@/domains/points/api";
+import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -22,6 +33,8 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [payingMethod, setPayingMethod] = useState<PaymentMethodId | null>(null);
   const useWideLayout = desktopLayout || isDesktop;
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
@@ -49,7 +62,35 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
     },
   ];
 
-  const handlePayment = (_method: PaymentMethodId) => {
+  const handlePayment = async (method: PaymentMethodId) => {
+    if (method === "credit_card") {
+      if (!accessToken) {
+        showErrorToast(t.credits.paymentFailed, t.credits.paymentFailedHint);
+        return;
+      }
+      setPayingMethod(method);
+      try {
+        const { checkout_url } = await createVisaCheckout(accessToken, amount);
+        if (Platform.OS === "web") {
+          window.location.assign(checkout_url);
+          return;
+        }
+        const canOpen = await Linking.canOpenURL(checkout_url);
+        if (!canOpen) {
+          throw new Error(t.credits.paymentFailedHint);
+        }
+        await Linking.openURL(checkout_url);
+      } catch (error) {
+        showErrorToast(
+          t.credits.paymentFailed,
+          error instanceof Error ? error.message : t.credits.paymentFailedHint,
+        );
+      } finally {
+        setPayingMethod(null);
+      }
+      return;
+    }
+
     showErrorToast(t.credits.paymentNotImplemented, t.credits.paymentNotImplementedHint);
   };
 
@@ -111,10 +152,21 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
                 id={method.id}
                 label={method.label}
                 subtitle={method.subtitle}
-                onPress={() => handlePayment(method.id)}
+                disabled={payingMethod !== null}
+                loading={payingMethod === method.id}
+                onPress={() => void handlePayment(method.id)}
               />
             ))}
           </View>
+
+          {payingMethod ? (
+            <View style={[styles.loadingRow, { flexDirection: dir }]}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={{ color: colors.mutedForeground }}>
+                {t.credits.openingPayment}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -181,5 +233,11 @@ const styles = StyleSheet.create({
   },
   methods: {
     gap: 14,
+  },
+  loadingRow: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 4,
   },
 });

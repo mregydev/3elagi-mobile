@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { PaymentProviderLogo } from "@/components/points/PaymentProviderLogo";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -11,9 +11,18 @@ interface PaymentMethodCardProps {
   label: string;
   subtitle: string;
   onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
 }
 
-export function PaymentMethodCard({ id, label, subtitle, onPress }: PaymentMethodCardProps) {
+export function PaymentMethodCard({
+  id,
+  label,
+  subtitle,
+  onPress,
+  disabled = false,
+  loading = false,
+}: PaymentMethodCardProps) {
   const colors = useColors();
   const { isRTL } = useI18n();
   const dir = isRTL ? "row-reverse" : "row";
@@ -21,18 +30,23 @@ export function PaymentMethodCard({ id, label, subtitle, onPress }: PaymentMetho
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled || loading}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
         styles.card,
         {
           flexDirection: dir,
           backgroundColor: colors.card,
           borderColor: colors.border,
-          opacity: pressed ? 0.92 : hovered ? 0.98 : 1,
+          opacity: disabled || loading ? 0.65 : pressed ? 0.92 : hovered ? 0.98 : 1,
         },
       ]}
     >
       <View style={styles.logoSlot}>
-        <PaymentProviderLogo id={id} />
+        {loading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <PaymentProviderLogo id={id} />
+        )}
       </View>
       <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
         <Text style={[styles.label, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>

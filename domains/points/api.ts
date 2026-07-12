@@ -34,6 +34,28 @@ export async function reimbursePoints(token: string): Promise<PointsSummary> {
   return data;
 }
 
+export async function createVisaCheckout(
+  token: string,
+  amount: number,
+): Promise<{ checkout_url: string }> {
+  const res = await fetch(`${API_BASE}/payments/credits/checkout/visa`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ amount }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    checkout_url?: string;
+    message?: string;
+  };
+  if (!res.ok || !data.checkout_url) {
+    throw new Error(data.message ?? `Failed to start card payment (${res.status})`);
+  }
+  return { checkout_url: data.checkout_url };
+}
+
 export async function addMessagePoints(
   token: string,
   amount: number,

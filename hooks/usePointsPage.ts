@@ -1,10 +1,11 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useAuthStore } from "@/domains/auth/store";
 import { usePointsStore } from "@/domains/points/store";
 import { DEFAULT_AVAILABLE_POINTS } from "@/domains/points/api";
 import { useI18n } from "@/hooks/useI18n";
-import { showErrorToast } from "@/utils/toast";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 const EMPTY_SUMMARY = {
   message_points: DEFAULT_AVAILABLE_POINTS,
@@ -14,6 +15,8 @@ const EMPTY_SUMMARY = {
 
 export function usePointsPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const { payment: rawPayment } = useLocalSearchParams<{ payment?: string }>();
   const accessToken = useAuthStore((s) => s.accessToken);
   const summary = usePointsStore((s) => s.summary);
   const loading = usePointsStore((s) => s.loading);
@@ -23,8 +26,18 @@ export function usePointsPage() {
 
   useFocusEffect(
     useCallback(() => {
-      if (accessToken) void loadPoints(accessToken);
-    }, [accessToken, loadPoints]),
+      if (!accessToken) return;
+      void loadPoints(accessToken);
+
+      const payment = Array.isArray(rawPayment) ? rawPayment[0] : rawPayment;
+      if (payment === "success") {
+        showSuccessToast(t.credits.paymentSuccess, t.credits.paymentSuccessHint);
+        router.setParams({ payment: undefined });
+      } else if (payment === "failed") {
+        showErrorToast(t.credits.paymentFailed, t.credits.paymentFailedHint);
+        router.setParams({ payment: undefined });
+      }
+    }, [accessToken, loadPoints, rawPayment, router, t.credits]),
   );
 
   const displaySummary = summary ?? EMPTY_SUMMARY;
