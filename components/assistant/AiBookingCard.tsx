@@ -92,7 +92,10 @@ export function AiBookingCard({ directive }: Props) {
     setBooking(true);
     setError(null);
     try {
-      await bookChatAppointment(token, directive.doctorUserId, selectedDate, confirmTime);
+      await bookChatAppointment(token, directive.doctorUserId, selectedDate, confirmTime, {
+        reason: directive.reason,
+        patientInsight: directive.patientInsight,
+      });
       await loadPoints(token);
       setBooked({ date: selectedDate, time: confirmTime });
     } catch (e) {

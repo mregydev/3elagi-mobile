@@ -52,6 +52,7 @@ export async function bookChatAppointment(
   doctorUserId: string,
   date: string,
   time: string,
+  extra?: { reason?: string; patientInsight?: string },
 ): Promise<ChatBookResult> {
   const res = await fetch(`${API_BASE}/appointments/chat-book`, {
     method: "POST",
@@ -63,6 +64,8 @@ export async function bookChatAppointment(
       doctor_user_id: doctorUserId,
       date,
       time,
+      ...(extra?.reason ? { reason: extra.reason } : {}),
+      ...(extra?.patientInsight ? { patient_insight: extra.patientInsight } : {}),
     }),
   });
   const data = (await res.json().catch(() => ({}))) as ChatBookResult & {

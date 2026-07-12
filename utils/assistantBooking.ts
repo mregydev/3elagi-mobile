@@ -10,6 +10,10 @@ export interface BookingDirective {
   price?: number;
   /** Optional YYYY-MM-DD the patient asked for; preselects the slot list. */
   date?: string;
+  /** Patient's stated reason for the visit (for the doctor). */
+  reason?: string;
+  /** AI-written, doctor-facing insight sent with the booking. */
+  patientInsight?: string;
 }
 
 const BOOKING_FENCE = /```booking\s*([\s\S]*?)```/i;
@@ -45,6 +49,11 @@ export function parseBookingDirective(content: string): {
         doctorName: typeof raw.doctorName === "string" ? raw.doctorName : undefined,
         price: Number.isFinite(priceNum) && priceNum > 0 ? priceNum : undefined,
         date,
+        reason: typeof raw.reason === "string" ? raw.reason.trim() || undefined : undefined,
+        patientInsight:
+          typeof raw.patientInsight === "string"
+            ? raw.patientInsight.trim() || undefined
+            : undefined,
       },
       text,
     };

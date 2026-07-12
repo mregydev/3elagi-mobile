@@ -650,6 +650,36 @@ export function ChatMessageBubble({
           >
             {item.text}
           </Text>
+          {isDoctor && meta.patient_insight ? (
+            <View
+              style={[
+                styles.apptInsight,
+                { backgroundColor: colors.card, borderColor: colors.primary },
+              ]}
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: 11,
+                  fontWeight: "800",
+                  marginBottom: 4,
+                  textAlign: isRTL ? "right" : "left",
+                }}
+              >
+                {isRTL ? "ملخص الذكاء الاصطناعي عن المريض" : "AI patient insight"}
+              </Text>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 12.5,
+                  lineHeight: 18,
+                  textAlign: isRTL ? "right" : "left",
+                }}
+              >
+                {meta.patient_insight}
+              </Text>
+            </View>
+          ) : null}
           {canRespond ? (
             <View style={[styles.apptActions, { flexDirection: rowDir }]}>
               <Pressable
@@ -902,6 +932,13 @@ const styles = StyleSheet.create({
   apptActions: {
     gap: 8,
     justifyContent: "center",
+  },
+  apptInsight: {
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   apptBtn: {
     paddingHorizontal: 14,
