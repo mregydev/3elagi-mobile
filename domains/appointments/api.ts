@@ -11,6 +11,8 @@ export interface UpcomingAppointment {
   other_name: string;
   /** Counterpart's user id (patient for a doctor, doctor for a patient). */
   other_user_id: string | null;
+  /** AI-written, doctor-facing insight (only returned to the doctor). */
+  ai_patient_insight?: string | null;
   booked_via_app: boolean;
 }
 

@@ -142,6 +142,42 @@ export default function AppointmentsTab() {
               {statusLabel(item.status, isRTL)}
             </Text>
           </View>
+          {item.ai_patient_insight ? (
+            <View
+              style={{
+                marginTop: 8,
+                borderWidth: 1,
+                borderColor: colors.primary,
+                backgroundColor: colors.card,
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                alignSelf: "stretch",
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: 11,
+                  fontWeight: "800",
+                  marginBottom: 4,
+                  textAlign: isRTL ? "right" : "left",
+                }}
+              >
+                {isRTL ? "ملخص الذكاء الاصطناعي عن المريض" : "AI patient insight"}
+              </Text>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 12.5,
+                  lineHeight: 18,
+                  textAlign: isRTL ? "right" : "left",
+                }}
+              >
+                {item.ai_patient_insight}
+              </Text>
+            </View>
+          ) : null}
           {item.meeting_link ? (
             <View style={styles.linkWrap}>
               <Pressable
