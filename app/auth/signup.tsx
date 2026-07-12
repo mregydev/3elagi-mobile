@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { ArrowLeft, Camera, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
+import { ArrowLeft, Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -57,6 +57,7 @@ export default function SignupScreen() {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState<string>("");
   const [consultationPrice, setConsultationPrice] = useState(1);
+  const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
@@ -178,7 +179,15 @@ export default function SignupScreen() {
 
   const submit = async () => {
     const errors = validateSignupFields(
-      { name, email, phone, password, isDoctor, specialityId },
+      {
+        name,
+        email,
+        phone,
+        password,
+        isDoctor,
+        specialityId,
+        medicalRecordsStorageConsent: medicalRecordsConsent,
+      },
       t.auth,
     );
     if (hasFieldErrors(errors)) {
@@ -202,6 +211,7 @@ export default function SignupScreen() {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
+        medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
       router.replace(getPostAuthRoute(signedRole, doctorApprovalStatus));
@@ -257,14 +267,21 @@ export default function SignupScreen() {
         <View style={[styles.roleRow, { flexDirection: dir, marginTop: hideIntro ? 0 : 20 }]}>
           <RoleChip
             active={role === "patient"}
-            onPress={() => setRole("patient")}
+            onPress={() => {
+              setRole("patient");
+              setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+            }}
             label={t.auth.patient}
             Icon={UserRound}
             colors={colors}
           />
           <RoleChip
             active={role === "doctor"}
-            onPress={() => setRole("doctor")}
+            onPress={() => {
+              setRole("doctor");
+              setMedicalRecordsConsent(false);
+              setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+            }}
             label={t.auth.doctor}
             Icon={Stethoscope}
             colors={colors}
@@ -427,6 +444,62 @@ export default function SignupScreen() {
               />
             </View>
           )}
+
+          {!isDoctor ? (
+            <View style={{ gap: 6 }}>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: medicalRecordsConsent }}
+                onPress={() => {
+                  setMedicalRecordsConsent((prev) => !prev);
+                  if (fieldErrors.medicalRecordsConsent) {
+                    setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+                  }
+                  if (formError) setFormError(null);
+                }}
+                style={[
+                  styles.consentRow,
+                  { flexDirection: dir, alignItems: "flex-start" },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.consentBox,
+                    {
+                      borderColor: fieldErrors.medicalRecordsConsent
+                        ? colors.destructive
+                        : medicalRecordsConsent
+                          ? colors.primary
+                          : colors.border,
+                      backgroundColor: medicalRecordsConsent
+                        ? colors.primary
+                        : colors.card,
+                    },
+                  ]}
+                >
+                  {medicalRecordsConsent ? (
+                    <Check size={14} color="#fff" strokeWidth={3} />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.consentText,
+                    {
+                      color: colors.foreground,
+                      textAlign: isRTL ? "right" : "left",
+                    },
+                  ]}
+                >
+                  {t.auth.medicalRecordsConsentLabel}
+                </Text>
+              </Pressable>
+              {fieldErrors.medicalRecordsConsent ? (
+                <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
+                  {fieldErrors.medicalRecordsConsent}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           <Pressable
             onPress={submit}
@@ -604,6 +677,25 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  consentRow: {
+    gap: 10,
+    marginTop: 4,
+  },
+  consentBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "500",
   },
   label: { fontSize: 13, fontWeight: "700" },
   input: {

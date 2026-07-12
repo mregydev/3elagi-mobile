@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Phone, PhoneOff } from "lucide-react-native";
+import { ArrowLeft, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,19 +11,21 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { WherebyMeetingEmbed } from "@/components/video-call/WherebyMeetingEmbed";
+import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { useAuthStore } from "@/domains/auth/store";
+import { createDiagnosis } from "@/domains/medical/api";
 import {
   acceptVideoCall,
   declineVideoCall,
   endVideoCall,
   fetchVideoCallSession,
-  toWherebyEmbedUrl,
+  toVideoEmbedUrl,
   type VideoCallSession,
 } from "@/domains/video-call/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { chatFlexRow } from "@/utils/rtl";
-import { showInfoToast } from "@/utils/toast";
+import { showInfoToast, showSuccessToast, showErrorToast } from "@/utils/toast";
 
 const MEETING_DURATION_SEC = 30 * 60;
 const WARNING_REMAINING_SEC = 5 * 60;
@@ -46,6 +48,9 @@ export default function VideoCallScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const profile = useAuthStore((s) => s.profile);
   const role = useAuthStore((s) => s.role);
+  const doctorId = useAuthStore((s) => s.doctorId);
+  const [diagnosisOpen, setDiagnosisOpen] = useState(false);
+  const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const params = useLocalSearchParams<{
     sessionId?: string | string[];
     meetingUrl?: string | string[];
@@ -196,6 +201,38 @@ export default function VideoCallScreen() {
             : "Could not reject the call",
       );
       setActing(null);
+    }
+  };
+
+  const handleDiagnosisSubmit = async (payload: {
+    description: string;
+    symptoms: string[];
+    documentIds: string[];
+    note?: string;
+  }) => {
+    if (!accessToken || !doctorId || !session?.patientUserId) return;
+    setSavingDiagnosis(true);
+    try {
+      await createDiagnosis(
+        {
+          desc: payload.description,
+          patient_id: session.patientUserId,
+          doctor_id: doctorId,
+          symptoms: payload.symptoms.map((desc) => ({ desc })),
+          document_ids:
+            payload.documentIds.length > 0 ? payload.documentIds : undefined,
+        },
+        accessToken,
+      );
+      setDiagnosisOpen(false);
+      showSuccessToast(isRTL ? "تم حفظ التشخيص" : "Diagnosis saved");
+    } catch (e) {
+      showErrorToast(
+        isRTL ? "تعذر حفظ التشخيص" : "Could not save diagnosis",
+        e instanceof Error ? e.message : undefined,
+      );
+    } finally {
+      setSavingDiagnosis(false);
     }
   };
 
@@ -428,12 +465,46 @@ export default function VideoCallScreen() {
             </View>
           </View>
         ) : canJoin ? (
-          <WherebyMeetingEmbed
-            roomUrl={session.roomUrl}
-            embedUrl={toWherebyEmbedUrl(session.roomUrl, displayName)}
-          />
+          <View style={styles.callArea}>
+            <WherebyMeetingEmbed
+              roomUrl={session.roomUrl}
+              embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
+            />
+            {isDoctor && session.patientUserId ? (
+              <Pressable
+                onPress={() => setDiagnosisOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+                style={[
+                  styles.diagnosisFab,
+                  isRTL ? { left: 16 } : { right: 16 },
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <Stethoscope size={18} color="#fff" />
+                <Text style={styles.diagnosisFabText}>
+                  {isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
       </View>
+
+      {isDoctor && session?.patientUserId && accessToken ? (
+        <DiagnosisChatModal
+          visible={diagnosisOpen}
+          isRTL={isRTL}
+          patientUserId={session.patientUserId}
+          accessToken={accessToken}
+          saving={savingDiagnosis}
+          onClose={() => {
+            if (savingDiagnosis) return;
+            setDiagnosisOpen(false);
+          }}
+          onSubmit={(payload) => void handleDiagnosisSubmit(payload)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -489,6 +560,29 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  callArea: {
+    flex: 1,
+  },
+  diagnosisFab: {
+    position: "absolute",
+    bottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 999,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  diagnosisFabText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
   },
   center: {
     flex: 1,

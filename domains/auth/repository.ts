@@ -187,6 +187,8 @@ export const authRepository = {
           password: input.password,
           name: input.name.trim(),
           phone: input.phone ?? "",
+          medical_records_storage_consent:
+            input.medicalRecordsStorageConsent === true,
         });
 
     const photoUrl = await applySignupUploads(

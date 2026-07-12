@@ -85,13 +85,18 @@ export async function endVideoCall(
   });
 }
 
-export function toWherebyEmbedUrl(roomUrl: string, displayName: string): string {
-  const url = new URL(roomUrl);
-  url.searchParams.set("embed", "");
-  const name = displayName.trim();
-  if (name) {
-    url.searchParams.set("displayName", name);
+/**
+ * Daily rooms are joined by loading the room URL directly in an iframe/WebView
+ * (Daily Prebuilt). We pass the display name via ?userName so the participant
+ * shows up named in the call.
+ */
+export function toVideoEmbedUrl(roomUrl: string, displayName: string): string {
+  try {
+    const url = new URL(roomUrl);
+    const name = displayName.trim();
+    if (name) url.searchParams.set("userName", name);
+    return url.toString();
+  } catch {
+    return roomUrl;
   }
-  url.searchParams.set("precallReview", "off");
-  return url.toString();
 }

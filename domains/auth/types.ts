@@ -29,6 +29,7 @@ export interface SignupInput extends Credentials {
   workPermit?: SignupFile;
   specialityId?: string;
   consultationPrice?: number;
+  medicalRecordsStorageConsent?: boolean;
 }
 
 export type DoctorApprovalStatus = "pending" | "approved" | "rejected";

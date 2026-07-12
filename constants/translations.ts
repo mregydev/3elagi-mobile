@@ -143,6 +143,10 @@ const en = {
     showPassword: "Show password",
     hidePassword: "Hide password",
     goBack: "Go back",
+    medicalRecordsConsentLabel:
+      "I consent to 3elagi storing my medical records in its database to provide healthcare services, in accordance with GDPR.",
+    medicalRecordsConsentRequired:
+      "You must consent to medical records storage to create a patient account.",
   },
   dashboard: {
     title: "Dashboard",
@@ -575,6 +579,10 @@ const ar: typeof en = {
     showPassword: "إظهار كلمة المرور",
     hidePassword: "إخفاء كلمة المرور",
     goBack: "رجوع",
+    medicalRecordsConsentLabel:
+      "أوافق على قيام 3elagi بتخزين سجلاتي الطبية في قاعدة بياناتها لتقديم الخدمات الصحية، وفقاً للائحة حماية البيانات العامة (GDPR).",
+    medicalRecordsConsentRequired:
+      "يجب الموافقة على تخزين السجلات الطبية لإنشاء حساب مريض.",
   },
   dashboard: {
     title: "لوحة التحكم",
@@ -1005,6 +1013,10 @@ const de: typeof en = {
     showPassword: "Passwort anzeigen",
     hidePassword: "Passwort verbergen",
     goBack: "Zurück",
+    medicalRecordsConsentLabel:
+      "Ich willige ein, dass 3elagi meine medizinischen Aufzeichnungen in seiner Datenbank speichert, um Gesundheitsdienste bereitzustellen, gemäß der DSGVO.",
+    medicalRecordsConsentRequired:
+      "Sie müssen der Speicherung medizinischer Aufzeichnungen zustimmen, um ein Patientenkonto zu erstellen.",
   },
   dashboard: {
     title: "Übersicht",
@@ -1437,6 +1449,10 @@ const es: typeof en = {
     showPassword: "Mostrar contraseña",
     hidePassword: "Ocultar contraseña",
     goBack: "Volver",
+    medicalRecordsConsentLabel:
+      "Consiento que 3elagi almacene mis registros médicos en su base de datos para prestar servicios de salud, de conformidad con el RGPD.",
+    medicalRecordsConsentRequired:
+      "Debes consentir el almacenamiento de registros médicos para crear una cuenta de paciente.",
   },
   dashboard: {
     title: "Panel",
