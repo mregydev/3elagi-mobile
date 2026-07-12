@@ -684,7 +684,10 @@ export function ChatMessageBubble({
               onPress={() =>
                 router.push({
                   pathname: "/video-call",
-                  params: { meetingUrl: meetingLink },
+                  params: {
+                    meetingUrl: meetingLink,
+                    ...(patientUserId ? { patientUserId } : {}),
+                  },
                 })
               }
               style={[styles.apptBtn, { backgroundColor: colors.primary }]}

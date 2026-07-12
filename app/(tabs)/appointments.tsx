@@ -148,7 +148,12 @@ export default function AppointmentsTab() {
                 onPress={() =>
                   router.push({
                     pathname: "/video-call",
-                    params: { meetingUrl: item.meeting_link! },
+                    params: {
+                      meetingUrl: item.meeting_link!,
+                      ...(item.other_user_id
+                        ? { patientUserId: item.other_user_id }
+                        : {}),
+                    },
                   })
                 }
                 style={[styles.openLinkBtn, { borderColor: colors.primary }]}

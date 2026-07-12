@@ -9,6 +9,8 @@ export interface UpcomingAppointment {
   status: string;
   meeting_link: string | null;
   other_name: string;
+  /** Counterpart's user id (patient for a doctor, doctor for a patient). */
+  other_user_id: string | null;
   booked_via_app: boolean;
 }
 

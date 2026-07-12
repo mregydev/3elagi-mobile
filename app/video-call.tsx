@@ -54,10 +54,12 @@ export default function VideoCallScreen() {
   const params = useLocalSearchParams<{
     sessionId?: string | string[];
     meetingUrl?: string | string[];
+    patientUserId?: string | string[];
   }>();
 
   const sessionId = readParam(params.sessionId);
   const meetingUrlParam = readParam(params.meetingUrl);
+  const patientUserIdParam = readParam(params.patientUserId);
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const isPatient = role?.toLowerCase() === "patient";
@@ -210,13 +212,14 @@ export default function VideoCallScreen() {
     documentIds: string[];
     note?: string;
   }) => {
-    if (!accessToken || !doctorId || !session?.patientUserId) return;
+    const targetPatientId = session?.patientUserId?.trim() || patientUserIdParam;
+    if (!accessToken || !doctorId || !targetPatientId) return;
     setSavingDiagnosis(true);
     try {
       await createDiagnosis(
         {
           desc: payload.description,
-          patient_id: session.patientUserId,
+          patient_id: targetPatientId,
           doctor_id: doctorId,
           symptoms: payload.symptoms.map((desc) => ({ desc })),
           document_ids:
@@ -243,6 +246,8 @@ export default function VideoCallScreen() {
       : session?.doctorName ?? (isRTL ? "الطبيب" : "Doctor");
   const displayName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
   const canJoin = !!session?.roomUrl && session.status === "accepted" && !meetingExpired;
+  const diagPatientId = session?.patientUserId?.trim() || patientUserIdParam || null;
+  const canAddDiagnosis = isDoctor && canJoin && !!diagPatientId && !!accessToken;
   const waitingForDoctor =
     !!session && isPatient && session.status === "ringing";
   const incomingForDoctor =
@@ -347,6 +352,20 @@ export default function VideoCallScreen() {
             </Text>
           </View>
         </View>
+
+        {canAddDiagnosis ? (
+          <Pressable
+            onPress={() => setDiagnosisOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+            style={[styles.diagnosisBtn, { backgroundColor: colors.primary }]}
+          >
+            <Stethoscope size={16} color="#fff" />
+            <Text style={styles.diagnosisBtnText}>
+              {isRTL ? "تشخيص" : "Diagnosis"}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {canJoin ? (
           <View
@@ -465,37 +484,18 @@ export default function VideoCallScreen() {
             </View>
           </View>
         ) : canJoin ? (
-          <View style={styles.callArea}>
-            <WherebyMeetingEmbed
-              roomUrl={session.roomUrl}
-              embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
-            />
-            {isDoctor && session.patientUserId ? (
-              <Pressable
-                onPress={() => setDiagnosisOpen(true)}
-                accessibilityRole="button"
-                accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-                style={[
-                  styles.diagnosisFab,
-                  isRTL ? { left: 16 } : { right: 16 },
-                  { backgroundColor: colors.primary },
-                ]}
-              >
-                <Stethoscope size={18} color="#fff" />
-                <Text style={styles.diagnosisFabText}>
-                  {isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
+          <WherebyMeetingEmbed
+            roomUrl={session.roomUrl}
+            embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
+          />
         ) : null}
       </View>
 
-      {isDoctor && session?.patientUserId && accessToken ? (
+      {canAddDiagnosis && diagPatientId ? (
         <DiagnosisChatModal
           visible={diagnosisOpen}
           isRTL={isRTL}
-          patientUserId={session.patientUserId}
+          patientUserId={diagPatientId}
           accessToken={accessToken}
           saving={savingDiagnosis}
           onClose={() => {
@@ -561,28 +561,18 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
-  callArea: {
-    flex: 1,
-  },
-  diagnosisFab: {
-    position: "absolute",
-    bottom: 20,
+  diagnosisBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: 999,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 5,
   },
-  diagnosisFabText: {
+  diagnosisBtnText: {
     color: "#fff",
     fontWeight: "800",
-    fontSize: 14,
+    fontSize: 13,
   },
   center: {
     flex: 1,
