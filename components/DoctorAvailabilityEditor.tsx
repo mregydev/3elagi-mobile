@@ -119,11 +119,6 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
   const { width: screenWidth } = useWindowDimensions();
   const isMobileLayout =
     Platform.OS !== "web" || screenWidth < WEB_BREAKPOINTS.tablet;
-  const calendarWidth = isMobileLayout ? screenWidth * 0.8 : undefined;
-  const calendarGap = 8;
-  const cellSize = calendarWidth
-    ? Math.max(32, Math.floor((calendarWidth - calendarGap * 6) / 7))
-    : 48;
   const now = useMemo(() => new Date(), []);
   const weekStartsOn = calendarWeekStartsOn(isRTL);
 
@@ -314,8 +309,9 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
           year={year}
           month={month}
           mode="week"
-          cellSize={cellSize}
-          centered
+          cellSize={isMobileLayout ? 36 : 48}
+          centered={!isMobileLayout}
+          responsive={isMobileLayout}
           selectedDate=""
           selectedWeekStart={`${year}-01-01`}
           selectedMonth={month}
@@ -400,23 +396,30 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
 const styles = StyleSheet.create({
   embedded: {
     width: "100%",
+    maxWidth: "100%",
     gap: 14,
+    overflow: "hidden",
   },
   calendarWrap: {
     width: "100%",
+    maxWidth: "100%",
     alignItems: "center",
+    alignSelf: "stretch",
+    overflow: "hidden",
   },
   calendarWrapMobile: {
-    width: "80%",
-    alignSelf: "center",
+    width: "100%",
+    maxWidth: "100%",
+    alignSelf: "stretch",
   },
   card: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     gap: 14,
     width: "100%",
     maxWidth: 560,
+    overflow: "hidden",
   },
   title: { fontSize: 16, fontWeight: "800" },
   hint: { fontSize: 13, lineHeight: 18 },
@@ -429,8 +432,13 @@ const styles = StyleSheet.create({
   legendRow: { gap: 16, marginTop: 2 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  timeRow: { gap: 12, marginTop: 8 },
-  timeCol: { flex: 1, gap: 4 },
+  timeRow: {
+    gap: 10,
+    marginTop: 8,
+    width: "100%",
+    maxWidth: "100%",
+  },
+  timeCol: { flex: 1, minWidth: 0, gap: 4 },
   timeLabel: { fontSize: 12, fontWeight: "700" },
   timeBtn: {
     flexDirection: "row",
@@ -438,12 +446,14 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
+    minWidth: 0,
   },
   selectedCount: { fontSize: 13, fontWeight: "600", marginTop: 4 },
   saveBtn: {
     width: "100%",
+    maxWidth: "100%",
     minHeight: 52,
     borderRadius: 12,
     alignItems: "center",

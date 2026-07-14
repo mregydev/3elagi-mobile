@@ -2,7 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, ArrowRight, Camera, Image as ImageIcon, Plus, Trash2, X } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,8 @@ import {
   fetchAllMedicalHistory,
   uploadFile,
 } from "@/domains/medical/api";
+import { BodyPartPicker } from "@/components/records/BodyPartPicker";
+import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 import {
   analyzePrescriptionScan,
@@ -47,7 +49,10 @@ export default function AddPrescriptionScreen() {
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
-  const { patientUserId: patientUserIdParam } = useLocalSearchParams<{ patientUserId?: string }>();
+  const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
+    patientUserId?: string;
+    bodyPart?: string;
+  }>();
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -62,10 +67,18 @@ export default function AddPrescriptionScreen() {
 
   const [title, setTitle] = useState("");
   const [symptoms, setSymptoms] = useState("");
+  const [bodyPart, setBodyPart] = useState<BodyPart>(
+    () => parseBodyPart(bodyPartParam) ?? "general",
+  );
   const [medications, setMedications] = useState<PrescriptionMedication[]>([emptyMedication()]);
   const [scanAsset, setScanAsset] = useState<ScanAsset | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fromQuery = parseBodyPart(bodyPartParam);
+    if (fromQuery) setBodyPart(fromQuery);
+  }, [bodyPartParam]);
 
   const updateMedication = (index: number, patch: Partial<PrescriptionMedication>) => {
     setMedications((rows) =>
@@ -260,6 +273,7 @@ export default function AddPrescriptionScreen() {
           symptoms: symptoms.trim() || undefined,
           medications: cleaned,
           image_url: imageUrl,
+          body_part: bodyPart,
         },
         accessToken,
       );
@@ -326,6 +340,8 @@ export default function AddPrescriptionScreen() {
           colors={colors}
           textAlign={textAlign}
         />
+
+        <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
 
         <Field
           label={isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)"}

@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { AppSidebarMenuButton } from "@/components/nav/AppSidebarDrawer";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useColors } from "@/hooks/useColors";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
@@ -37,6 +38,7 @@ export function AppHeader({
     >
       {!isDesktop ? (
         <View style={styles.brandRow}>
+          <AppSidebarMenuButton />
           <Logo3elagi height={LOGO_HEIGHT.header} />
         </View>
       ) : title ? (
@@ -54,8 +56,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   brandRow: {
+    position: "relative",
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 40,
   },
   title: {
     fontSize: 24,

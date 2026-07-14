@@ -38,6 +38,9 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [videoConsultationPrice, setVideoConsultationPrice] = useState(1);
   const [videoConsultationMinutes, setVideoConsultationMinutes] = useState(30);
+  const [iban, setIban] = useState("");
+  const [accountHolderFullName, setAccountHolderFullName] = useState("");
+  const [nationalId, setNationalId] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [photoDirty, setPhotoDirty] = useState(false);
@@ -58,6 +61,9 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setConsultationPrice(data.consultationPrice ?? 1);
       setVideoConsultationPrice(data.videoConsultationPrice ?? 1);
       setVideoConsultationMinutes(data.videoConsultationMinutes ?? 30);
+      setIban(data.iban ?? "");
+      setAccountHolderFullName(data.accountHolderFullName ?? "");
+      setNationalId(data.nationalId ?? "");
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
@@ -172,6 +178,9 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         consultationPrice: isDoctor ? consultationPrice : undefined,
         videoConsultationPrice: isDoctor ? videoConsultationPrice : undefined,
         videoConsultationMinutes: isDoctor ? videoConsultationMinutes : undefined,
+        iban: isDoctor ? iban : undefined,
+        accountHolderFullName: isDoctor ? accountHolderFullName : undefined,
+        nationalId: isDoctor ? nationalId : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
 
@@ -222,6 +231,12 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    iban,
+    setIban,
+    accountHolderFullName,
+    setAccountHolderFullName,
+    nationalId,
+    setNationalId,
     isDoctor,
     displayPhoto: photoUri ?? photoUrl,
     pickPhoto,

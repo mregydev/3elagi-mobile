@@ -1,133 +1,15 @@
-import { Href, usePathname, useRouter } from "expo-router";
-import {
-  Activity,
-  Bot,
-  Coins,
-  Home,
-  LogOut,
-  User,
-  Users,
-} from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Logo3elagi } from "@/components/Logo3elagi";
-import { MobileAppLink } from "@/components/web/MobileAppLink.web";
-import { LanguageDropdown } from "@/components/language/LanguageDropdown";
-import { LOGO_HEIGHT } from "@/constants/brand";
-import type { Translations } from "@/constants/translations";
-import { useAuthStore } from "@/domains/auth/store";
-import { navigateToWelcome } from "@/domains/auth/navigation";
+import { StyleSheet, View } from "react-native";
+import { AppSidebarNav } from "@/components/nav/AppSidebarNav";
+import { MobileAppLink } from "@/components/web/MobileAppLink";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { alignText, flexRow } from "@/utils/rtl";
-import { webConfirm } from "@/utils/webConfirm";
-
-type NavItem = {
-  href: Href;
-  labelKey: keyof Translations["tabs"];
-  match: (path: string) => boolean;
-  Icon: typeof Home;
-  doctorOnly?: boolean;
-  hideForDoctor?: boolean;
-};
-
-const NAV_ITEMS: NavItem[] = [
-  {
-    href: "/(tabs)",
-    labelKey: "home",
-    match: (path) => path === "/" || path.startsWith("/(tabs)") && !path.includes("history") && !path.includes("records") && !path.includes("appointments") && !path.includes("points") && !path.includes("profile") && !path.includes("assistant") && !path.includes("intake") && !path.includes("reviews") && !path.includes("activity") && !path.includes("patients"),
-    Icon: Home,
-  },
-  {
-    href: "/(tabs)/assistant",
-    labelKey: "aiAssistant",
-    match: (path) => path.includes("assistant"),
-    Icon: Bot,
-  },
-  {
-    href: "/(tabs)/patients",
-    labelKey: "patients",
-    match: (path) => path.includes("patients"),
-    Icon: Users,
-    doctorOnly: true,
-  },
-  {
-    href: "/(tabs)/activity",
-    labelKey: "activity",
-    match: (path) =>
-      path.includes("activity") ||
-      path.includes("history") ||
-      path.includes("appointments") ||
-      path.includes("records") ||
-      path.includes("/medical"),
-    Icon: Activity,
-    hideForDoctor: true,
-  },
-  {
-    href: "/(tabs)/points",
-    labelKey: "points",
-    match: (path) => path.includes("points"),
-    Icon: Coins,
-    hideForDoctor: true,
-  },
-  {
-    href: "/(tabs)/profile",
-    labelKey: "profile",
-    match: (path) => path.includes("profile"),
-    Icon: User,
-  },
-];
-
-function isHomePath(path: string) {
-  return (
-    path === "/" ||
-    path === "/(tabs)" ||
-    path.endsWith("/index") ||
-    (path.includes("(tabs)") &&
-      !path.includes("history") &&
-      !path.includes("records") &&
-      !path.includes("appointments") &&
-      !path.includes("points") &&
-      !path.includes("profile") &&
-      !path.includes("assistant") &&
-      !path.includes("intake") &&
-      !path.includes("reviews") &&
-      !path.includes("patients") &&
-      !path.includes("activity"))
-  );
-}
 
 export function WebSidebar() {
   const colors = useColors();
-  const { t, isRTL } = useI18n();
+  const { isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
-  const router = useRouter();
-  const pathname = usePathname();
-  const role = useAuthStore((s) => s.role);
-  const logout = useAuthStore((s) => s.logout);
-  const dir = flexRow(isRTL);
-  const textAlign = alignText(isRTL);
-
-  const handleLogout = () => {
-    const confirmed = webConfirm(t.tabs.logout, t.tabs.logoutConfirm);
-
-    if (!confirmed) return;
-
-    logout();
-    navigateToWelcome(router);
-  };
-
-  const isDoctor = role?.toLowerCase() === "doctor";
-
-  const items = NAV_ITEMS.filter(
-    (item) => (!item.doctorOnly || isDoctor) && !(item.hideForDoctor && isDoctor),
-  ).map(
-    (item) => ({
-      ...item,
-      active: item.Icon === Home ? isHomePath(pathname) : item.match(pathname),
-    }),
-  );
 
   if (!isDesktop) return null;
 
@@ -143,75 +25,7 @@ export function WebSidebar() {
         },
       ]}
     >
-      <View style={styles.brandRow}>
-        <Logo3elagi height={LOGO_HEIGHT.sidebar} />
-      </View>
-
-      <View style={styles.nav}>
-        {items.map(({ href, labelKey, active, Icon }) => (
-          <Pressable
-            key={String(href)}
-            onPress={() => router.push(href)}
-            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.navItem,
-              {
-                flexDirection: dir,
-                backgroundColor: active
-                  ? `${colors.primary}18`
-                  : pressed || hovered
-                    ? colors.muted
-                    : "transparent",
-                borderColor: active ? `${colors.primary}55` : "transparent",
-              },
-            ]}
-          >
-            <Icon size={18} color={active ? colors.primary : colors.mutedForeground} />
-            <Text
-              style={[
-                styles.navLabel,
-                { color: active ? colors.primary : colors.foreground },
-              ]}
-            >
-              {t.tabs[labelKey]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.footer}>
-        <MobileAppLink variant="nav" />
-        <LanguageDropdown compact showLabel fullWidth placement="top" />
-
-        {role ? (
-          <Text
-            style={[
-              styles.roleHint,
-              { color: colors.mutedForeground, textAlign },
-            ]}
-          >
-            {role.toLowerCase() === "doctor"
-              ? t.tabs.doctorAccount
-              : t.tabs.patientAccount}
-          </Text>
-        ) : null}
-
-        <Pressable
-          onPress={handleLogout}
-          accessibilityRole="button"
-          accessibilityLabel={t.tabs.logout}
-          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-            styles.logoutBtn,
-            {
-              flexDirection: dir,
-              borderColor: colors.border,
-              backgroundColor: pressed || hovered ? "#fef2f2" : "transparent",
-            },
-          ]}
-        >
-          <LogOut size={18} color="#ef4444" />
-          <Text style={styles.logoutText}>{t.tabs.logout}</Text>
-        </Pressable>
-      </View>
+      <AppSidebarNav footerExtra={<MobileAppLink variant="nav" />} />
     </View>
   );
 }
@@ -220,38 +34,5 @@ const styles = StyleSheet.create({
   sidebar: {
     width: 248,
     height: "100%",
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 16,
-    gap: 20,
   },
-  brandRow: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nav: { gap: 6, flex: 1 },
-  navItem: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  navLabel: { fontSize: 14, fontWeight: "700", flex: 1 },
-  footer: {
-    gap: 10,
-    marginTop: "auto",
-    paddingTop: 8,
-  },
-  roleHint: { fontSize: 12, fontWeight: "600", paddingHorizontal: 4 },
-  logoutBtn: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  logoutText: { color: "#ef4444", fontWeight: "700", fontSize: 14, flex: 1 },
 });

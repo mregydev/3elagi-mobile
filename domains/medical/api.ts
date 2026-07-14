@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
 import type { Locale } from "@/domains/i18n/store";
 import type { DiagnosisSymptom, MedicalAiInsight, MedicalRecord, PrescriptionMedication } from "./types";
+import { parseBodyPart } from "./bodyParts";
 import { fetchIntakeExamsForPatient } from "@/domains/intake-exams/api";
 
 function mapAiInsight(raw: unknown): MedicalAiInsight | null | undefined {
@@ -35,6 +36,7 @@ interface RawPrescription {
   created_at: string;
   medications?: RawPrescriptionMedication[];
   ai_insight?: MedicalAiInsight | null;
+  body_part?: string | null;
 }
 
 function mapPrescriptionMedication(raw: RawPrescriptionMedication): PrescriptionMedication {
@@ -66,6 +68,7 @@ function mapPrescription(raw: RawPrescription): MedicalRecord {
     fileUrl: imageUrl,
     fileName: imageUrl ? "prescription.jpg" : undefined,
     aiInsight: mapAiInsight(raw.ai_insight) ?? null,
+    bodyPart: parseBodyPart(raw.body_part),
   };
 }
 
@@ -87,6 +90,7 @@ interface RawDiagnosis {
   symptoms?: RawSymptom[];
   documents?: RawDocument[];
   ai_insight?: MedicalAiInsight | null;
+  body_part?: string | null;
 }
 
 function mapSymptoms(raw: RawSymptom[] | undefined): DiagnosisSymptom[] {
@@ -109,6 +113,7 @@ interface RawDocument {
   diagnosis_id?: string | null;
   linked_diagnoses?: Array<{ id: string; desc: string }>;
   ai_insight?: MedicalAiInsight | null;
+  body_part?: string | null;
 }
 
 function mapLinkedDiagnoses(
@@ -132,6 +137,7 @@ function mapDocument(doc: RawDocument): MedicalRecord {
     linkedDiagnoses,
     diagnosisId: linkedDiagnoses[0]?.id ?? doc.diagnosis_id ?? null,
     aiInsight: mapAiInsight(doc.ai_insight) ?? null,
+    bodyPart: parseBodyPart(doc.body_part),
   };
 }
 
@@ -148,6 +154,7 @@ function mapDiagnosis(d: RawDiagnosis): MedicalRecord {
     doctorId: d.doctor_id ?? null,
     linkedDocuments: (d.documents ?? []).map(mapDocument),
     aiInsight: mapAiInsight(d.ai_insight) ?? null,
+    bodyPart: parseBodyPart(d.body_part),
   };
 }
 
@@ -438,6 +445,7 @@ export async function createPrescriptionForPatientUser(
     symptoms?: string;
     medications: PrescriptionMedication[];
     image_url?: string;
+    body_part?: string | null;
   },
   token: string,
 ): Promise<MedicalRecord> {
@@ -448,6 +456,7 @@ export async function createPrescriptionForPatientUser(
       title: payload.title,
       symptoms: payload.symptoms,
       image_url: payload.image_url,
+      body_part: payload.body_part ?? null,
       medications: payload.medications.map((med) => ({
         medication_name: med.medication_name,
         interval: med.interval,
@@ -499,6 +508,7 @@ export async function createPatientMedicalDocument(
     notes: string;
     title: string;
     patient_user_id?: string;
+    body_part?: string | null;
     ai_insight?: MedicalAiInsight;
     generate_ai_insight?: boolean;
     lang?: Locale;
@@ -520,6 +530,7 @@ export async function createDoctorMedicalDocument(
     file_name: string;
     notes: string;
     title: string;
+    body_part?: string | null;
   },
   token: string,
 ): Promise<MedicalRecord> {
@@ -552,6 +563,7 @@ export async function createDiagnosis(
     doctor_id: string;
     symptoms: { desc: string }[];
     document_ids?: string[];
+    body_part?: string | null;
   },
   token: string,
 ): Promise<MedicalRecord> {

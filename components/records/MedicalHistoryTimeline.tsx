@@ -9,10 +9,15 @@ import {
   View,
 } from "react-native";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
+import { BodySkeletonView } from "@/components/records/BodySkeletonView";
 import {
   MedicalRecordAddBar,
   MEDICAL_RECORD_ADD_BAR_HEIGHT,
 } from "@/components/records/MedicalRecordAddBar";
+import {
+  RecordsViewModeToggle,
+  type RecordsViewMode,
+} from "@/components/records/RecordsViewModeToggle";
 import {
   getCategoryMeta,
   getDisplayMedicalRecordCategories,
@@ -24,6 +29,8 @@ import {
   SHOW_INTAKE_RECORDS,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
+import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
   filterMedicalRecords,
@@ -58,6 +65,8 @@ export function MedicalHistoryTimeline({
   const { t, isRTL } = useI18n();
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
+  const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
 
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -74,18 +83,23 @@ export function MedicalHistoryTimeline({
   );
 
   const filteredRecords = useMemo(() => {
-    const filtered = filterMedicalRecords(displayRecords, filters);
+    const withBody: MedicalHistoryFilters = {
+      ...filters,
+      bodyPart: selectedBodyPart ?? filters.bodyPart,
+    };
+    const filtered = filterMedicalRecords(displayRecords, withBody);
     const scoped =
       categoryFilter === "all" ? filtered : filtered.filter((r) => r.category === categoryFilter);
     return [...scoped].sort((a, b) => getRecordTimestamp(b) - getRecordTimestamp(a));
-  }, [displayRecords, filters, categoryFilter]);
+  }, [displayRecords, filters, categoryFilter, selectedBodyPart]);
 
   const timelineGroups = useMemo(
     () => groupRecordsByMonth(filteredRecords, dateLocale),
     [filteredRecords, dateLocale],
   );
 
-  const filtering = hasActiveFilters(filters) || categoryFilter !== "all";
+  const filtering =
+    hasActiveFilters(filters) || categoryFilter !== "all" || !!selectedBodyPart;
 
   const openRecord = (item: MedicalRecord) => {
     if (doctorView) {
@@ -98,42 +112,26 @@ export function MedicalHistoryTimeline({
     }
   };
 
-  const openAdd = (category: MedicalCategory) => {
-    const ownerQuery = patientUserId
-      ? `patientUserId=${encodeURIComponent(patientUserId)}`
-      : "";
-    if (category === "prescription") {
-      const base = `/medical/prescription/add`;
-      router.push(ownerQuery ? `${base}?${ownerQuery}` : base);
-      return;
-    }
-    const base = `/medical/add?category=${category}`;
-    router.push(ownerQuery ? `${base}&${ownerQuery}` : base);
+  const openAdd = (category: MedicalCategory, bodyPart?: BodyPart | null) => {
+    router.push(
+      buildMedicalAddHref(category, {
+        patientUserId,
+        bodyPart: bodyPart ?? selectedBodyPart,
+      }) as never,
+    );
   };
 
   const clearFilters = () => {
     setFilters(EMPTY_MEDICAL_FILTERS);
     setCategoryFilter("all");
+    setSelectedBodyPart(null);
   };
 
   const addBarSpace =
     (canAdd ? MEDICAL_RECORD_ADD_BAR_HEIGHT : 0) + contentPaddingBottom;
 
-  return (
-    <View style={styles.root}>
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: addBarSpace }]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <MedicalHistoryFilterPanel
-        filters={filters}
-        onChange={setFilters}
-        isRTL={isRTL}
-        dir={dir}
-      />
-
+  const timelineBody = (
+    <>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -196,6 +194,9 @@ export function MedicalHistoryTimeline({
                     dateLocale={dateLocale}
                     onOpen={() => openRecord(record)}
                     categoryLabel={getLocalizedCategoryLabel(record.category, t)}
+                    bodyPartLabel={
+                      record.bodyPart ? t.records.bodyParts[record.bodyPart] : undefined
+                    }
                     attachmentLabel={t.records.attachmentAvailable}
                     doctorPrefix={t.records.doctorPrefix}
                     symptomLabel={
@@ -210,9 +211,67 @@ export function MedicalHistoryTimeline({
           ))}
         </View>
       )}
+    </>
+  );
+
+  return (
+    <View style={styles.root}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingBottom: addBarSpace },
+        viewMode === "skeleton" && styles.scrollContentSkeleton,
+      ]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      scrollEnabled={viewMode !== "skeleton"}
+    >
+      <View style={styles.toggleWrap}>
+        <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+      </View>
+
+      {viewMode === "table" ? (
+        <MedicalHistoryFilterPanel
+          filters={filters}
+          onChange={setFilters}
+          isRTL={isRTL}
+          dir={dir}
+        />
+      ) : null}
+
+      {viewMode === "skeleton" ? (
+        <View style={[styles.splitRow, { flexDirection: dir }]}>
+          <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+            <BodySkeletonView
+              selectedPart={selectedBodyPart}
+              records={displayRecords}
+              canAdd={canAdd}
+              onSelectPart={setSelectedBodyPart}
+              onAddForPart={(part) => openAdd(doctorView ? "diagnosis" : "lab", part)}
+            />
+          </View>
+          <ScrollView
+            style={styles.splitPane}
+            contentContainerStyle={styles.splitRecordsContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {timelineBody}
+          </ScrollView>
+        </View>
+      ) : (
+        timelineBody
+      )}
     </ScrollView>
 
-    {canAdd ? <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} layout="dock" /> : null}
+    {canAdd ? (
+      <MedicalRecordAddBar
+        onAdd={(c) => openAdd(c)}
+        showDiagnosis={doctorView}
+        layout="dock"
+      />
+    ) : null}
     </View>
   );
 }
@@ -264,6 +323,7 @@ function RecordTimelineItem({
   dateLocale,
   onOpen,
   categoryLabel,
+  bodyPartLabel,
   attachmentLabel,
   doctorPrefix,
   symptomLabel,
@@ -277,6 +337,7 @@ function RecordTimelineItem({
   dateLocale: string;
   onOpen: () => void;
   categoryLabel: string;
+  bodyPartLabel?: string;
   attachmentLabel: string;
   doctorPrefix: (name: string) => string;
   symptomLabel: string;
@@ -327,6 +388,21 @@ function RecordTimelineItem({
           {record.title}
         </Text>
 
+        {bodyPartLabel ? (
+          <Text
+            style={[
+              styles.bodyPartChip,
+              {
+                color: colors.primary,
+                backgroundColor: `${colors.primary}14`,
+                alignSelf: isRTL ? "flex-end" : "flex-start",
+              },
+            ]}
+          >
+            {bodyPartLabel}
+          </Text>
+        ) : null}
+
         {record.category === "diagnosis" && record.doctorName ? (
           <Text style={[styles.recordMeta, { color: colors.mutedForeground, textAlign }]}>
             {doctorPrefix(record.doctorName)}
@@ -367,6 +443,38 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 4,
     gap: 12,
+  },
+  scrollContentSkeleton: {
+    flexGrow: 1,
+    flex: 1,
+    minHeight: 0,
+  },
+  toggleWrap: {
+    flexShrink: 0,
+    paddingHorizontal: 12,
+  },
+  splitRow: {
+    flex: 1,
+    minHeight: 0,
+    marginHorizontal: 12,
+    overflow: "hidden",
+    backgroundColor: "transparent",
+  },
+  splitPane: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+  },
+  splitSkeleton: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    padding: 8,
+    backgroundColor: "transparent",
+  },
+  splitRecordsContent: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    gap: 10,
+    paddingBottom: 24,
   },
   categoryRow: {
     paddingHorizontal: 16,
@@ -474,6 +582,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     lineHeight: 21,
+  },
+  bodyPartChip: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: "700",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   recordMeta: {
     fontSize: 13,

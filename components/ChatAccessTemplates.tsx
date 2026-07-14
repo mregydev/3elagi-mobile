@@ -1,4 +1,4 @@
-import { Ban, Calendar, ClipboardList, Share2, ShieldCheck, ShieldOff, Stethoscope, Unlock } from "lucide-react-native";
+import { Ban, Calendar, ClipboardList, Pill, Share2, ShieldCheck, ShieldOff, Stethoscope, Unlock } from "lucide-react-native";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { AccessActionType, DoctorPatientAccessStatus } from "@/domains/chat/access";
@@ -20,10 +20,12 @@ interface Props {
   isDoctor: boolean;
   access: DoctorPatientAccessStatus | null;
   showDiagnosis?: boolean;
+  showPrescription?: boolean;
   showMedicalRecordActions?: boolean;
   medicalActionsDisabled?: boolean;
   onAccessAction: (action: AccessActionType) => void;
   onDiagnosisPress?: () => void;
+  onPrescriptionPress?: () => void;
   onAssignIntakeExam?: () => void;
   onAddMedicalRecord?: () => void;
   onShareMedicalRecord?: () => void;
@@ -35,10 +37,12 @@ export function ChatAccessTemplates({
   isDoctor,
   access,
   showDiagnosis = false,
+  showPrescription = false,
   showMedicalRecordActions = false,
   medicalActionsDisabled = false,
   onAccessAction,
   onDiagnosisPress,
+  onPrescriptionPress,
   onAssignIntakeExam,
   onAddMedicalRecord,
   onShareMedicalRecord,
@@ -49,21 +53,34 @@ export function ChatAccessTemplates({
   const chips: Chip[] = [];
 
   if (isDoctor) {
-    if (showDiagnosis && access?.records_allowed && !access.is_blocked) {
-      chips.push({
-        key: "diagnosis",
-        label: isRTL ? "تشخيص جديد" : "New diagnosis",
-        icon: <Stethoscope size={15} color={colors.primary} />,
-        onPress: onDiagnosisPress,
-        tone: "primary",
-      });
-      chips.push({
-        key: "intake_exam",
-        label: isRTL ? "فحص متابعة" : "Follow-up exam",
-        icon: <ClipboardList size={15} color={colors.primary} />,
-        onPress: onAssignIntakeExam,
-        tone: "primary",
-      });
+    if (access?.records_allowed && !access.is_blocked) {
+      if (showDiagnosis) {
+        chips.push({
+          key: "diagnosis",
+          label: isRTL ? "تشخيص جديد" : "New diagnosis",
+          icon: <Stethoscope size={15} color={colors.primary} />,
+          onPress: onDiagnosisPress,
+          tone: "primary",
+        });
+      }
+      if (showPrescription) {
+        chips.push({
+          key: "prescription",
+          label: isRTL ? "روشتة جديدة" : "New prescription",
+          icon: <Pill size={15} color={colors.primary} />,
+          onPress: onPrescriptionPress,
+          tone: "primary",
+        });
+      }
+      if (showDiagnosis || showPrescription) {
+        chips.push({
+          key: "intake_exam",
+          label: isRTL ? "فحص متابعة" : "Follow-up exam",
+          icon: <ClipboardList size={15} color={colors.primary} />,
+          onPress: onAssignIntakeExam,
+          tone: "primary",
+        });
+      }
     }
     if (showMedicalRecordActions && access?.records_allowed && !access?.is_blocked) {
       chips.push({

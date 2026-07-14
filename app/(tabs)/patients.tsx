@@ -2,44 +2,29 @@ import { Redirect } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
-import { ConsultationsSection } from "@/components/consultations/ConsultationsSection";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { HubEmbeddedProvider } from "@/hooks/useHubEmbedded";
 import { useI18n } from "@/hooks/useI18n";
-import AppointmentsTab from "./appointments";
-import HistoryTab from "./history";
 import IntakeTab from "./intake";
 import ReviewsTab from "./reviews";
 
-type SectionKey =
-  | "history"
-  | "consultations"
-  | "appointments"
-  | "intake"
-  | "reviews";
+type SectionKey = "intake" | "reviews";
 
 export default function PatientsTab() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const role = useAuthStore((s) => s.role);
   const isDoctor = role?.toLowerCase() === "doctor";
-  const [active, setActive] = useState<SectionKey>("history");
+  const [active, setActive] = useState<SectionKey>("intake");
 
   if (!isDoctor) return <Redirect href="/(tabs)" />;
 
   const sections: { key: SectionKey; label: string; Comp: React.ComponentType }[] = [
-    { key: "history", label: t.tabs.history, Comp: HistoryTab },
-    {
-      key: "consultations",
-      label: isRTL ? "الاستشارات" : "Consultations",
-      Comp: ConsultationsSection,
-    },
-    { key: "appointments", label: t.tabs.appointments, Comp: AppointmentsTab },
     { key: "intake", label: t.tabs.intake, Comp: IntakeTab },
     { key: "reviews", label: t.tabs.reviews, Comp: ReviewsTab },
   ];
-  const ActiveComp = sections.find((s) => s.key === active)?.Comp ?? HistoryTab;
+  const ActiveComp = sections.find((s) => s.key === active)?.Comp ?? IntakeTab;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

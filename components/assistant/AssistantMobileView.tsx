@@ -1,4 +1,4 @@
-import { History, Plus, RefreshCw } from "lucide-react-native";
+import { History, Menu, Plus, RefreshCw } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -22,6 +22,7 @@ import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageB
 import { AssistantVoiceModeView } from "@/components/assistant/AssistantVoiceModeView";
 import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { AssistantVoiceWebStyles } from "@/components/assistant/AssistantVoiceWebStyles";
+import { useAppSidebar } from "@/contexts/AppSidebarContext";
 import type { MedicalRecord } from "@/domains/medical/types";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
@@ -100,7 +101,8 @@ export function AssistantMobileView({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { isRTL } = useI18n();
+  const { t, isRTL } = useI18n();
+  const { openSidebar } = useAppSidebar();
   const isEn = !isRTL;
   const isDoctor = useAuthStore((s) => s.role?.toLowerCase() === "doctor");
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -338,6 +340,15 @@ export function AssistantMobileView({
         ]}
       >
         <View style={[styles.headerRow, isRTL && styles.headerRowRtl]}>
+          <Pressable
+            onPress={openSidebar}
+            hitSlop={10}
+            style={styles.headerBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t.tabs.menu}
+          >
+            <Menu color={colors.foreground} size={20} />
+          </Pressable>
           <Pressable onPress={() => setHistoryOpen(true)} hitSlop={10} style={styles.headerBtn}>
             <History color={colors.primary} size={20} />
           </Pressable>

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
+import { ArrowLeft, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -211,6 +211,7 @@ export default function VideoCallScreen() {
     symptoms: string[];
     documentIds: string[];
     note?: string;
+    bodyPart: import("@/domains/medical/bodyParts").BodyPart;
   }) => {
     const targetPatientId = session?.patientUserId?.trim() || patientUserIdParam;
     if (!accessToken || !doctorId || !targetPatientId) return;
@@ -224,6 +225,7 @@ export default function VideoCallScreen() {
           symptoms: payload.symptoms.map((desc) => ({ desc })),
           document_ids:
             payload.documentIds.length > 0 ? payload.documentIds : undefined,
+          body_part: payload.bodyPart,
         },
         accessToken,
       );
@@ -247,7 +249,8 @@ export default function VideoCallScreen() {
   const displayName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
   const canJoin = !!session?.roomUrl && session.status === "accepted" && !meetingExpired;
   const diagPatientId = session?.patientUserId?.trim() || patientUserIdParam || null;
-  const canAddDiagnosis = isDoctor && canJoin && !!diagPatientId && !!accessToken;
+  const canAddClinicalNotes =
+    isDoctor && canJoin && !!diagPatientId && !!accessToken;
   const waitingForDoctor =
     !!session && isPatient && session.status === "ringing";
   const incomingForDoctor =
@@ -353,18 +356,43 @@ export default function VideoCallScreen() {
           </View>
         </View>
 
-        {canAddDiagnosis ? (
-          <Pressable
-            onPress={() => setDiagnosisOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-            style={[styles.diagnosisBtn, { backgroundColor: colors.primary }]}
-          >
-            <Stethoscope size={16} color="#fff" />
-            <Text style={styles.diagnosisBtnText}>
-              {isRTL ? "تشخيص" : "Diagnosis"}
-            </Text>
-          </Pressable>
+        {canAddClinicalNotes ? (
+          <View style={[styles.clinicalActions, { flexDirection: rowDir }]}>
+            <Pressable
+              onPress={() => setDiagnosisOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+              style={[styles.diagnosisBtn, { backgroundColor: colors.primary }]}
+            >
+              <Stethoscope size={16} color="#fff" />
+              <Text style={styles.diagnosisBtnText}>
+                {isRTL ? "تشخيص" : "Diagnosis"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/medical/prescription/add",
+                  params: { patientUserId: diagPatientId! },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "إضافة روشتة" : "Add prescription"}
+              style={[
+                styles.diagnosisBtn,
+                {
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                },
+              ]}
+            >
+              <Pill size={16} color={colors.primary} />
+              <Text style={[styles.diagnosisBtnText, { color: colors.primary }]}>
+                {isRTL ? "روشتة" : "Prescription"}
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {canJoin ? (
@@ -491,7 +519,7 @@ export default function VideoCallScreen() {
         ) : null}
       </View>
 
-      {canAddDiagnosis && diagPatientId ? (
+      {canAddClinicalNotes && diagPatientId && accessToken ? (
         <DiagnosisChatModal
           visible={diagnosisOpen}
           isRTL={isRTL}
@@ -560,6 +588,11 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  clinicalActions: {
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1,
   },
   diagnosisBtn: {
     flexDirection: "row",

@@ -106,6 +106,12 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    iban,
+    setIban,
+    accountHolderFullName,
+    setAccountHolderFullName,
+    nationalId,
+    setNationalId,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -490,6 +496,53 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
             </View>
           ) : null}
 
+          {isDoctor ? (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
+                {isRTL ? "البيانات البنكية" : "Bank details"}
+              </Text>
+              <View style={gridStyle(Math.min(columns, 2))}>
+                <View style={spanStyle(Math.min(columns, 2), 2)}>
+                  <ProfileField
+                    label={isRTL ? "الاسم الكامل لصاحب الحساب" : "Account holder full name"}
+                    value={accountHolderFullName}
+                    onChangeText={setAccountHolderFullName}
+                    placeholder={isRTL ? "كما هو مسجل في البنك" : "As registered at the bank"}
+                    colors={colors}
+                    isRTL={isRTL}
+                  />
+                </View>
+                <View style={spanStyle(Math.min(columns, 2), 1)}>
+                  <ProfileField
+                    label={isRTL ? "رقم الحساب / IBAN" : "IBAN"}
+                    value={iban}
+                    onChangeText={setIban}
+                    placeholder="EGxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    autoCapitalize="characters"
+                    colors={colors}
+                    isRTL={isRTL}
+                  />
+                </View>
+                <View style={spanStyle(Math.min(columns, 2), 1)}>
+                  <ProfileField
+                    label={isRTL ? "الرقم القومي" : "National ID"}
+                    value={nationalId}
+                    onChangeText={setNationalId}
+                    placeholder={isRTL ? "14 رقمًا" : "14-digit national ID"}
+                    keyboardType="number-pad"
+                    colors={colors}
+                    isRTL={isRTL}
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
+
           {isDoctor && accessToken ? (
             <View
               style={[
@@ -599,6 +652,7 @@ function ProfileField({
   editable = true,
   placeholder,
   keyboardType,
+  autoCapitalize,
   multiline = false,
   colors,
   isRTL,
@@ -608,7 +662,8 @@ function ProfileField({
   onChangeText?: (v: string) => void;
   editable?: boolean;
   placeholder?: string;
-  keyboardType?: "default" | "phone-pad";
+  keyboardType?: "default" | "phone-pad" | "number-pad";
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
   multiline?: boolean;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
@@ -623,6 +678,7 @@ function ProfileField({
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}
         keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
         multiline={multiline}
         style={[
           styles.input,

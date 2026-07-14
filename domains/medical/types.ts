@@ -1,5 +1,7 @@
 export type MedicalCategory = "diagnosis" | "lab" | "xray" | "intake" | "prescription";
 
+export type { BodyPart } from "./bodyParts";
+
 export interface MedicalAiInsight {
   description: string;
   possible_diseases: string;
@@ -71,6 +73,8 @@ export interface MedicalRecord {
   imageUrl?: string | null;
   /** AI-generated summary and possible conditions */
   aiInsight?: MedicalAiInsight | null;
+  /** Anatomical region this record relates to (incl. general). */
+  bodyPart?: import("./bodyParts").BodyPart;
   /** Intake exam instance metadata when category is intake */
   intakeExam?: IntakeExamDetail;
 }

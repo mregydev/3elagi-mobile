@@ -14,16 +14,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { BodySkeletonView } from "@/components/records/BodySkeletonView";
 import {
   MedicalRecordAddBar,
   MEDICAL_RECORD_ADD_BAR_HEIGHT,
 } from "@/components/records/MedicalRecordAddBar";
+import {
+  RecordsViewModeToggle,
+  type RecordsViewMode,
+} from "@/components/records/RecordsViewModeToggle";
 import {
   getCategoryMeta,
   getDisplayMedicalRecordCategories,
@@ -33,6 +37,8 @@ import {
   groupRecordsByMonth,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
+import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
   filterMedicalRecords,
@@ -70,7 +76,7 @@ function formatWebDate(d: Date | null): string {
 export function RecordsWebView() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop, isMobile } = useWebLayout();
+  const { isDesktop } = useWebLayout();
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const mobileAddBarOffset = isDesktop ? 0 : MEDICAL_RECORD_ADD_BAR_HEIGHT + 12;
   const { records, profile } = useRecordsPage();
@@ -81,23 +87,30 @@ export function RecordsWebView() {
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
+  const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
 
   const displayRecords = useMemo(() => withoutIntakeRecords(records), [records]);
   const visibleCategories = getDisplayMedicalRecordCategories();
 
   const filteredRecords = useMemo(() => {
-    const filtered = filterMedicalRecords(displayRecords, filters);
+    const withBody: MedicalHistoryFilters = {
+      ...filters,
+      bodyPart: selectedBodyPart ?? filters.bodyPart,
+    };
+    const filtered = filterMedicalRecords(displayRecords, withBody);
     const scoped =
       categoryFilter === "all" ? filtered : filtered.filter((r) => r.category === categoryFilter);
     return [...scoped].sort((a, b) => getRecordTimestamp(b) - getRecordTimestamp(a));
-  }, [displayRecords, filters, categoryFilter]);
+  }, [displayRecords, filters, categoryFilter, selectedBodyPart]);
 
   const timelineGroups = useMemo(
     () => groupRecordsByMonth(filteredRecords, dateLocale),
     [filteredRecords, dateLocale],
   );
 
-  const filtering = hasActiveFilters(filters) || categoryFilter !== "all";
+  const filtering =
+    hasActiveFilters(filters) || categoryFilter !== "all" || !!selectedBodyPart;
   const advancedFiltering =
     hasActiveFilters(filters) &&
     (filters.doctorName.trim().length > 0 ||
@@ -108,20 +121,12 @@ export function RecordsWebView() {
     router.push(`/medical/${item.id}`);
   };
 
-  const openAdd = (category: MedicalCategory) => {
-    const ownerQuery = profile?.id
-      ? `patientUserId=${encodeURIComponent(profile.id)}`
-      : "";
-    if (category === "prescription") {
-      router.push(
-        ownerQuery ? `/medical/prescription/add?${ownerQuery}` : "/medical/prescription/add",
-      );
-      return;
-    }
+  const openAdd = (category: MedicalCategory, bodyPart?: BodyPart | null) => {
     router.push(
-      ownerQuery
-        ? `/medical/add?category=${category}&${ownerQuery}`
-        : `/medical/add?category=${category}`,
+      buildMedicalAddHref(category, {
+        patientUserId: profile?.id,
+        bodyPart: bodyPart ?? selectedBodyPart,
+      }) as never,
     );
   };
 
@@ -140,7 +145,10 @@ export function RecordsWebView() {
   const clearFilters = () => {
     setFilters(EMPTY_MEDICAL_FILTERS);
     setCategoryFilter("all");
+    setSelectedBodyPart(null);
   };
+
+  const isSkeleton = viewMode === "skeleton";
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
@@ -149,15 +157,31 @@ export function RecordsWebView() {
         contentContainerStyle={[
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
+          isSkeleton && styles.scrollContentSkeleton,
           {
-            paddingBottom: isDesktop ? 32 : mobileAddBarOffset,
+            paddingBottom: isSkeleton
+              ? isDesktop
+                ? 12
+                : mobileAddBarOffset
+              : isDesktop
+                ? 32
+                : mobileAddBarOffset,
           },
         ]}
+        scrollEnabled={!isSkeleton}
+        showsVerticalScrollIndicator={!isSkeleton}
       >
-        <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
+        <View
+          style={[
+            styles.container,
+            isSkeleton && styles.containerSkeleton,
+            { maxWidth: WEB_MAX_WIDTH.content },
+          ]}
+        >
           <View
             style={[
               styles.pageHeader,
+              isSkeleton && styles.pageHeaderSkeleton,
               mobileTitlePaddingTop > 0 && { paddingTop: mobileTitlePaddingTop },
             ]}
           >
@@ -169,228 +193,535 @@ export function RecordsWebView() {
             </Text>
           </View>
 
-          {isDesktop ? (
-            <MedicalRecordAddBar onAdd={openAdd} layout="web-inline" />
-          ) : null}
+          <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
+            <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+          </View>
 
-          <View style={styles.searchBlock}>
-            <View
-              style={[
-                styles.searchRow,
-                { flexDirection: dir, borderColor: colors.border, backgroundColor: colors.card },
-              ]}
-            >
-              <Search size={18} color={colors.mutedForeground} />
-              <AppTextInput
-                value={filters.text}
-                onChangeText={(text) => setFilters({ ...filters, text })}
-                placeholder={t.records.searchPlaceholder}
-                placeholderTextColor={colors.mutedForeground}
-                style={[styles.searchInput, { color: colors.foreground, textAlign }]}
-                accessibilityLabel={t.records.searchLabel}
-              />
-              {filters.text.length > 0 ? (
-                <Pressable onPress={() => setFilters({ ...filters, text: "" })} hitSlop={8}>
-                  <X size={16} color={colors.mutedForeground} />
-                </Pressable>
-              ) : null}
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[styles.categoryRow, { flexDirection: dir }]}
-            >
-              <CategoryChip
-                label={t.records.all}
-                active={categoryFilter === "all"}
-                onPress={() => setCategoryFilter("all")}
-                colors={colors}
-                activeColor={colors.primary}
-              />
-              {visibleCategories.map(({ key, color }) => (
-                <CategoryChip
-                  key={key}
-                  label={getLocalizedCategoryLabel(key, t)}
-                  active={categoryFilter === key}
-                  onPress={() => setCategoryFilter(key)}
-                  colors={colors}
-                  activeColor={color}
+          <View
+            style={
+              isSkeleton
+                ? [styles.splitRow, { flexDirection: dir }]
+                : undefined
+            }
+          >
+            {isSkeleton ? (
+              <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+                <BodySkeletonView
+                  selectedPart={selectedBodyPart}
+                  records={displayRecords}
+                  canAdd
+                  onSelectPart={setSelectedBodyPart}
+                  onAddForPart={(part) => openAdd("lab", part)}
                 />
-              ))}
-            </ScrollView>
+              </View>
+            ) : null}
 
-            <Pressable
-              onPress={() => setFiltersOpen((v) => !v)}
-              style={[styles.filtersToggle, { flexDirection: dir }]}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: filtersOpen }}
-            >
-              <Text style={[styles.filtersToggleText, { color: colors.primary }]}>
-                {t.records.filterOptions}
-              </Text>
-              {filtersOpen ? (
-                <ChevronUp size={16} color={colors.primary} />
-              ) : (
-                <ChevronDown size={16} color={colors.primary} />
-              )}
-              {advancedFiltering && !filtersOpen ? (
-                <View style={[styles.filterDot, { backgroundColor: colors.primary }]} />
-              ) : null}
-            </Pressable>
-
-            {filtersOpen ? (
-              <View style={[styles.advancedFilters, { borderColor: colors.border }]}>
-                <View
-                  style={[
-                    styles.searchRow,
-                    {
-                      flexDirection: dir,
-                      borderColor: colors.border,
-                      backgroundColor: colors.background,
-                    },
-                  ]}
+            {isSkeleton ? (
+              <View style={[styles.splitPane, styles.splitRecordsPane]}>
+                <ScrollView
+                  style={styles.splitPaneScroll}
+                  contentContainerStyle={styles.splitRecordsContent}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator
                 >
-                  <Stethoscope size={16} color={colors.mutedForeground} />
-                  <AppTextInput
-                    value={filters.doctorName}
-                    onChangeText={(doctorName) => setFilters({ ...filters, doctorName })}
-                    placeholder={t.records.doctorName}
-                    placeholderTextColor={colors.mutedForeground}
-                    style={[styles.searchInput, { color: colors.foreground, textAlign }]}
-                  />
-                  {filters.doctorName.length > 0 ? (
-                    <Pressable
-                      onPress={() => setFilters({ ...filters, doctorName: "" })}
-                      hitSlop={8}
+                  <View style={styles.searchBlock}>
+                    <View
+                      style={[
+                        styles.searchRow,
+                        {
+                          flexDirection: dir,
+                          borderColor: colors.border,
+                          backgroundColor: colors.card,
+                        },
+                      ]}
                     >
-                      <X size={16} color={colors.mutedForeground} />
+                      <Search size={18} color={colors.mutedForeground} />
+                      <AppTextInput
+                        value={filters.text}
+                        onChangeText={(text) => setFilters({ ...filters, text })}
+                        placeholder={t.records.searchPlaceholder}
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[styles.searchInput, { color: colors.foreground, textAlign }]}
+                        accessibilityLabel={t.records.searchLabel}
+                      />
+                      {filters.text.length > 0 ? (
+                        <Pressable
+                          onPress={() => setFilters({ ...filters, text: "" })}
+                          hitSlop={8}
+                        >
+                          <X size={16} color={colors.mutedForeground} />
+                        </Pressable>
+                      ) : null}
+                    </View>
+
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={[styles.categoryRow, { flexDirection: dir }]}
+                    >
+                      <CategoryChip
+                        label={t.records.all}
+                        active={categoryFilter === "all"}
+                        onPress={() => setCategoryFilter("all")}
+                        colors={colors}
+                        activeColor={colors.primary}
+                      />
+                      {visibleCategories.map(({ key, color }) => (
+                        <CategoryChip
+                          key={key}
+                          label={getLocalizedCategoryLabel(key, t)}
+                          active={categoryFilter === key}
+                          onPress={() => setCategoryFilter(key)}
+                          colors={colors}
+                          activeColor={color}
+                        />
+                      ))}
+                    </ScrollView>
+
+                    <Pressable
+                      onPress={() => setFiltersOpen((v) => !v)}
+                      style={[styles.filtersToggle, { flexDirection: dir }]}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: filtersOpen }}
+                    >
+                      <Text style={[styles.filtersToggleText, { color: colors.primary }]}>
+                        {t.records.filterOptions}
+                      </Text>
+                      {filtersOpen ? (
+                        <ChevronUp size={16} color={colors.primary} />
+                      ) : (
+                        <ChevronDown size={16} color={colors.primary} />
+                      )}
+                      {advancedFiltering && !filtersOpen ? (
+                        <View style={[styles.filterDot, { backgroundColor: colors.primary }]} />
+                      ) : null}
+                    </Pressable>
+
+                    {filtersOpen ? (
+                      <View style={[styles.advancedFilters, { borderColor: colors.border }]}>
+                        <View
+                          style={[
+                            styles.searchRow,
+                            {
+                              flexDirection: dir,
+                              borderColor: colors.border,
+                              backgroundColor: colors.background,
+                            },
+                          ]}
+                        >
+                          <Stethoscope size={16} color={colors.mutedForeground} />
+                          <AppTextInput
+                            value={filters.doctorName}
+                            onChangeText={(doctorName) => setFilters({ ...filters, doctorName })}
+                            placeholder={t.records.doctorName}
+                            placeholderTextColor={colors.mutedForeground}
+                            style={[styles.searchInput, { color: colors.foreground, textAlign }]}
+                          />
+                          {filters.doctorName.length > 0 ? (
+                            <Pressable
+                              onPress={() => setFilters({ ...filters, doctorName: "" })}
+                              hitSlop={8}
+                            >
+                              <X size={16} color={colors.mutedForeground} />
+                            </Pressable>
+                          ) : null}
+                        </View>
+
+                        <View style={[styles.chipRow, { flexDirection: dir }]}>
+                          {DATE_MODES.map((mode) => {
+                            const active = filters.dateMode === mode;
+                            return (
+                              <Pressable
+                                key={mode}
+                                onPress={() => setDateMode(mode)}
+                                style={[
+                                  styles.dateChip,
+                                  {
+                                    backgroundColor: active ? `${colors.primary}12` : "transparent",
+                                    borderColor: active ? colors.primary : colors.border,
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={{
+                                    color: active ? colors.primary : colors.foreground,
+                                    fontWeight: "600",
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  {t.records.dateFilter[mode]}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+
+                        {filters.dateMode === "range" ? (
+                          <View style={[styles.dateRow, { flexDirection: dir }]}>
+                            <DateInput
+                              label={t.records.dateFrom}
+                              value={filters.dateFrom}
+                              onChange={(dateFrom) => setFilters({ ...filters, dateFrom })}
+                              colors={colors}
+                              isRTL={isRTL}
+                              dir={dir}
+                            />
+                            <DateInput
+                              label={t.records.dateTo}
+                              value={filters.dateTo}
+                              onChange={(dateTo) => setFilters({ ...filters, dateTo })}
+                              colors={colors}
+                              isRTL={isRTL}
+                              dir={dir}
+                            />
+                          </View>
+                        ) : null}
+
+                        {(filters.dateMode === "on" ||
+                          filters.dateMode === "before" ||
+                          filters.dateMode === "after") && (
+                          <DateInput
+                            label={t.records.date}
+                            value={filters.singleDate}
+                            onChange={(singleDate) => setFilters({ ...filters, singleDate })}
+                            colors={colors}
+                            isRTL={isRTL}
+                            dir={dir}
+                          />
+                        )}
+                      </View>
+                    ) : null}
+
+                    {filtering ? (
+                      <Pressable onPress={clearFilters} style={styles.clearLink}>
+                        <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
+                          {t.records.clearFilters}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  {filteredRecords.length === 0 ? (
+                    <View
+                      style={[
+                        styles.emptyState,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                      ]}
+                    >
+                      <ClipboardList size={32} color={colors.mutedForeground} />
+                      <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign }]}>
+                        {displayRecords.length === 0
+                          ? t.records.emptyTitle
+                          : t.records.emptyFilteredTitle}
+                      </Text>
+                      <Text
+                        style={[styles.emptyBody, { color: colors.mutedForeground, textAlign }]}
+                      >
+                        {displayRecords.length === 0
+                          ? t.records.emptyBody
+                          : t.records.emptyFilteredBody}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.timeline}>
+                      {timelineGroups.map((group) => (
+                        <View key={group.key} style={styles.timelineGroup}>
+                          <Text
+                            style={[styles.monthLabel, { color: colors.mutedForeground, textAlign }]}
+                          >
+                            {group.label}
+                          </Text>
+                          <View style={styles.timelineItems}>
+                            {group.items.map((record, index) => (
+                              <RecordTimelineItem
+                                key={record.id}
+                                record={record}
+                                isLast={index === group.items.length - 1}
+                                colors={colors}
+                                isRTL={isRTL}
+                                dir={dir}
+                                textAlign={textAlign}
+                                dateLocale={dateLocale}
+                                onOpen={() => openRecord(record)}
+                                categoryLabel={getLocalizedCategoryLabel(record.category, t)}
+                                bodyPartLabel={
+                                  record.bodyPart
+                                    ? t.records.bodyParts[record.bodyPart]
+                                    : undefined
+                                }
+                                attachmentLabel={t.records.attachmentAvailable}
+                                doctorPrefix={t.records.doctorPrefix}
+                                symptomsRecordedOne={t.records.symptomsRecordedOne}
+                                symptomsRecordedMany={t.records.symptomsRecordedMany}
+                              />
+                            ))}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </ScrollView>
+
+                {isDesktop ? (
+                  <View style={styles.splitAddFooter}>
+                    <MedicalRecordAddBar onAdd={(c) => openAdd(c)} layout="web-inline" />
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                <View style={styles.searchBlock}>
+                  <View
+                    style={[
+                      styles.searchRow,
+                      {
+                        flexDirection: dir,
+                        borderColor: colors.border,
+                        backgroundColor: colors.card,
+                      },
+                    ]}
+                  >
+                    <Search size={18} color={colors.mutedForeground} />
+                    <AppTextInput
+                      value={filters.text}
+                      onChangeText={(text) => setFilters({ ...filters, text })}
+                      placeholder={t.records.searchPlaceholder}
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[styles.searchInput, { color: colors.foreground, textAlign }]}
+                      accessibilityLabel={t.records.searchLabel}
+                    />
+                    {filters.text.length > 0 ? (
+                      <Pressable onPress={() => setFilters({ ...filters, text: "" })} hitSlop={8}>
+                        <X size={16} color={colors.mutedForeground} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.categoryRow, { flexDirection: dir }]}
+                  >
+                    <CategoryChip
+                      label={t.records.all}
+                      active={categoryFilter === "all"}
+                      onPress={() => setCategoryFilter("all")}
+                      colors={colors}
+                      activeColor={colors.primary}
+                    />
+                    {visibleCategories.map(({ key, color }) => (
+                      <CategoryChip
+                        key={key}
+                        label={getLocalizedCategoryLabel(key, t)}
+                        active={categoryFilter === key}
+                        onPress={() => setCategoryFilter(key)}
+                        colors={colors}
+                        activeColor={color}
+                      />
+                    ))}
+                  </ScrollView>
+
+                  <Pressable
+                    onPress={() => setFiltersOpen((v) => !v)}
+                    style={[styles.filtersToggle, { flexDirection: dir }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: filtersOpen }}
+                  >
+                    <Text style={[styles.filtersToggleText, { color: colors.primary }]}>
+                      {t.records.filterOptions}
+                    </Text>
+                    {filtersOpen ? (
+                      <ChevronUp size={16} color={colors.primary} />
+                    ) : (
+                      <ChevronDown size={16} color={colors.primary} />
+                    )}
+                    {advancedFiltering && !filtersOpen ? (
+                      <View style={[styles.filterDot, { backgroundColor: colors.primary }]} />
+                    ) : null}
+                  </Pressable>
+
+                  {filtersOpen ? (
+                    <View style={[styles.advancedFilters, { borderColor: colors.border }]}>
+                      <View
+                        style={[
+                          styles.searchRow,
+                          {
+                            flexDirection: dir,
+                            borderColor: colors.border,
+                            backgroundColor: colors.background,
+                          },
+                        ]}
+                      >
+                        <Stethoscope size={16} color={colors.mutedForeground} />
+                        <AppTextInput
+                          value={filters.doctorName}
+                          onChangeText={(doctorName) => setFilters({ ...filters, doctorName })}
+                          placeholder={t.records.doctorName}
+                          placeholderTextColor={colors.mutedForeground}
+                          style={[styles.searchInput, { color: colors.foreground, textAlign }]}
+                        />
+                        {filters.doctorName.length > 0 ? (
+                          <Pressable
+                            onPress={() => setFilters({ ...filters, doctorName: "" })}
+                            hitSlop={8}
+                          >
+                            <X size={16} color={colors.mutedForeground} />
+                          </Pressable>
+                        ) : null}
+                      </View>
+
+                      <View style={[styles.chipRow, { flexDirection: dir }]}>
+                        {DATE_MODES.map((mode) => {
+                          const active = filters.dateMode === mode;
+                          return (
+                            <Pressable
+                              key={mode}
+                              onPress={() => setDateMode(mode)}
+                              style={[
+                                styles.dateChip,
+                                {
+                                  backgroundColor: active ? `${colors.primary}12` : "transparent",
+                                  borderColor: active ? colors.primary : colors.border,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={{
+                                  color: active ? colors.primary : colors.foreground,
+                                  fontWeight: "600",
+                                  fontSize: 12,
+                                }}
+                              >
+                                {t.records.dateFilter[mode]}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+
+                      {filters.dateMode === "range" ? (
+                        <View style={[styles.dateRow, { flexDirection: dir }]}>
+                          <DateInput
+                            label={t.records.dateFrom}
+                            value={filters.dateFrom}
+                            onChange={(dateFrom) => setFilters({ ...filters, dateFrom })}
+                            colors={colors}
+                            isRTL={isRTL}
+                            dir={dir}
+                          />
+                          <DateInput
+                            label={t.records.dateTo}
+                            value={filters.dateTo}
+                            onChange={(dateTo) => setFilters({ ...filters, dateTo })}
+                            colors={colors}
+                            isRTL={isRTL}
+                            dir={dir}
+                          />
+                        </View>
+                      ) : null}
+
+                      {(filters.dateMode === "on" ||
+                        filters.dateMode === "before" ||
+                        filters.dateMode === "after") && (
+                        <DateInput
+                          label={t.records.date}
+                          value={filters.singleDate}
+                          onChange={(singleDate) => setFilters({ ...filters, singleDate })}
+                          colors={colors}
+                          isRTL={isRTL}
+                          dir={dir}
+                        />
+                      )}
+                    </View>
+                  ) : null}
+
+                  {filtering ? (
+                    <Pressable onPress={clearFilters} style={styles.clearLink}>
+                      <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
+                        {t.records.clearFilters}
+                      </Text>
                     </Pressable>
                   ) : null}
                 </View>
 
-                <View style={[styles.chipRow, { flexDirection: dir }]}>
-                  {DATE_MODES.map((mode) => {
-                    const active = filters.dateMode === mode;
-                    return (
-                      <Pressable
-                        key={mode}
-                        onPress={() => setDateMode(mode)}
-                        style={[
-                          styles.dateChip,
-                          {
-                            backgroundColor: active ? `${colors.primary}12` : "transparent",
-                            borderColor: active ? colors.primary : colors.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={{
-                            color: active ? colors.primary : colors.foreground,
-                            fontWeight: "600",
-                            fontSize: 12,
-                          }}
-                        >
-                          {t.records.dateFilter[mode]}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                {filters.dateMode === "range" ? (
-                  <View style={[styles.dateRow, { flexDirection: dir }]}>
-                    <DateInput
-                      label={t.records.dateFrom}
-                      value={filters.dateFrom}
-                      onChange={(dateFrom) => setFilters({ ...filters, dateFrom })}
-                      colors={colors}
-                      isRTL={isRTL}
-                      dir={dir}
-                    />
-                    <DateInput
-                      label={t.records.dateTo}
-                      value={filters.dateTo}
-                      onChange={(dateTo) => setFilters({ ...filters, dateTo })}
-                      colors={colors}
-                      isRTL={isRTL}
-                      dir={dir}
-                    />
+                {filteredRecords.length === 0 ? (
+                  <View
+                    style={[
+                      styles.emptyState,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                  >
+                    <ClipboardList size={32} color={colors.mutedForeground} />
+                    <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign }]}>
+                      {displayRecords.length === 0
+                        ? t.records.emptyTitle
+                        : t.records.emptyFilteredTitle}
+                    </Text>
+                    <Text style={[styles.emptyBody, { color: colors.mutedForeground, textAlign }]}>
+                      {displayRecords.length === 0
+                        ? t.records.emptyBody
+                        : t.records.emptyFilteredBody}
+                    </Text>
                   </View>
-                ) : null}
-
-                {(filters.dateMode === "on" ||
-                  filters.dateMode === "before" ||
-                  filters.dateMode === "after") && (
-                  <DateInput
-                    label={t.records.date}
-                    value={filters.singleDate}
-                    onChange={(singleDate) => setFilters({ ...filters, singleDate })}
-                    colors={colors}
-                    isRTL={isRTL}
-                    dir={dir}
-                  />
-                )}
-              </View>
-            ) : null}
-
-            {filtering ? (
-              <Pressable onPress={clearFilters} style={styles.clearLink}>
-                <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
-                  {t.records.clearFilters}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-
-          {filteredRecords.length === 0 ? (
-            <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <ClipboardList size={32} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign }]}>
-                {displayRecords.length === 0 ? t.records.emptyTitle : t.records.emptyFilteredTitle}
-              </Text>
-              <Text style={[styles.emptyBody, { color: colors.mutedForeground, textAlign }]}>
-                {displayRecords.length === 0 ? t.records.emptyBody : t.records.emptyFilteredBody}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.timeline}>
-              {timelineGroups.map((group) => (
-                <View key={group.key} style={styles.timelineGroup}>
-                  <Text style={[styles.monthLabel, { color: colors.mutedForeground, textAlign }]}>
-                    {group.label}
-                  </Text>
-                  <View style={styles.timelineItems}>
-                    {group.items.map((record, index) => (
-                      <RecordTimelineItem
-                        key={record.id}
-                        record={record}
-                        isLast={index === group.items.length - 1}
-                        colors={colors}
-                        isRTL={isRTL}
-                        dir={dir}
-                        textAlign={textAlign}
-                        dateLocale={dateLocale}
-                        onOpen={() => openRecord(record)}
-                        categoryLabel={getLocalizedCategoryLabel(record.category, t)}
-                        attachmentLabel={t.records.attachmentAvailable}
-                        doctorPrefix={t.records.doctorPrefix}
-                        symptomsRecordedOne={t.records.symptomsRecordedOne}
-                        symptomsRecordedMany={t.records.symptomsRecordedMany}
-                      />
+                ) : (
+                  <View style={styles.timeline}>
+                    {timelineGroups.map((group) => (
+                      <View key={group.key} style={styles.timelineGroup}>
+                        <Text
+                          style={[styles.monthLabel, { color: colors.mutedForeground, textAlign }]}
+                        >
+                          {group.label}
+                        </Text>
+                        <View style={styles.timelineItems}>
+                          {group.items.map((record, index) => (
+                            <RecordTimelineItem
+                              key={record.id}
+                              record={record}
+                              isLast={index === group.items.length - 1}
+                              colors={colors}
+                              isRTL={isRTL}
+                              dir={dir}
+                              textAlign={textAlign}
+                              dateLocale={dateLocale}
+                              onOpen={() => openRecord(record)}
+                              categoryLabel={getLocalizedCategoryLabel(record.category, t)}
+                              bodyPartLabel={
+                                record.bodyPart
+                                  ? t.records.bodyParts[record.bodyPart]
+                                  : undefined
+                              }
+                              attachmentLabel={t.records.attachmentAvailable}
+                              doctorPrefix={t.records.doctorPrefix}
+                              symptomsRecordedOne={t.records.symptomsRecordedOne}
+                              symptomsRecordedMany={t.records.symptomsRecordedMany}
+                            />
+                          ))}
+                        </View>
+                      </View>
                     ))}
                   </View>
-                </View>
-              ))}
-            </View>
-          )}
+                )}
+              </ScrollView>
+            )}
+          </View>
 
         </View>
       </ScrollView>
 
+      {isDesktop && !isSkeleton ? (
+        <View
+          style={[
+            styles.desktopDock,
+            { backgroundColor: colors.card, borderTopColor: colors.border },
+          ]}
+        >
+          <MedicalRecordAddBar onAdd={(c) => openAdd(c)} layout="web-dock" />
+        </View>
+      ) : null}
+
       {!isDesktop ? (
         <View style={styles.mobileDock}>
-          <MedicalRecordAddBar onAdd={openAdd} layout="dock" />
+          <MedicalRecordAddBar onAdd={(c) => openAdd(c)} layout="dock" />
         </View>
       ) : null}
     </View>
@@ -487,6 +818,7 @@ function RecordTimelineItem({
   dateLocale,
   onOpen,
   categoryLabel,
+  bodyPartLabel,
   attachmentLabel,
   doctorPrefix,
   symptomsRecordedOne,
@@ -501,6 +833,7 @@ function RecordTimelineItem({
   dateLocale: string;
   onOpen: () => void;
   categoryLabel: string;
+  bodyPartLabel?: string;
   attachmentLabel: string;
   doctorPrefix: (name: string) => string;
   symptomsRecordedOne: string;
@@ -554,6 +887,21 @@ function RecordTimelineItem({
           {record.title}
         </Text>
 
+        {bodyPartLabel ? (
+          <Text
+            style={[
+              styles.bodyPartChip,
+              {
+                color: colors.primary,
+                backgroundColor: `${colors.primary}14`,
+                alignSelf: isRTL ? "flex-end" : "flex-start",
+              },
+            ]}
+          >
+            {bodyPartLabel}
+          </Text>
+        ) : null}
+
         {record.category === "diagnosis" && record.doctorName ? (
           <Text style={[styles.recordMeta, { color: colors.mutedForeground, textAlign }]}>
             {doctorPrefix(record.doctorName)}
@@ -591,11 +939,48 @@ function RecordTimelineItem({
 
 const styles = StyleSheet.create({
   page: { flex: 1, minHeight: 0, width: "100%", position: "relative" },
+  splitRow: {
+    flex: 1,
+    minHeight: 0,
+    overflow: "hidden",
+    backgroundColor: "transparent",
+  },
+  splitPane: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+  },
+  splitSkeleton: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    padding: 10,
+    backgroundColor: "transparent",
+  },
+  splitRecordsPane: {
+    flexDirection: "column",
+  },
+  splitPaneScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  splitAddFooter: {
+    flexShrink: 0,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  splitRecordsContent: {
+    padding: 12,
+    gap: 12,
+    paddingBottom: 24,
+  },
   mobileDock: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 100,
+  },
+  desktopDock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
     zIndex: 100,
   },
   scroll: { flex: 1 },
@@ -611,13 +996,29 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 48,
   },
+  scrollContentSkeleton: {
+    flex: 1,
+    paddingBottom: 12,
+  },
   container: {
     width: "100%",
     gap: 24,
   },
+  containerSkeleton: {
+    flex: 1,
+    minHeight: 0,
+    gap: 10,
+  },
   pageHeader: {
     gap: 6,
     paddingHorizontal: 2,
+  },
+  pageHeaderSkeleton: {
+    flexShrink: 0,
+  },
+  toggleWrapSkeleton: {
+    flexShrink: 0,
+    marginBottom: 0,
   },
   pageTitle: {
     fontSize: 26,
@@ -814,6 +1215,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     lineHeight: 22,
+  },
+  bodyPartChip: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: "700",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   recordMeta: {
     fontSize: 13,

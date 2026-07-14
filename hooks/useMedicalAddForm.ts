@@ -16,6 +16,7 @@ import {
   uploadFile,
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
+import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
 import type {
   MedicalAiInsight,
   MedicalCategory,
@@ -36,8 +37,15 @@ export interface AttachedFile {
 
 export function useMedicalAddForm() {
   const { isRTL } = useI18n();
-  const { category: categoryParam, patientUserId: patientUserIdParam } =
-    useLocalSearchParams<{ category?: MedicalCategory; patientUserId?: string }>();
+  const {
+    category: categoryParam,
+    patientUserId: patientUserIdParam,
+    bodyPart: bodyPartParam,
+  } = useLocalSearchParams<{
+    category?: MedicalCategory;
+    patientUserId?: string;
+    bodyPart?: string;
+  }>();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
@@ -60,6 +68,9 @@ export function useMedicalAddForm() {
   };
 
   const [category, setCategory] = useState<MedicalCategory>(resolveDefaultCategory);
+  const [bodyPart, setBodyPart] = useState<BodyPart>(
+    () => parseBodyPart(bodyPartParam) ?? "general",
+  );
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
@@ -81,6 +92,11 @@ export function useMedicalAddForm() {
   const hasCategoryParam =
     !!categoryParam && availableCategories.includes(categoryParam as MedicalCategory);
   const analyzeRunRef = useRef(0);
+
+  useEffect(() => {
+    const fromQuery = parseBodyPart(bodyPartParam);
+    if (fromQuery) setBodyPart(fromQuery);
+  }, [bodyPartParam]);
 
   useEffect(() => {
     if (!isDiagnosis || !accessToken || !linkPatientId) {
@@ -287,6 +303,7 @@ export function useMedicalAddForm() {
             doctor_id: doctorId,
             symptoms: symptoms.map((desc) => ({ desc })),
             document_ids: documentIds,
+            body_part: bodyPart,
           },
           accessToken,
         );
@@ -373,6 +390,7 @@ export function useMedicalAddForm() {
           ai_insight: resolvedInsight,
           generate_ai_insight: generateAiInsight,
           lang: getApiLang(),
+          body_part: bodyPart,
         };
         if (doctorAddingForPatient) {
           await createPatientMedicalDocument(
@@ -443,6 +461,8 @@ export function useMedicalAddForm() {
     category,
     setCategory: handleCategoryChange,
     hasCategoryParam,
+    bodyPart,
+    setBodyPart,
     title,
     setTitle,
     value,

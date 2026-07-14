@@ -25,13 +25,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
+import { BodySkeletonView, bodyFigureViewportHeight } from "@/components/records/BodySkeletonView";
 import {
   MedicalRecordAddBar,
 } from "@/components/records/MedicalRecordAddBar";
 import {
+  RecordsViewModeToggle,
+  type RecordsViewMode,
+} from "@/components/records/RecordsViewModeToggle";
+import {
   SHOW_INTAKE_RECORDS,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
+import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
   filterMedicalRecords,
@@ -76,12 +83,14 @@ export function MedicalHistoryList({
   showIntake = SHOW_INTAKE_RECORDS,
 }: MedicalHistoryListProps) {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { t, isRTL } = useI18n();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
+  const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
+  const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
 
   const visibleCategories = showIntake
     ? CATEGORIES
@@ -105,14 +114,18 @@ export function MedicalHistoryList({
   }, [displayRecords]);
 
   const filteredGrouped = useMemo(() => {
+    const withBody: MedicalHistoryFilters = {
+      ...filters,
+      bodyPart: selectedBodyPart ?? filters.bodyPart,
+    };
     const out = { ...grouped };
     for (const key of SEARCHABLE_CATEGORIES) {
-      out[key] = filterMedicalRecords(grouped[key], filters);
+      out[key] = filterMedicalRecords(grouped[key], withBody);
     }
     return out;
-  }, [grouped, filters]);
+  }, [grouped, filters, selectedBodyPart]);
 
-  const isFiltering = hasActiveFilters(filters);
+  const isFiltering = hasActiveFilters(filters) || !!selectedBodyPart;
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const dateLocale = localeTag(isRTL);
@@ -128,228 +141,285 @@ export function MedicalHistoryList({
     }
   };
 
-  const openAdd = (category: MedicalCategory) => {
-    const ownerQuery = patientUserId
-      ? `patientUserId=${encodeURIComponent(patientUserId)}`
-      : "";
-    if (category === "prescription") {
-      const base = `/medical/prescription/add`;
-      router.push(ownerQuery ? `${base}?${ownerQuery}` : base);
-      return;
-    }
-    const base = `/medical/add?category=${category}`;
-    router.push(ownerQuery ? `${base}&${ownerQuery}` : base);
+  const openAdd = (category: MedicalCategory, bodyPart?: BodyPart | null) => {
+    router.push(
+      buildMedicalAddHref(category, {
+        patientUserId,
+        bodyPart: bodyPart ?? selectedBodyPart,
+      }) as never,
+    );
   };
+
+  const handleSelectPart = (part: BodyPart | null) => {
+    setSelectedBodyPart(part);
+  };
+
+  const recordsPanel = visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
+    const label = isRTL ? labelAr : labelEn;
+    const isOpen = openSection === key;
+    const isSearchable = SEARCHABLE_CATEGORIES.includes(key);
+    const allItems = grouped[key];
+    const items = isSearchable ? filteredGrouped[key] : allItems;
+    const sectionFiltering = isSearchable && isFiltering;
+
+    return (
+      <View
+        key={key}
+        style={[styles.categoryBlock, viewMode === "skeleton" && styles.categoryBlockSplit]}
+      >
+        <View
+          style={[
+            styles.categoryCard,
+            {
+              flexDirection: dir,
+              backgroundColor: colors.card,
+              borderColor: isOpen ? color : colors.border,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => setOpenSection((prev) => (prev === key ? null : key))}
+            style={[styles.categoryTogglePart, { flexDirection: dir }]}
+          >
+            <View style={[styles.iconBubble, { backgroundColor: color + "22" }]}>
+              <Icon size={16} color={color} />
+            </View>
+            <Text
+              style={[
+                styles.categoryLabel,
+                { color: colors.foreground, textAlign },
+              ]}
+            >
+              {label}
+            </Text>
+            <View style={[styles.countBadge, { backgroundColor: color + "18" }]}>
+              <Text style={[styles.categoryCount, { color }]}>
+                {sectionFiltering ? `${items.length}/${allItems.length}` : allItems.length}
+              </Text>
+            </View>
+            {isOpen ? (
+              <ChevronUp size={16} color={color} />
+            ) : (
+              <ChevronDown size={16} color={colors.mutedForeground} />
+            )}
+          </Pressable>
+        </View>
+
+        {isOpen && (
+          <>
+            {allItems.length === 0 ? (
+              <Text
+                style={[
+                  styles.emptyCat,
+                  {
+                    color: colors.mutedForeground,
+                    borderColor: colors.border,
+                    textAlign: isRTL ? "right" : "left",
+                  },
+                ]}
+              >
+                {isRTL ? "لا توجد إدخالات بعد" : "No entries yet"}
+              </Text>
+            ) : items.length === 0 ? (
+              <Text
+                style={[
+                  styles.emptyCat,
+                  {
+                    color: colors.mutedForeground,
+                    borderColor: colors.border,
+                    textAlign: isRTL ? "right" : "left",
+                  },
+                ]}
+              >
+                {isRTL ? "لا توجد نتائج للبحث" : "No matches for your search"}
+              </Text>
+            ) : (
+              <FlatList
+                data={items}
+                scrollEnabled={false}
+                keyExtractor={(r) => r.id}
+                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+                renderItem={({ item }) => {
+                  const isImg =
+                    !!item.fileUrl &&
+                    isMedicalImageAttachment(item.fileUrl, item.fileName);
+                  return (
+                    <View
+                      style={[
+                        styles.recordCard,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                      ]}
+                    >
+                      {item.fileUrl && isImg && (
+                        <Pressable onPress={() => setViewingFileUrl(item.fileUrl!)}>
+                          <Image
+                            source={{ uri: item.fileUrl }}
+                            style={styles.recordThumb}
+                            resizeMode="cover"
+                          />
+                        </Pressable>
+                      )}
+                      {item.fileUrl && !isImg && (
+                        <Pressable
+                          onPress={() => Linking.openURL(item.fileUrl!)}
+                          style={[styles.recordPdfBox, { backgroundColor: colors.muted }]}
+                        >
+                          <FileText size={36} color={colors.primary} />
+                          <Text style={[styles.recordPdfLabel, { color: colors.mutedForeground, textAlign }]}>
+                            {item.fileName ?? (isRTL ? "عرض المستند" : "View document")}
+                          </Text>
+                        </Pressable>
+                      )}
+                      <Pressable
+                        onPress={() => openRecord(item)}
+                        style={({ pressed }) => [
+                          styles.recordInfoRow,
+                          { flexDirection: dir, backgroundColor: pressed ? colors.muted : "transparent" },
+                        ]}
+                      >
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text
+                            style={[
+                              styles.recordTitle,
+                              { color: colors.foreground, textAlign },
+                            ]}
+                          >
+                            {item.title}
+                          </Text>
+                          {item.category === "diagnosis" && item.doctorName ? (
+                            <Text
+                              style={[
+                                styles.recordValue,
+                                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {isRTL ? `د. ${item.doctorName}` : `Dr. ${item.doctorName}`}
+                            </Text>
+                          ) : null}
+                          {item.bodyPart ? (
+                            <Text
+                              style={[
+                                styles.bodyPartChip,
+                                {
+                                  color: colors.primary,
+                                  backgroundColor: `${colors.primary}14`,
+                                  alignSelf: isRTL ? "flex-end" : "flex-start",
+                                },
+                              ]}
+                            >
+                              {t.records.bodyParts[item.bodyPart]}
+                            </Text>
+                          ) : null}
+                          {item.category === "diagnosis" && item.symptoms?.length ? (
+                            <Text
+                              style={[
+                                styles.recordValue,
+                                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {item.symptoms.length}{" "}
+                              {isRTL ? "عرض" : item.symptoms.length === 1 ? "symptom" : "symptoms"}
+                            </Text>
+                          ) : item.notes ? (
+                            <Text
+                              style={[
+                                styles.recordValue,
+                                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                              ]}
+                              numberOfLines={2}
+                            >
+                              {item.notes}
+                            </Text>
+                          ) : item.value ? (
+                            <Text
+                              style={[
+                                styles.recordValue,
+                                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                              ]}
+                            >
+                              {item.value}
+                            </Text>
+                          ) : null}
+                          <Text
+                            style={[
+                              styles.recordDate,
+                              { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                            ]}
+                          >
+                            {new Date(item.date).toLocaleDateString(dateLocale)}
+                          </Text>
+                        </View>
+                        <ChevronDown
+                          size={16}
+                          color={colors.mutedForeground}
+                          style={{ transform: [{ rotate: isRTL ? "90deg" : "-90deg" }] }}
+                        />
+                      </Pressable>
+                    </View>
+                  );
+                }}
+              />
+            )}
+          </>
+        )}
+      </View>
+    );
+  });
+
+  const splitHeight = bodyFigureViewportHeight(screenHeight, screenWidth);
 
   return (
     <>
-      {canAdd ? (
-        <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} layout="inline" />
+      <View style={styles.viewToggleWrap}>
+        <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+      </View>
+
+      {viewMode === "table" ? (
+        <MedicalHistoryFilterPanel
+          filters={filters}
+          onChange={setFilters}
+          isRTL={isRTL}
+          dir={dir}
+        />
       ) : null}
 
-      <MedicalHistoryFilterPanel
-        filters={filters}
-        onChange={setFilters}
-        isRTL={isRTL}
-        dir={dir}
-      />
-
-      {visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
-        const label = isRTL ? labelAr : labelEn;
-        const isOpen = openSection === key;
-        const isSearchable = SEARCHABLE_CATEGORIES.includes(key);
-        const allItems = grouped[key];
-        const items = isSearchable ? filteredGrouped[key] : allItems;
-        const sectionFiltering = isSearchable && isFiltering;
-
-        return (
-          <View key={key} style={styles.categoryBlock}>
-            <View
-              style={[
-                styles.categoryCard,
-                {
-                  flexDirection: dir,
-                  backgroundColor: colors.card,
-                  borderColor: isOpen ? color : colors.border,
-                },
-              ]}
-            >
-              <Pressable
-                onPress={() => setOpenSection((prev) => (prev === key ? null : key))}
-                style={[styles.categoryTogglePart, { flexDirection: dir }]}
-              >
-                <View style={[styles.iconBubble, { backgroundColor: color + "22" }]}>
-                  <Icon size={16} color={color} />
-                </View>
-                <Text
-                  style={[
-                    styles.categoryLabel,
-                    { color: colors.foreground, textAlign },
-                  ]}
-                >
-                  {label}
-                </Text>
-                <View style={[styles.countBadge, { backgroundColor: color + "18" }]}>
-                  <Text style={[styles.categoryCount, { color }]}>
-                    {sectionFiltering ? `${items.length}/${allItems.length}` : allItems.length}
-                  </Text>
-                </View>
-                {isOpen ? (
-                  <ChevronUp size={16} color={color} />
-                ) : (
-                  <ChevronDown size={16} color={colors.mutedForeground} />
-                )}
-              </Pressable>
-            </View>
-
-            {isOpen && (
-              <>
-                {allItems.length === 0 ? (
-                  <Text
-                    style={[
-                      styles.emptyCat,
-                      {
-                        color: colors.mutedForeground,
-                        borderColor: colors.border,
-                        textAlign: isRTL ? "right" : "left",
-                      },
-                    ]}
-                  >
-                    {isRTL ? "لا توجد إدخالات بعد" : "No entries yet"}
-                  </Text>
-                ) : items.length === 0 ? (
-                  <Text
-                    style={[
-                      styles.emptyCat,
-                      {
-                        color: colors.mutedForeground,
-                        borderColor: colors.border,
-                        textAlign: isRTL ? "right" : "left",
-                      },
-                    ]}
-                  >
-                    {isRTL ? "لا توجد نتائج للبحث" : "No matches for your search"}
-                  </Text>
-                ) : (
-                  <FlatList
-                    data={items}
-                    scrollEnabled={false}
-                    keyExtractor={(r) => r.id}
-                    ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                    renderItem={({ item }) => {
-                      const isImg =
-                        !!item.fileUrl &&
-                        isMedicalImageAttachment(item.fileUrl, item.fileName);
-                      return (
-                        <View
-                          style={[
-                            styles.recordCard,
-                            { backgroundColor: colors.card, borderColor: colors.border },
-                          ]}
-                        >
-                          {item.fileUrl && isImg && (
-                            <Pressable onPress={() => setViewingFileUrl(item.fileUrl!)}>
-                              <Image
-                                source={{ uri: item.fileUrl }}
-                                style={styles.recordThumb}
-                                resizeMode="cover"
-                              />
-                            </Pressable>
-                          )}
-                          {item.fileUrl && !isImg && (
-                            <Pressable
-                              onPress={() => Linking.openURL(item.fileUrl!)}
-                              style={[styles.recordPdfBox, { backgroundColor: colors.muted }]}
-                            >
-                              <FileText size={36} color={colors.primary} />
-                              <Text style={[styles.recordPdfLabel, { color: colors.mutedForeground, textAlign }]}>
-                                {item.fileName ?? (isRTL ? "عرض المستند" : "View document")}
-                              </Text>
-                            </Pressable>
-                          )}
-                          <Pressable
-                            onPress={() => openRecord(item)}
-                            style={({ pressed }) => [
-                              styles.recordInfoRow,
-                              { flexDirection: dir, backgroundColor: pressed ? colors.muted : "transparent" },
-                            ]}
-                          >
-                            <View style={{ flex: 1, gap: 2 }}>
-                              <Text
-                                style={[
-                                  styles.recordTitle,
-                                  { color: colors.foreground, textAlign },
-                                ]}
-                              >
-                                {item.title}
-                              </Text>
-                              {item.category === "diagnosis" && item.doctorName ? (
-                                <Text
-                                  style={[
-                                    styles.recordValue,
-                                    { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                                  ]}
-                                  numberOfLines={1}
-                                >
-                                  {isRTL ? `د. ${item.doctorName}` : `Dr. ${item.doctorName}`}
-                                </Text>
-                              ) : null}
-                              {item.category === "diagnosis" && item.symptoms?.length ? (
-                                <Text
-                                  style={[
-                                    styles.recordValue,
-                                    { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                                  ]}
-                                  numberOfLines={1}
-                                >
-                                  {item.symptoms.length}{" "}
-                                  {isRTL ? "عرض" : item.symptoms.length === 1 ? "symptom" : "symptoms"}
-                                </Text>
-                              ) : item.notes ? (
-                                <Text
-                                  style={[
-                                    styles.recordValue,
-                                    { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                                  ]}
-                                  numberOfLines={2}
-                                >
-                                  {item.notes}
-                                </Text>
-                              ) : item.value ? (
-                                <Text
-                                  style={[
-                                    styles.recordValue,
-                                    { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                                  ]}
-                                >
-                                  {item.value}
-                                </Text>
-                              ) : null}
-                              <Text
-                                style={[
-                                  styles.recordDate,
-                                  { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                                ]}
-                              >
-                                {new Date(item.date).toLocaleDateString(dateLocale)}
-                              </Text>
-                            </View>
-                            <ChevronDown
-                              size={16}
-                              color={colors.mutedForeground}
-                              style={{ transform: [{ rotate: isRTL ? "90deg" : "-90deg" }] }}
-                            />
-                          </Pressable>
-                        </View>
-                      );
-                    }}
-                  />
-                )}
-              </>
-            )}
+      {viewMode === "skeleton" ? (
+        <View
+          style={[
+            styles.splitRow,
+            {
+              flexDirection: dir,
+              height: splitHeight,
+            },
+          ]}
+        >
+          <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+            <BodySkeletonView
+              selectedPart={selectedBodyPart}
+              records={displayRecords}
+              canAdd={canAdd}
+              onSelectPart={handleSelectPart}
+              onAddForPart={(part) => openAdd(doctorView ? "diagnosis" : "lab", part)}
+            />
           </View>
-        );
-      })}
+          <ScrollView
+            style={styles.splitPane}
+            contentContainerStyle={styles.splitRecordsContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {recordsPanel}
+          </ScrollView>
+        </View>
+      ) : (
+        recordsPanel
+      )}
+
+      {canAdd ? (
+        <MedicalRecordAddBar onAdd={(c) => openAdd(c)} showDiagnosis={doctorView} layout="inline" />
+      ) : null}
 
       <Modal
         visible={!!viewingFileUrl}
@@ -387,7 +457,29 @@ export function MedicalHistoryList({
 }
 
 const styles = StyleSheet.create({
+  viewToggleWrap: { paddingHorizontal: 16, paddingTop: 8 },
+  splitRow: {
+    marginTop: 8,
+    marginHorizontal: 8,
+    overflow: "hidden",
+    backgroundColor: "transparent",
+  },
+  splitPane: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+  },
+  splitSkeleton: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    padding: 8,
+    backgroundColor: "transparent",
+  },
+  splitRecordsContent: {
+    paddingVertical: 8,
+    paddingBottom: 24,
+  },
   categoryBlock: { paddingHorizontal: 16, paddingTop: 10 },
+  categoryBlockSplit: { paddingHorizontal: 8, paddingTop: 6 },
   categoryCard: {
     alignItems: "center",
     borderRadius: 14,
@@ -439,6 +531,15 @@ const styles = StyleSheet.create({
   recordInfoRow: { alignItems: "flex-start", gap: 10, padding: 14 },
   recordTitle: { fontSize: 15, fontWeight: "700" },
   recordValue: { fontSize: 13, marginTop: 2 },
+  bodyPartChip: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: "700",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
   recordDate: { fontSize: 11, marginTop: 4 },
   viewerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)" },
   viewerClose: {

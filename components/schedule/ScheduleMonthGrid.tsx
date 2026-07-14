@@ -309,8 +309,11 @@ const styles = StyleSheet.create({
   },
   weekdayRow: {
     paddingHorizontal: 2,
+    width: "100%",
   },
-  weekRow: {},
+  weekRow: {
+    width: "100%",
+  },
   weekdayFlex: {
     flex: 1,
     minWidth: 0,

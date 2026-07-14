@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { AppSidebarMenuButton } from "@/components/nav/AppSidebarDrawer";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useColors } from "@/hooks/useColors";
 import { useHubEmbedded } from "@/hooks/useHubEmbedded";
@@ -37,6 +38,7 @@ export function AppHeader({ children, surface = "background" }: Props) {
     >
       {embedded ? null : (
         <View style={styles.brandRow}>
+          <AppSidebarMenuButton />
           <Logo3elagi height={LOGO_HEIGHT.header} />
         </View>
       )}
@@ -55,8 +57,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   brandRow: {
+    position: "relative",
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 40,
   },
   below: { marginTop: 4 },
 });

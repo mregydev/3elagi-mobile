@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { ArrowLeft, ArrowRight, Image as ImageIcon, Plus, Trash2, Upload, X } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -14,6 +14,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useAuthStore } from "@/domains/auth/store";
 import {
@@ -21,6 +22,7 @@ import {
   fetchAllMedicalHistory,
   uploadFile,
 } from "@/domains/medical/api";
+import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 import {
   analyzePrescriptionScan,
@@ -141,7 +143,10 @@ export function PrescriptionAddWebView() {
   const colors = useColors();
   const { isRTL, t, locale } = useI18n();
   const { isDesktop, isTablet } = useWebLayout();
-  const { patientUserId: patientUserIdParam } = useLocalSearchParams<{ patientUserId?: string }>();
+  const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
+    patientUserId?: string;
+    bodyPart?: string;
+  }>();
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -163,10 +168,18 @@ export function PrescriptionAddWebView() {
 
   const [title, setTitle] = useState("");
   const [symptoms, setSymptoms] = useState("");
+  const [bodyPart, setBodyPart] = useState<BodyPart>(
+    () => parseBodyPart(bodyPartParam) ?? "general",
+  );
   const [medications, setMedications] = useState<PrescriptionMedication[]>([emptyMedication()]);
   const [scanAsset, setScanAsset] = useState<ScanAsset | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fromQuery = parseBodyPart(bodyPartParam);
+    if (fromQuery) setBodyPart(fromQuery);
+  }, [bodyPartParam]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -316,6 +329,7 @@ export function PrescriptionAddWebView() {
           symptoms: symptoms.trim() || undefined,
           medications: cleaned,
           image_url: imageUrl,
+          body_part: bodyPart,
         },
         accessToken,
       );
@@ -412,6 +426,7 @@ export function PrescriptionAddWebView() {
                 colors={colors}
                 textAlign={textAlign}
               />
+              <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
               <FormField
                 label={isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)"}
                 value={symptoms}

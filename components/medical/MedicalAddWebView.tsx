@@ -25,6 +25,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
+import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { useMedicalAddForm } from "@/hooks/useMedicalAddForm";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
@@ -179,6 +180,8 @@ export function MedicalAddWebView() {
     category,
     setCategory,
     hasCategoryParam,
+    bodyPart,
+    setBodyPart,
     title,
     setTitle,
     value,
@@ -520,6 +523,14 @@ export function MedicalAddWebView() {
               </View>
             </SectionCard>
           ) : null}
+
+          <SectionCard
+            title={isRTL ? "جزء الجسم" : "Body part"}
+            colors={colors}
+            textAlign={textAlign}
+          >
+            <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
+          </SectionCard>
 
           {isDiagnosis ? (
             <>

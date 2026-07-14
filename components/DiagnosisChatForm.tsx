@@ -11,9 +11,12 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { fetchDocumentsForPatientUser } from "@/domains/medical/api";
+import { type BodyPart } from "@/domains/medical/bodyParts";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
 export interface DiagnosisChatFormProps {
@@ -33,6 +36,7 @@ export interface DiagnosisChatFormProps {
     symptoms: string[];
     documentIds: string[];
     note?: string;
+    bodyPart: BodyPart;
   }) => void;
 }
 
@@ -51,10 +55,12 @@ export function DiagnosisChatForm({
   onSubmit,
 }: DiagnosisChatFormProps) {
   const colors = useColors();
+  const { t } = useI18n();
   const dir = flexRow(isRTL);
   const [description, setDescription] = useState("");
   const [symptomLines, setSymptomLines] = useState<string[]>([""]);
   const [note, setNote] = useState("");
+  const [bodyPart, setBodyPart] = useState<BodyPart>("general");
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
@@ -64,6 +70,7 @@ export function DiagnosisChatForm({
       setDescription("");
       setSymptomLines([""]);
       setNote("");
+      setBodyPart("general");
       setSelectedDocumentIds([]);
       setLinkableDocs([]);
       return;
@@ -106,6 +113,7 @@ export function DiagnosisChatForm({
       symptoms,
       documentIds: selectedDocumentIds,
       note: trimmedNote || undefined,
+      bodyPart,
     });
   };
 
@@ -163,6 +171,8 @@ export function DiagnosisChatForm({
         maxLength={500}
         editable={!saving}
       />
+
+      <BodyPartPicker value={bodyPart} onChange={setBodyPart} label={t.records.bodyPart} />
 
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
         {isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)"}

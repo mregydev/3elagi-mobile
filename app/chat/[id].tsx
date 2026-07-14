@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Calendar, FileText } from "lucide-react-native";
+import { ArrowLeft, Calendar, FileText, Pill, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,7 +18,6 @@ import { Avatar } from "@/components/Avatar";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
-import { ChatAccessTemplates } from "@/components/ChatAccessTemplates";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
@@ -174,7 +173,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [consultationOpen, setConsultationOpen] = useState(false);
   // Doctor↔patient can only message while a consultation is open.
   const needsConsultation = isDoctorPatientChat && !consultationOpen;
-  const canUseDiagnosisTemplates = canOpenPatientRecord;
+  const canUseDiagnosisTemplates = canOpenPatientRecord && consultationOpen;
   const chatBlocked = !!accessStatus?.is_blocked;
   const patientUserIdForLinks =
     isDoctor && peer?.role === "patient" && accessStatus?.records_allowed
@@ -575,6 +574,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     setDiagnosisModalOpen(true);
   };
 
+  const openPrescriptionScreen = () => {
+    if (!id || !canUseDiagnosisTemplates) return;
+    router.push({
+      pathname: "/medical/prescription/add",
+      params: { patientUserId: id },
+    });
+  };
+
   const handleAccessAction = async (action: AccessActionType) => {
     if (!id || !accessToken || !profile?.id || sending) return;
 
@@ -705,6 +712,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     symptoms: string[];
     documentIds: string[];
     note?: string;
+    bodyPart: import("@/domains/medical/bodyParts").BodyPart;
   }) => {
     if (!id || !accessToken || !profile?.id || !doctorId || !canUseDiagnosisTemplates) return;
 
@@ -717,6 +725,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           doctor_id: doctorId,
           symptoms: payload.symptoms.map((desc) => ({ desc })),
           document_ids: payload.documentIds.length > 0 ? payload.documentIds : undefined,
+          body_part: payload.bodyPart,
         },
         accessToken,
       );
@@ -1097,8 +1106,57 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           onOpenChange={setConsultationOpen}
         />
       ) : null}
-      {/* Quick-action pill row removed — only the Start-consultation pill remains
-          (in ConsultationBar). Book appointment stays available to patients at
+      {/* Doctor clinical actions during an open consultation */}
+      {isDoctor && canUseDiagnosisTemplates && !chatBlocked ? (
+        <View
+          style={[
+            styles.bookPillBar,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              flexDirection: chatFlexRow(),
+            },
+          ]}
+        >
+          <Pressable
+            onPress={openDiagnosisModal}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                borderColor: colors.primary,
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Stethoscope size={15} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+              {isRTL ? "تشخيص جديد" : "Add diagnosis"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={openPrescriptionScreen}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "إضافة روشتة" : "Add prescription"}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                borderColor: colors.primary,
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Pill size={15} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+              {isRTL ? "روشتة جديدة" : "Add prescription"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {/* Quick-action pill row — Book appointment stays available to patients at
           all times, even without a consultation. */}
       {isPatient && peer?.doctorEntityId && !chatBlocked ? (
         <View style={[styles.bookPillBar, { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: chatFlexRow() }]}>
@@ -1308,6 +1366,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 6,
     paddingHorizontal: 14,
+    gap: 8,
+    flexWrap: "wrap",
+    alignItems: "center",
   },
   bookPill: {
     alignSelf: "flex-start",

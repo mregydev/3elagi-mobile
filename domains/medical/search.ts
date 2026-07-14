@@ -6,6 +6,8 @@ export interface MedicalHistoryFilters {
   text: string;
   /** Diagnosis only — matches the doctor who created the diagnosis */
   doctorName: string;
+  /** Filter to a specific anatomical region */
+  bodyPart: string | null;
   dateMode: DateFilterMode;
   dateFrom: Date | null;
   dateTo: Date | null;
@@ -15,6 +17,7 @@ export interface MedicalHistoryFilters {
 export const EMPTY_MEDICAL_FILTERS: MedicalHistoryFilters = {
   text: "",
   doctorName: "",
+  bodyPart: null,
   dateMode: "any",
   dateFrom: null,
   dateTo: null,
@@ -24,6 +27,7 @@ export const EMPTY_MEDICAL_FILTERS: MedicalHistoryFilters = {
 export function hasActiveFilters(filters: MedicalHistoryFilters): boolean {
   if (filters.text.trim()) return true;
   if (filters.doctorName.trim()) return true;
+  if (filters.bodyPart) return true;
   if (filters.dateMode === "any") return false;
   if (filters.dateMode === "range") return !!(filters.dateFrom || filters.dateTo);
   if (filters.dateMode === "on" || filters.dateMode === "before" || filters.dateMode === "after") {
@@ -40,8 +44,14 @@ export function filterMedicalRecords(
     (record) =>
       matchesText(record, filters.text) &&
       matchesDoctorName(record, filters.doctorName) &&
+      matchesBodyPart(record, filters.bodyPart) &&
       matchesDateFilter(record, filters),
   );
+}
+
+function matchesBodyPart(record: MedicalRecord, bodyPart: string | null): boolean {
+  if (!bodyPart) return true;
+  return record.bodyPart === bodyPart;
 }
 
 function matchesText(record: MedicalRecord, query: string): boolean {

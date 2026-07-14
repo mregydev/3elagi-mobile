@@ -38,7 +38,9 @@ import type {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
+import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { getAddMedicalCategories } from "@/components/records/medicalRecordCategories";
+import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
@@ -56,8 +58,15 @@ export default function AddMedicalScreen() {
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const { category: categoryParam, patientUserId: patientUserIdParam } =
-    useLocalSearchParams<{ category?: MedicalCategory; patientUserId?: string }>();
+  const {
+    category: categoryParam,
+    patientUserId: patientUserIdParam,
+    bodyPart: bodyPartParam,
+  } = useLocalSearchParams<{
+    category?: MedicalCategory;
+    patientUserId?: string;
+    bodyPart?: string;
+  }>();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
@@ -78,6 +87,9 @@ export default function AddMedicalScreen() {
   };
 
   const [category, setCategory] = useState<MedicalCategory>(resolveDefaultCategory);
+  const [bodyPart, setBodyPart] = useState<BodyPart>(
+    () => parseBodyPart(bodyPartParam) ?? "general",
+  );
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
@@ -94,14 +106,24 @@ export default function AddMedicalScreen() {
   const analyzeRunRef = useRef(0);
 
   const isDiagnosis = category === "diagnosis";
+  const isLabOrXray = category === "lab" || category === "xray";
   const linkPatientId = isDoctor && selectedPatientUserId ? selectedPatientUserId : profile?.id;
+
+  useEffect(() => {
+    const fromQuery = parseBodyPart(bodyPartParam);
+    if (fromQuery) setBodyPart(fromQuery);
+  }, [bodyPartParam]);
 
   useEffect(() => {
     if (categoryParam !== "prescription") return;
     const ownerId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
-    const query = ownerId ? `?patientUserId=${encodeURIComponent(ownerId)}` : "";
-    router.replace(`/medical/prescription/add${query}` as never);
-  }, [categoryParam, patientUserIdParam, profile?.id]);
+    const params = new URLSearchParams();
+    if (ownerId) params.set("patientUserId", ownerId);
+    const part = parseBodyPart(bodyPartParam);
+    if (part) params.set("bodyPart", part);
+    const qs = params.toString();
+    router.replace((qs ? `/medical/prescription/add?${qs}` : "/medical/prescription/add") as never);
+  }, [categoryParam, patientUserIdParam, profile?.id, bodyPartParam]);
 
   useEffect(() => {
     if (!isDiagnosis || !accessToken || !linkPatientId) {
@@ -185,7 +207,6 @@ export default function AddMedicalScreen() {
       prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId],
     );
   };
-  const isLabOrXray = category === "lab" || category === "xray";
   const isImage = attached?.mimeType.startsWith("image/") ?? false;
 
   const handleCategoryChange = (key: MedicalCategory) => {
@@ -308,6 +329,7 @@ export default function AddMedicalScreen() {
             doctor_id: doctorId,
             symptoms: symptoms.map((desc) => ({ desc })),
             document_ids: documentIds,
+            body_part: bodyPart,
           },
           accessToken,
         );
@@ -382,6 +404,7 @@ export default function AddMedicalScreen() {
           ai_insight: resolvedInsight,
           generate_ai_insight: generateAiInsight,
           lang: getApiLang(),
+          body_part: bodyPart,
         };
         if (isDoctor && selectedPatientUserId) {
           await createPatientMedicalDocument(
@@ -495,6 +518,8 @@ export default function AddMedicalScreen() {
             </View>
           </>
         )}
+
+        <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
 
         {isDiagnosis ? (
           <>
