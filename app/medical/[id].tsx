@@ -583,6 +583,7 @@ export default function MedicalRecordDetail() {
             color={color}
             colors={colors}
             isRTL={isRTL}
+            relaxed
           />
         ) : null}
 
@@ -1231,6 +1232,7 @@ function DetailCard({
   color,
   colors,
   isRTL,
+  relaxed,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -1238,6 +1240,7 @@ function DetailCard({
   color: string;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
+  relaxed?: boolean;
 }) {
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = alignText(isRTL);
@@ -1254,6 +1257,7 @@ function DetailCard({
       <Text
         style={[
           styles.cardValue,
+          relaxed && styles.cardValueRelaxed,
           { color: colors.foreground, textAlign },
         ]}
       >
@@ -1352,6 +1356,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6 },
   cardValue: { fontSize: 15, lineHeight: 22 },
+  cardValueRelaxed: { fontSize: 15, lineHeight: 28 },
   symptomLine: { fontSize: 15, lineHeight: 24, marginTop: 6 },
   medRow: {
     borderWidth: 1,

@@ -2,7 +2,7 @@ import { Asset } from "expo-asset";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet } from "react-native";
-import Svg, { Circle, Text as SvgText } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 import type { PaymentMethodId } from "@/components/points/PaymentMethodCard";
 
 const LOGO_HEIGHT = 48;
@@ -15,18 +15,6 @@ type LogoConfig = {
 };
 
 const PAYMENT_LOGOS: Record<PaymentMethodId, LogoConfig> = {
-  vodafone_cash: {
-    source: require("../../assets/images/payments/vodafone-cash.png"),
-    aspect: 600 / 330,
-    backgroundColor: "#ffffff",
-    label: "Vodafone Cash",
-  },
-  fawry: {
-    source: require("../../assets/images/payments/fawry.png"),
-    aspect: 800 / 449,
-    backgroundColor: "#FFCB05",
-    label: "Fawry",
-  },
   credit_card: {
     source: require("../../assets/images/payments/credit-card.png"),
     aspect: 860 / 914,
@@ -35,35 +23,6 @@ const PAYMENT_LOGOS: Record<PaymentMethodId, LogoConfig> = {
   },
 };
 
-function VodafoneSvgFallback() {
-  return (
-    <Svg width={LOGO_HEIGHT} height={LOGO_HEIGHT} viewBox="0 0 48 48">
-      <Circle cx="24" cy="24" r="24" fill="#E60000" />
-      <Circle cx="30" cy="20" r="10" fill="#FFFFFF" />
-      <Circle cx="18" cy="28" r="8" fill="#FFFFFF" />
-    </Svg>
-  );
-}
-
-function FawrySvgFallback() {
-  return (
-    <View style={[styles.fallbackFrame, { backgroundColor: "#FFCB05" }]}>
-      <Svg width={56} height={LOGO_HEIGHT} viewBox="0 0 56 48">
-        <SvgText
-          x="28"
-          y="30"
-          fill="#0066B3"
-          fontSize="14"
-          fontWeight="700"
-          textAnchor="middle"
-        >
-          fawry
-        </SvgText>
-      </Svg>
-    </View>
-  );
-}
-
 function CreditCardSvgFallback() {
   return (
     <Svg width={44} height={LOGO_HEIGHT} viewBox="0 0 44 48">
@@ -71,12 +30,6 @@ function CreditCardSvgFallback() {
       <Circle cx="28" cy="24" r="12" fill="#F79E1B" opacity={0.9} />
     </Svg>
   );
-}
-
-function SvgFallback({ id }: { id: PaymentMethodId }) {
-  if (id === "vodafone_cash") return <VodafoneSvgFallback />;
-  if (id === "fawry") return <FawrySvgFallback />;
-  return <CreditCardSvgFallback />;
 }
 
 async function resolveBundledImageUri(moduleId: number): Promise<string> {
@@ -113,7 +66,7 @@ function PaymentLogoImage({ id }: { id: PaymentMethodId }) {
   }, [logo.source]);
 
   if (failed) {
-    return <SvgFallback id={id} />;
+    return <CreditCardSvgFallback />;
   }
 
   return (
@@ -155,13 +108,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   frame: {
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fallbackFrame: {
-    width: 56,
-    height: LOGO_HEIGHT,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",

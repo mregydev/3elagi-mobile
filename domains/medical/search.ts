@@ -1,3 +1,4 @@
+import type { BodyPart } from "./bodyParts";
 import type { MedicalRecord } from "./types";
 
 export type DateFilterMode = "any" | "on" | "range" | "before" | "after";
@@ -7,7 +8,7 @@ export interface MedicalHistoryFilters {
   /** Diagnosis only — matches the doctor who created the diagnosis */
   doctorName: string;
   /** Filter to a specific anatomical region */
-  bodyPart: string | null;
+  bodyPart: BodyPart | null;
   dateMode: DateFilterMode;
   dateFrom: Date | null;
   dateTo: Date | null;
@@ -49,7 +50,7 @@ export function filterMedicalRecords(
   );
 }
 
-function matchesBodyPart(record: MedicalRecord, bodyPart: string | null): boolean {
+function matchesBodyPart(record: MedicalRecord, bodyPart: BodyPart | null): boolean {
   if (!bodyPart) return true;
   return record.bodyPart === bodyPart;
 }

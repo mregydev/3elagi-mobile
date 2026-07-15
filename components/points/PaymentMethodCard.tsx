@@ -4,7 +4,7 @@ import { PaymentProviderLogo } from "@/components/points/PaymentProviderLogo";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
-export type PaymentMethodId = "vodafone_cash" | "fawry" | "credit_card";
+export type PaymentMethodId = "credit_card";
 
 interface PaymentMethodCardProps {
   id: PaymentMethodId;

@@ -68,6 +68,7 @@ function InfoCard({
   span,
   columns,
   testID,
+  relaxed,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -79,6 +80,8 @@ function InfoCard({
   span?: number;
   columns: number;
   testID?: string;
+  /** Higher line-height for long description text */
+  relaxed?: boolean;
 }) {
   return (
     <View
@@ -95,7 +98,15 @@ function InfoCard({
           {label}
         </Text>
       </View>
-      <Text style={[styles.infoCardValue, { color: colors.foreground, textAlign }]}>{value}</Text>
+      <Text
+        style={[
+          styles.infoCardValue,
+          relaxed && styles.infoCardValueRelaxed,
+          { color: colors.foreground, textAlign },
+        ]}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -719,7 +730,14 @@ export function MedicalRecordWebView() {
         ) : (
           <View style={{ gap: 12 }}>
             {record.notes ? (
-              <Text style={{ color: colors.foreground, fontSize: 15, textAlign }}>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 15,
+                  lineHeight: 26,
+                  textAlign,
+                }}
+              >
                 {record.notes}
               </Text>
             ) : null}
@@ -987,6 +1005,7 @@ export function MedicalRecordWebView() {
                     dir={dir}
                     columns={1}
                     span={1}
+                    relaxed
                   />
                 ) : null}
               </View>
@@ -1009,6 +1028,7 @@ export function MedicalRecordWebView() {
                     dir={dir}
                     columns={1}
                     span={1}
+                    relaxed
                   />
                 </View>
               ) : null}
@@ -1153,6 +1173,7 @@ const styles = StyleSheet.create({
   },
   infoCardLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
   infoCardValue: { fontSize: 17, fontWeight: "600", lineHeight: 24 },
+  infoCardValueRelaxed: { fontSize: 16, fontWeight: "500", lineHeight: 28 },
 
   sections: { gap: 16 },
   sectionCard: {
@@ -1205,7 +1226,7 @@ const styles = StyleSheet.create({
 
   editInput: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 28,
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,

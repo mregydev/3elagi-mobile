@@ -46,16 +46,6 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
     subtitle: string;
   }> = [
     {
-      id: "vodafone_cash",
-      label: t.credits.vodafoneCash,
-      subtitle: t.credits.vodafoneCashHint,
-    },
-    {
-      id: "fawry",
-      label: t.credits.fawry,
-      subtitle: t.credits.fawryHint,
-    },
-    {
       id: "credit_card",
       label: t.credits.creditCard,
       subtitle: t.credits.creditCardHint,
@@ -63,35 +53,31 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   ];
 
   const handlePayment = async (method: PaymentMethodId) => {
-    if (method === "credit_card") {
-      if (!accessToken) {
-        showErrorToast(t.credits.paymentFailed, t.credits.paymentFailedHint);
-        return;
-      }
-      setPayingMethod(method);
-      try {
-        const { checkout_url } = await createVisaCheckout(accessToken, amount);
-        if (Platform.OS === "web") {
-          window.location.assign(checkout_url);
-          return;
-        }
-        const canOpen = await Linking.canOpenURL(checkout_url);
-        if (!canOpen) {
-          throw new Error(t.credits.paymentFailedHint);
-        }
-        await Linking.openURL(checkout_url);
-      } catch (error) {
-        showErrorToast(
-          t.credits.paymentFailed,
-          error instanceof Error ? error.message : t.credits.paymentFailedHint,
-        );
-      } finally {
-        setPayingMethod(null);
-      }
+    if (method !== "credit_card") return;
+    if (!accessToken) {
+      showErrorToast(t.credits.paymentFailed, t.credits.paymentFailedHint);
       return;
     }
-
-    showErrorToast(t.credits.paymentNotImplemented, t.credits.paymentNotImplementedHint);
+    setPayingMethod(method);
+    try {
+      const { checkout_url } = await createVisaCheckout(accessToken, amount);
+      if (Platform.OS === "web") {
+        window.location.assign(checkout_url);
+        return;
+      }
+      const canOpen = await Linking.canOpenURL(checkout_url);
+      if (!canOpen) {
+        throw new Error(t.credits.paymentFailedHint);
+      }
+      await Linking.openURL(checkout_url);
+    } catch (error) {
+      showErrorToast(
+        t.credits.paymentFailed,
+        error instanceof Error ? error.message : t.credits.paymentFailedHint,
+      );
+    } finally {
+      setPayingMethod(null);
+    }
   };
 
   return (

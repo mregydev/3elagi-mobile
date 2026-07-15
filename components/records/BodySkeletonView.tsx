@@ -1,60 +1,46 @@
-import { Image } from "expo-image";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   LayoutChangeEvent,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native";
-import type { BodyPart } from "@/domains/medical/bodyParts";
+import { X } from "lucide-react-native";
+import { BodyAnatomyFigure } from "@/components/records/BodyAnatomyFigure";
+import { BODY_PART_ICONS, BODY_ZONE_ICONS, BodyPartIcon } from "@/components/records/bodyPartIcons";
+import {
+  BODY_PARTS_BY_ZONE,
+  BODY_ZONES,
+  type BodyPart,
+  type BodyZone,
+  zoneForBodyPart,
+} from "@/domains/medical/bodyParts";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { chatFlexRow } from "@/utils/rtl";
+import { useWebLayout } from "@/hooks/useWebLayout";
+import { flexRow } from "@/utils/rtl";
 
 interface Props {
   selectedPart: BodyPart | null;
   records: MedicalRecord[];
-  canAdd?: boolean;
   onSelectPart: (part: BodyPart | null) => void;
-  onAddForPart?: (part: BodyPart) => void;
+  /**
+   * Mobile flow: selecting a body part opens filtered records
+   * instead of filtering in-place beside the skeleton.
+   */
+  onOpenPart?: (part: BodyPart) => void;
 }
 
-/** Smooth full-body silhouette — transparent PNG. */
-const BODY_SRC = require("@/assets/images/body-figure.png");
-
-const HAS_TINT = "rgba(224, 122, 47, 0.4)";
-const SELECT_TINT = "rgba(13, 148, 136, 0.48)";
-
-const ASSET_W = 619;
-const ASSET_H = 1472;
-
-type HitRegion = {
-  part: Exclude<BodyPart, "general" | "back">;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+const ZONE_ACCENT: Record<BodyZone, string> = {
+  top: "#6366F1",
+  medium: "#0D9488",
+  bottom: "#EA580C",
 };
-
-const BODY_HITS: HitRegion[] = [
-  { part: "head", x: 0.34, y: 0.01, w: 0.32, h: 0.12 },
-  { part: "neck", x: 0.42, y: 0.12, w: 0.16, h: 0.04 },
-  { part: "chest", x: 0.3, y: 0.15, w: 0.4, h: 0.13 },
-  { part: "abdomen", x: 0.34, y: 0.27, w: 0.32, h: 0.1 },
-  { part: "pelvis", x: 0.32, y: 0.36, w: 0.36, h: 0.09 },
-  { part: "left_arm", x: 0.04, y: 0.17, w: 0.26, h: 0.28 },
-  { part: "right_arm", x: 0.7, y: 0.17, w: 0.26, h: 0.28 },
-  { part: "left_hand", x: 0.0, y: 0.43, w: 0.16, h: 0.08 },
-  { part: "right_hand", x: 0.84, y: 0.43, w: 0.16, h: 0.08 },
-  { part: "left_leg", x: 0.3, y: 0.45, w: 0.18, h: 0.38 },
-  { part: "right_leg", x: 0.52, y: 0.45, w: 0.18, h: 0.38 },
-  { part: "left_foot", x: 0.26, y: 0.83, w: 0.22, h: 0.12 },
-  { part: "right_foot", x: 0.52, y: 0.83, w: 0.22, h: 0.12 },
-];
 
 /** Prefer filling the parent pane; fallback fraction of viewport. */
 export function bodyFigureViewportHeight(
@@ -62,21 +48,33 @@ export function bodyFigureViewportHeight(
   screenWidth: number,
 ): number {
   const isDesktop = screenWidth >= WEB_BREAKPOINTS.desktop;
-  return Math.round(screenHeight * (isDesktop ? 0.7 : 0.85));
+  return Math.round(screenHeight * (isDesktop ? 0.72 : 0.78));
 }
 
 export function BodySkeletonView({
   selectedPart,
   records,
-  canAdd = false,
   onSelectPart,
-  onAddForPart,
+  onOpenPart,
 }: Props) {
   const colors = useColors();
-  const { t } = useI18n();
-  const dir = chatFlexRow();
+  const { t, isRTL } = useI18n();
+  const dir = flexRow(isRTL);
+  const { isDesktop } = useWebLayout();
+  const usePopupPicker = !isDesktop;
   const { width, height: screenHeight } = useWindowDimensions();
-  const [paneHeight, setPaneHeight] = useState(0);
+  const [paneWidth, setPaneWidth] = useState(0);
+  const [diagramH, setDiagramH] = useState(0);
+  const [diagramW, setDiagramW] = useState(0);
+  const [openZone, setOpenZone] = useState<BodyZone | null>(
+    () => (selectedPart ? zoneForBodyPart(selectedPart) : null),
+  );
+
+  useEffect(() => {
+    if (!selectedPart) return;
+    const zone = zoneForBodyPart(selectedPart);
+    if (zone) setOpenZone(zone);
+  }, [selectedPart]);
 
   const partsWithRecords = useMemo(() => {
     const set = new Set<BodyPart>();
@@ -86,28 +84,49 @@ export function BodySkeletonView({
     return set;
   }, [records]);
 
-  const toggle = (part: BodyPart) => {
-    onSelectPart(selectedPart === part ? null : part);
-  };
+  const zonesWithRecords = useMemo(() => {
+    const set = new Set<BodyZone>();
+    for (const part of partsWithRecords) {
+      const zone = zoneForBodyPart(part);
+      if (zone) set.add(zone);
+    }
+    return set;
+  }, [partsWithRecords]);
 
   const onPaneLayout = (e: LayoutChangeEvent) => {
-    const next = Math.round(e.nativeEvent.layout.height);
-    if (next > 0 && next !== paneHeight) setPaneHeight(next);
+    const w = Math.round(e.nativeEvent.layout.width);
+    if (w > 0 && w !== paneWidth) setPaneWidth(w);
   };
 
-  // Chips ~40 + gaps; selection bar ~52 when visible.
-  const chrome = 48 + (selectedPart ? 56 : 0);
-  const fallback = bodyFigureViewportHeight(screenHeight, width);
-  const figureHeight = Math.max(
-    120,
-    (paneHeight > chrome ? paneHeight - chrome : fallback) - 4,
-  );
-  const figureWidth = Math.round(figureHeight * (ASSET_W / ASSET_H));
+  const onDiagramLayout = (e: LayoutChangeEvent) => {
+    const { height: nextH, width: nextW } = e.nativeEvent.layout;
+    const h = Math.round(nextH);
+    const w = Math.round(nextW);
+    if (h > 0 && h !== diagramH) setDiagramH(h);
+    if (w > 0 && w !== diagramW) setDiagramW(w);
+  };
 
-  const tintFor = (part: BodyPart) => {
-    if (selectedPart === part) return SELECT_TINT;
-    if (partsWithRecords.has(part)) return HAS_TINT;
-    return "transparent";
+  const fallbackH = bodyFigureViewportHeight(screenHeight, width);
+  const parentW = paneWidth > 0 ? paneWidth : Math.round(width * 0.52);
+  // Figure fills whatever space is left after chips + part strip.
+  const figureHeight = Math.max(180, diagramH > 0 ? diagramH : fallbackH);
+  const figureWidth = Math.max(180, diagramW > 0 ? diagramW : Math.round(parentW * 0.98));
+
+  const selectZone = (zone: BodyZone) => {
+    setOpenZone((prev) => (prev === zone ? null : zone));
+  };
+
+  const selectPart = (part: BodyPart) => {
+    if (onOpenPart) {
+      onOpenPart(part);
+      return;
+    }
+    const next = selectedPart === part ? null : part;
+    onSelectPart(next);
+    if (next) {
+      const zone = zoneForBodyPart(next);
+      if (zone) setOpenZone(zone);
+    }
   };
 
   const chip = (
@@ -120,9 +139,11 @@ export function BodySkeletonView({
       onPress={() => {
         if (part === null) {
           onSelectPart(null);
+          setOpenZone(null);
           return;
         }
         onSelectPart(active ? null : part);
+        if (!active) setOpenZone(null);
       }}
       style={[
         styles.chip,
@@ -145,70 +166,224 @@ export function BodySkeletonView({
     </Pressable>
   );
 
-  return (
-    <View style={styles.wrap} onLayout={onPaneLayout}>
-      <View style={[styles.chipRow, { flexDirection: dir }]}>
-        {chip(null, t.records.bodyPartAll, !selectedPart)}
-        {chip(
-          "general",
-          t.records.bodyParts.general,
-          selectedPart === "general",
-          partsWithRecords.has("general"),
-        )}
-        {chip(
-          "back",
-          t.records.bodyParts.back,
-          selectedPart === "back",
-          partsWithRecords.has("back"),
-        )}
-      </View>
+  const zoneParts = openZone ? BODY_PARTS_BY_ZONE[openZone] : [];
+  const closePartPicker = () => setOpenZone(null);
 
-      <View style={styles.diagramCard}>
-        <View style={{ width: figureWidth, height: figureHeight }}>
-          <Image
-            source={BODY_SRC}
-            style={{
-              width: figureWidth,
-              height: figureHeight,
-              backgroundColor: "transparent",
-            }}
-            contentFit="contain"
-            accessibilityLabel={t.records.skeletonView}
+  const partPickerContent =
+    openZone != null ? (
+      <>
+        <View style={[styles.partListHeader, { flexDirection: dir }]}>
+          <View
+            style={[styles.partListAccent, { backgroundColor: ZONE_ACCENT[openZone] }]}
           />
-          {BODY_HITS.map((region) => (
-            <Pressable
-              key={region.part}
-              onPress={() => toggle(region.part)}
-              accessibilityRole="button"
-              accessibilityLabel={t.records.bodyParts[region.part]}
-              style={{
-                position: "absolute",
-                left: Math.round(region.x * figureWidth),
-                top: Math.round(region.y * figureHeight),
-                width: Math.round(region.w * figureWidth),
-                height: Math.round(region.h * figureHeight),
-                backgroundColor: tintFor(region.part),
-                borderRadius: 8,
-              }}
-            />
-          ))}
-        </View>
-      </View>
-
-      {selectedPart ? (
-        <View style={[styles.selectionBar, { flexDirection: dir, borderColor: colors.border }]}>
-          <Text style={{ color: colors.foreground, fontWeight: "700", flex: 1, fontSize: 13 }}>
-            {t.records.selectedPart}: {t.records.bodyParts[selectedPart]}
-          </Text>
-          {canAdd && onAddForPart ? (
-            <Pressable
-              onPress={() => onAddForPart(selectedPart)}
-              style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          <View style={styles.partListHeaderText}>
+            <Text
+              style={[
+                styles.partListEyebrow,
+                { color: ZONE_ACCENT[openZone], textAlign: isRTL ? "right" : "left" },
+              ]}
+              numberOfLines={1}
             >
-              <Text style={styles.addBtnText}>{t.records.addForPart}</Text>
+              {t.records.bodyZones[openZone]}
+            </Text>
+            <Text
+              style={[
+                styles.partListTitle,
+                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+              ]}
+              numberOfLines={1}
+            >
+              {t.records.bodyZonePick}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.partCountPill,
+              { backgroundColor: `${ZONE_ACCENT[openZone]}14` },
+            ]}
+          >
+            <Text style={{ color: ZONE_ACCENT[openZone], fontWeight: "800", fontSize: 11 }}>
+              {zoneParts.length}
+            </Text>
+          </View>
+          {usePopupPicker ? (
+            <Pressable onPress={closePartPicker} hitSlop={10} accessibilityRole="button">
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           ) : null}
         </View>
+
+        <View style={[styles.partGrid, { flexDirection: dir }]}>
+          {zoneParts.map((part) => {
+            const Icon = BODY_PART_ICONS[part];
+            const active = selectedPart === part;
+            const hasDot = partsWithRecords.has(part);
+            const accent = ZONE_ACCENT[openZone];
+            return (
+              <Pressable
+                key={part}
+                onPress={() => selectPart(part)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={({ pressed }) => [
+                  styles.partTile,
+                  usePopupPicker && styles.partTilePopup,
+                  {
+                    borderColor: active ? accent : colors.border,
+                    backgroundColor: active
+                      ? `${accent}16`
+                      : pressed
+                        ? colors.muted
+                        : colors.background,
+                    transform: pressed ? [{ scale: 0.97 }] : undefined,
+                  },
+                ]}
+              >
+                {hasDot ? (
+                  <View
+                    style={[
+                      styles.partRecordDot,
+                      isRTL ? { left: 5 } : { right: 5 },
+                      { backgroundColor: accent },
+                    ]}
+                  />
+                ) : null}
+                <View
+                  style={[
+                    styles.partIconBubble,
+                    usePopupPicker && styles.partIconBubblePopup,
+                    {
+                      backgroundColor: active ? `${accent}22` : `${colors.foreground}08`,
+                    },
+                  ]}
+                >
+                  <BodyPartIcon
+                    icon={Icon}
+                    size={usePopupPicker ? 20 : 16}
+                    color={active ? accent : colors.foreground}
+                  />
+                </View>
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    color: active ? accent : colors.foreground,
+                    fontWeight: active ? "800" : "600",
+                    fontSize: usePopupPicker ? 11 : 10,
+                    textAlign: "center",
+                    lineHeight: usePopupPicker ? 14 : 12,
+                  }}
+                >
+                  {t.records.bodyParts[part]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </>
+    ) : null;
+
+  return (
+    <View style={styles.wrap} onLayout={onPaneLayout}>
+      <View style={[styles.chipRow, { flexDirection: dir }]}>
+        {chip(null, t.records.bodyPartAll, !selectedPart && !openZone)}
+        {BODY_ZONES.map((zone) => {
+          const ZoneIcon = BODY_ZONE_ICONS[zone];
+          const active = openZone === zone;
+          const accent = ZONE_ACCENT[zone];
+          return (
+            <Pressable
+              key={zone}
+              onPress={() => selectZone(zone)}
+              style={[
+                styles.zoneChip,
+                {
+                  flexDirection: dir,
+                  borderColor: active ? accent : colors.border,
+                  backgroundColor: active ? `${accent}18` : colors.muted,
+                },
+              ]}
+            >
+              <View style={[styles.zoneDot, { backgroundColor: accent }]} />
+              <ZoneIcon width={14} height={14} color={active ? accent : colors.foreground} />
+              <Text
+                style={{
+                  color: active ? accent : colors.foreground,
+                  fontWeight: "700",
+                  fontSize: 12,
+                }}
+              >
+                {t.records.bodyZones[zone]}
+                {zonesWithRecords.has(zone) ? " •" : ""}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {!openZone ? (
+        <Text
+          style={[
+            styles.hint,
+            { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+          ]}
+        >
+          {t.records.bodyZoneHint}
+        </Text>
+      ) : null}
+
+      <View style={styles.diagramCard} onLayout={onDiagramLayout}>
+        <BodyAnatomyFigure
+          width={figureWidth}
+          height={figureHeight}
+          openZone={openZone}
+          zonesWithRecords={zonesWithRecords}
+          zoneLabels={t.records.bodyZones}
+          onSelectZone={selectZone}
+          foreground={colors.foreground}
+          mutedForeground={colors.mutedForeground}
+          cardBg={colors.card}
+          border={colors.border}
+          isRTL={isRTL}
+        />
+      </View>
+
+      {!usePopupPicker && openZone ? (
+        <View
+          style={[
+            styles.partListCard,
+            {
+              borderColor: `${ZONE_ACCENT[openZone]}33`,
+              backgroundColor: colors.card,
+            },
+          ]}
+        >
+          {partPickerContent}
+        </View>
+      ) : null}
+
+      {usePopupPicker ? (
+        <Modal
+          visible={!!openZone}
+          transparent
+          animationType="slide"
+          onRequestClose={closePartPicker}
+        >
+          <Pressable style={styles.popupBackdrop} onPress={closePartPicker}>
+            <Pressable
+              style={[
+                styles.popupSheet,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: openZone ? `${ZONE_ACCENT[openZone]}44` : colors.border,
+                },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={[styles.popupHandle, { backgroundColor: colors.border }]} />
+              {partPickerContent}
+            </Pressable>
+          </Pressable>
+        </Modal>
       ) : null}
     </View>
   );
@@ -219,14 +394,37 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     width: "100%",
-    gap: 8,
+    gap: 6,
   },
-  chipRow: { gap: 6, flexWrap: "wrap", flexShrink: 0 },
+  chipRow: {
+    gap: 6,
+    flexWrap: "wrap",
+    flexShrink: 0,
+    width: "100%",
+  },
   chip: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  zoneChip: {
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  zoneDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  hint: {
+    fontSize: 12,
+    fontWeight: "600",
+    flexShrink: 0,
   },
   diagramCard: {
     flex: 1,
@@ -236,19 +434,118 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     backgroundColor: "transparent",
     overflow: "hidden",
+    borderWidth: 0,
   },
-  selectionBar: {
+  partListCard: {
+    flexShrink: 0,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 6,
+  },
+  partListHeader: {
     alignItems: "center",
     gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
     flexShrink: 0,
   },
-  addBtn: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  partListAccent: {
+    width: 4,
+    alignSelf: "stretch",
+    borderRadius: 999,
+    minHeight: 24,
   },
-  addBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  partListHeaderText: {
+    flex: 1,
+    gap: 1,
+  },
+  partListEyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  partListTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  partCountPill: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 7,
+  },
+  partGrid: {
+    flexWrap: "wrap",
+    gap: 5,
+  },
+  partTile: {
+    flexBasis: "15%",
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 56,
+    maxWidth: 78,
+    alignItems: "center",
+    gap: 3,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    position: "relative",
+  },
+  partTilePopup: {
+    flexBasis: "30%",
+    minWidth: 88,
+    maxWidth: "32%",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  partIconBubble: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  partIconBubblePopup: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+  },
+  partRecordDot: {
+    position: "absolute",
+    top: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  popupBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    justifyContent: "flex-end",
+  },
+  popupSheet: {
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 28,
+    gap: 12,
+    maxHeight: "72%",
+  },
+  popupHandle: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 4,
+  },
 });

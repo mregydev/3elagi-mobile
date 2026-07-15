@@ -19,6 +19,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { BodyPartAutocomplete } from "@/components/records/BodyPartAutocomplete";
 import { BodySkeletonView } from "@/components/records/BodySkeletonView";
 import {
   MedicalRecordAddBar,
@@ -38,6 +39,7 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -114,6 +116,7 @@ export function RecordsWebView() {
   const advancedFiltering =
     hasActiveFilters(filters) &&
     (filters.doctorName.trim().length > 0 ||
+      filters.bodyPart != null ||
       filters.dateMode !== "any" ||
       filters.text.trim().length > 0);
 
@@ -121,11 +124,10 @@ export function RecordsWebView() {
     router.push(`/medical/${item.id}`);
   };
 
-  const openAdd = (category: MedicalCategory, bodyPart?: BodyPart | null) => {
+  const openAdd = () => {
     router.push(
-      buildMedicalAddHref(category, {
+      buildMedicalAddHref(null, {
         patientUserId: profile?.id,
-        bodyPart: bodyPart ?? selectedBodyPart,
       }) as never,
     );
   };
@@ -185,10 +187,25 @@ export function RecordsWebView() {
               mobileTitlePaddingTop > 0 && { paddingTop: mobileTitlePaddingTop },
             ]}
           >
-            <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>
+            <Text
+              style={[
+                styles.pageTitle,
+                { color: colors.foreground, textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
+              ]}
+            >
               {t.records.title}
             </Text>
-            <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign }]}>
+            <Text
+              style={[
+                styles.pageSubtitle,
+                {
+                  color: colors.mutedForeground,
+                  textAlign,
+                  alignSelf: "stretch",
+                  writingDirection: isRTL ? "rtl" : "ltr",
+                },
+              ]}
+            >
               {t.records.webSubtitle}
             </Text>
           </View>
@@ -200,23 +217,40 @@ export function RecordsWebView() {
           <View
             style={
               isSkeleton
-                ? [styles.splitRow, { flexDirection: dir }]
+                ? isDesktop
+                  ? [styles.splitRow, { flexDirection: dir }]
+                  : styles.skeletonOnly
                 : undefined
             }
           >
             {isSkeleton ? (
-              <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.splitPane,
+                  isDesktop ? styles.splitSkeleton : styles.splitSkeletonMobile,
+                  { borderColor: colors.border },
+                ]}
+              >
                 <BodySkeletonView
                   selectedPart={selectedBodyPart}
                   records={displayRecords}
-                  canAdd
                   onSelectPart={setSelectedBodyPart}
-                  onAddForPart={(part) => openAdd("lab", part)}
+                  onOpenPart={
+                    isDesktop
+                      ? undefined
+                      : (part) => {
+                          router.push(
+                            buildBodyPartRecordsHref(part, {
+                              patientUserId: profile?.id,
+                            }) as never,
+                          );
+                        }
+                  }
                 />
               </View>
             ) : null}
 
-            {isSkeleton ? (
+            {isSkeleton && isDesktop ? (
               <View style={[styles.splitPane, styles.splitRecordsPane]}>
                 <ScrollView
                   style={styles.splitPaneScroll}
@@ -326,6 +360,13 @@ export function RecordsWebView() {
                             </Pressable>
                           ) : null}
                         </View>
+
+                        <BodyPartAutocomplete
+                          value={filters.bodyPart}
+                          onChange={(bodyPart) => setFilters({ ...filters, bodyPart })}
+                          label={t.records.bodyPart}
+                          clearable
+                        />
 
                         <View style={[styles.chipRow, { flexDirection: dir }]}>
                           {DATE_MODES.map((mode) => {
@@ -464,11 +505,11 @@ export function RecordsWebView() {
 
                 {isDesktop ? (
                   <View style={styles.splitAddFooter}>
-                    <MedicalRecordAddBar onAdd={(c) => openAdd(c)} layout="web-inline" />
+                    <MedicalRecordAddBar onAdd={openAdd} layout="web-inline" />
                   </View>
                 ) : null}
               </View>
-            ) : (
+            ) : !isSkeleton ? (
               <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
                 <View style={styles.searchBlock}>
                   <View
@@ -569,6 +610,13 @@ export function RecordsWebView() {
                           </Pressable>
                         ) : null}
                       </View>
+
+                      <BodyPartAutocomplete
+                        value={filters.bodyPart}
+                        onChange={(bodyPart) => setFilters({ ...filters, bodyPart })}
+                        label={t.records.bodyPart}
+                        clearable
+                      />
 
                       <View style={[styles.chipRow, { flexDirection: dir }]}>
                         {DATE_MODES.map((mode) => {
@@ -702,7 +750,7 @@ export function RecordsWebView() {
                   </View>
                 )}
               </ScrollView>
-            )}
+            ) : null}
           </View>
 
         </View>
@@ -715,13 +763,13 @@ export function RecordsWebView() {
             { backgroundColor: colors.card, borderTopColor: colors.border },
           ]}
         >
-          <MedicalRecordAddBar onAdd={(c) => openAdd(c)} layout="web-dock" />
+          <MedicalRecordAddBar onAdd={openAdd} layout="web-dock" />
         </View>
       ) : null}
 
       {!isDesktop ? (
         <View style={styles.mobileDock}>
-          <MedicalRecordAddBar onAdd={(c) => openAdd(c)} layout="dock" />
+          <MedicalRecordAddBar onAdd={openAdd} layout="dock" />
         </View>
       ) : null}
     </View>
@@ -945,17 +993,27 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "transparent",
   },
-  splitPane: {
+  skeletonOnly: {
     flex: 1,
+    minHeight: 0,
+  },
+  splitPane: {
     minWidth: 0,
     minHeight: 0,
   },
   splitSkeleton: {
+    flex: 4,
     borderRightWidth: StyleSheet.hairlineWidth,
-    padding: 10,
+    padding: 12,
+    backgroundColor: "transparent",
+  },
+  splitSkeletonMobile: {
+    flex: 1,
+    padding: 8,
     backgroundColor: "transparent",
   },
   splitRecordsPane: {
+    flex: 6,
     flexDirection: "column",
   },
   splitPaneScroll: {
@@ -1028,10 +1086,11 @@ const styles = StyleSheet.create({
   pageSubtitle: {
     fontSize: 15,
     lineHeight: 22,
-    maxWidth: 560,
+    width: "100%",
   },
   searchBlock: {
     gap: 12,
+    marginBottom: 24,
   },
   searchRow: {
     alignItems: "center",

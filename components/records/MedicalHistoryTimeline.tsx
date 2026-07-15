@@ -30,6 +30,7 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -112,11 +113,10 @@ export function MedicalHistoryTimeline({
     }
   };
 
-  const openAdd = (category: MedicalCategory, bodyPart?: BodyPart | null) => {
+  const openAdd = () => {
     router.push(
-      buildMedicalAddHref(category, {
+      buildMedicalAddHref(null, {
         patientUserId,
-        bodyPart: bodyPart ?? selectedBodyPart,
       }) as never,
     );
   };
@@ -241,24 +241,17 @@ export function MedicalHistoryTimeline({
       ) : null}
 
       {viewMode === "skeleton" ? (
-        <View style={[styles.splitRow, { flexDirection: dir }]}>
-          <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
-            <BodySkeletonView
-              selectedPart={selectedBodyPart}
-              records={displayRecords}
-              canAdd={canAdd}
-              onSelectPart={setSelectedBodyPart}
-              onAddForPart={(part) => openAdd(doctorView ? "diagnosis" : "lab", part)}
-            />
-          </View>
-          <ScrollView
-            style={styles.splitPane}
-            contentContainerStyle={styles.splitRecordsContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {timelineBody}
-          </ScrollView>
+        <View style={styles.skeletonOnly}>
+          <BodySkeletonView
+            selectedPart={selectedBodyPart}
+            records={displayRecords}
+            onSelectPart={setSelectedBodyPart}
+            onOpenPart={(part) => {
+              router.push(
+                buildBodyPartRecordsHref(part, { patientUserId }) as never,
+              );
+            }}
+          />
         </View>
       ) : (
         timelineBody
@@ -267,7 +260,7 @@ export function MedicalHistoryTimeline({
 
     {canAdd ? (
       <MedicalRecordAddBar
-        onAdd={(c) => openAdd(c)}
+        onAdd={openAdd}
         showDiagnosis={doctorView}
         layout="dock"
       />
@@ -460,15 +453,24 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "transparent",
   },
-  splitPane: {
+  skeletonOnly: {
     flex: 1,
+    minHeight: 0,
+    marginHorizontal: 8,
+    marginTop: 4,
+  },
+  splitPane: {
     minWidth: 0,
     minHeight: 0,
   },
   splitSkeleton: {
+    flex: 4,
     borderRightWidth: StyleSheet.hairlineWidth,
-    padding: 8,
+    padding: 10,
     backgroundColor: "transparent",
+  },
+  splitRecords: {
+    flex: 6,
   },
   splitRecordsContent: {
     paddingHorizontal: 8,

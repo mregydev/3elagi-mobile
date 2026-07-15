@@ -27,10 +27,24 @@ export default function RecordsTab() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader />
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
+        <Text
+          style={[
+            styles.title,
+            { color: colors.foreground, textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
+          ]}
+        >
           {t.records.title}
         </Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
+        <Text
+          style={[
+            styles.subtitle,
+            {
+              color: colors.mutedForeground,
+              textAlign,
+              writingDirection: isRTL ? "rtl" : "ltr",
+            },
+          ]}
+        >
           {t.records.subtitle}
         </Text>
       </View>

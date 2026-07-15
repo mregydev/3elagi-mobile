@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { BodyPartAutocomplete } from "@/components/records/BodyPartAutocomplete";
 import {
   EMPTY_MEDICAL_FILTERS,
   hasActiveFilters,
@@ -20,7 +21,8 @@ import {
   type MedicalHistoryFilters,
 } from "@/domains/medical/search";
 import { useColors } from "@/hooks/useColors";
-import { alignText, flexRow, localeTag } from "@/utils/rtl";
+import { useI18n } from "@/hooks/useI18n";
+import { alignText, localeTag } from "@/utils/rtl";
 
 type PickerTarget = "from" | "to" | "single" | null;
 
@@ -108,6 +110,7 @@ export function MedicalHistoryFilterPanel({
   defaultExpanded?: boolean;
 }) {
   const colors = useColors();
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
   const [iosDraft, setIosDraft] = useState<Date>(new Date());
@@ -127,6 +130,13 @@ export function MedicalHistoryFilterPanel({
         isRTL
           ? `د. ${filters.doctorName.trim()}`
           : `Dr. ${filters.doctorName.trim()}`,
+      );
+    }
+    if (filters.bodyPart) {
+      parts.push(
+        filters.bodyPart === "general"
+          ? t.records.bodyPartAll
+          : t.records.bodyParts[filters.bodyPart],
       );
     }
     if (filters.dateMode === "range") {
@@ -318,6 +328,15 @@ export function MedicalHistoryFilterPanel({
         )}
       </View>
 
+      <View style={{ marginTop: 12 }}>
+        <BodyPartAutocomplete
+          value={filters.bodyPart}
+          onChange={(bodyPart) => onChange({ ...filters, bodyPart })}
+          label={t.records.bodyPart}
+          clearable
+        />
+      </View>
+
       <Text style={[styles.fieldLabel, { color: colors.mutedForeground, marginTop: 12, textAlign }]}>
         {isRTL ? "التاريخ" : "Date"}
       </Text>
@@ -456,7 +475,7 @@ const styles = StyleSheet.create({
   panel: {
     marginHorizontal: 16,
     marginTop: 16,
-    marginBottom: 12,
+    marginBottom: 24,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 14,
@@ -465,7 +484,7 @@ const styles = StyleSheet.create({
   panelEmbedded: {
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 10,
+    marginBottom: 20,
   },
   panelHeader: {
     justifyContent: "space-between",

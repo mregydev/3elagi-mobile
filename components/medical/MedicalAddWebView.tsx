@@ -22,7 +22,6 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
-import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
@@ -180,6 +179,7 @@ export function MedicalAddWebView() {
     category,
     setCategory,
     hasCategoryParam,
+    availableCategories,
     bodyPart,
     setBodyPart,
     title,
@@ -465,7 +465,7 @@ export function MedicalAddWebView() {
         contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
+        <View style={styles.container}>
           <View style={[styles.toolbar, { flexDirection: dir }]}>
             <View style={{ flex: 1, gap: 8, minWidth: 0 }}>
               <Pressable onPress={goBack} style={[styles.backBtn, { flexDirection: dir }]}>
@@ -494,7 +494,7 @@ export function MedicalAddWebView() {
               textAlign={textAlign}
             >
               <View style={[styles.catRow, { flexDirection: dir }]}>
-                {CATEGORY_OPTIONS.map((c) => {
+                {CATEGORY_OPTIONS.filter((c) => availableCategories.includes(c.key)).map((c) => {
                   const sel = category === c.key;
                   return (
                     <Pressable
@@ -529,7 +529,7 @@ export function MedicalAddWebView() {
             colors={colors}
             textAlign={textAlign}
           >
-            <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
+            <BodyPartPicker value={bodyPart} onChange={setBodyPart} label="" />
           </SectionCard>
 
           {isDiagnosis ? (

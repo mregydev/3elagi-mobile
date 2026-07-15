@@ -38,6 +38,7 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -48,6 +49,7 @@ import {
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
 
 const CATEGORIES: {
@@ -84,6 +86,7 @@ export function MedicalHistoryList({
 }: MedicalHistoryListProps) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
@@ -141,11 +144,10 @@ export function MedicalHistoryList({
     }
   };
 
-  const openAdd = (category: MedicalCategory, bodyPart?: BodyPart | null) => {
+  const openAdd = () => {
     router.push(
-      buildMedicalAddHref(category, {
+      buildMedicalAddHref(null, {
         patientUserId,
-        bodyPart: bodyPart ?? selectedBodyPart,
       }) as never,
     );
   };
@@ -386,39 +388,52 @@ export function MedicalHistoryList({
       ) : null}
 
       {viewMode === "skeleton" ? (
-        <View
-          style={[
-            styles.splitRow,
-            {
-              flexDirection: dir,
-              height: splitHeight,
-            },
-          ]}
-        >
-          <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+        isDesktop ? (
+          <View
+            style={[
+              styles.splitRow,
+              {
+                flexDirection: dir,
+                height: splitHeight,
+              },
+            ]}
+          >
+            <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+              <BodySkeletonView
+                selectedPart={selectedBodyPart}
+                records={displayRecords}
+                onSelectPart={handleSelectPart}
+              />
+            </View>
+            <ScrollView
+              style={[styles.splitPane, styles.splitRecords]}
+              contentContainerStyle={styles.splitRecordsContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {recordsPanel}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={[styles.skeletonOnly, { height: splitHeight }]}>
             <BodySkeletonView
               selectedPart={selectedBodyPart}
               records={displayRecords}
-              canAdd={canAdd}
               onSelectPart={handleSelectPart}
-              onAddForPart={(part) => openAdd(doctorView ? "diagnosis" : "lab", part)}
+              onOpenPart={(part) => {
+                router.push(
+                  buildBodyPartRecordsHref(part, { patientUserId }) as never,
+                );
+              }}
             />
           </View>
-          <ScrollView
-            style={styles.splitPane}
-            contentContainerStyle={styles.splitRecordsContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {recordsPanel}
-          </ScrollView>
-        </View>
+        )
       ) : (
         recordsPanel
       )}
 
       {canAdd ? (
-        <MedicalRecordAddBar onAdd={(c) => openAdd(c)} showDiagnosis={doctorView} layout="inline" />
+        <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} layout="inline" />
       ) : null}
 
       <Modal
@@ -464,15 +479,23 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "transparent",
   },
+  skeletonOnly: {
+    marginTop: 8,
+    marginHorizontal: 8,
+    minHeight: 0,
+  },
   splitPane: {
-    flex: 1,
     minWidth: 0,
     minHeight: 0,
   },
   splitSkeleton: {
+    flex: 4,
     borderRightWidth: StyleSheet.hairlineWidth,
-    padding: 8,
+    padding: 10,
     backgroundColor: "transparent",
+  },
+  splitRecords: {
+    flex: 6,
   },
   splitRecordsContent: {
     paddingVertical: 8,

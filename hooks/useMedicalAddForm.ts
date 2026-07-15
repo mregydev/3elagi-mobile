@@ -461,6 +461,7 @@ export function useMedicalAddForm() {
     category,
     setCategory: handleCategoryChange,
     hasCategoryParam,
+    availableCategories,
     bodyPart,
     setBodyPart,
     title,

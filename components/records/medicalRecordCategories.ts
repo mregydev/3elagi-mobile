@@ -38,7 +38,9 @@ export function withoutIntakeRecords(records: MedicalRecord[]): MedicalRecord[] 
   return SHOW_INTAKE_RECORDS ? records : records.filter((r) => r.category !== "intake");
 }
 
-export const ADD_MEDICAL_CATEGORIES = MEDICAL_RECORD_CATEGORIES.filter((c) => c.key !== "intake");
+export const ADD_MEDICAL_CATEGORIES = MEDICAL_RECORD_CATEGORIES.filter(
+  (c) => c.key !== "intake" && c.key !== "prescription",
+);
 
 /** Patients cannot add diagnoses — only doctors can. */
 export const PATIENT_ADD_MEDICAL_CATEGORIES = ADD_MEDICAL_CATEGORIES.filter(

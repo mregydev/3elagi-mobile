@@ -2,103 +2,31 @@ import { Plus } from "lucide-react-native";
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
-import {
-  getAddMedicalCategories,
-  getLocalizedAddLabel,
-  getLocalizedCategoryLabel,
-} from "@/components/records/medicalRecordCategories";
-import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
-export const MEDICAL_RECORD_ADD_BAR_HEIGHT = 88;
-export const MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT = 96;
+export const MEDICAL_RECORD_ADD_BAR_HEIGHT = 72;
+export const MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT = 80;
 
 export type MedicalRecordAddBarLayout = "dock" | "web-inline" | "web-dock" | "inline";
 
 interface Props {
-  onAdd: (category: MedicalCategory) => void;
+  onAdd: () => void;
   layout?: MedicalRecordAddBarLayout;
-  /** When true, shows diagnosis among add options (doctors only). */
+  /** Kept for call-site compatibility; category choice happens on the add form. */
   showDiagnosis?: boolean;
 }
 
-function isWebLayout(layout: MedicalRecordAddBarLayout): boolean {
-  return layout === "web-inline" || layout === "web-dock";
-}
-
-function AddAction({
-  categoryKey,
-  color,
-  Icon,
-  label,
-  onPress,
-  isRTL,
-  compact,
-}: {
-  categoryKey: MedicalCategory;
-  color: string;
-  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-  label: string;
-  onPress: () => void;
-  isRTL: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <Pressable
-      key={categoryKey}
-      onPress={onPress}
-      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-        compact ? styles.actionCompact : styles.action,
-        {
-          backgroundColor: pressed ? `${color}22` : `${color}12`,
-          borderColor: `${color}28`,
-          transform: hovered && !pressed ? [{ translateY: -3 }, { scale: 1.02 }] : undefined,
-          shadowColor: color,
-          shadowOpacity: hovered ? 0.22 : 0.1,
-        },
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <View style={[styles.accentRail, { backgroundColor: color }]} />
-      <View style={styles.iconSlot}>
-        <View
-          style={[
-            styles.iconCircle,
-            {
-              backgroundColor: color,
-              shadowColor: color,
-            },
-          ]}
-        >
-          <Icon size={compact ? 16 : 18} color="#fff" strokeWidth={2.3} />
-        </View>
-        <View
-          style={[
-            styles.plusBadge,
-            isRTL ? styles.plusBadgeRtl : styles.plusBadgeLtr,
-            { borderColor: color },
-          ]}
-        >
-          <Plus size={9} color={color} strokeWidth={3.4} />
-        </View>
-      </View>
-      <Text style={[styles.actionLabel, { color }]} numberOfLines={2}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function MobileAddBar({ onAdd, layout, showDiagnosis }: Props) {
+export function MedicalRecordAddBar({ onAdd, layout = "dock" }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
-  const categories = getAddMedicalCategories(showDiagnosis);
-  const flushWebDock = Platform.OS === "web" && layout === "dock";
   const isInline = layout === "inline";
+  const isWebInline = layout === "web-inline";
+  const isWebDock = layout === "web-dock";
+  const isDesktopWeb = isWebInline || isWebDock;
+  const flushWebDock = Platform.OS === "web" && layout === "dock";
 
   const dockStyle: ViewStyle | undefined =
     layout === "dock"
@@ -108,115 +36,57 @@ function MobileAddBar({ onAdd, layout, showDiagnosis }: Props) {
           left: 0,
           right: 0,
         }
-      : undefined;
+      : isWebDock
+        ? {
+            width: "100%",
+            maxWidth: WEB_MAX_WIDTH.content,
+            alignSelf: "center",
+          }
+        : undefined;
 
   return (
     <View
       style={[
         styles.shell,
         isInline && styles.shellInline,
-        flushWebDock && styles.shellWebDock,
-        dockStyle,
-        {
-          backgroundColor: layout === "dock" ? colors.card : "transparent",
-          borderTopColor: colors.border,
-          shadowColor: colors.foreground,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.tray,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            shadowColor: colors.foreground,
-          },
-        ]}
-      >
-        <View style={[styles.row, { flexDirection: dir }]}>
-          {categories.map(({ key, Icon, color }) => (
-            <AddAction
-              key={key}
-              categoryKey={key}
-              color={color}
-              Icon={Icon}
-              label={getLocalizedCategoryLabel(key, t)}
-              onPress={() => onAdd(key)}
-              isRTL={isRTL}
-              compact
-            />
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function WebAddBar({ onAdd, layout, showDiagnosis }: Props) {
-  const colors = useColors();
-  const { t, isRTL } = useI18n();
-  const dir = flexRow(isRTL);
-  const categories = getAddMedicalCategories(showDiagnosis);
-  const isWebInline = layout === "web-inline";
-
-  const dockStyle: ViewStyle | undefined =
-    layout === "web-dock"
-      ? {
-          width: "100%",
-          maxWidth: WEB_MAX_WIDTH.content,
-          alignSelf: "center",
-        }
-      : undefined;
-
-  return (
-    <View
-      style={[
-        styles.shell,
         isWebInline && styles.shellWebInline,
-        layout === "web-dock" && styles.shellWebDocked,
+        flushWebDock && styles.shellWebDock,
+        isWebDock && styles.shellWebDocked,
+        isDesktopWeb && styles.shellDesktop,
         dockStyle,
         {
-          backgroundColor: layout === "web-dock" ? colors.card : "transparent",
+          backgroundColor: layout === "dock" || isWebDock ? colors.card : "transparent",
           borderTopColor: colors.border,
           shadowColor: colors.foreground,
+          alignItems: isDesktopWeb ? "center" : undefined,
         },
       ]}
     >
-      <View
-        style={[
-          styles.tray,
-          styles.trayWeb,
+      <Pressable
+        onPress={onAdd}
+        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+          styles.addBtn,
+          isDesktopWeb && styles.addBtnDesktop,
           {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            shadowColor: colors.foreground,
+            flexDirection: dir,
+            backgroundColor: pressed ? colors.primary : colors.primary,
+            opacity: pressed ? 0.9 : 1,
+            transform: hovered && !pressed ? [{ translateY: -1 }] : undefined,
+            shadowColor: colors.primary,
           },
         ]}
+        accessibilityRole="button"
+        accessibilityLabel={t.records.addMedicalRecord}
       >
-        <View style={[styles.row, { flexDirection: dir }]}>
-          {categories.map(({ key, Icon, color }) => (
-            <AddAction
-              key={key}
-              categoryKey={key}
-              color={color}
-              Icon={Icon}
-              label={getLocalizedAddLabel(key, t)}
-              onPress={() => onAdd(key)}
-              isRTL={isRTL}
-            />
-          ))}
+        <View style={styles.plusCircle}>
+          <Plus size={18} color={colors.primary} strokeWidth={2.6} />
         </View>
-      </View>
+        <Text style={styles.addLabel} numberOfLines={1}>
+          {t.records.addMedicalRecord}
+        </Text>
+      </Pressable>
     </View>
   );
-}
-
-export function MedicalRecordAddBar(props: Props) {
-  if (isWebLayout(props.layout ?? "dock")) {
-    return <WebAddBar {...props} />;
-  }
-  return <MobileAddBar {...props} />;
 }
 
 const styles = StyleSheet.create({
@@ -258,100 +128,39 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
-  tray: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 8,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+  shellDesktop: {
+    width: "100%",
   },
-  trayWeb: {
-    padding: 10,
-  },
-  row: {
-    gap: 8,
-    alignItems: "stretch",
-  },
-  action: {
-    flex: 1,
+  addBtn: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    minHeight: 76,
-    paddingHorizontal: 10,
+    gap: 10,
+    minHeight: 52,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    cursor: "pointer" as "auto",
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  actionCompact: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    minHeight: 64,
-    paddingHorizontal: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  accentRail: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-  },
-  iconSlot: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
     elevation: 3,
+    cursor: "pointer" as "auto",
   },
-  plusBadge: {
-    position: "absolute",
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
+  addBtnDesktop: {
+    width: 300,
+    alignSelf: "center",
+  },
+  plusCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
   },
-  plusBadgeLtr: {
-    right: -3,
-    bottom: -2,
-  },
-  plusBadgeRtl: {
-    left: -3,
-    bottom: -2,
-  },
-  actionLabel: {
-    fontSize: 12,
+  addLabel: {
+    color: "#fff",
+    fontSize: 15,
     fontWeight: "800",
-    textAlign: "center",
-    lineHeight: 15,
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   },
 });
