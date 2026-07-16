@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
 import { MedicalHistoryList } from "@/components/MedicalHistoryList";
+import type { RecordsViewMode } from "@/components/records/RecordsViewModeToggle";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -40,6 +41,8 @@ export default function PatientRecordScreen() {
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("skeleton");
+  const skeletonView = recordsViewMode === "skeleton";
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const dir = isRTL ? "row-reverse" : "row";
@@ -106,6 +109,21 @@ export default function PatientRecordScreen() {
     );
   }
 
+  const historyList = (
+    <MedicalHistoryList
+      records={records}
+      patientUserId={userId!}
+      canAdd={false}
+      doctorView
+      showIntake
+      viewMode={recordsViewMode}
+      onViewModeChange={setRecordsViewMode}
+      onRecordsChanged={() => {
+        void loadScreen().catch(() => setRecords([]));
+      }}
+    />
+  );
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View
@@ -137,6 +155,9 @@ export default function PatientRecordScreen() {
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
       ) : !hasAccess ? (
         <DoctorPatientAccessDenied isRTL={isRTL} />
+      ) : skeletonView ? (
+        // Non-scrolling host so the Skeleton/Tabular toggle stays pressable.
+        <View style={styles.body}>{historyList}</View>
       ) : (
         <ScrollView
           style={[
@@ -151,16 +172,7 @@ export default function PatientRecordScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
-          <MedicalHistoryList
-            records={records}
-            patientUserId={userId!}
-            canAdd={false}
-            doctorView
-            showIntake
-            onRecordsChanged={() => {
-              void loadScreen().catch(() => setRecords([]));
-            }}
-          />
+          {historyList}
           <View style={styles.bottomSpacer} />
         </ScrollView>
       )}

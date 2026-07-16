@@ -87,6 +87,10 @@ export interface MedicalHistoryListProps {
   doctorView?: boolean;
   showIntake?: boolean;
   onRecordsChanged?: () => void;
+  /** Controlled Skeleton / Tabular mode (uncontrolled if omitted). */
+  viewMode?: RecordsViewMode;
+  /** Fired when Skeleton / Tabular mode changes (e.g. parent disables page scroll). */
+  onViewModeChange?: (mode: RecordsViewMode) => void;
 }
 
 export function MedicalHistoryList({
@@ -96,6 +100,8 @@ export function MedicalHistoryList({
   doctorView = false,
   showIntake = SHOW_INTAKE_RECORDS,
   onRecordsChanged,
+  viewMode: viewModeProp,
+  onViewModeChange,
 }: MedicalHistoryListProps) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
@@ -109,7 +115,15 @@ export function MedicalHistoryList({
   const [requestDialog, setRequestDialog] = useState<"lab" | "xray" | null>(null);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
-  const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
+  const [internalViewMode, setInternalViewMode] = useState<RecordsViewMode>("skeleton");
+  const viewMode = viewModeProp ?? internalViewMode;
+  const setViewMode = useCallback(
+    (mode: RecordsViewMode) => {
+      if (viewModeProp === undefined) setInternalViewMode(mode);
+      onViewModeChange?.(mode);
+    },
+    [viewModeProp, onViewModeChange],
+  );
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
   const [consultationOpen, setConsultationOpen] = useState(false);
   const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
