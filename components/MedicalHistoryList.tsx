@@ -479,8 +479,11 @@ export function MedicalHistoryList({
   return (
     <View
       style={[
-        !isDesktop ? styles.mobileRoot : styles.desktopRoot,
-        !isDesktop && bottomChromePad > 0 ? { paddingBottom: bottomChromePad } : null,
+        // Doctor patient page scrolls externally — avoid flex:1 locking height to the viewport.
+        doctorView || isDesktop ? styles.desktopRoot : styles.mobileRoot,
+        !isDesktop && !doctorView && bottomChromePad > 0
+          ? { paddingBottom: bottomChromePad }
+          : null,
       ]}
     >
       <View style={styles.viewToggleWrap}>

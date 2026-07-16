@@ -4,15 +4,16 @@ import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
-import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { MedicalHistoryList } from "@/components/MedicalHistoryList";
 import { useAuthStore } from "@/domains/auth/store";
 import {
@@ -137,11 +138,15 @@ export default function PatientRecordScreen() {
       ) : !hasAccess ? (
         <DoctorPatientAccessDenied isRTL={isRTL} />
       ) : (
-        <KeyboardSafeScrollView
-          style={styles.body}
+        <ScrollView
+          style={[
+            styles.body,
+            Platform.OS === "web" ? ({ overflow: "auto" } as const) : null,
+          ]}
           contentContainerStyle={styles.bodyContent}
           nestedScrollEnabled
           showsVerticalScrollIndicator
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
@@ -157,7 +162,7 @@ export default function PatientRecordScreen() {
             }}
           />
           <View style={styles.bottomSpacer} />
-        </KeyboardSafeScrollView>
+        </ScrollView>
       )}
     </View>
   );
@@ -166,7 +171,8 @@ export default function PatientRecordScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
   body: { flex: 1, minHeight: 0 },
-  bodyContent: { flexGrow: 1, paddingBottom: 48 },
+  // Do not use flexGrow:1 — it pins content to the viewport and kills scrolling on web.
+  bodyContent: { paddingBottom: 96 },
   bottomSpacer: { height: 48, width: "100%" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   header: {
