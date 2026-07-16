@@ -158,6 +158,28 @@ function mapDiagnosis(d: RawDiagnosis): MedicalRecord {
   };
 }
 
+async function resolveWebUploadFile(
+  uri: string,
+  mimeType: string,
+  fileName: string,
+  webFile?: File | Blob,
+): Promise<File> {
+  let body: Blob | File | null = webFile ?? null;
+  if (!body && (uri.startsWith("blob:") || uri.startsWith("data:"))) {
+    const response = await fetch(uri);
+    body = await response.blob();
+  }
+  if (!body) {
+    throw new Error("Could not read the selected file on web.");
+  }
+  const resolvedType =
+    mimeType ||
+    (body instanceof File ? body.type : body.type) ||
+    "application/octet-stream";
+  if (body instanceof File && body.type === resolvedType) return body;
+  return new File([body], fileName, { type: resolvedType });
+}
+
 async function appendFileToFormData(
   formData: FormData,
   fieldName: string,
@@ -167,28 +189,92 @@ async function appendFileToFormData(
   webFile?: File | Blob,
 ): Promise<void> {
   if (Platform.OS === "web") {
-    let body: Blob | File | null = webFile ?? null;
-    if (!body && (uri.startsWith("blob:") || uri.startsWith("data:"))) {
-      const response = await fetch(uri);
-      body = await response.blob();
-    }
-    if (!body) {
-      throw new Error("Could not read the selected file on web.");
-    }
-    const resolvedType =
-      mimeType ||
-      (body instanceof File ? body.type : body.type) ||
-      "application/octet-stream";
-    const payload =
-      body instanceof File && body.type === resolvedType
-        ? body
-        : new File([body], fileName, { type: resolvedType });
+    const payload = await resolveWebUploadFile(uri, mimeType, fileName, webFile);
     formData.append(fieldName, payload, fileName);
     return;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formData.append(fieldName, { uri, name: fileName, type: mimeType } as any);
+}
+
+const UPLOAD_CHUNK_BYTES = 2 * 1024 * 1024;
+/** Single-request uploads over this size (or any video) use chunked upload on web. */
+const DIRECT_UPLOAD_MAX_BYTES = 3 * 1024 * 1024;
+
+async function uploadFileChunked(
+  file: File,
+  token: string,
+): Promise<{ objectPath: string; url: string }> {
+  const totalChunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK_BYTES));
+  const initRes = await fetch(`${API_BASE}/uploads/chunk/init`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      filename: file.name,
+      mime_type: file.type || "application/octet-stream",
+      total_size: file.size,
+      total_chunks: totalChunks,
+    }),
+  });
+  const initData = await initRes.json().catch(() => ({}));
+  if (!initRes.ok) {
+    throw new Error(
+      (Array.isArray(initData?.message) ? initData.message.join(", ") : initData?.message) ??
+        initData?.error ??
+        `Upload init failed (${initRes.status})`,
+    );
+  }
+  const uploadId = initData.upload_id as string | undefined;
+  if (!uploadId) throw new Error("Upload session was not created");
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+    const start = chunkIndex * UPLOAD_CHUNK_BYTES;
+    const end = Math.min(start + UPLOAD_CHUNK_BYTES, file.size);
+    const formData = new FormData();
+    formData.append("upload_id", uploadId);
+    formData.append("chunk_index", String(chunkIndex));
+    formData.append("chunk", file.slice(start, end), `${file.name}.part${chunkIndex}`);
+
+    const chunkRes = await fetch(`${API_BASE}/uploads/chunk`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const chunkData = await chunkRes.json().catch(() => ({}));
+    if (!chunkRes.ok) {
+      throw new Error(
+        (Array.isArray(chunkData?.message)
+          ? chunkData.message.join(", ")
+          : chunkData?.message) ??
+          chunkData?.error ??
+          `Chunk upload failed (${chunkRes.status})`,
+      );
+    }
+  }
+
+  const completeRes = await fetch(`${API_BASE}/uploads/chunk/complete`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ upload_id: uploadId }),
+  });
+  const completeData = await completeRes.json().catch(() => ({}));
+  if (!completeRes.ok) {
+    throw new Error(
+      (Array.isArray(completeData?.message)
+        ? completeData.message.join(", ")
+        : completeData?.message) ??
+        completeData?.error ??
+        `Upload complete failed (${completeRes.status})`,
+    );
+  }
+  return completeData as { objectPath: string; url: string };
 }
 
 async function authJson<T>(
@@ -222,16 +308,53 @@ export async function uploadFile(
   token: string,
   webFile?: File | Blob,
 ): Promise<{ objectPath: string; url: string }> {
+  // Videos / larger files often fail as a single POST against Cloud Run ("Failed to fetch").
+  if (Platform.OS === "web") {
+    const file = await resolveWebUploadFile(uri, mimeType, fileName, webFile);
+    const isVideo =
+      mimeType.startsWith("video/") || file.type.startsWith("video/");
+    if (isVideo || file.size > DIRECT_UPLOAD_MAX_BYTES) {
+      try {
+        return await uploadFileChunked(file, token);
+      } catch (e) {
+        const msg = (e as Error)?.message ?? "";
+        // Older APIs only allowed PDF/DOCX for chunked uploads — fall back to direct.
+        if (!/pdf|docx|not allowed/i.test(msg)) throw e;
+      }
+    }
+
+    const formData = new FormData();
+    formData.append("file", file, fileName);
+    return postDirectUpload(formData, token);
+  }
+
   const formData = new FormData();
   await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
+  return postDirectUpload(formData, token);
+}
 
-  const res = await fetch(`${API_BASE}/uploads/file`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
+async function postDirectUpload(
+  formData: FormData,
+  token: string,
+): Promise<{ objectPath: string; url: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/uploads/file`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+  } catch (e) {
+    const msg = (e as Error)?.message ?? "Failed to fetch";
+    if (msg === "Failed to fetch" || (e as Error)?.name === "TypeError") {
+      throw new Error(
+        "Could not reach the upload server. Try a smaller file or check your connection.",
+      );
+    }
+    throw e;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(
@@ -303,18 +426,24 @@ export async function fetchPatientMedicalHistoryAsDoctor(
   patientUserId: string,
   token: string,
 ): Promise<MedicalRecord[]> {
-  const [documents, diagnoses, prescriptions] = await Promise.all([
+  const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
     authJson<RawDocument[]>(`/medical-documents/patient/${patientUserId}`, token),
     authJson<RawDiagnosis[]>(
       `/diagnosis?patient_id=${encodeURIComponent(patientUserId)}`,
       token,
     ),
     fetchPrescriptionsForPatientUser(patientUserId, token),
+    fetchIntakeExamsForPatient(patientUserId, token).catch(() => [] as MedicalRecord[]),
   ]);
+  // Doctors only see submitted exams (API also filters; keep FE guard for older backends).
+  const completedIntake = intakeExams.filter(
+    (r) => r.category === "intake" && r.intakeExam?.status === "completed",
+  );
   return [
     ...(Array.isArray(diagnoses) ? diagnoses : []).map(mapDiagnosis),
     ...(Array.isArray(prescriptions) ? prescriptions : []),
     ...(Array.isArray(documents) ? documents : []).map(mapDocument),
+    ...completedIntake,
   ];
 }
 
@@ -482,7 +611,10 @@ export async function fetchAllMedicalHistory(
       fetchPrescriptionsForPatientUser(patientId, token),
       fetchIntakeExamsForPatient(patientId, token).catch(() => [] as MedicalRecord[]),
     ]);
-    return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
+    const completedIntake = intakeExams.filter(
+      (r) => r.category === "intake" && r.intakeExam?.status === "completed",
+    );
+    return [...diagnoses, ...prescriptions, ...documents, ...completedIntake];
   }
   const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
     fetchPatientDocuments(patientId, token),

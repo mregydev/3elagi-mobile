@@ -2,6 +2,7 @@ export type IntakeQuestionType =
   | "text"
   | "single_choice"
   | "multi_choice"
+  | "image"
   | "video"
   | "audio"
   | "guidance";

@@ -73,8 +73,7 @@ export function ChatMessageBubble({
   const imageWidth = useMemo(() => Math.min(240, maxBubbleWidth), [maxBubbleWidth]);
   const imageHeight = useMemo(() => Math.round(imageWidth * 0.72), [imageWidth]);
 
-  const openMedicalLink = () => {
-    if (!item.medicalLink) return;
+  const openMedicalRecord = (recordId: string) => {
     if (!canOpenMedicalLink) {
       Alert.alert(
         isRTL ? "لا يوجد صلاحية" : "No access",
@@ -87,11 +86,32 @@ export function ChatMessageBubble({
     router.push({
       pathname: "/medical/[id]",
       params: {
-        id: item.medicalLink.record_id,
+        id: recordId,
         doctorView: patientUserId ? "1" : "0",
         patientUserId: patientUserId ?? "",
       },
     });
+  };
+
+  const openMedicalLink = () => {
+    if (!item.medicalLink) return;
+    openMedicalRecord(item.medicalLink.record_id);
+  };
+
+  const openConsultationDiagnosis = () => {
+    const meta = item.consultationAction;
+    if (!meta || meta.action !== "end") return;
+    const diagnosisId = meta.diagnosis_id?.trim();
+    if (!diagnosisId) {
+      Alert.alert(
+        isRTL ? "لا يوجد تشخيص" : "No diagnosis",
+        isRTL
+          ? "لا يوجد تشخيص مرتبط بهذه الاستشارة."
+          : "There is no diagnosis linked to this consultation.",
+      );
+      return;
+    }
+    openMedicalRecord(diagnosisId);
   };
 
   const playVoice = async () => {
@@ -480,123 +500,160 @@ export function ChatMessageBubble({
       meta.action === "start" && meta.reserved_points
         ? t.consultations.reservedInThread(formatEgp(meta.reserved_points, t))
         : reasonLabel;
-    body = (
-      <View style={styles.medicalBody}>
-        <View
-          style={[
-            styles.medicalCard,
-            {
-              flexDirection: rowDir,
-              backgroundColor: `${accent}0F`,
-              borderColor: `${accent}33`,
-            },
-          ]}
-        >
-          <View style={[styles.medicalIconWrap, { backgroundColor: `${accent}22` }]}>
-            <Stethoscope size={20} color={accent} />
-          </View>
-          <View style={styles.medicalTextWrap}>
-            <View style={[styles.consultRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-              <Text
-                style={[styles.medicalTitle, { color: colors.foreground }]}
-                numberOfLines={1}
-              >
-                {title}
+    const canOpenDiagnosis =
+      meta.action === "end" && !!meta.diagnosis_id?.trim();
+    const card = (
+      <>
+        <View style={[styles.medicalIconWrap, { backgroundColor: `${accent}22` }]}>
+          <Stethoscope size={20} color={accent} />
+        </View>
+        <View style={styles.medicalTextWrap}>
+          <View style={[styles.consultRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+            <Text
+              style={[styles.medicalTitle, { color: colors.foreground }]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            {detail ? (
+              <Text style={[styles.consultMeta, { color: accent }]} numberOfLines={1}>
+                {detail}
               </Text>
-              {detail ? (
-                <Text style={[styles.consultMeta, { color: accent }]} numberOfLines={1}>
-                  {detail}
-                </Text>
-              ) : null}
-            </View>
-            {item.text?.trim() ? (
+            ) : null}
+          </View>
+          {item.text?.trim() ? (
+            <Text
+              style={[
+                styles.consultDesc,
+                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {item.text.trim()}
+            </Text>
+          ) : null}
+          {meta.action === "end" && meta.diagnosis_summary ? (
+            <View style={styles.consultDiagnosis}>
               <Text
                 style={[
-                  styles.consultDesc,
+                  styles.consultDiagnosisHeading,
+                  { color: accent, textAlign: isRTL ? "right" : "left" },
+                ]}
+              >
+                {isRTL ? "التشخيص" : "Diagnosis"}
+              </Text>
+              <Text
+                style={[
+                  styles.consultDiagnosisDesc,
                   { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
                 ]}
               >
-                {item.text.trim()}
+                {meta.diagnosis_summary.desc}
               </Text>
-            ) : null}
-            {meta.action === "end" && meta.diagnosis_summary ? (
-              <View style={styles.consultDiagnosis}>
-                <Text
-                  style={[
-                    styles.consultDiagnosisHeading,
-                    { color: accent, textAlign: isRTL ? "right" : "left" },
-                  ]}
-                >
-                  {isRTL ? "التشخيص" : "Diagnosis"}
-                </Text>
-                <Text
-                  style={[
-                    styles.consultDiagnosisDesc,
-                    { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-                  ]}
-                >
-                  {meta.diagnosis_summary.desc}
-                </Text>
-                {meta.diagnosis_summary.symptoms?.length ? (
-                  <View style={styles.consultDiagnosisBlock}>
+              {meta.diagnosis_summary.symptoms?.length ? (
+                <View style={styles.consultDiagnosisBlock}>
+                  <Text
+                    style={[
+                      styles.consultDiagnosisSub,
+                      { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                    ]}
+                  >
+                    {isRTL ? "الأعراض" : "Symptoms"}
+                  </Text>
+                  {meta.diagnosis_summary.symptoms.map((symptom, index) => (
                     <Text
+                      key={`${symptom.desc}-${index}`}
                       style={[
-                        styles.consultDiagnosisSub,
-                        { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                        styles.consultDiagnosisLine,
+                        { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
                       ]}
                     >
-                      {isRTL ? "الأعراض" : "Symptoms"}
+                      • {symptom.desc}
                     </Text>
-                    {meta.diagnosis_summary.symptoms.map((symptom, index) => (
+                  ))}
+                </View>
+              ) : null}
+              {meta.diagnosis_summary.linked_records?.length ? (
+                <View style={styles.consultDiagnosisBlock}>
+                  <Text
+                    style={[
+                      styles.consultDiagnosisSub,
+                      { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+                    ]}
+                  >
+                    {isRTL ? "نتائج مرتبطة" : "Linked results"}
+                  </Text>
+                  {meta.diagnosis_summary.linked_records.map((record) => {
+                    const typeLabel =
+                      record.record_type === "lab"
+                        ? isRTL
+                          ? "مختبر"
+                          : "Lab"
+                        : isRTL
+                          ? "أشعة"
+                          : "X-ray";
+                    return (
                       <Text
-                        key={`${symptom.desc}-${index}`}
+                        key={record.id}
                         style={[
                           styles.consultDiagnosisLine,
                           { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
                         ]}
                       >
-                        • {symptom.desc}
+                        {typeLabel}: {record.title}
                       </Text>
-                    ))}
-                  </View>
-                ) : null}
-                {meta.diagnosis_summary.linked_records?.length ? (
-                  <View style={styles.consultDiagnosisBlock}>
-                    <Text
-                      style={[
-                        styles.consultDiagnosisSub,
-                        { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-                      ]}
-                    >
-                      {isRTL ? "نتائج مرتبطة" : "Linked results"}
-                    </Text>
-                    {meta.diagnosis_summary.linked_records.map((record) => {
-                      const typeLabel =
-                        record.record_type === "lab"
-                          ? isRTL
-                            ? "مختبر"
-                            : "Lab"
-                          : isRTL
-                            ? "أشعة"
-                            : "X-ray";
-                      return (
-                        <Text
-                          key={record.id}
-                          style={[
-                            styles.consultDiagnosisLine,
-                            { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-                          ]}
-                        >
-                          {typeLabel}: {record.title}
-                        </Text>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {canOpenDiagnosis ? (
+            <Text
+              style={[
+                styles.medicalHint,
+                { color: accent, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {isRTL ? "اضغط لعرض التشخيص" : "Tap to view diagnosis"}
+            </Text>
+          ) : null}
         </View>
+        {canOpenDiagnosis ? <ChevronRight size={18} color={accent} /> : null}
+      </>
+    );
+    body = (
+      <View style={styles.medicalBody}>
+        {canOpenDiagnosis ? (
+          <Pressable
+            onPress={openConsultationDiagnosis}
+            onLongPress={onLongPress}
+            delayLongPress={400}
+            style={({ pressed }) => [
+              styles.medicalCard,
+              {
+                flexDirection: rowDir,
+                opacity: pressed ? 0.85 : 1,
+                backgroundColor: `${accent}0F`,
+                borderColor: `${accent}33`,
+              },
+            ]}
+          >
+            {card}
+          </Pressable>
+        ) : (
+          <View
+            style={[
+              styles.medicalCard,
+              {
+                flexDirection: rowDir,
+                backgroundColor: `${accent}0F`,
+                borderColor: `${accent}33`,
+              },
+            ]}
+          >
+            {card}
+          </View>
+        )}
       </View>
     );
   }

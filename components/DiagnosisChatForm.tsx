@@ -24,7 +24,11 @@ import {
   type DiagnosisIntakeAttach,
   type DiagnosisPrescriptionAttach,
 } from "@/domains/medical/api";
-import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
+import {
+  inferBodyPartFromText,
+  parseBodyPart,
+  type BodyPart,
+} from "@/domains/medical/bodyParts";
 import type { MedicalRecord, PrescriptionMedication } from "@/domains/medical/types";
 import { useApiLang } from "@/hooks/useApiLang";
 import { useColors } from "@/hooks/useColors";
@@ -196,7 +200,14 @@ export function DiagnosisChatForm({
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
       setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
       setSelectedDocumentIds(result.document_ids ?? []);
-      const part = parseBodyPart(result.body_part);
+      const linkedTitles = linkableDocs
+        .filter((d) => (result.document_ids ?? []).includes(d.id))
+        .map((d) => d.title);
+      const fromAi = parseBodyPart(result.body_part);
+      const part =
+        fromAi && fromAi !== "general"
+          ? fromAi
+          : inferBodyPartFromText(desc, ...symptoms, ...linkedTitles) ?? fromAi;
       if (part) setBodyPart(part);
     } catch (err) {
       showAppAlert(
@@ -554,8 +565,8 @@ export function DiagnosisChatForm({
       </Text>
       <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
         {isRTL
-          ? "اربط روشتة موجودة أو أنشئ واحدة — ويمكن طلب مسودة بالذكاء الاصطناعي من أدوية بلد المريض فقط للمراجعة."
-          : "Attach an existing Rx or create one — optional AI draft uses meds available in the patient's country for your review."}
+          ? "اربط روشتة موجودة أو أنشئ واحدة — ويمكن الإكمال بالذكاء الاصطناعي من أدوية بلد المريض للمراجعة."
+          : "Attach an existing Rx or create one — optional Complete with AI uses meds available in the patient's country for your review."}
       </Text>
       <View style={[styles.modeRow, { flexDirection: dir }]}>
         {modeChip(isRTL ? "بدون" : "None", rxMode === "none", () => setRxMode("none"))}
@@ -616,9 +627,7 @@ export function DiagnosisChatForm({
               <Sparkles size={16} color={colors.primary} />
             )}
             <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
-              {isRTL
-                ? "مسودة روشتة بالذكاء الاصطناعي (حسب بلد المريض)"
-                : "AI draft prescription (patient country meds)"}
+              {t.records.completeWithAi}
             </Text>
           </Pressable>
           <AppTextInput

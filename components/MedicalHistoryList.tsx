@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import {
   Activity,
@@ -8,11 +9,12 @@ import {
   FileText,
   Pill,
   ScanLine,
+  Stethoscope,
   X,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  FlatList,
+  Alert,
   Image,
   Linking,
   Modal,
@@ -24,7 +26,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
+import type { DiagnosisSubmitPayload } from "@/components/DiagnosisChatForm";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
+import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
 import { BodySkeletonView, bodyFigureViewportHeight } from "@/components/records/BodySkeletonView";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
 import { MedicalRecordAddBar } from "@/components/records/MedicalRecordAddBar";
@@ -43,12 +48,14 @@ import {
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
 import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
+import { fetchActiveConsultation } from "@/domains/consultations/api";
 import {
   EMPTY_MEDICAL_FILTERS,
   filterMedicalRecords,
   hasActiveFilters,
   type MedicalHistoryFilters,
 } from "@/domains/medical/search";
+import { createDiagnosis } from "@/domains/medical/api";
 import { useAuthStore } from "@/domains/auth/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
@@ -79,6 +86,7 @@ export interface MedicalHistoryListProps {
   canAdd?: boolean;
   doctorView?: boolean;
   showIntake?: boolean;
+  onRecordsChanged?: () => void;
 }
 
 export function MedicalHistoryList({
@@ -87,12 +95,14 @@ export function MedicalHistoryList({
   canAdd = true,
   doctorView = false,
   showIntake = SHOW_INTAKE_RECORDS,
+  onRecordsChanged,
 }: MedicalHistoryListProps) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
   const role = useAuthStore((s) => s.role);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const doctorId = useAuthStore((s) => s.doctorId);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
@@ -101,6 +111,40 @@ export function MedicalHistoryList({
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
   const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
+  const [consultationOpen, setConsultationOpen] = useState(false);
+  const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
+  const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
+  const [savingDiagnosis, setSavingDiagnosis] = useState(false);
+  const [intakeExamModalOpen, setIntakeExamModalOpen] = useState(false);
+
+  // Doctors add via clinical pills during an open consult — hide generic add chrome.
+  const showAddChrome = canAdd && !doctorView;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!doctorView || !accessToken || !patientUserId) {
+        setConsultationOpen(false);
+        setActiveConsultationId(undefined);
+        return;
+      }
+      let cancelled = false;
+      void fetchActiveConsultation(patientUserId, accessToken)
+        .then((c) => {
+          if (cancelled) return;
+          const open = c?.status === "open";
+          setConsultationOpen(open);
+          setActiveConsultationId(open ? c?.id : undefined);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setConsultationOpen(false);
+          setActiveConsultationId(undefined);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [doctorView, accessToken, patientUserId]),
+  );
 
   const visibleCategories = showIntake
     ? CATEGORIES
@@ -162,6 +206,45 @@ export function MedicalHistoryList({
         isPatient: role?.toLowerCase() === "patient",
       }) as never,
     );
+  };
+
+  const openPrescriptionScreen = () => {
+    if (!consultationOpen) return;
+    router.push({
+      pathname: "/medical/prescription/add",
+      params: { patientUserId },
+    });
+  };
+
+  const handleDiagnosisSubmit = async (payload: DiagnosisSubmitPayload) => {
+    if (!accessToken || !doctorId || !consultationOpen) return;
+    setSavingDiagnosis(true);
+    try {
+      await createDiagnosis(
+        {
+          desc: payload.description,
+          patient_id: patientUserId,
+          doctor_id: doctorId,
+          symptoms: payload.symptoms.map((desc) => ({ desc })),
+          document_ids: payload.documentIds.length > 0 ? payload.documentIds : undefined,
+          body_part: payload.bodyPart,
+          prescription_id: payload.prescription_id,
+          prescription: payload.prescription,
+          intake_exam_assignment_id: payload.intake_exam_assignment_id,
+          intake_exam: payload.intake_exam,
+        },
+        accessToken,
+      );
+      setDiagnosisModalOpen(false);
+      onRecordsChanged?.();
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "تعذر الحفظ" : "Could not save",
+        e instanceof Error ? e.message : isRTL ? "حاول مرة أخرى." : "Please try again.",
+      );
+    } finally {
+      setSavingDiagnosis(false);
+    }
   };
 
   const handleFiltersChange = (next: MedicalHistoryFilters) => {
@@ -254,19 +337,17 @@ export function MedicalHistoryList({
                 {isRTL ? "لا توجد نتائج للبحث" : "No matches for your search"}
               </Text>
             ) : (
-              <FlatList
-                data={items}
-                scrollEnabled={false}
-                keyExtractor={(r) => r.id}
-                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                renderItem={({ item }) => {
+              <View style={styles.recordList}>
+                {items.map((item, index) => {
                   const isImg =
                     !!item.fileUrl &&
                     isMedicalImageAttachment(item.fileUrl, item.fileName);
                   return (
                     <View
+                      key={item.id}
                       style={[
                         styles.recordCard,
+                        index > 0 ? styles.recordCardSpaced : null,
                         { backgroundColor: colors.card, borderColor: colors.border },
                       ]}
                     >
@@ -379,8 +460,8 @@ export function MedicalHistoryList({
                       </Pressable>
                     </View>
                   );
-                }}
-              />
+                })}
+              </View>
             )}
           </>
         )}
@@ -391,7 +472,7 @@ export function MedicalHistoryList({
   const splitHeight = bodyFigureViewportHeight(screenHeight, screenWidth);
 
   const bottomChromePad = recordsBottomChromeHeight({
-    canAdd,
+    canAdd: showAddChrome,
     extra: 0,
   });
 
@@ -406,7 +487,7 @@ export function MedicalHistoryList({
         <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
       </View>
 
-      {doctorView && accessToken ? (
+      {doctorView && accessToken && consultationOpen ? (
         <View style={[styles.requestPills, { flexDirection: dir }]}>
           <Pressable
             onPress={() => setRequestDialog("lab")}
@@ -430,6 +511,42 @@ export function MedicalHistoryList({
             <ScanLine size={14} color={colors.primary} />
             <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
               {t.records.requestXray}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={openPrescriptionScreen}
+            style={[
+              styles.requestPill,
+              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+            ]}
+          >
+            <Pill size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
+              {isRTL ? "روشتة جديدة" : "Add prescription"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setDiagnosisModalOpen(true)}
+            style={[
+              styles.requestPill,
+              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+            ]}
+          >
+            <Stethoscope size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
+              {isRTL ? "تشخيص جديد" : "Add diagnosis"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setIntakeExamModalOpen(true)}
+            style={[
+              styles.requestPill,
+              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+            ]}
+          >
+            <ClipboardList size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
+              {isRTL ? "فحص متابعة" : "Follow-up exam"}
             </Text>
           </Pressable>
         </View>
@@ -489,18 +606,18 @@ export function MedicalHistoryList({
         recordsPanel
       )}
 
-      {isDesktop && canAdd ? (
+      {isDesktop && showAddChrome ? (
         <MedicalRecordAddBar
           onAdd={openAdd}
-          showDiagnosis={doctorView}
+          showDiagnosis={false}
           layout="inline"
         />
       ) : null}
-      {!isDesktop ? (
+      {!isDesktop && showAddChrome ? (
         <RecordsBottomChrome
-          canAdd={canAdd}
+          canAdd
           onAdd={openAdd}
-          showDiagnosis={doctorView}
+          showDiagnosis={false}
         />
       ) : null}
 
@@ -511,6 +628,35 @@ export function MedicalHistoryList({
           accessToken={accessToken}
           initialType={requestDialog}
           onClose={() => setRequestDialog(null)}
+        />
+      ) : null}
+
+      {doctorView && accessToken ? (
+        <DiagnosisChatModal
+          visible={diagnosisModalOpen}
+          isRTL={isRTL}
+          patientUserId={patientUserId}
+          accessToken={accessToken}
+          consultationId={activeConsultationId}
+          saving={savingDiagnosis}
+          onClose={() => {
+            if (savingDiagnosis) return;
+            setDiagnosisModalOpen(false);
+          }}
+          onSubmit={(payload) => void handleDiagnosisSubmit(payload)}
+        />
+      ) : null}
+
+      {doctorView && accessToken ? (
+        <AssignIntakeExamDialog
+          visible={intakeExamModalOpen}
+          isRTL={isRTL}
+          patientUserId={patientUserId}
+          accessToken={accessToken}
+          onClose={() => setIntakeExamModalOpen(false)}
+          onAssigned={() => {
+            onRecordsChanged?.();
+          }}
         />
       ) : null}
 
@@ -558,6 +704,7 @@ const styles = StyleSheet.create({
   },
   desktopRoot: {
     width: "100%",
+    paddingBottom: 72,
   },
   viewToggleWrap: { paddingHorizontal: 16, paddingTop: 8, flexShrink: 0 },
   requestPills: {
@@ -565,6 +712,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     gap: 8,
     flexShrink: 0,
+    flexWrap: "wrap",
+    alignItems: "center",
   },
   requestPill: {
     flexDirection: "row",
@@ -578,11 +727,13 @@ const styles = StyleSheet.create({
   splitRow: {
     marginTop: 8,
     marginHorizontal: 8,
+    marginBottom: 40,
     overflow: "hidden",
     backgroundColor: "transparent",
   },
   skeletonOnly: {
     marginTop: 8,
+    marginBottom: 40,
     width: "100%",
     alignItems: "center",
   },
@@ -594,6 +745,7 @@ const styles = StyleSheet.create({
     flex: 4,
     borderRightWidth: StyleSheet.hairlineWidth,
     padding: 10,
+    paddingBottom: 28,
     backgroundColor: "transparent",
   },
   splitRecords: {
@@ -638,7 +790,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 4,
   },
+  recordList: { gap: 0 },
   recordCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  recordCardSpaced: { marginTop: 8 },
   recordThumb: { width: "100%", height: 160 },
   recordPdfBox: {
     height: 110,

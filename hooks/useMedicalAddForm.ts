@@ -18,7 +18,11 @@ import {
   uploadFile,
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
-import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
+import {
+  inferBodyPartFromText,
+  parseBodyPart,
+  type BodyPart,
+} from "@/domains/medical/bodyParts";
 import type {
   MedicalAiInsight,
   MedicalCategory,
@@ -279,7 +283,14 @@ export function useMedicalAddForm() {
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
       setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
       setSelectedDocumentIds(result.document_ids ?? []);
-      const part = parseBodyPart(result.body_part);
+      const linkedTitles = linkableDocs
+        .filter((d) => (result.document_ids ?? []).includes(d.id))
+        .map((d) => d.title);
+      const fromAi = parseBodyPart(result.body_part);
+      const part =
+        fromAi && fromAi !== "general"
+          ? fromAi
+          : inferBodyPartFromText(desc, ...symptoms, ...linkedTitles) ?? fromAi;
       if (part) setBodyPart(part);
     } catch (e) {
       showAppAlert(isRTL ? "فشل الإكمال" : "AI complete failed", (e as Error).message);

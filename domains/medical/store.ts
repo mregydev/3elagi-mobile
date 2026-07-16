@@ -24,6 +24,7 @@ interface MedicalState {
   upsertDiagnosis: (record: MedicalRecord) => void;
   upsertPrescription: (record: MedicalRecord) => void;
   upsertDocument: (record: MedicalRecord) => void;
+  upsertIntake: (record: MedicalRecord) => void;
   clear: () => void;
   add: (input: {
     ownerId: string;
@@ -76,6 +77,11 @@ export const useMedicalStore = create<MedicalState>((set, get) => ({
     });
   },
   upsertDocument: (record) =>
+    set((state) => {
+      const rest = state.records.filter((r) => r.id !== record.id);
+      return { records: sortByDate([record, ...rest]) };
+    }),
+  upsertIntake: (record) =>
     set((state) => {
       const rest = state.records.filter((r) => r.id !== record.id);
       return { records: sortByDate([record, ...rest]) };

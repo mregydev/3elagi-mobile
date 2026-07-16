@@ -23,11 +23,17 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
+import { viewportPortal } from "@/utils/viewportPortal";
 
 /** FAB size — used by pages that need bottom padding clearance. */
 export const ASK_3ELAGI_AI_FAB_SIZE = 56;
+/** Gap from the viewport edge. */
+export const ASK_3ELAGI_AI_FAB_CHROME_GAP = 8;
 /** Distinct red so the floating Ask 3elagi AI control stands out from primary CTAs. */
 const ASK_3ELAGI_AI_FAB_RED = "#e11d48";
+const ASK_3ELAGI_AI_FAB_RED_SOFT = "rgba(255, 255, 255, 0.18)";
+const ASK_3ELAGI_AI_FAB_ON_RED = "#ffffff";
+const ASK_3ELAGI_AI_FAB_ON_RED_MUTED = "rgba(255, 255, 255, 0.82)";
 const ASK_3ELAGI_AI_FAB_RED_SHADOW =
   "0 10px 28px rgba(225, 29, 72, 0.45), 0 4px 12px rgba(15, 23, 42, 0.18)";
 
@@ -132,7 +138,7 @@ function Ask3elagiAiPanel() {
   const panelStyle = isDesktop
     ? {
         top: undefined as number | undefined,
-        bottom: Math.max(insets.bottom, 12) + 8,
+        bottom: Math.max(insets.bottom, 12) + ASK_3ELAGI_AI_FAB_CHROME_GAP,
         ...(isRTL
           ? { left: 16, right: undefined as number | undefined }
           : { right: 16, left: undefined as number | undefined }),
@@ -166,14 +172,19 @@ function Ask3elagiAiPanel() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.panel, panelStyle, webShadow]}
+      style={[
+        styles.panel,
+        panelStyle,
+        webShadow,
+        Platform.OS === "web" ? ({ position: "fixed" } as const) : null,
+      ]}
     >
       <View
         style={[
           styles.panelInner,
           {
             backgroundColor: colors.card,
-            borderColor: colors.primary,
+            borderColor: ASK_3ELAGI_AI_FAB_RED,
             borderWidth: isDesktop ? 2 : 0,
             borderRadius: panelStyle.borderRadius,
           },
@@ -184,19 +195,19 @@ function Ask3elagiAiPanel() {
           styles.panelHeader,
           {
             flexDirection: dir,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.secondary,
+            borderBottomColor: "rgba(255, 255, 255, 0.22)",
+            backgroundColor: ASK_3ELAGI_AI_FAB_RED,
           },
         ]}
       >
         <View style={[styles.headerLeft, { flexDirection: dir, flex: 1 }]}>
           <View
-            style={[styles.iconBubble, { backgroundColor: `${colors.primary}14` }]}
+            style={[styles.iconBubble, { backgroundColor: ASK_3ELAGI_AI_FAB_RED_SOFT }]}
           >
-            <Bot size={16} color={colors.primary} />
+            <Bot size={16} color={ASK_3ELAGI_AI_FAB_ON_RED} />
           </View>
           <Text
-            style={[styles.title, { color: colors.foreground, flexShrink: 1 }]}
+            style={[styles.title, { color: ASK_3ELAGI_AI_FAB_ON_RED, flexShrink: 1 }]}
             numberOfLines={1}
           >
             {t.records.ask3elagiAi}
@@ -210,11 +221,11 @@ function Ask3elagiAiPanel() {
             accessibilityLabel={t.records.ask3elagiAiNewChat}
             style={[
               styles.newChatBtn,
-              { backgroundColor: `${colors.primary}14`, flexDirection: dir },
+              { backgroundColor: ASK_3ELAGI_AI_FAB_RED_SOFT, flexDirection: dir },
             ]}
           >
-            <Plus size={14} color={colors.primary} />
-            <Text style={[styles.newChatLabel, { color: colors.primary }]}>
+            <Plus size={14} color={ASK_3ELAGI_AI_FAB_ON_RED} />
+            <Text style={[styles.newChatLabel, { color: ASK_3ELAGI_AI_FAB_ON_RED }]}>
               {t.records.ask3elagiAiNewChat}
             </Text>
           </Pressable>
@@ -226,7 +237,7 @@ function Ask3elagiAiPanel() {
               accessibilityLabel="Minimize"
               style={styles.iconBtn}
             >
-              <Minus size={18} color={colors.mutedForeground} />
+              <Minus size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
             </Pressable>
           ) : null}
           <Pressable
@@ -236,7 +247,7 @@ function Ask3elagiAiPanel() {
             accessibilityLabel="Close"
             style={styles.iconBtn}
           >
-            <X size={18} color={colors.mutedForeground} />
+            <X size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
           </Pressable>
         </View>
       </View>
@@ -328,9 +339,9 @@ function Ask3elagiAiPanel() {
 
 /** Global floating Ask 3elagi AI chat — mount once in the root layout. */
 export function Ask3elagiAiWidget() {
-  const colors = useColors();
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useWebLayout();
   const pathname = usePathname();
   const segments = useSegments();
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -345,6 +356,8 @@ export function Ask3elagiAiWidget() {
   const roleOk =
     role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
   const hidden = shouldHideOnRoute(pathname, segments as string[]);
+  // Circle icon-only on native + mobile web; labeled pill on desktop web.
+  const iconOnlyFab = Platform.OS !== "web" || !isDesktop;
 
   useEffect(() => {
     if (!signedIn || !roleOk || hidden) closeWidget();
@@ -352,9 +365,14 @@ export function Ask3elagiAiWidget() {
 
   if (!hydrated || !signedIn || !roleOk || hidden) return null;
 
-  const side = isRTL ? { left: 16 } : { right: 16 };
+  const edge = 16;
+  const bottom = Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP);
+  // Bottom-right in English (LTR), bottom-left in Arabic (RTL).
+  const sideStyle = isRTL
+    ? { left: edge, right: undefined as number | undefined }
+    : { right: edge, left: undefined as number | undefined };
 
-  return (
+  const content = (
     <View style={styles.host} pointerEvents="box-none">
       {open ? <Ask3elagiAiPanel /> : null}
 
@@ -362,10 +380,10 @@ export function Ask3elagiAiWidget() {
         <Pressable
           onPress={() => openWidget(undefined, patientUserIdFromPath(pathname))}
           style={[
-            styles.fab,
-            side,
+            iconOnlyFab ? styles.fabCircle : styles.fab,
+            sideStyle,
             {
-              bottom: Math.max(insets.bottom, 12) + 16,
+              bottom,
               backgroundColor: ASK_3ELAGI_AI_FAB_RED,
               shadowColor: ASK_3ELAGI_AI_FAB_RED,
             },
@@ -376,24 +394,42 @@ export function Ask3elagiAiWidget() {
           accessibilityRole="button"
           accessibilityLabel={t.records.ask3elagiAi}
         >
-          <Bot size={22} color="#fff" />
-          <Text style={styles.fabLabel} numberOfLines={1}>
-            {t.records.ask3elagiAi}
-          </Text>
+          {iconOnlyFab ? (
+            <Bot size={26} color="#fff" />
+          ) : (
+            <>
+              <Bot size={22} color="#fff" />
+              <Text style={styles.fabLabel} numberOfLines={1}>
+                {t.records.ask3elagiAi}
+              </Text>
+            </>
+          )}
         </Pressable>
       ) : null}
     </View>
   );
+
+  return viewportPortal(content);
 }
 
 const styles = StyleSheet.create({
   host: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 200,
-    elevation: 200,
+    zIndex: 10000,
+    elevation: 10000,
+    ...(Platform.OS === "web"
+      ? ({
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          pointerEvents: "box-none",
+        } as const)
+      : null),
   },
   fab: {
-    position: "absolute",
+    position: Platform.OS === "web" ? ("fixed" as const) : "absolute",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -404,6 +440,20 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 14,
+    zIndex: 10001,
+  },
+  fabCircle: {
+    position: Platform.OS === "web" ? ("fixed" as const) : "absolute",
+    width: ASK_3ELAGI_AI_FAB_SIZE,
+    height: ASK_3ELAGI_AI_FAB_SIZE,
+    borderRadius: ASK_3ELAGI_AI_FAB_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 14,
+    zIndex: 10001,
   },
   fabLabel: {
     color: "#fff",

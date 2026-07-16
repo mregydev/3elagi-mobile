@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type ViewStyle,
 } from "react-native";
@@ -28,6 +27,15 @@ const RECURRENCE_OPTIONS: { value: IntakeExamRecurrence; labelEn: string; labelA
   { value: "monthly", labelEn: "Monthly", labelAr: "شهري" },
   { value: "yearly", labelEn: "Yearly", labelAr: "سنوي" },
 ];
+
+function defaultDeadlineDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 interface Props {
   visible: boolean;
@@ -53,20 +61,25 @@ export function AssignIntakeExamDialog({
   const [tests, setTests] = useState<IntakeTestTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [deadlineDate, setDeadlineDate] = useState("");
+  const [deadlineDate, setDeadlineDate] = useState(defaultDeadlineDate);
   const [deadlineTime, setDeadlineTime] = useState("09:00");
-  const [recurrence, setRecurrence] = useState<IntakeExamRecurrence>("none");
+  const [recurrence, setRecurrence] = useState<IntakeExamRecurrence>("weekly");
   const [interval, setInterval] = useState("1");
   const [assigning, setAssigning] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
 
   useEffect(() => {
     if (!visible || !accessToken) return;
+    setDeadlineDate(defaultDeadlineDate());
+    setDeadlineTime("09:00");
+    setRecurrence("weekly");
+    setInterval("1");
     setLoading(true);
     void fetchIntakeTests(accessToken)
       .then((rows) => {
-        setTests(rows.filter((t) => t.is_active));
-        setSelectedId(rows[0]?.id ?? null);
+        const active = rows.filter((t) => t.is_active);
+        setTests(active);
+        setSelectedId(active[0]?.id ?? null);
       })
       .catch((e) => Alert.alert(isRTL ? "خطأ" : "Error", (e as Error).message))
       .finally(() => setLoading(false));
@@ -81,7 +94,18 @@ export function AssignIntakeExamDialog({
     if (!selectedId || !deadlineDate.trim()) {
       Alert.alert(
         isRTL ? "بيانات ناقصة" : "Missing data",
-        isRTL ? "اختر فحصًا وحدد الموعد النهائي." : "Select an exam and set a deadline.",
+        isRTL
+          ? "اختر فحصًا وأدخل الموعد النهائي."
+          : "Select an exam and enter a deadline.",
+      );
+      return;
+    }
+    if (!recurrence) {
+      Alert.alert(
+        isRTL ? "بيانات ناقصة" : "Missing data",
+        isRTL
+          ? "حدد عدد مرات تكرار الفحص."
+          : "Choose how often the exam should happen.",
       );
       return;
     }
@@ -112,6 +136,26 @@ export function AssignIntakeExamDialog({
   };
 
   const isWeb = Platform.OS === "web";
+  const frequencyHint =
+    recurrence === "weekly"
+      ? isRTL
+        ? "سيُطلب من المريض إعادة الفحص كل أسبوع."
+        : "The patient will be asked to repeat this exam every week."
+      : recurrence === "monthly"
+        ? isRTL
+          ? "سيُطلب من المريض إعادة الفحص كل شهر."
+          : "The patient will be asked to repeat this exam every month."
+        : recurrence === "daily"
+          ? isRTL
+            ? "سيُطلب من المريض إعادة الفحص يوميًا."
+            : "The patient will be asked to repeat this exam every day."
+          : recurrence === "yearly"
+            ? isRTL
+              ? "سيُطلب من المريض إعادة الفحص كل سنة."
+              : "The patient will be asked to repeat this exam every year."
+            : isRTL
+              ? "فحص لمرة واحدة فقط."
+              : "One-time exam only.";
 
   return (
     <>
@@ -144,7 +188,7 @@ export function AssignIntakeExamDialog({
             ) : (
               <ScrollView style={{ maxHeight: isWeb ? 520 : 460 }}>
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
-                  {isRTL ? "اختر الفحص" : "Select exam"}
+                  {isRTL ? "اختر الفحص *" : "Select exam *"}
                 </Text>
                 {tests.map((test) => {
                   const active = test.id === selectedId;
@@ -171,7 +215,17 @@ export function AssignIntakeExamDialog({
                 })}
 
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
-                  {isRTL ? "الموعد النهائي" : "Deadline"}
+                  {isRTL ? "الموعد النهائي *" : "Deadline *"}
+                </Text>
+                <Text
+                  style={[
+                    styles.hint,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
+                  {isRTL
+                    ? "متى يجب أن يُكمل المريض هذا الفحص؟"
+                    : "When should the patient complete this exam?"}
                 </Text>
                 <View style={[styles.row, { gap: 8 }]}>
                   <AppTextInput
@@ -179,19 +233,47 @@ export function AssignIntakeExamDialog({
                     onChangeText={setDeadlineDate}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={colors.mutedForeground}
-                    style={[styles.input, { flex: 1, color: colors.foreground, borderColor: colors.border, textAlign }]}
+                    {...(isWeb ? ({ type: "date" } as object) : {})}
+                    style={[
+                      styles.input,
+                      {
+                        flex: 1,
+                        color: colors.foreground,
+                        borderColor: !deadlineDate.trim() ? colors.destructive : colors.border,
+                        textAlign,
+                      },
+                    ]}
                   />
                   <AppTextInput
                     value={deadlineTime}
                     onChangeText={setDeadlineTime}
                     placeholder="HH:mm"
                     placeholderTextColor={colors.mutedForeground}
-                    style={[styles.input, { width: 96, color: colors.foreground, borderColor: colors.border, textAlign }]}
+                    {...(isWeb ? ({ type: "time" } as object) : {})}
+                    style={[
+                      styles.input,
+                      {
+                        width: 110,
+                        color: colors.foreground,
+                        borderColor: colors.border,
+                        textAlign,
+                      },
+                    ]}
                   />
                 </View>
 
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
-                  {isRTL ? "التكرار" : "Recurrence"}
+                  {isRTL ? "كم مرة يُعاد الفحص؟ *" : "How often should it happen? *"}
+                </Text>
+                <Text
+                  style={[
+                    styles.hint,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
+                  {isRTL
+                    ? "مرة واحدة، أسبوعيًا، شهريًا، أو أكثر."
+                    : "Once, weekly, monthly, or another cadence."}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {RECURRENCE_OPTIONS.map((opt) => {
@@ -208,13 +290,27 @@ export function AssignIntakeExamDialog({
                           },
                         ]}
                       >
-                        <Text style={{ color: active ? colors.primary : colors.foreground, fontSize: 12 }}>
+                        <Text
+                          style={{
+                            color: active ? colors.primary : colors.foreground,
+                            fontSize: 12,
+                            fontWeight: active ? "800" : "600",
+                          }}
+                        >
                           {isRTL ? opt.labelAr : opt.labelEn}
                         </Text>
                       </Pressable>
                     );
                   })}
                 </ScrollView>
+                <Text
+                  style={[
+                    styles.hint,
+                    { color: colors.primary, textAlign, marginTop: 6 },
+                  ]}
+                >
+                  {frequencyHint}
+                </Text>
 
                 {recurrence !== "none" ? (
                   <>
@@ -225,8 +321,29 @@ export function AssignIntakeExamDialog({
                       value={interval}
                       onChangeText={setInterval}
                       keyboardType="number-pad"
-                      style={[styles.input, { color: colors.foreground, borderColor: colors.border, textAlign }]}
+                      style={[
+                        styles.input,
+                        { color: colors.foreground, borderColor: colors.border, textAlign },
+                      ]}
                     />
+                    <Text
+                      style={[
+                        styles.hint,
+                        { color: colors.mutedForeground, textAlign },
+                      ]}
+                    >
+                      {isRTL
+                        ? recurrence === "weekly"
+                          ? "مثال: 1 = كل أسبوع، 2 = كل أسبوعين"
+                          : recurrence === "monthly"
+                            ? "مثال: 1 = كل شهر، 2 = كل شهرين"
+                            : "مثال: 1 = كل فترة"
+                        : recurrence === "weekly"
+                          ? "e.g. 1 = every week, 2 = every 2 weeks"
+                          : recurrence === "monthly"
+                            ? "e.g. 1 = every month, 2 = every 2 months"
+                            : "e.g. 1 = every period"}
+                    </Text>
                   </>
                 ) : null}
 
@@ -327,7 +444,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: { fontSize: 18, fontWeight: "800" },
-  label: { fontSize: 13, fontWeight: "600", marginTop: 8 },
+  label: { fontSize: 13, fontWeight: "700", marginTop: 10 },
+  hint: { fontSize: 12, fontWeight: "500", marginBottom: 6, marginTop: 2 },
   testRow: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   row: { flexDirection: "row", alignItems: "center" },

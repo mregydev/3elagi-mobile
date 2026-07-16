@@ -434,6 +434,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     width: "100%",
     gap: 6,
+    paddingBottom: 20,
   },
   wrapMobile: {
     flexGrow: 0,
@@ -495,7 +496,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 8,
     paddingTop: 8,
-    paddingBottom: 8,
+    paddingBottom: 14,
+    marginBottom: 8,
     gap: 6,
   },
   partListHeader: {

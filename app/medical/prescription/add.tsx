@@ -1,7 +1,16 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, Camera, Image as ImageIcon, Plus, Trash2, X } from "lucide-react-native";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Camera,
+  Image as ImageIcon,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +28,7 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   createPrescriptionForPatientUser,
+  draftAiPrescriptionForDiagnosis,
   fetchAllMedicalHistory,
   uploadFile,
 } from "@/domains/medical/api";
@@ -33,6 +43,7 @@ import {
 import { useMedicalStore } from "@/domains/medical/store";
 import type { PrescriptionMedication } from "@/domains/medical/types";
 import { useReminderScheduler } from "@/domains/reminders/hooks/useReminderScheduler";
+import { useApiLang } from "@/hooks/useApiLang";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -46,6 +57,7 @@ interface ScanAsset extends PrescriptionScanAsset {}
 export default function AddPrescriptionScreen() {
   const colors = useColors();
   const { isRTL, t, locale } = useI18n();
+  const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -73,7 +85,9 @@ export default function AddPrescriptionScreen() {
   const [medications, setMedications] = useState<PrescriptionMedication[]>([emptyMedication()]);
   const [scanAsset, setScanAsset] = useState<ScanAsset | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [completingAi, setCompletingAi] = useState(false);
   const [saving, setSaving] = useState(false);
+  const isDoctor = role?.toLowerCase() === "doctor";
 
   useEffect(() => {
     const fromQuery = parseBodyPart(bodyPartParam);
@@ -92,6 +106,46 @@ export default function AddPrescriptionScreen() {
 
   const removeMedicationRow = (index: number) => {
     setMedications((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== index)));
+  };
+
+  const completeWithAi = async () => {
+    const trimmedTitle = title.trim();
+    if (!accessToken || !patientUserId || !trimmedTitle || !isDoctor) return;
+    if (completingAi || analyzing || saving) return;
+    setCompletingAi(true);
+    try {
+      const draft = await draftAiPrescriptionForDiagnosis(
+        {
+          patient_user_id: patientUserId,
+          diagnosis_title: trimmedTitle,
+          symptoms: symptoms
+            .split(/[;\n,]+/)
+            .map((s) => s.trim())
+            .filter(Boolean),
+          lang: apiLang,
+        },
+        accessToken,
+      );
+      if (draft.title?.trim()) setTitle(draft.title.trim());
+      if (draft.symptoms?.trim()) setSymptoms(draft.symptoms.trim());
+      setMedications(
+        draft.medications.length
+          ? draft.medications.map((m) => ({
+              medication_name: m.medication_name,
+              dose: m.dose ?? "",
+              interval: m.interval ?? "",
+              notes: m.notes ?? "",
+            }))
+          : [emptyMedication()],
+      );
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "فشل الإكمال" : "AI complete failed",
+        e instanceof Error ? e.message : undefined,
+      );
+    } finally {
+      setCompletingAi(false);
+    }
   };
 
   const processPrescriptionScan = async (picked: ScanAsset) => {
@@ -293,7 +347,7 @@ export default function AddPrescriptionScreen() {
     }
   };
 
-  const busy = analyzing || saving;
+  const busy = analyzing || saving || completingAi;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -340,6 +394,33 @@ export default function AddPrescriptionScreen() {
           colors={colors}
           textAlign={textAlign}
         />
+
+        {isDoctor ? (
+          <Pressable
+            onPress={() => void completeWithAi()}
+            disabled={!title.trim() || busy}
+            style={({ pressed }) => [
+              styles.completeAiBtn,
+              {
+                flexDirection: dir,
+                borderColor: colors.primary,
+                backgroundColor: pressed
+                  ? `${colors.primary}22`
+                  : `${colors.primary}12`,
+                opacity: !title.trim() || busy ? 0.55 : 1,
+              },
+            ]}
+          >
+            {completingAi ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Sparkles size={16} color={colors.primary} />
+            )}
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
+              {t.records.completeWithAi}
+            </Text>
+          </Pressable>
+        ) : null}
 
         <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
 
@@ -582,6 +663,15 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 17, fontWeight: "700" },
   scroll: { flex: 1 },
   hint: { fontSize: 13, lineHeight: 18 },
+  completeAiBtn: {
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   scanNote: {
     borderWidth: 1,
     borderRadius: 12,

@@ -1,5 +1,14 @@
 import { useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, Image as ImageIcon, Plus, Trash2, Upload, X } from "lucide-react-native";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Image as ImageIcon,
+  Plus,
+  Sparkles,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +28,7 @@ import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   createPrescriptionForPatientUser,
+  draftAiPrescriptionForDiagnosis,
   fetchAllMedicalHistory,
   uploadFile,
 } from "@/domains/medical/api";
@@ -32,6 +42,7 @@ import {
 import { useMedicalStore } from "@/domains/medical/store";
 import type { PrescriptionMedication } from "@/domains/medical/types";
 import { useReminderScheduler } from "@/domains/reminders/hooks/useReminderScheduler";
+import { useApiLang } from "@/hooks/useApiLang";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -142,6 +153,7 @@ function FormField({
 export function PrescriptionAddWebView() {
   const colors = useColors();
   const { isRTL, t, locale } = useI18n();
+  const apiLang = useApiLang();
   const { isDesktop, isTablet } = useWebLayout();
   const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
     patientUserId?: string;
@@ -174,7 +186,9 @@ export function PrescriptionAddWebView() {
   const [medications, setMedications] = useState<PrescriptionMedication[]>([emptyMedication()]);
   const [scanAsset, setScanAsset] = useState<ScanAsset | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [completingAi, setCompletingAi] = useState(false);
   const [saving, setSaving] = useState(false);
+  const isDoctor = role?.toLowerCase() === "doctor";
 
   useEffect(() => {
     const fromQuery = parseBodyPart(bodyPartParam);
@@ -186,7 +200,7 @@ export function PrescriptionAddWebView() {
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
   const twoCol = isDesktop || isTablet;
-  const busy = analyzing || saving;
+  const busy = analyzing || saving || completingAi;
 
   const updateMedication = (index: number, patch: Partial<PrescriptionMedication>) => {
     setMedications((rows) =>
@@ -196,6 +210,46 @@ export function PrescriptionAddWebView() {
 
   const addMedicationRow = () => {
     setMedications((rows) => [...rows, emptyMedication()]);
+  };
+
+  const completeWithAi = async () => {
+    const trimmedTitle = title.trim();
+    if (!accessToken || !patientUserId || !trimmedTitle || !isDoctor) return;
+    if (completingAi || analyzing || saving) return;
+    setCompletingAi(true);
+    try {
+      const draft = await draftAiPrescriptionForDiagnosis(
+        {
+          patient_user_id: patientUserId,
+          diagnosis_title: trimmedTitle,
+          symptoms: symptoms
+            .split(/[;\n,]+/)
+            .map((s) => s.trim())
+            .filter(Boolean),
+          lang: apiLang,
+        },
+        accessToken,
+      );
+      if (draft.title?.trim()) setTitle(draft.title.trim());
+      if (draft.symptoms?.trim()) setSymptoms(draft.symptoms.trim());
+      setMedications(
+        draft.medications.length
+          ? draft.medications.map((m) => ({
+              medication_name: m.medication_name,
+              dose: m.dose ?? "",
+              interval: m.interval ?? "",
+              notes: m.notes ?? "",
+            }))
+          : [emptyMedication()],
+      );
+    } catch (e) {
+      showAppAlert(
+        isRTL ? "فشل الإكمال" : "AI complete failed",
+        e instanceof Error ? e.message : undefined,
+      );
+    } finally {
+      setCompletingAi(false);
+    }
   };
 
   const removeMedicationRow = (index: number) => {
@@ -426,6 +480,30 @@ export function PrescriptionAddWebView() {
                 colors={colors}
                 textAlign={textAlign}
               />
+              {isDoctor ? (
+                <Pressable
+                  onPress={() => void completeWithAi()}
+                  disabled={!title.trim() || busy}
+                  style={[
+                    styles.completeAiBtn,
+                    {
+                      flexDirection: dir,
+                      borderColor: colors.primary,
+                      backgroundColor: `${colors.primary}12`,
+                      opacity: !title.trim() || busy ? 0.55 : 1,
+                    },
+                  ]}
+                >
+                  {completingAi ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <Sparkles size={16} color={colors.primary} />
+                  )}
+                  <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
+                    {t.records.completeWithAi}
+                  </Text>
+                </Pressable>
+              ) : null}
               <BodyPartPicker value={bodyPart} onChange={setBodyPart} />
               <FormField
                 label={isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)"}
@@ -676,6 +754,15 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, fontWeight: "800" },
   sectionSubtitle: { fontSize: 13, lineHeight: 18 },
   field: { gap: 6 },
+  completeAiBtn: {
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   fieldLabel: { fontSize: 13, fontWeight: "600" },
   input: {
     minHeight: 44,

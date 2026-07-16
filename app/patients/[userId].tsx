@@ -140,6 +140,8 @@ export default function PatientRecordScreen() {
         <KeyboardSafeScrollView
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
@@ -147,10 +149,14 @@ export default function PatientRecordScreen() {
           <MedicalHistoryList
             records={records}
             patientUserId={userId!}
-            canAdd
+            canAdd={false}
             doctorView
-            showIntake={false}
+            showIntake
+            onRecordsChanged={() => {
+              void loadScreen().catch(() => setRecords([]));
+            }}
           />
+          <View style={styles.bottomSpacer} />
         </KeyboardSafeScrollView>
       )}
     </View>
@@ -160,7 +166,8 @@ export default function PatientRecordScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
   body: { flex: 1, minHeight: 0 },
-  bodyContent: { flexGrow: 1, minHeight: 0, paddingBottom: 16 },
+  bodyContent: { flexGrow: 1, paddingBottom: 48 },
+  bottomSpacer: { height: 48, width: "100%" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   header: {
     alignItems: "center",

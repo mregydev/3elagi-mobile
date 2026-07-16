@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { isMedicalImageAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
 import { useAuthStore } from "@/domains/auth/store";
@@ -37,6 +37,7 @@ import {
   canDeleteMedicalRecord,
   canEditDiagnosis,
 } from "@/domains/medical/permissions";
+import { showSuccessToast } from "@/utils/toast";
 
 export function useMedicalRecordDetail(isRTL: boolean) {
   const { id, doctorView, patientUserId } = useLocalSearchParams<{
@@ -55,8 +56,11 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
   const upsertPrescription = useMedicalStore((s) => s.upsertPrescription);
   const upsertDocument = useMedicalStore((s) => s.upsertDocument);
+  const upsertIntake = useMedicalStore((s) => s.upsertIntake);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
+  const intakeDraftDirtyRef = useRef(false);
+  const intakeAnswersDraftRef = useRef<Record<string, string[]>>({});
 
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -97,11 +101,19 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       .finally(() => setAccessChecked(true));
   }, [needsDoctorAccess, accessToken, patientUserId]);
 
+  // Only reset when navigating to a different record — not when the list refreshes.
   useEffect(() => {
+    intakeDraftDirtyRef.current = false;
     setDetail(null);
+    setIntakeAnswersDraft({});
     const hit = records.find((r) => r.id === id);
+    if (hit?.category === "intake" && hit.intakeExam) {
+      // Seed immediately so in-progress answers show before the network returns.
+      setIntakeAnswersDraft(hit.intakeExam.answers ?? {});
+    }
     setLoadState(hit && hasDoctorAccess ? "done" : "loading");
-  }, [id, records, hasDoctorAccess]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed from current cache on id change only
+  }, [id]);
 
   useEffect(() => {
     if (!id || !accessToken) {
@@ -123,9 +135,6 @@ export function useMedicalRecordDetail(isRTL: boolean) {
           cached.category === "prescription");
 
     if (cacheOnly) {
-      if (cached?.category === "intake" && cached.intakeExam) {
-        setIntakeAnswersDraft(cached.intakeExam.answers ?? {});
-      }
       setLoadState("done");
       return;
     }
@@ -133,61 +142,94 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     if (!cached) setLoadState("loading");
     setLoadingDetail(true);
 
+    let cancelled = false;
     const finish = () => {
+      if (cancelled) return;
       setLoadingDetail(false);
       setLoadState("done");
     };
 
-    if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
+    const applyIntake = (raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>) => {
+      const mapped = mapInstance(raw);
+      if (cancelled) return mapped;
+      setDetail(mapped);
+      upsertIntake(mapped);
+      // Never wipe in-progress local edits with a slower network response.
+      if (!intakeDraftDirtyRef.current) {
+        setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+      }
+      return mapped;
+    };
+
+    const loadIntakeInstance = () =>
       fetchIntakeExamInstance(id, accessToken)
-        .then((raw) => {
-          const mapped = mapInstance(raw);
-          setDetail(mapped);
-          setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
-        })
-        .catch(() => undefined)
-        .finally(finish);
-      return;
+        .then(applyIntake)
+        .then(() => true)
+        .catch(() => false);
+
+    if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
+      if (cached?.intakeExam?.answers && !intakeDraftDirtyRef.current) {
+        setIntakeAnswersDraft(cached.intakeExam.answers);
+      }
+      void loadIntakeInstance().finally(finish);
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (isDoctorView) {
-      if (cached?.category === "prescription" && patientUserId) {
-        fetchPrescriptionById(id, patientUserId, accessToken)
-          .then((rx) => {
-            setDetail(rx);
-            upsertPrescription(rx);
-          })
-          .catch(() => undefined)
-          .finally(finish);
-        return;
-      }
-
-      fetchDoctorDiagnosisById(id, accessToken)
-        .then((d) => {
-          setDetail(d);
-          setEditDesc(d.title);
-          upsertDiagnosis(d);
-        })
-        .catch(async () => {
-          if (!patientUserId) return;
+      // Patient profile keeps history in local state (not the medical store), so
+      // opening an intake from /patients/:id often has no cache hit — probe intake
+      // before diagnosis/docs/prescription.
+      void (async () => {
+        if (await loadIntakeInstance()) {
+          finish();
+          return;
+        }
+        if (cached?.category === "prescription" && patientUserId) {
+          try {
+            const rx = await fetchPrescriptionById(id, patientUserId, accessToken);
+            if (rx && !cancelled) {
+              setDetail(rx);
+              upsertPrescription(rx);
+            }
+          } catch {
+            // continue
+          }
+          finish();
+          return;
+        }
+        try {
+          const d = await fetchDoctorDiagnosisById(id, accessToken);
+          if (!cancelled) {
+            setDetail(d);
+            setEditDesc(d.title);
+            upsertDiagnosis(d);
+          }
+        } catch {
+          if (!patientUserId || cancelled) return;
           const docs = await fetchDocumentsForPatientUser(patientUserId, accessToken);
-          const doc = docs.find((d) => d.id === id);
+          const doc = docs.find((row) => row.id === id);
           if (doc) {
-            setDetail(doc);
+            if (!cancelled) setDetail(doc);
             return;
           }
           try {
             const rx = await fetchPrescriptionById(id, patientUserId, accessToken);
-            if (rx) {
+            if (rx && !cancelled) {
               setDetail(rx);
               upsertPrescription(rx);
             }
           } catch {
             // not found
           }
-        })
-        .finally(finish);
-      return;
+        } finally {
+          finish();
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
 
     // A doctor opening a bare /medical/{id} link (no doctorView params — e.g. a
@@ -195,62 +237,86 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     // patient-scoped and 404 for doctors, so use the doctor-scoped diagnosis
     // endpoint (server enforces doctor-patient access).
     if (role === "doctor") {
-      fetchDoctorDiagnosisById(id, accessToken)
-        .then((d) => {
-          setDetail(d);
-          setEditDesc(d.title);
-          upsertDiagnosis(d);
-        })
-        .catch(async () => {
-          // Not a diagnosis — may be a document/prescription of one of the
-          // doctor's patients (no patient context in a bare /medical/{id} link).
+      void (async () => {
+        if (await loadIntakeInstance()) {
+          finish();
+          return;
+        }
+        try {
+          const d = await fetchDoctorDiagnosisById(id, accessToken);
+          if (!cancelled) {
+            setDetail(d);
+            setEditDesc(d.title);
+            upsertDiagnosis(d);
+          }
+        } catch {
           const found = await findDoctorRecordById(id, accessToken);
-          if (found) {
+          if (found && !cancelled) {
             setDetail(found);
             if (found.category === "prescription") upsertPrescription(found);
           }
-        })
-        .finally(finish);
-      return;
+        } finally {
+          finish();
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (cached?.category === "prescription" && profile?.id) {
       fetchPrescriptionById(id, profile.id, accessToken)
         .then((rx) => {
-          setDetail(rx);
-          upsertPrescription(rx);
+          if (!cancelled) {
+            setDetail(rx);
+            upsertPrescription(rx);
+          }
         })
         .catch(() => undefined)
         .finally(finish);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    fetchDiagnosisById(id, accessToken)
-      .then((d) => {
-        setDetail(d);
-        setEditDesc(d.title);
-        upsertDiagnosis(d);
-      })
-      .catch(async () => {
-        if (!profile?.id) return;
-        // AI links (uncached) may point to a document or a prescription.
+    // Bare /medical/:id — try intake first (common deep link), then other types.
+    void (async () => {
+      if (await loadIntakeInstance()) {
+        finish();
+        return;
+      }
+      try {
+        const d = await fetchDiagnosisById(id, accessToken);
+        if (!cancelled) {
+          setDetail(d);
+          setEditDesc(d.title);
+          upsertDiagnosis(d);
+        }
+      } catch {
+        if (!profile?.id || cancelled) return;
         const docs = await fetchPatientDocuments(profile.id, accessToken);
         const doc = docs.find((d) => d.id === id);
         if (doc) {
-          setDetail(doc);
+          if (!cancelled) setDetail(doc);
           return;
         }
         try {
           const rx = await fetchPrescriptionById(id, profile.id, accessToken);
-          if (rx) {
+          if (rx && !cancelled) {
             setDetail(rx);
             upsertPrescription(rx);
           }
         } catch {
-          // truly not found — leave detail null
+          // not found
         }
-      })
-      .finally(finish);
+      } finally {
+        finish();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     id,
     accessToken,
@@ -262,10 +328,10 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     role,
     upsertDiagnosis,
     upsertPrescription,
+    upsertIntake,
     hasDoctorAccess,
     accessChecked,
   ]);
-
   const permissionCtx = useMemo(
     () => ({
       userId: profile?.id ?? "",
@@ -448,6 +514,50 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     );
   };
 
+  const updateIntakeAnswersDraft = useCallback((answers: Record<string, string[]>) => {
+    intakeDraftDirtyRef.current = true;
+    intakeAnswersDraftRef.current = answers;
+    setIntakeAnswersDraft(answers);
+  }, []);
+
+  // Persist answers shortly after edits so reload/deep-links keep drafts.
+  useEffect(() => {
+    intakeAnswersDraftRef.current = intakeAnswersDraft;
+  }, [intakeAnswersDraft]);
+
+  useEffect(() => {
+    if (!id || !accessToken || isDoctorView) return;
+    if (!intakeDraftDirtyRef.current) return;
+    if (record?.category !== "intake" || record.intakeExam?.status === "completed") return;
+
+    const timer = setTimeout(() => {
+      if (!intakeDraftDirtyRef.current) return;
+      const snapshot = intakeAnswersDraftRef.current;
+      void saveIntakeExamAnswers(id, { answers: snapshot, complete: false }, accessToken)
+        .then((updated) => {
+          const mapped = mapInstance(updated);
+          setDetail(mapped);
+          upsertIntake(mapped);
+          // Only clear dirty if the user hasn't typed more since this save started.
+          if (intakeAnswersDraftRef.current === snapshot) {
+            intakeDraftDirtyRef.current = false;
+          }
+        })
+        .catch(() => {
+          // Keep dirty so the next edit / manual save can retry.
+        });
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [
+    intakeAnswersDraft,
+    id,
+    accessToken,
+    isDoctorView,
+    record?.category,
+    record?.intakeExam?.status,
+    upsertIntake,
+  ]);
   const saveIntakeDraft = async () => {
     if (!record?.intakeExam || !accessToken || isDoctorView) return;
     setSavingIntake(true);
@@ -458,9 +568,12 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         accessToken,
       );
       const mapped = mapInstance(updated);
+      intakeDraftDirtyRef.current = false;
       setDetail(mapped);
+      upsertIntake(mapped);
       setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
       await refetchListsAfterChange();
+      showSuccessToast(isRTL ? "تم حفظ المسودة" : "Draft saved");
     } catch (e) {
       Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
     } finally {
@@ -478,7 +591,9 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         accessToken,
       );
       const mapped = mapInstance(updated);
+      intakeDraftDirtyRef.current = false;
       setDetail(mapped);
+      upsertIntake(mapped);
       setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
       await refetchListsAfterChange();
     } catch (e) {
@@ -506,7 +621,9 @@ export function useMedicalRecordDetail(isRTL: boolean) {
               try {
                 const updated = await resetIntakeExamAnswers(record.id, accessToken);
                 const mapped = mapInstance(updated);
+                intakeDraftDirtyRef.current = false;
                 setDetail(mapped);
+                upsertIntake(mapped);
                 setIntakeAnswersDraft({});
                 await refetchListsAfterChange();
               } catch (e) {
@@ -565,7 +682,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     saveLabDetails,
     generateLabDetails,
     intakeAnswersDraft,
-    setIntakeAnswersDraft,
+    setIntakeAnswersDraft: updateIntakeAnswersDraft,
     savingIntake,
     saveIntakeDraft,
     submitIntakeExam,

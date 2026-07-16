@@ -1,6 +1,7 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import {
+  CircleStop,
   FileText,
   Image as ImageIcon,
   Mic,
@@ -356,21 +357,17 @@ export function ConsultationBar({
         active.id,
         {
           note: payload.note?.trim(),
-          ...(desc
-            ? {
-                diagnosis_details: {
-                  desc,
-                  body_part: payload.bodyPart,
-                  symptoms: payload.symptoms.map((s) => ({ desc: s })),
-                  document_ids:
-                    payload.documentIds.length > 0 ? payload.documentIds : undefined,
-                  prescription_id: payload.prescription_id,
-                  prescription: payload.prescription,
-                  intake_exam_assignment_id: payload.intake_exam_assignment_id,
-                  intake_exam: payload.intake_exam,
-                },
-              }
-            : {}),
+          diagnosis_details: {
+            desc,
+            body_part: payload.bodyPart,
+            symptoms: payload.symptoms.map((s) => ({ desc: s })),
+            document_ids:
+              payload.documentIds.length > 0 ? payload.documentIds : undefined,
+            prescription_id: payload.prescription_id,
+            prescription: payload.prescription,
+            intake_exam_assignment_id: payload.intake_exam_assignment_id,
+            intake_exam: payload.intake_exam,
+          },
         },
         token,
       );
@@ -436,7 +433,7 @@ export function ConsultationBar({
 
   return (
     <>
-      {/* Only the Start-consultation pill remains; hide the bar when empty. */}
+      {/* Patient: start. Doctor: end (includes optional diagnosis). Hide when empty. */}
       {isPatient && !isOpen ? (
         <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
           <Pill
@@ -444,6 +441,19 @@ export function ConsultationBar({
             color={colors.primary}
             filled
             onPress={() => setModal("start")}
+            Icon={Stethoscope}
+          />
+        </View>
+      ) : null}
+
+      {isDoctor && isOpen ? (
+        <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
+          <Pill
+            label={label("End consultation", "إنهاء الاستشارة")}
+            color={colors.primary}
+            filled
+            onPress={() => setModal("end")}
+            Icon={CircleStop}
           />
         </View>
       ) : null}
@@ -578,7 +588,7 @@ export function ConsultationBar({
         }}
       />
 
-      {/* End modal — full diagnosis form like medical records */}
+      {/* End modal — diagnosis (optional) + closing note, then end consultation */}
       <DiagnosisChatModal
         visible={modal === "end"}
         isRTL={isRTL}
@@ -590,7 +600,7 @@ export function ConsultationBar({
         submitLabel={label("End consultation", "إنهاء الاستشارة")}
         noteLabel={label("Closing note (optional)", "ملاحظة ختامية (اختياري)")}
         notePlaceholder={label("Summary for the patient...", "ملخص للمريض...")}
-        requireDescription={false}
+        requireDescription
         onClose={() => {
           if (submitting) return;
           setModal(null);
@@ -684,11 +694,13 @@ function Pill({
   color,
   filled,
   onPress,
+  Icon = Stethoscope,
 }: {
   label: string;
   color: string;
   filled?: boolean;
   onPress: () => void;
+  Icon?: typeof Stethoscope;
 }) {
   return (
     <Pressable
@@ -702,7 +714,7 @@ function Pill({
         },
       ]}
     >
-      <Stethoscope size={15} color={filled ? "#fff" : color} strokeWidth={2.4} />
+      <Icon size={15} color={filled ? "#fff" : color} strokeWidth={2.4} />
       <Text style={{ color: filled ? "#fff" : color, fontWeight: "800", fontSize: 13 }}>
         {label}
       </Text>

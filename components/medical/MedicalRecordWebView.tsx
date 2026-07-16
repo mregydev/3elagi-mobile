@@ -30,6 +30,7 @@ import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenie
 import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
+import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import {
   isMedicalImageAttachment,
   MEDICAL_RECORD_CATEGORY_META,
@@ -616,7 +617,28 @@ export function MedicalRecordWebView() {
           onChange={setIntakeAnswersDraft}
         />
         {canTakeIntakeExam ? (
-          <View style={{ gap: 10, marginTop: 12, flexDirection: dir, flexWrap: "wrap" }}>
+          <View
+            style={[
+              styles.intakeActions,
+              { borderTopColor: colors.border, flexDirection: dir },
+            ]}
+          >
+            <Pressable
+              onPress={resetIntakeExam}
+              disabled={savingIntake}
+              style={[
+                styles.intakeResetBtn,
+                {
+                  borderColor: colors.destructive,
+                  backgroundColor: `${colors.destructive}0F`,
+                  opacity: savingIntake ? 0.55 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: colors.destructive, fontWeight: "700", fontSize: 13 }}>
+                {isRTL ? "إعادة تعيين الإجابات" : "Reset answers"}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() => void saveIntakeDraft()}
               disabled={savingIntake}
@@ -638,11 +660,6 @@ export function MedicalRecordWebView() {
                   {isRTL ? "إرسال الفحص" : "Submit exam"}
                 </Text>
               )}
-            </Pressable>
-            <Pressable onPress={resetIntakeExam}>
-              <Text style={{ color: "#ef4444", fontWeight: "700" }}>
-                {isRTL ? "إعادة تعيين" : "Reset"}
-              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -1052,6 +1069,9 @@ export function MedicalRecordWebView() {
 
           {/* Full-width sections */}
           <View style={styles.sections}>
+            {record.category !== "intake" ? (
+              <MedicalRecordAiInsightSection record={record} />
+            ) : null}
             {renderIntakeExam()}
             {renderLabDetailsEdit()}
             {renderDiagnosisEdit()}
@@ -1238,6 +1258,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addSymptomBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  intakeActions: {
+    marginTop: 16,
+    gap: 10,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  intakeResetBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: "center",
+    minWidth: 140,
+  },
 
   editInput: {
     fontSize: 16,

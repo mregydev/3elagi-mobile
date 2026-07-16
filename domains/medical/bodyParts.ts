@@ -103,9 +103,36 @@ const BODY_PART_ALIASES: Record<string, BodyPart> = {
   eye: "eyes",
   ear: "ears",
   arm: "left_arm",
+  arms: "left_arm",
+  forearm: "left_arm",
+  "fore arm": "left_arm",
+  "upper arm": "left_arm",
+  "upper limb": "left_arm",
+  elbow: "left_arm",
+  wrist: "left_hand",
+  radius: "left_arm",
+  ulna: "left_arm",
+  humerus: "left_arm",
+  "broken arm": "left_arm",
+  "fractured arm": "left_arm",
+  "arm fracture": "left_arm",
+  "forearm fracture": "left_arm",
+  "radius and ulna": "left_arm",
+  "left arm": "left_arm",
+  "right arm": "right_arm",
+  "left forearm": "left_arm",
+  "right forearm": "right_arm",
   hand: "left_hand",
+  "left hand": "left_hand",
+  "right hand": "right_hand",
   leg: "left_leg",
   foot: "left_foot",
+  ankle: "left_foot",
+  knee: "left_leg",
+  thigh: "left_leg",
+  tibia: "left_leg",
+  fibula: "left_leg",
+  femur: "left_leg",
   kidneys: "kidney",
   عام: "general",
   الرأس: "head",
@@ -187,6 +214,26 @@ export function parseBodyPart(value: unknown): BodyPart | undefined {
     if (compact.includes(alias) || raw.includes(alias)) {
       if (!best || alias.length > best.len) best = { part, len: alias.length };
     }
+  }
+  return best?.part;
+}
+
+/** Infer a non-general body part from free text when AI omits/returns general. */
+export function inferBodyPartFromText(
+  ...texts: Array<string | null | undefined>
+): BodyPart | undefined {
+  let best: { part: BodyPart; len: number } | undefined;
+  for (const text of texts) {
+    if (!text?.trim()) continue;
+    const part = parseBodyPart(text);
+    if (!part || part === "general") continue;
+    const compact = text.toLowerCase().replace(/\s+/g, " ").trim();
+    let matchLen = part.length;
+    for (const [alias, mapped] of Object.entries(BODY_PART_ALIASES)) {
+      if (mapped !== part || alias.length < 3) continue;
+      if (compact.includes(alias)) matchLen = Math.max(matchLen, alias.length);
+    }
+    if (!best || matchLen > best.len) best = { part, len: matchLen };
   }
   return best?.part;
 }

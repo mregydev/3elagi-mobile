@@ -22,6 +22,7 @@ const QUESTION_TYPES: { value: IntakeQuestionType; labelEn: string; labelAr: str
   { value: "text", labelEn: "Text", labelAr: "نص" },
   { value: "single_choice", labelEn: "Single choice", labelAr: "اختيار واحد" },
   { value: "multi_choice", labelEn: "Multiple choice", labelAr: "اختيارات متعددة" },
+  { value: "image", labelEn: "Image", labelAr: "صورة" },
   { value: "video", labelEn: "Video", labelAr: "فيديو" },
   { value: "audio", labelEn: "Audio", labelAr: "صوت" },
   { value: "guidance", labelEn: "Guidance (info only)", labelAr: "إرشاد (بدون إجابة)" },

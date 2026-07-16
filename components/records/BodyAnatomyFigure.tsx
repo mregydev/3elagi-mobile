@@ -100,7 +100,11 @@ export function BodyAnatomyFigure({
         {(["top", "medium", "bottom"] as BodyZone[]).map((zone) => {
           const band = ZONE_BANDS[zone];
           const top = Math.round(band.y * drawH);
-          const h = Math.max(22, Math.round(band.h * drawH) - 4);
+          // Keep a little air under the bottom zone card so it doesn't sit on the pane edge.
+          const h = Math.max(
+            22,
+            Math.round(band.h * drawH) - (zone === "bottom" ? 12 : 4),
+          );
           const active = openZone === zone;
           const has = zonesWithRecords.has(zone);
           const ZoneIcon = BODY_ZONE_ICONS[zone];

@@ -13,7 +13,7 @@ import {
   ScanLine,
   Trash2,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -72,6 +72,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useApiLang } from "@/hooks/useApiLang";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
+import { showSuccessToast } from "@/utils/toast";
 
 const CATEGORY_META: Record<
   MedicalCategory,
@@ -105,8 +106,11 @@ export default function MedicalRecordDetail() {
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
   const upsertPrescription = useMedicalStore((s) => s.upsertPrescription);
   const upsertDocument = useMedicalStore((s) => s.upsertDocument);
+  const upsertIntake = useMedicalStore((s) => s.upsertIntake);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
+  const intakeDraftDirtyRef = useRef(false);
+  const intakeAnswersDraftRef = useRef<Record<string, string[]>>({});
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadState, setLoadState] = useState<"loading" | "done">("loading");
@@ -149,11 +153,18 @@ export default function MedicalRecordDetail() {
       .finally(() => setAccessChecked(true));
   }, [needsDoctorAccess, accessToken, patientUserId]);
 
+  // Only reset when navigating to a different record — not when the list refreshes.
   useEffect(() => {
+    intakeDraftDirtyRef.current = false;
     setDetail(null);
+    setIntakeAnswersDraft({});
     const hit = records.find((r) => r.id === id);
+    if (hit?.category === "intake" && hit.intakeExam) {
+      setIntakeAnswersDraft(hit.intakeExam.answers ?? {});
+    }
     setLoadState(hit && hasDoctorAccess ? "done" : "loading");
-  }, [id, records, hasDoctorAccess]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed from current cache on id change only
+  }, [id]);
 
   useEffect(() => {
     if (!id || !accessToken) {
@@ -182,75 +193,145 @@ export default function MedicalRecordDetail() {
     if (!cached) setLoadState("loading");
     setLoadingDetail(true);
 
+    let cancelled = false;
     const finish = () => {
+      if (cancelled) return;
       setLoadingDetail(false);
       setLoadState("done");
     };
 
-    if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
+    const applyIntake = (raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>) => {
+      const mapped = mapInstance(raw);
+      if (cancelled) return mapped;
+      setDetail(mapped);
+      upsertIntake(mapped);
+      if (!intakeDraftDirtyRef.current) {
+        setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
+      }
+      return mapped;
+    };
+
+    const loadIntakeInstance = () =>
       fetchIntakeExamInstance(id, accessToken)
-        .then((raw) => {
-          const mapped = mapInstance(raw);
-          setDetail(mapped);
-          setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
-        })
-        .catch(() => undefined)
-        .finally(finish);
-      return;
+        .then(applyIntake)
+        .then(() => true)
+        .catch(() => false);
+
+    if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
+      if (cached?.intakeExam?.answers && !intakeDraftDirtyRef.current) {
+        setIntakeAnswersDraft(cached.intakeExam.answers);
+      }
+      void loadIntakeInstance().finally(finish);
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (isDoctorView) {
-      if (cached?.category === "prescription" && patientUserId) {
-        fetchPrescriptionById(id, patientUserId, accessToken)
-          .then((rx) => {
-            setDetail(rx);
-            upsertPrescription(rx);
-          })
-          .catch(() => undefined)
-          .finally(finish);
-        return;
-      }
-
-      fetchDoctorDiagnosisById(id, accessToken)
-        .then((d) => {
-          setDetail(d);
-          setEditDesc(d.title);
-          upsertDiagnosis(d);
-        })
-        .catch(async () => {
-          if (!patientUserId) return;
+      // Patient profile history is local state, so intake often isn't in the store.
+      void (async () => {
+        if (await loadIntakeInstance()) {
+          finish();
+          return;
+        }
+        if (cached?.category === "prescription" && patientUserId) {
+          try {
+            const rx = await fetchPrescriptionById(id, patientUserId, accessToken);
+            if (rx && !cancelled) {
+              setDetail(rx);
+              upsertPrescription(rx);
+            }
+          } catch {
+            // continue
+          }
+          finish();
+          return;
+        }
+        try {
+          const d = await fetchDoctorDiagnosisById(id, accessToken);
+          if (!cancelled) {
+            setDetail(d);
+            setEditDesc(d.title);
+            upsertDiagnosis(d);
+          }
+        } catch {
+          if (!patientUserId || cancelled) return;
           const docs = await fetchDocumentsForPatientUser(patientUserId, accessToken);
-          const doc = docs.find((d) => d.id === id);
-          if (doc) setDetail(doc);
-        })
-        .finally(finish);
-      return;
+          const doc = docs.find((row) => row.id === id);
+          if (doc && !cancelled) setDetail(doc);
+          else {
+            try {
+              const rx = await fetchPrescriptionById(id, patientUserId, accessToken);
+              if (rx && !cancelled) {
+                setDetail(rx);
+                upsertPrescription(rx);
+              }
+            } catch {
+              // not found
+            }
+          }
+        } finally {
+          finish();
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (cached?.category === "prescription" && profile?.id) {
       fetchPrescriptionById(id, profile.id, accessToken)
         .then((rx) => {
-          setDetail(rx);
-          upsertPrescription(rx);
+          if (!cancelled) {
+            setDetail(rx);
+            upsertPrescription(rx);
+          }
         })
         .catch(() => undefined)
         .finally(finish);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    fetchDiagnosisById(id, accessToken)
-      .then((d) => {
-        setDetail(d);
-        setEditDesc(d.title);
-        upsertDiagnosis(d);
-      })
-      .catch(async () => {
-        if (!profile?.id) return;
+    // Bare /medical/:id — try intake first, then diagnosis/docs/prescription.
+    void (async () => {
+      if (await loadIntakeInstance()) {
+        finish();
+        return;
+      }
+      try {
+        const d = await fetchDiagnosisById(id, accessToken);
+        if (!cancelled) {
+          setDetail(d);
+          setEditDesc(d.title);
+          upsertDiagnosis(d);
+        }
+      } catch {
+        if (!profile?.id || cancelled) return;
         const docs = await fetchPatientDocuments(profile.id, accessToken);
         const doc = docs.find((d) => d.id === id);
-        if (doc) setDetail(doc);
-      })
-      .finally(finish);
+        if (doc) {
+          if (!cancelled) setDetail(doc);
+          return;
+        }
+        try {
+          const rx = await fetchPrescriptionById(id, profile.id, accessToken);
+          if (rx && !cancelled) {
+            setDetail(rx);
+            upsertPrescription(rx);
+          }
+        } catch {
+          // not found
+        }
+      } finally {
+        finish();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     id,
     accessToken,
@@ -261,10 +342,51 @@ export default function MedicalRecordDetail() {
     profile?.id,
     upsertDiagnosis,
     upsertPrescription,
+    upsertIntake,
     hasDoctorAccess,
     accessChecked,
   ]);
 
+  const updateIntakeAnswersDraft = useCallback((answers: Record<string, string[]>) => {
+    intakeDraftDirtyRef.current = true;
+    intakeAnswersDraftRef.current = answers;
+    setIntakeAnswersDraft(answers);
+  }, []);
+
+  useEffect(() => {
+    intakeAnswersDraftRef.current = intakeAnswersDraft;
+  }, [intakeAnswersDraft]);
+
+  useEffect(() => {
+    if (!id || !accessToken || isDoctorView) return;
+    if (!intakeDraftDirtyRef.current) return;
+    if (record?.category !== "intake" || record.intakeExam?.status === "completed") return;
+
+    const timer = setTimeout(() => {
+      if (!intakeDraftDirtyRef.current) return;
+      const snapshot = intakeAnswersDraftRef.current;
+      void saveIntakeExamAnswers(id, { answers: snapshot, complete: false }, accessToken)
+        .then((raw) => {
+          const mapped = mapInstance(raw);
+          setDetail(mapped);
+          upsertIntake(mapped);
+          if (intakeAnswersDraftRef.current === snapshot) {
+            intakeDraftDirtyRef.current = false;
+          }
+        })
+        .catch(() => undefined);
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [
+    intakeAnswersDraft,
+    id,
+    accessToken,
+    isDoctorView,
+    record?.category,
+    record?.intakeExam?.status,
+    upsertIntake,
+  ]);
   if (needsDoctorAccess && !accessChecked) {
     return (
       <View style={[styles.loadingRoot, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -724,7 +846,9 @@ export default function MedicalRecordDetail() {
             record={record}
             generating={generatingInsight}
             onGenerate={
-              accessToken
+              // Doctors can view existing insights; generate endpoints are patient-scoped
+              // for labs/diagnoses (prescription generate is doctor-allowed separately).
+              accessToken && !isDoctorView
                 ? () => {
                     setGeneratingInsight(true);
                     void generateMedicalRecordAiInsight(
@@ -782,10 +906,54 @@ export default function MedicalRecordDetail() {
               }
               readOnly={isDoctorView || record.intakeExam.status === "completed"}
               accessToken={accessToken ?? undefined}
-              onChange={setIntakeAnswersDraft}
+              onChange={updateIntakeAnswersDraft}
             />
             {!isDoctorView && record.intakeExam.status !== "completed" ? (
-              <View style={{ gap: 10, marginTop: 12 }}>
+              <View
+                style={[
+                  styles.intakeActions,
+                  { borderTopColor: colors.border, flexDirection: dir },
+                ]}
+              >
+                <Pressable
+                  onPress={() => {
+                    if (!accessToken) return;
+                    Alert.alert(
+                      isRTL ? "إعادة تعيين الإجابات" : "Reset answers",
+                      isRTL ? "مسح جميع الإجابات؟" : "Clear all answers?",
+                      [
+                        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+                        {
+                          text: isRTL ? "إعادة تعيين" : "Reset",
+                          style: "destructive",
+                          onPress: () => {
+                            void resetIntakeExamAnswers(record.id, accessToken).then((raw) => {
+                              const mapped = mapInstance(raw);
+                              intakeDraftDirtyRef.current = false;
+                              setDetail(mapped);
+                              upsertIntake(mapped);
+                              setIntakeAnswersDraft({});
+                              void refetchListsAfterChange();
+                            });
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                  disabled={savingIntake}
+                  style={[
+                    styles.intakeResetBtn,
+                    {
+                      borderColor: colors.destructive,
+                      backgroundColor: `${colors.destructive}0F`,
+                      opacity: savingIntake ? 0.55 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: colors.destructive, fontWeight: "700", fontSize: 13 }}>
+                    {isRTL ? "إعادة تعيين الإجابات" : "Reset answers"}
+                  </Text>
+                </Pressable>
                 <Pressable
                   onPress={() => {
                     if (!accessToken) return;
@@ -797,9 +965,12 @@ export default function MedicalRecordDetail() {
                     )
                       .then((raw) => {
                         const mapped = mapInstance(raw);
+                        intakeDraftDirtyRef.current = false;
                         setDetail(mapped);
+                        upsertIntake(mapped);
                         setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
                         void refetchListsAfterChange();
+                        showSuccessToast(isRTL ? "تم حفظ المسودة" : "Draft saved");
                       })
                       .catch((e) =>
                         Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message),
@@ -807,7 +978,7 @@ export default function MedicalRecordDetail() {
                       .finally(() => setSavingIntake(false));
                   }}
                   disabled={savingIntake}
-                  style={[styles.addSymptomBtn, { backgroundColor: colors.muted, alignSelf: "flex-start" }]}
+                  style={[styles.addSymptomBtn, { backgroundColor: colors.muted }]}
                 >
                   <Text style={{ color: colors.foreground, fontWeight: "700" }}>
                     {isRTL ? "حفظ مسودة" : "Save draft"}
@@ -824,7 +995,9 @@ export default function MedicalRecordDetail() {
                     )
                       .then((raw) => {
                         const mapped = mapInstance(raw);
+                        intakeDraftDirtyRef.current = false;
                         setDetail(mapped);
+                        upsertIntake(mapped);
                         setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
                         void refetchListsAfterChange();
                       })
@@ -834,7 +1007,7 @@ export default function MedicalRecordDetail() {
                       .finally(() => setSavingIntake(false));
                   }}
                   disabled={savingIntake}
-                  style={[styles.addSymptomBtn, { backgroundColor: colors.primary, alignSelf: "flex-start" }]}
+                  style={[styles.addSymptomBtn, { backgroundColor: colors.primary }]}
                 >
                   {savingIntake ? (
                     <ActivityIndicator color="#fff" />
@@ -843,34 +1016,6 @@ export default function MedicalRecordDetail() {
                       {isRTL ? "إرسال الفحص" : "Submit exam"}
                     </Text>
                   )}
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    if (!accessToken) return;
-                    Alert.alert(
-                      isRTL ? "إعادة تعيين" : "Reset",
-                      isRTL ? "مسح جميع الإجابات؟" : "Clear all answers?",
-                      [
-                        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-                        {
-                          text: isRTL ? "إعادة تعيين" : "Reset",
-                          style: "destructive",
-                          onPress: () => {
-                            void resetIntakeExamAnswers(record.id, accessToken).then((raw) => {
-                              const mapped = mapInstance(raw);
-                              setDetail(mapped);
-                              setIntakeAnswersDraft({});
-                              void refetchListsAfterChange();
-                            });
-                          },
-                        },
-                      ],
-                    );
-                  }}
-                >
-                  <Text style={{ color: colors.destructive, fontWeight: "700" }}>
-                    {isRTL ? "إعادة تعيين الإجابات" : "Reset answers"}
-                  </Text>
                 </Pressable>
               </View>
             ) : null}
@@ -1408,6 +1553,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minWidth: 64,
     alignItems: "center",
+  },
+  intakeActions: {
+    marginTop: 16,
+    gap: 10,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  intakeResetBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: "center",
+    minWidth: 140,
   },
   labDetailActions: {
     gap: 8,

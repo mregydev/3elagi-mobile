@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Calendar, FileText, Pill, Stethoscope } from "lucide-react-native";
+import { ArrowLeft, Beaker, Calendar, ClipboardList, FileText, Pill, ScanLine, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,8 +21,10 @@ import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
+import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
 import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
 import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
+import type { MedicalDocumentRequestType } from "@/domains/medical/api";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
@@ -77,7 +79,7 @@ interface ChatScreenProps {
 
 export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const insets = useSafeAreaInsets();
   const role = useAuthStore((s) => s.role);
   const { id: rawPeerId, consultationId: rawConsultationId } =
@@ -122,6 +124,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [replacingMedicalMessage, setReplacingMedicalMessage] = useState<ChatMessage | null>(null);
   const [medicalPickerMode, setMedicalPickerMode] = useState<"share" | "replace">("share");
   const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
+  const [documentRequestType, setDocumentRequestType] =
+    useState<MedicalDocumentRequestType | null>(null);
   const [intakeExamModalOpen, setIntakeExamModalOpen] = useState(false);
   const [assigningIntakeExam, setAssigningIntakeExam] = useState(false);
   const [createMedicalRecordOpen, setCreateMedicalRecordOpen] = useState(false);
@@ -691,15 +695,18 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   ) => {
     if (!id || !accessToken || !profile?.id) return;
     const mapped = mapInstance(instance);
+    const title =
+      mapped.title?.trim() ||
+      (isRTL ? "فحص متابعة" : "Follow-up exam");
     const meta: MedicalLinkMeta = {
       record_type: "intake",
       record_id: mapped.id,
-      title: mapped.title,
+      title,
     };
     await handleSend({
       recipientId: id,
       type: "medical_link",
-      content: mapped.title,
+      content: title,
       medicalLink: meta,
     });
     notifyMedicalHistoryChanged(id);
@@ -1156,6 +1163,60 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               {isRTL ? "روشتة جديدة" : "Add prescription"}
             </Text>
           </Pressable>
+          <Pressable
+            onPress={() => setDocumentRequestType("lab")}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.requestLab}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                borderColor: colors.primary,
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Beaker size={15} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+              {t.records.requestLab}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setDocumentRequestType("xray")}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.requestXray}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                borderColor: colors.primary,
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <ScanLine size={15} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+              {t.records.requestXray}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setIntakeExamModalOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "فحص متابعة" : "Follow-up exam"}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                borderColor: colors.primary,
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <ClipboardList size={15} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+              {isRTL ? "فحص متابعة" : "Follow-up exam"}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
       {/* Quick-action pill row — Book appointment stays available to patients at
@@ -1253,6 +1314,16 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             setDiagnosisModalOpen(false);
           }}
           onSubmit={(payload) => void handleDiagnosisSubmit(payload)}
+        />
+      ) : null}
+
+      {id && accessToken && documentRequestType ? (
+        <DoctorMedicalRequestDialog
+          visible
+          patientUserId={id}
+          accessToken={accessToken}
+          initialType={documentRequestType}
+          onClose={() => setDocumentRequestType(null)}
         />
       ) : null}
 
