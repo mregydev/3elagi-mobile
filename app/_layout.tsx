@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { PushNotificationsBootstrap } from "@/components/PushNotificationsBootstrap";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
+import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { AppointmentNotifications } from "@/components/AppointmentNotifications";
 import { AppointmentSync } from "@/components/AppointmentSync";
@@ -150,12 +151,15 @@ export default function RootLayout() {
                   <Stack.Screen name="doctor/[doctorId]" />
                   <Stack.Screen name="patients/[userId]" />
                   <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />
+                  <Stack.Screen name="medical/add-method" options={{ presentation: "modal" }} />
+                  <Stack.Screen name="medical/add-ai" options={{ presentation: "modal" }} />
                   <Stack.Screen name="medical/prescription/add" options={{ presentation: "modal" }} />
                   <Stack.Screen name="doctor-pending" />
                   <Stack.Screen name="points/checkout" />
                 </Stack>
                 <NavLoadingOverlay />
                 <AppToast />
+                <Ask3elagiAiWidget />
               </View>
             </KeyboardProvider>
           </SafeAreaProvider>

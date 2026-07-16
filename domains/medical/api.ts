@@ -104,7 +104,7 @@ function mapSymptoms(raw: RawSymptom[] | undefined): DiagnosisSymptom[] {
 interface RawDocument {
   id: string;
   patient_id: string;
-  type: "lab" | "xray";
+  type: "lab" | "xray" | "prescription";
   title?: string;
   file_url: string;
   file_name: string;
@@ -502,7 +502,7 @@ export async function deletePatientMedicalDocument(
 
 export async function createPatientMedicalDocument(
   payload: {
-    type: "lab" | "xray";
+    type: "lab" | "xray" | "prescription";
     file_url: string;
     file_name: string;
     notes: string;
@@ -556,6 +556,20 @@ export async function fetchDiagnosisById(
   return mapDiagnosis(data);
 }
 
+export type DiagnosisPrescriptionAttach = {
+  title: string;
+  symptoms?: string;
+  medications: PrescriptionMedication[];
+  body_part?: string | null;
+};
+
+export type DiagnosisIntakeAttach = {
+  intake_test_id: string;
+  deadline_at: string;
+  recurrence_type?: "none" | "daily" | "weekly" | "monthly" | "yearly";
+  recurrence_interval?: number;
+};
+
 export async function createDiagnosis(
   payload: {
     desc: string;
@@ -564,6 +578,10 @@ export async function createDiagnosis(
     symptoms: { desc: string }[];
     document_ids?: string[];
     body_part?: string | null;
+    prescription_id?: string;
+    prescription?: DiagnosisPrescriptionAttach;
+    intake_exam_assignment_id?: string;
+    intake_exam?: DiagnosisIntakeAttach;
   },
   token: string,
 ): Promise<MedicalRecord> {
@@ -572,6 +590,145 @@ export async function createDiagnosis(
     body: JSON.stringify(payload),
   });
   return mapDiagnosis(data);
+}
+
+/** Draft-only meds for the patient's country — doctor review only; does not save. */
+export async function draftAiPrescriptionForDiagnosis(
+  payload: {
+    patient_user_id: string;
+    diagnosis_title: string;
+    consultation_id?: string;
+    symptoms?: string[];
+    lang?: Locale;
+  },
+  token: string,
+): Promise<{
+  title: string;
+  symptoms: string;
+  medications: PrescriptionMedication[];
+}> {
+  return authJson("/prescriptions/ai-draft", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function completeDiagnosisWithAi(
+  payload: { patient_id: string; desc: string; lang?: Locale },
+  token: string,
+): Promise<{
+  symptoms: { desc: string }[];
+  document_ids: string[];
+  body_part?: string;
+}> {
+  return authJson("/diagnosis/complete-with-ai", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type MedicalDocumentRequestType = "lab" | "xray";
+export type MedicalDocumentRequestStatus = "pending" | "fulfilled" | "cancelled";
+
+export interface MedicalDocumentRequest {
+  id: string;
+  doctor_id: string;
+  patient_user_id: string;
+  type: MedicalDocumentRequestType;
+  title: string;
+  description: string | null;
+  status: MedicalDocumentRequestStatus;
+  fulfilled_document_id: string | null;
+  pdf_url: string | null;
+  created_at: string;
+  doctor_name?: string | null;
+}
+
+export async function createMedicalDocumentRequest(
+  payload: {
+    patient_user_id: string;
+    type: MedicalDocumentRequestType;
+    title: string;
+    description?: string;
+  },
+  token: string,
+): Promise<MedicalDocumentRequest> {
+  return authJson("/medical-document-requests", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function draftMedicalDocumentRequestDescription(
+  payload: {
+    patient_user_id: string;
+    type: MedicalDocumentRequestType;
+    title: string;
+    lang?: Locale;
+  },
+  token: string,
+): Promise<{ description: string }> {
+  return authJson("/medical-document-requests/ai-draft-description", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchMedicalDocumentRequestsForPatientAsDoctor(
+  patientUserId: string,
+  token: string,
+): Promise<MedicalDocumentRequest[]> {
+  const data = await authJson<MedicalDocumentRequest[]>(
+    `/medical-document-requests/patient/${encodeURIComponent(patientUserId)}`,
+    token,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+export async function cancelMedicalDocumentRequest(
+  id: string,
+  token: string,
+): Promise<MedicalDocumentRequest> {
+  return authJson(`/medical-document-requests/${id}/cancel`, token, {
+    method: "PATCH",
+  });
+}
+
+export async function fetchMyMedicalDocumentRequests(
+  token: string,
+): Promise<MedicalDocumentRequest[]> {
+  const data = await authJson<MedicalDocumentRequest[]>(
+    "/patient/medical-document-requests",
+    token,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fulfillMedicalDocumentRequest(
+  id: string,
+  documentId: string,
+  token: string,
+): Promise<MedicalDocumentRequest> {
+  return authJson(`/patient/medical-document-requests/${id}/fulfill`, token, {
+    method: "POST",
+    body: JSON.stringify({ document_id: documentId }),
+  });
+}
+
+export async function fetchMedicalDocumentRequestPdf(
+  id: string,
+  token: string,
+  lang?: Locale,
+  regenerate = false,
+): Promise<{ pdf_url: string }> {
+  const params = new URLSearchParams();
+  if (lang) params.set("lang", lang);
+  if (regenerate) params.set("regenerate", "true");
+  const qs = params.toString();
+  return authJson(
+    `/patient/medical-document-requests/${id}/pdf${qs ? `?${qs}` : ""}`,
+    token,
+  );
 }
 
 export async function createPatientDiagnosis(
@@ -603,9 +760,10 @@ export async function addSymptomToDiagnosis(
 }
 
 export interface AnalyzedMedicalRecordImage {
-  type: "lab" | "xray";
+  type: "lab" | "xray" | "prescription";
   title: string;
   notes: string;
+  body_part?: string | null;
   ai_insight: MedicalAiInsight;
 }
 
@@ -729,9 +887,10 @@ export async function createMedicalRecordFromChatImage(
     token,
     input.webFile,
   );
-  let type: "lab" | "xray" = "lab";
+  let type: "lab" | "xray" | "prescription" = "lab";
   let title = input.caption?.trim() || "Medical image";
   let notes = input.caption?.trim() || title;
+  let bodyPart: string | null = null;
 
   try {
     const analyzed = await analyzeMedicalRecordImage(
@@ -745,6 +904,7 @@ export async function createMedicalRecordFromChatImage(
     type = analyzed.type;
     title = analyzed.title;
     notes = analyzed.notes;
+    bodyPart = analyzed.body_part ?? null;
   } catch {
     // keep caption-based defaults
   }
@@ -756,6 +916,7 @@ export async function createMedicalRecordFromChatImage(
       file_name: input.fileName,
       title,
       notes,
+      body_part: bodyPart,
       patient_user_id: input.patientUserId,
     },
     token,

@@ -21,6 +21,11 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
+import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import {
+  DEFAULT_PATIENT_COUNTRY,
+  type PatientCountryCode,
+} from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
@@ -57,6 +62,7 @@ export default function SignupScreen() {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState<string>("");
   const [consultationPrice, setConsultationPrice] = useState(1);
+  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -186,6 +192,7 @@ export default function SignupScreen() {
         password,
         isDoctor,
         specialityId,
+        country,
         medicalRecordsStorageConsent: medicalRecordsConsent,
       },
       t.auth,
@@ -211,6 +218,7 @@ export default function SignupScreen() {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
+        country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
@@ -374,6 +382,20 @@ export default function SignupScreen() {
             }}
             colors={colors}
             isRTL={isRTL}
+          />
+
+          <CountryChipsField
+            label={t.auth.countryOfResidence}
+            value={country}
+            onChange={(code) => {
+              setCountry(code);
+              if (fieldErrors.country) {
+                setFieldErrors((prev) => ({ ...prev, country: undefined }));
+              }
+            }}
+            error={fieldErrors.country}
+            isRTL={isRTL}
+            disabled={loading}
           />
 
           {isDoctor && (

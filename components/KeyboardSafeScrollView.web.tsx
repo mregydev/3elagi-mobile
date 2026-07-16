@@ -12,13 +12,22 @@ export function KeyboardSafeScrollView({
   style,
 }: Props) {
   return (
-    <View style={[styles.root, style, contentContainerStyle]}>{children}</View>
+    <View style={[styles.root, style]}>
+      <View style={[styles.content, contentContainerStyle]}>{children}</View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
+    flex: 1,
+    minHeight: 0,
     width: "100%",
     alignSelf: "stretch",
+  },
+  content: {
+    flexGrow: 1,
+    minHeight: 0,
+    width: "100%",
   },
 });

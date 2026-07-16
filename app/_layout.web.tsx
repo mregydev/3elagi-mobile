@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppSplash } from "@/components/SplashScreen";
+import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
@@ -134,6 +135,8 @@ export default function RootLayout() {
             <Stack.Screen name="doctor/[doctorId]" />
             <Stack.Screen name="patients/[userId]" />
             <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />
+            <Stack.Screen name="medical/add-method" options={{ presentation: "modal" }} />
+            <Stack.Screen name="medical/add-ai" options={{ presentation: "modal" }} />
             <Stack.Screen name="medical/prescription/add" />
             <Stack.Screen name="medical/[id]" />
             <Stack.Screen name="admin/index" />
@@ -141,6 +144,7 @@ export default function RootLayout() {
             <Stack.Screen name="points/checkout" />
           </Stack>
           <AppToast />
+          <Ask3elagiAiWidget />
         </View>
       </KeyboardProvider>
     </SafeAreaProvider>

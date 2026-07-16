@@ -88,6 +88,7 @@ function normalizeProfile(
     name: String(raw.name ?? raw.full_name ?? ""),
     email: String(raw.email ?? fallbackEmail),
     phone: raw.phone ? String(raw.phone) : undefined,
+    country: raw.country ? String(raw.country).toUpperCase() : undefined,
     avatarUrl: photoOverride
       ?? (raw.photo_url
         ? String(raw.photo_url)
@@ -179,6 +180,7 @@ export const authRepository = {
           password: input.password,
           name: input.name.trim(),
           phone: input.phone ?? "",
+          country: (input.country ?? "EG").trim().toUpperCase(),
           speciality_id: input.specialityId,
           consultation_price: input.consultationPrice ?? 1,
         })
@@ -187,6 +189,7 @@ export const authRepository = {
           password: input.password,
           name: input.name.trim(),
           phone: input.phone ?? "",
+          country: (input.country ?? "EG").trim().toUpperCase(),
           medical_records_storage_consent:
             input.medicalRecordsStorageConsent === true,
         });

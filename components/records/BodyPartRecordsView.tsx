@@ -10,9 +10,9 @@ import {
   View,
 } from "react-native";
 import {
-  MedicalRecordAddBar,
-  MEDICAL_RECORD_ADD_BAR_HEIGHT,
-} from "@/components/records/MedicalRecordAddBar";
+  RecordsBottomChrome,
+  recordsBottomChromeHeight,
+} from "@/components/records/RecordsBottomChrome";
 import {
   getCategoryMeta,
   getLocalizedCategoryLabel,
@@ -21,7 +21,7 @@ import {
   groupRecordsByMonth,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
-import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
 import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import { parseBodyPart } from "@/domains/medical/bodyParts";
 import { filterMedicalRecords } from "@/domains/medical/search";
@@ -117,9 +117,10 @@ export function BodyPartRecordsView({
 
   const openAdd = () => {
     router.push(
-      buildMedicalAddHref(null, {
-        patientUserId: ownerUserId,
-        bodyPart: bodyPart ?? "general",
+      buildMedicalAddEntryHref({
+        patientUserId: viewingPatient ? ownerUserId : undefined,
+        bodyPart: bodyPart ?? undefined,
+        isPatient: role?.toLowerCase() === "patient",
       }) as never,
     );
   };
@@ -168,7 +169,12 @@ export function BodyPartRecordsView({
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: canAdd ? MEDICAL_RECORD_ADD_BAR_HEIGHT + 24 : 24 },
+          {
+            paddingBottom: recordsBottomChromeHeight({
+              canAdd,
+              extra: 24,
+            }),
+          },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -254,13 +260,11 @@ export function BodyPartRecordsView({
         )}
       </ScrollView>
 
-      {canAdd ? (
-        <MedicalRecordAddBar
-          onAdd={openAdd}
-          showDiagnosis={showDiagnosis}
-          layout="dock"
-        />
-      ) : null}
+      <RecordsBottomChrome
+        canAdd={canAdd}
+        onAdd={openAdd}
+        showDiagnosis={showDiagnosis}
+      />
     </View>
   );
 }

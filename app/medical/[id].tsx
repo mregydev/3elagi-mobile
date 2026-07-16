@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Beaker,
+  Bone,
   Calendar,
   ClipboardList,
   FileText,
@@ -85,7 +86,7 @@ const CATEGORY_META: Record<
 
 export default function MedicalRecordDetail() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
   const { id, doctorView, patientUserId } = useLocalSearchParams<{
@@ -569,6 +570,17 @@ export default function MedicalRecordDetail() {
             icon={<Hash size={18} color={color} />}
             label={isRTL ? "القيمة" : "Value"}
             value={record.value}
+            color={color}
+            colors={colors}
+            isRTL={isRTL}
+          />
+        ) : null}
+
+        {record.bodyPart ? (
+          <DetailCard
+            icon={<Bone size={18} color={color} />}
+            label={t.records.bodyPart}
+            value={t.records.bodyParts[record.bodyPart]}
             color={color}
             colors={colors}
             isRTL={isRTL}

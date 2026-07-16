@@ -19,12 +19,14 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { PatientMedicalRequestsPanel } from "@/components/medical/PatientMedicalRequestsPanel";
 import { BodyPartAutocomplete } from "@/components/records/BodyPartAutocomplete";
 import { BodySkeletonView } from "@/components/records/BodySkeletonView";
+import { MedicalRecordAddBar } from "@/components/records/MedicalRecordAddBar";
 import {
-  MedicalRecordAddBar,
-  MEDICAL_RECORD_ADD_BAR_HEIGHT,
-} from "@/components/records/MedicalRecordAddBar";
+  RecordsBottomChrome,
+  recordsBottomChromeHeight,
+} from "@/components/records/RecordsBottomChrome";
 import {
   RecordsViewModeToggle,
   type RecordsViewMode,
@@ -38,7 +40,7 @@ import {
   groupRecordsByMonth,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
-import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
 import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
@@ -80,7 +82,9 @@ export function RecordsWebView() {
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
-  const mobileAddBarOffset = isDesktop ? 0 : MEDICAL_RECORD_ADD_BAR_HEIGHT + 12;
+  const mobileAddBarOffset = isDesktop
+    ? 0
+    : recordsBottomChromeHeight({ canAdd: true, extra: 12 });
   const { records, profile } = useRecordsPage();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -126,7 +130,8 @@ export function RecordsWebView() {
 
   const openAdd = () => {
     router.push(
-      buildMedicalAddHref(null, {
+      buildMedicalAddEntryHref({
+        isPatient: true,
         patientUserId: profile?.id,
       }) as never,
     );
@@ -160,6 +165,7 @@ export function RecordsWebView() {
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
           isSkeleton && styles.scrollContentSkeleton,
+          isSkeleton && isDesktop && styles.scrollContentSkeletonDesktop,
           {
             paddingBottom: isSkeleton
               ? isDesktop
@@ -177,6 +183,8 @@ export function RecordsWebView() {
           style={[
             styles.container,
             isSkeleton && styles.containerSkeleton,
+            isSkeleton && isDesktop && styles.containerSkeletonDesktop,
+            isSkeleton && !isDesktop && styles.containerSkeletonMobile,
             { maxWidth: WEB_MAX_WIDTH.content },
           ]}
         >
@@ -212,6 +220,10 @@ export function RecordsWebView() {
 
           <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
             <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+          </View>
+
+          <View style={{ marginBottom: 12, alignSelf: "stretch" }}>
+            <PatientMedicalRequestsPanel />
           </View>
 
           <View
@@ -768,9 +780,7 @@ export function RecordsWebView() {
       ) : null}
 
       {!isDesktop ? (
-        <View style={styles.mobileDock}>
-          <MedicalRecordAddBar onAdd={openAdd} layout="dock" />
-        </View>
+        <RecordsBottomChrome canAdd onAdd={openAdd} />
       ) : null}
     </View>
   );
@@ -996,6 +1006,8 @@ const styles = StyleSheet.create({
   skeletonOnly: {
     flex: 1,
     minHeight: 0,
+    width: "100%",
+    alignItems: "center",
   },
   splitPane: {
     minWidth: 0,
@@ -1009,6 +1021,8 @@ const styles = StyleSheet.create({
   },
   splitSkeletonMobile: {
     flex: 1,
+    minHeight: 0,
+    width: "100%",
     padding: 8,
     backgroundColor: "transparent",
   },
@@ -1055,17 +1069,27 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   scrollContentSkeleton: {
+    flexGrow: 1,
     flex: 1,
     paddingBottom: 12,
+  },
+  scrollContentSkeletonDesktop: {
+    flex: 1,
   },
   container: {
     width: "100%",
     gap: 24,
   },
   containerSkeleton: {
+    gap: 10,
+  },
+  containerSkeletonDesktop: {
     flex: 1,
     minHeight: 0,
-    gap: 10,
+  },
+  containerSkeletonMobile: {
+    flex: 1,
+    minHeight: 0,
   },
   pageHeader: {
     gap: 6,

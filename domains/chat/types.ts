@@ -81,6 +81,8 @@ export interface ChatUser {
   lastSeenAt?: string;
   role?: "doctor" | "patient" | "support";
   specialty?: string;
+  /** ISO 3166-1 alpha-2 (doctors). */
+  country?: string;
   rating?: number;
   ratingTotal?: number;
   consultationPrice?: number;

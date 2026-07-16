@@ -9,6 +9,11 @@ import {
   type DoctorCertification,
 } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
+import {
+  DEFAULT_PATIENT_COUNTRY,
+  isPatientCountryCode,
+  type PatientCountryCode,
+} from "@/constants/patientCountries";
 import { uploadFile } from "@/domains/medical/api";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
@@ -27,6 +32,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [birthDate, setBirthDate] = useState("");
   const [professionalTitle, setProfessionalTitle] = useState("");
   const [info, setInfo] = useState("");
@@ -52,6 +58,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setAccount(data);
       setName(data.name);
       setPhone(data.phone);
+      setCountry(
+        data.country && isPatientCountryCode(data.country)
+          ? data.country
+          : DEFAULT_PATIENT_COUNTRY,
+      );
       setBirthDate(data.birthDate ?? "");
       setProfessionalTitle(data.professionalTitle ?? "");
       setInfo(data.info ?? "");
@@ -169,6 +180,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       const updated = await updateAccountProfile(accessToken, role, {
         name,
         phone,
+        country,
         birthDate: birthDate.trim() || undefined,
         professionalTitle: isDoctor ? professionalTitle : undefined,
         info: isDoctor ? info : undefined,
@@ -209,6 +221,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setName,
     phone,
     setPhone,
+    country,
+    setCountry,
     birthDate,
     setBirthDate,
     professionalTitle,

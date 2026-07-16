@@ -18,6 +18,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
+import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
@@ -59,6 +60,8 @@ export function ProfileEditor({
     setName,
     phone,
     setPhone,
+    country,
+    setCountry,
     birthDate,
     setBirthDate,
     professionalTitle,
@@ -179,6 +182,13 @@ export function ProfileEditor({
                 keyboardType="phone-pad"
                 colors={colors}
                 isRTL={isRTL}
+              />
+              <CountryChipsField
+                label={t.auth.countryOfResidence}
+                value={country}
+                onChange={setCountry}
+                isRTL={isRTL}
+                disabled={saving}
               />
               {!isDoctor ? (
                 <Field

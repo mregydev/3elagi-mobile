@@ -21,6 +21,7 @@ export interface SpecialityDoctorRow {
   doctor_id: string;
   name: string;
   photo_url?: string | null;
+  country?: string | null;
   specialty?: string | null;
   speciality_id?: string;
   professional_title?: string | null;
@@ -53,6 +54,7 @@ export interface SpecialityDoctor {
   doctorId: string;
   name: string;
   photoUrl?: string | null;
+  country?: string | null;
   specialty?: string | null;
   specialityId?: string;
   professionalTitle?: string | null;
@@ -96,6 +98,7 @@ function mapDoctor(row: SpecialityDoctorRow): SpecialityDoctor {
     doctorId: row.doctor_id,
     name: row.name,
     photoUrl: row.photo_url,
+    country: row.country?.trim().toUpperCase() || "EG",
     specialty: row.specialty?.trim() || undefined,
     specialityId: row.speciality_id,
     professionalTitle: row.professional_title?.trim() || undefined,

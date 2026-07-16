@@ -11,9 +11,9 @@ import {
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
 import { BodySkeletonView } from "@/components/records/BodySkeletonView";
 import {
-  MedicalRecordAddBar,
-  MEDICAL_RECORD_ADD_BAR_HEIGHT,
-} from "@/components/records/MedicalRecordAddBar";
+  RecordsBottomChrome,
+  recordsBottomChromeHeight,
+} from "@/components/records/RecordsBottomChrome";
 import {
   RecordsViewModeToggle,
   type RecordsViewMode,
@@ -29,7 +29,8 @@ import {
   SHOW_INTAKE_RECORDS,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
-import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { useAuthStore } from "@/domains/auth/store";
+import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
 import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
@@ -64,6 +65,7 @@ export function MedicalHistoryTimeline({
 }: MedicalHistoryTimelineProps) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const role = useAuthStore((s) => s.role);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
@@ -115,8 +117,9 @@ export function MedicalHistoryTimeline({
 
   const openAdd = () => {
     router.push(
-      buildMedicalAddHref(null, {
+      buildMedicalAddEntryHref({
         patientUserId,
+        isPatient: role?.toLowerCase() === "patient",
       }) as never,
     );
   };
@@ -127,8 +130,10 @@ export function MedicalHistoryTimeline({
     setSelectedBodyPart(null);
   };
 
-  const addBarSpace =
-    (canAdd ? MEDICAL_RECORD_ADD_BAR_HEIGHT : 0) + contentPaddingBottom;
+  const addBarSpace = recordsBottomChromeHeight({
+    canAdd,
+    extra: contentPaddingBottom,
+  });
 
   const timelineBody = (
     <>
@@ -224,7 +229,7 @@ export function MedicalHistoryTimeline({
         viewMode === "skeleton" && styles.scrollContentSkeleton,
       ]}
       keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={viewMode !== "skeleton"}
       scrollEnabled={viewMode !== "skeleton"}
     >
       <View style={styles.toggleWrap}>
@@ -258,13 +263,11 @@ export function MedicalHistoryTimeline({
       )}
     </ScrollView>
 
-    {canAdd ? (
-      <MedicalRecordAddBar
-        onAdd={openAdd}
-        showDiagnosis={doctorView}
-        layout="dock"
-      />
-    ) : null}
+    <RecordsBottomChrome
+      canAdd={canAdd}
+      onAdd={openAdd}
+      showDiagnosis={doctorView}
+    />
     </View>
   );
 }
@@ -456,7 +459,8 @@ const styles = StyleSheet.create({
   skeletonOnly: {
     flex: 1,
     minHeight: 0,
-    marginHorizontal: 8,
+    width: "100%",
+    alignItems: "center",
     marginTop: 4,
   },
   splitPane: {

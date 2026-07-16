@@ -171,6 +171,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return null;
   }, [messages]);
   const [consultationOpen, setConsultationOpen] = useState(false);
+  const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
   // Doctor↔patient can only message while a consultation is open.
   const needsConsultation = isDoctorPatientChat && !consultationOpen;
   const canUseDiagnosisTemplates = canOpenPatientRecord && consultationOpen;
@@ -707,13 +708,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     );
   };
 
-  const handleDiagnosisSubmit = async (payload: {
-    description: string;
-    symptoms: string[];
-    documentIds: string[];
-    note?: string;
-    bodyPart: import("@/domains/medical/bodyParts").BodyPart;
-  }) => {
+  const handleDiagnosisSubmit = async (
+    payload: import("@/components/DiagnosisChatForm").DiagnosisSubmitPayload,
+  ) => {
     if (!id || !accessToken || !profile?.id || !doctorId || !canUseDiagnosisTemplates) return;
 
     setSavingDiagnosis(true);
@@ -726,6 +723,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           symptoms: payload.symptoms.map((desc) => ({ desc })),
           document_ids: payload.documentIds.length > 0 ? payload.documentIds : undefined,
           body_part: payload.bodyPart,
+          prescription_id: payload.prescription_id,
+          prescription: payload.prescription,
+          intake_exam_assignment_id: payload.intake_exam_assignment_id,
+          intake_exam: payload.intake_exam,
         },
         accessToken,
       );
@@ -1104,6 +1105,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           selfRole={role ?? "patient"}
           latestAction={latestConsultationAction}
           onOpenChange={setConsultationOpen}
+          onActiveChange={(c) => setActiveConsultationId(c?.id)}
         />
       ) : null}
       {/* Doctor clinical actions during an open consultation */}
@@ -1244,6 +1246,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           isRTL={isRTL}
           patientUserId={id}
           accessToken={accessToken}
+          consultationId={activeConsultationId}
           saving={savingDiagnosis}
           onClose={() => {
             if (savingDiagnosis) return;

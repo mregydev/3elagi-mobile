@@ -12,6 +12,7 @@ export interface SignupFieldErrors {
   email?: string;
   phone?: string;
   password?: string;
+  country?: string;
   specialityId?: string;
   medicalRecordsConsent?: string;
 }
@@ -45,7 +46,8 @@ export function validateSignupFields(
     password: string;
     isDoctor: boolean;
     specialityId: string;
-    medicalRecordsStorageConsent: boolean;
+    country?: string;
+    medicalRecordsStorageConsent?: boolean;
   },
   t: Translations["auth"],
 ): SignupFieldErrors {
@@ -64,6 +66,10 @@ export function validateSignupFields(
 
   if (input.isDoctor && !input.specialityId) {
     errors.specialityId = t.specialityRequiredMsg;
+  }
+
+  if (!input.country?.trim()) {
+    errors.country = t.countryRequired;
   }
 
   if (!input.isDoctor && !input.medicalRecordsStorageConsent) {

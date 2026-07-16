@@ -37,6 +37,7 @@ interface RawPatientDetail {
   email: string;
   name: string;
   phone: string;
+  country?: string | null;
   birth_date?: string | null;
   photo_url?: string | null;
 }
@@ -47,6 +48,7 @@ interface RawDoctor {
   name: string;
   email?: string | null;
   phone?: string | null;
+  country?: string | null;
   photo_url?: string | null;
   professional_title?: string | null;
   description?: string | null;
@@ -73,6 +75,7 @@ export interface AccountProfile {
   email: string;
   name: string;
   phone: string;
+  country?: string;
   birthDate?: string;
   professionalTitle?: string;
   info?: string;
@@ -109,6 +112,7 @@ export async function fetchAccountProfile(
       email: doctor.email ?? user.email,
       name: doctor.name,
       phone: doctor.phone ?? "",
+      country: doctor.country ? String(doctor.country).toUpperCase() : "EG",
       professionalTitle: doctor.professional_title ?? undefined,
       info: doctor.description ?? undefined,
       location: doctor.personal_clinic_location ?? undefined,
@@ -138,6 +142,7 @@ export async function fetchAccountProfile(
     email: patient.email ?? user.email,
     name: patient.name,
     phone: patient.phone ?? "",
+    country: patient.country ? String(patient.country).toUpperCase() : "EG",
     birthDate: patient.birth_date ?? undefined,
     photoUrl: pickPhoto(user, patient),
     role: user.role,
@@ -150,6 +155,7 @@ export async function updateAccountProfile(
   payload: {
     name: string;
     phone: string;
+    country?: string;
     birthDate?: string;
     professionalTitle?: string;
     info?: string;
@@ -180,6 +186,7 @@ export async function updateAccountProfile(
       body: JSON.stringify({
         name: payload.name.trim(),
         phone: payload.phone.trim(),
+        country: payload.country?.trim().toUpperCase() || undefined,
         photo_url: payload.photoUrl ?? undefined,
         professional_title: payload.professionalTitle?.trim() || null,
         description: payload.info?.trim() || null,
@@ -199,6 +206,9 @@ export async function updateAccountProfile(
       name: doctor.name,
       email: doctor.email ?? "",
       phone: doctor.phone ?? undefined,
+      country: doctor.country
+        ? String(doctor.country).toUpperCase()
+        : payload.country?.toUpperCase(),
       avatarUrl: doctor.photo_url ?? payload.photoUrl ?? undefined,
       createdAt: new Date().toISOString(),
     };
@@ -208,12 +218,14 @@ export async function updateAccountProfile(
     user_id: string;
     name: string;
     phone: string;
+    country?: string;
     photo_url?: string | null;
   }>("/patient", token, {
     method: "PATCH",
     body: JSON.stringify({
       name: payload.name.trim(),
       phone: payload.phone.trim(),
+      country: payload.country?.trim().toUpperCase() || undefined,
       birth_date: payload.birthDate || undefined,
       photo_url: payload.photoUrl ?? undefined,
     }),
@@ -226,6 +238,9 @@ export async function updateAccountProfile(
     name: profile.name,
     email: user.email,
     phone: profile.phone,
+    country: profile.country
+      ? String(profile.country).toUpperCase()
+      : payload.country?.toUpperCase(),
     avatarUrl: profile.photo_url ?? payload.photoUrl ?? undefined,
     createdAt: new Date().toISOString(),
   };

@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { Camera, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
+import { Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +16,11 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
+import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import {
+  DEFAULT_PATIENT_COUNTRY,
+  type PatientCountryCode,
+} from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
@@ -54,6 +59,8 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
   const [consultationPrice, setConsultationPrice] = useState(1);
+  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
@@ -168,7 +175,16 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
 
   const submit = async () => {
     const errors = validateSignupFields(
-      { name, email, phone, password, isDoctor, specialityId },
+      {
+        name,
+        email,
+        phone,
+        password,
+        isDoctor,
+        specialityId,
+        country,
+        medicalRecordsStorageConsent: medicalRecordsConsent,
+      },
       t.auth,
     );
     if (hasFieldErrors(errors)) {
@@ -192,6 +208,8 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
+        country,
+        medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
       router.replace(getPostAuthRoute(signedRole, doctorApprovalStatus));
@@ -205,14 +223,21 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
       <View style={[styles.roleRow, { flexDirection: dir }]}>
         <RoleChip
           active={role === "patient"}
-          onPress={() => setRole("patient")}
+          onPress={() => {
+            setRole("patient");
+            setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+          }}
           label={t.auth.patient}
           Icon={UserRound}
           colors={colors}
         />
         <RoleChip
           active={role === "doctor"}
-          onPress={() => setRole("doctor")}
+          onPress={() => {
+            setRole("doctor");
+            setMedicalRecordsConsent(false);
+            setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+          }}
           label={t.auth.doctor}
           Icon={Stethoscope}
           colors={colors}
@@ -307,6 +332,20 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         isRTL={isRTL}
       />
 
+      <CountryChipsField
+        label={t.auth.countryOfResidence}
+        value={country}
+        onChange={(code) => {
+          setCountry(code);
+          if (fieldErrors.country) {
+            setFieldErrors((prev) => ({ ...prev, country: undefined }));
+          }
+        }}
+        error={fieldErrors.country}
+        isRTL={isRTL}
+        disabled={loading}
+      />
+
       {isDoctor ? (
         <View style={styles.doctorBlock}>
           <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
@@ -379,6 +418,54 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
             notUploadedLabel={t.auth.notUploadedOptional}
             uploadLabel={t.auth.upload}
           />
+        </View>
+      ) : null}
+
+      {!isDoctor ? (
+        <View style={{ gap: 6 }}>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: medicalRecordsConsent }}
+            onPress={() => {
+              setMedicalRecordsConsent((prev) => !prev);
+              if (fieldErrors.medicalRecordsConsent) {
+                setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+              }
+              if (formError) setFormError(null);
+            }}
+            style={[styles.consentRow, { flexDirection: dir, alignItems: "flex-start" }]}
+          >
+            <View
+              style={[
+                styles.consentBox,
+                {
+                  borderColor: fieldErrors.medicalRecordsConsent
+                    ? colors.destructive
+                    : medicalRecordsConsent
+                      ? colors.primary
+                      : colors.border,
+                  backgroundColor: medicalRecordsConsent ? colors.primary : colors.card,
+                },
+              ]}
+            >
+              {medicalRecordsConsent ? (
+                <Check size={14} color="#fff" strokeWidth={3} />
+              ) : null}
+            </View>
+            <Text
+              style={[
+                styles.consentText,
+                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {t.auth.medicalRecordsConsentLabel}
+            </Text>
+          </Pressable>
+          {fieldErrors.medicalRecordsConsent ? (
+            <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
+              {fieldErrors.medicalRecordsConsent}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -561,4 +648,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: "center",
   },
+  consentRow: { width: "100%", gap: 10, paddingVertical: 4 },
+  consentBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  consentText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: "500" },
 });

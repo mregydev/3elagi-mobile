@@ -3,6 +3,8 @@ export interface PatientProfile {
   name: string;
   email: string;
   phone?: string;
+  /** ISO 3166-1 alpha-2 residence country (patients). */
+  country?: string;
   avatarUrl?: string;
   createdAt: string;
 }
@@ -29,6 +31,8 @@ export interface SignupInput extends Credentials {
   workPermit?: SignupFile;
   specialityId?: string;
   consultationPrice?: number;
+  /** Required for patient signup — ISO country code. */
+  country?: string;
   medicalRecordsStorageConsent?: boolean;
 }
 

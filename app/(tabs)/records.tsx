@@ -3,6 +3,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AppHeader } from "@/components/AppHeader";
+import { PatientMedicalRequestsPanel } from "@/components/medical/PatientMedicalRequestsPanel";
 import { MedicalHistoryTimeline } from "@/components/records/MedicalHistoryTimeline";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -48,6 +49,7 @@ export default function RecordsTab() {
           {t.records.subtitle}
         </Text>
       </View>
+      <PatientMedicalRequestsPanel />
       <MedicalHistoryTimeline
         records={records}
         patientUserId={profile!.id}

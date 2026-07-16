@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Beaker,
+  Bone,
   Calendar,
   Clock,
   FileText,
@@ -146,7 +147,7 @@ function SectionCard({
 
 export function MedicalRecordWebView() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const { isDesktop, isTablet, isMobile } = useWebLayout();
   const tabBarHeight = useMobileWebTabBarHeight();
   const mobileScrollPadding = tabBarHeight + 24;
@@ -861,6 +862,20 @@ export function MedicalRecordWebView() {
           dir={dir}
           columns={infoColumns}
           span={record.notes && infoColumns >= 2 ? 1 : undefined}
+        />
+      ) : null}
+
+      {record.bodyPart ? (
+        <InfoCard
+          testID="medical-record-body-part"
+          icon={<Bone size={18} color={color} />}
+          label={t.records.bodyPart}
+          value={t.records.bodyParts[record.bodyPart]}
+          accent={color}
+          colors={colors}
+          textAlign={textAlign}
+          dir={dir}
+          columns={infoColumns}
         />
       ) : null}
 

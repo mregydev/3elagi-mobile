@@ -138,7 +138,8 @@ export default function PatientRecordScreen() {
         <DoctorPatientAccessDenied isRTL={isRTL} />
       ) : (
         <KeyboardSafeScrollView
-          contentContainerStyle={{ paddingBottom: 40 }}
+          style={styles.body}
+          contentContainerStyle={styles.bodyContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
@@ -157,7 +158,9 @@ export default function PatientRecordScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, minHeight: 0 },
+  body: { flex: 1, minHeight: 0 },
+  bodyContent: { flexGrow: 1, minHeight: 0, paddingBottom: 16 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   header: {
     alignItems: "center",
@@ -165,6 +168,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    flexShrink: 0,
   },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontWeight: "800" },

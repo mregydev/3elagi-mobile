@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Avatar } from "@/components/Avatar";
 import type { Conversation } from "@/domains/chat/types";
+import { patientCountryLabel } from "@/constants/patientCountries";
 import type { Speciality, SpecialityDoctor } from "@/domains/home/api";
 import { doctorsToConversations } from "@/domains/home/doctorConversations";
 import { usePresenceStore } from "@/domains/presence/store";
@@ -59,6 +60,9 @@ function ConversationRow({
             numberOfLines={1}
           >
             {item.user.name}
+            {item.user.country
+              ? ` · ${patientCountryLabel(item.user.country, isRTL)}`
+              : ""}
           </Text>
           <DoctorSubtitle specialty={item.user.specialty} isRTL={isRTL} />
         </View>

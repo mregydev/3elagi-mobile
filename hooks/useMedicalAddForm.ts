@@ -9,10 +9,12 @@ import { useAuthStore } from "@/domains/auth/store";
 import { getApiLang } from "@/domains/i18n/store";
 import {
   analyzeMedicalRecordImage,
+  completeDiagnosisWithAi,
   createDiagnosis,
   createPatientMedicalDocument,
   fetchAllMedicalHistory,
   fetchDocumentsForPatientUser,
+  fulfillMedicalDocumentRequest,
   uploadFile,
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
@@ -41,10 +43,12 @@ export function useMedicalAddForm() {
     category: categoryParam,
     patientUserId: patientUserIdParam,
     bodyPart: bodyPartParam,
+    requestId: requestIdParam,
   } = useLocalSearchParams<{
     category?: MedicalCategory;
     patientUserId?: string;
     bodyPart?: string;
+    requestId?: string;
   }>();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -78,6 +82,7 @@ export function useMedicalAddForm() {
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
+  const [completingAi, setCompletingAi] = useState(false);
   const [zoomVisible, setZoomVisible] = useState(false);
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
@@ -261,6 +266,28 @@ export function useMedicalAddForm() {
     leaveMedicalForm(fallback);
   };
 
+  const completeWithAi = async () => {
+    if (!accessToken || !isDiagnosis || !selectedPatientUserId) return;
+    const desc = title.trim();
+    if (!desc || completingAi || uploading) return;
+    setCompletingAi(true);
+    try {
+      const result = await completeDiagnosisWithAi(
+        { patient_id: selectedPatientUserId, desc, lang: getApiLang() },
+        accessToken,
+      );
+      const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
+      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
+      setSelectedDocumentIds(result.document_ids ?? []);
+      const part = parseBodyPart(result.body_part);
+      if (part) setBodyPart(part);
+    } catch (e) {
+      showAppAlert(isRTL ? "فشل الإكمال" : "AI complete failed", (e as Error).message);
+    } finally {
+      setCompletingAi(false);
+    }
+  };
+
   const submit = async () => {
     if (!profile || !accessToken) {
       showAppAlert("Sign in first");
@@ -392,16 +419,23 @@ export function useMedicalAddForm() {
           lang: getApiLang(),
           body_part: bodyPart,
         };
-        if (doctorAddingForPatient) {
-          await createPatientMedicalDocument(
-            { ...docPayload, patient_user_id: ownerUserId },
-            accessToken,
-          );
-          await refetchMedicalHistory(ownerUserId);
-        } else {
-          await createPatientMedicalDocument(docPayload, accessToken);
-          await refetchMedicalHistory(profile.id);
+        const saved = doctorAddingForPatient
+          ? await createPatientMedicalDocument(
+              { ...docPayload, patient_user_id: ownerUserId },
+              accessToken,
+            )
+          : await createPatientMedicalDocument(docPayload, accessToken);
+        const requestId = requestIdParam?.trim();
+        if (requestId && saved?.id) {
+          try {
+            await fulfillMedicalDocumentRequest(requestId, saved.id, accessToken);
+          } catch {
+            // Record saved; request fulfill can be retried.
+          }
         }
+        await refetchMedicalHistory(
+          doctorAddingForPatient ? ownerUserId : profile.id,
+        );
         setUploading(false);
         showSuccessToast(isRTL ? "تم الحفظ" : "Saved");
         exitAfterSave();
@@ -492,6 +526,8 @@ export function useMedicalAddForm() {
     pickFromCamera,
     pickFromGallery,
     pickFromFiles,
+    completeWithAi,
+    completingAi,
     submit,
     pageTitle,
     pageSubtitle,

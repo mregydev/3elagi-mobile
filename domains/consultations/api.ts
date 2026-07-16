@@ -105,8 +105,28 @@ export async function endConsultation(
     diagnosis?: string;
     diagnosis_details?: {
       desc: string;
+      body_part?: string | null;
       symptoms?: { desc: string }[];
       document_ids?: string[];
+      prescription_id?: string;
+      prescription?: {
+        title: string;
+        symptoms?: string;
+        medications: {
+          medication_name: string;
+          dose?: string;
+          interval?: string;
+          notes?: string;
+        }[];
+        body_part?: string | null;
+      };
+      intake_exam_assignment_id?: string;
+      intake_exam?: {
+        intake_test_id: string;
+        deadline_at: string;
+        recurrence_type?: "none" | "daily" | "weekly" | "monthly" | "yearly";
+        recurrence_interval?: number;
+      };
     };
   },
   token: string,

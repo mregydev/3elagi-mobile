@@ -3,6 +3,7 @@ import {
   ArrowRight,
   FileText,
   Plus,
+  Sparkles,
   Upload,
   X,
   ZoomIn,
@@ -207,6 +208,8 @@ export function MedicalAddWebView() {
     isImage,
     generateAiInsight,
     setGenerateAiInsight,
+    completeWithAi,
+    completingAi,
     submit,
     pageTitle,
     pageSubtitle,
@@ -545,6 +548,34 @@ export function MedicalAddWebView() {
                   colors={colors}
                   textAlign={textAlign}
                 />
+                <Pressable
+                  onPress={() => void completeWithAi()}
+                  disabled={!title.trim() || completingAi || uploading}
+                  style={({ pressed }) => [
+                    {
+                      marginTop: 10,
+                      flexDirection: isRTL ? "row-reverse" : "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: colors.primary,
+                      backgroundColor: `${colors.primary}12`,
+                      opacity: !title.trim() || completingAi || uploading ? 0.55 : pressed ? 0.9 : 1,
+                    },
+                  ]}
+                >
+                  {completingAi ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <Sparkles size={16} color={colors.primary} />
+                  )}
+                  <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
+                    {isRTL ? "أكمل بالذكاء الاصطناعي" : "Complete with AI"}
+                  </Text>
+                </Pressable>
               </SectionCard>
               <View style={gridStyle(twoCol ? 2 : 1)}>
                 {renderSymptoms()}

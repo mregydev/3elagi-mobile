@@ -4,35 +4,50 @@ import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "rea
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 export const MEDICAL_RECORD_ADD_BAR_HEIGHT = 72;
 export const MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT = 80;
 
-export type MedicalRecordAddBarLayout = "dock" | "web-inline" | "web-dock" | "inline";
+export type MedicalRecordAddBarLayout =
+  | "dock"
+  | "web-inline"
+  | "web-dock"
+  | "inline"
+  /** Same chrome as dock, but not absolutely positioned (for stacking above AI chat). */
+  | "stack";
 
 interface Props {
   onAdd: () => void;
   layout?: MedicalRecordAddBarLayout;
   /** Kept for call-site compatibility; category choice happens on the add form. */
   showDiagnosis?: boolean;
+  /** When `layout="dock"`, offset from the bottom (e.g. above Ask 3elagi AI). */
+  bottomOffset?: number;
 }
 
-export function MedicalRecordAddBar({ onAdd, layout = "dock" }: Props) {
+export function MedicalRecordAddBar({
+  onAdd,
+  layout = "dock",
+  bottomOffset = 0,
+}: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const dir = flexRow(isRTL);
   const isInline = layout === "inline";
   const isWebInline = layout === "web-inline";
   const isWebDock = layout === "web-dock";
-  const isDesktopWeb = isWebInline || isWebDock;
+  const isStack = layout === "stack";
   const flushWebDock = Platform.OS === "web" && layout === "dock";
+  const useDesktopBtn = isDesktop || isWebInline || isWebDock;
 
   const dockStyle: ViewStyle | undefined =
     layout === "dock"
       ? {
           position: "absolute",
-          bottom: 0,
+          bottom: bottomOffset,
           left: 0,
           right: 0,
         }
@@ -52,13 +67,15 @@ export function MedicalRecordAddBar({ onAdd, layout = "dock" }: Props) {
         isWebInline && styles.shellWebInline,
         flushWebDock && styles.shellWebDock,
         isWebDock && styles.shellWebDocked,
-        isDesktopWeb && styles.shellDesktop,
+        isStack && styles.shellStack,
+        useDesktopBtn && styles.shellDesktop,
         dockStyle,
         {
-          backgroundColor: layout === "dock" || isWebDock ? colors.card : "transparent",
+          backgroundColor:
+            layout === "dock" || isWebDock || isStack ? colors.card : "transparent",
           borderTopColor: colors.border,
           shadowColor: colors.foreground,
-          alignItems: isDesktopWeb ? "center" : undefined,
+          alignItems: useDesktopBtn ? "center" : undefined,
         },
       ]}
     >
@@ -66,7 +83,7 @@ export function MedicalRecordAddBar({ onAdd, layout = "dock" }: Props) {
         onPress={onAdd}
         style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
           styles.addBtn,
-          isDesktopWeb && styles.addBtnDesktop,
+          useDesktopBtn && styles.addBtnDesktop,
           {
             flexDirection: dir,
             backgroundColor: pressed ? colors.primary : colors.primary,
@@ -127,6 +144,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 16,
+  },
+  shellStack: {
+    shadowOpacity: 0,
+    elevation: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   shellDesktop: {
     width: "100%",

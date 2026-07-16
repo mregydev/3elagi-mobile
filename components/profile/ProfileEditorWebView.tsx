@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
+import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { navigateToWelcome } from "@/domains/auth/navigation";
@@ -84,6 +85,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setName,
     phone,
     setPhone,
+    country,
+    setCountry,
     birthDate,
     setBirthDate,
     professionalTitle,
@@ -292,6 +295,15 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                     keyboardType="phone-pad"
                     colors={colors}
                     isRTL={isRTL}
+                  />
+                </View>
+                <View style={spanStyle(columns, columns)}>
+                  <CountryChipsField
+                    label={t.auth.countryOfResidence}
+                    value={country}
+                    onChange={setCountry}
+                    isRTL={isRTL}
+                    disabled={saving}
                   />
                 </View>
                 {!isDoctor ? (

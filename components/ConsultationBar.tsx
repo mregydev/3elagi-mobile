@@ -76,6 +76,8 @@ interface Props {
   latestAction?: ConsultationActionMeta | null;
   /** Reports whether a consultation is currently open between the pair. */
   onOpenChange?: (open: boolean) => void;
+  /** Active open consultation (for diagnosis AI draft / linking). */
+  onActiveChange?: (consultation: Consultation | null) => void;
 }
 
 const CANCEL_REASONS: {
@@ -100,6 +102,7 @@ export function ConsultationBar({
   selfRole,
   latestAction,
   onOpenChange,
+  onActiveChange,
 }: Props) {
   const { t } = useI18n();
   const sendMessage = useChatStore((s) => s.sendMessage);
@@ -165,7 +168,8 @@ export function ConsultationBar({
 
   useEffect(() => {
     onOpenChange?.(active?.status === "open");
-  }, [active, onOpenChange]);
+    onActiveChange?.(active?.status === "open" ? active : null);
+  }, [active, onOpenChange, onActiveChange]);
 
   // A patient may complain about the most recently ended consultation.
   const endedConsultationId =
@@ -341,12 +345,9 @@ export function ConsultationBar({
     }
   };
 
-  const submitEnd = async (payload: {
-    description: string;
-    symptoms: string[];
-    documentIds: string[];
-    note?: string;
-  }) => {
+  const submitEnd = async (
+    payload: import("@/components/DiagnosisChatForm").DiagnosisSubmitPayload,
+  ) => {
     if (!active) return;
     setSubmitting(true);
     try {
@@ -359,9 +360,14 @@ export function ConsultationBar({
             ? {
                 diagnosis_details: {
                   desc,
+                  body_part: payload.bodyPart,
                   symptoms: payload.symptoms.map((s) => ({ desc: s })),
                   document_ids:
                     payload.documentIds.length > 0 ? payload.documentIds : undefined,
+                  prescription_id: payload.prescription_id,
+                  prescription: payload.prescription,
+                  intake_exam_assignment_id: payload.intake_exam_assignment_id,
+                  intake_exam: payload.intake_exam,
                 },
               }
             : {}),
@@ -578,6 +584,7 @@ export function ConsultationBar({
         isRTL={isRTL}
         patientUserId={peerId}
         accessToken={token}
+        consultationId={active?.id}
         saving={submitting}
         title={label("End consultation", "إنهاء الاستشارة")}
         submitLabel={label("End consultation", "إنهاء الاستشارة")}

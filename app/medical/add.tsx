@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, Camera, FileText, Image as ImageIcon, Plus, X, ZoomIn } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Camera, FileText, Image as ImageIcon, Plus, Sparkles, X, ZoomIn } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,10 +23,12 @@ import { useAuthStore } from "@/domains/auth/store";
 import { getApiLang } from "@/domains/i18n/store";
 import {
   analyzeMedicalRecordImage,
+  completeDiagnosisWithAi,
   createDiagnosis,
   createPatientMedicalDocument,
   fetchAllMedicalHistory,
   fetchDocumentsForPatientUser,
+  fulfillMedicalDocumentRequest,
   uploadFile,
 } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
@@ -62,10 +64,12 @@ export default function AddMedicalScreen() {
     category: categoryParam,
     patientUserId: patientUserIdParam,
     bodyPart: bodyPartParam,
+    requestId: requestIdParam,
   } = useLocalSearchParams<{
     category?: MedicalCategory;
     patientUserId?: string;
     bodyPart?: string;
+    requestId?: string;
   }>();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -96,6 +100,7 @@ export default function AddMedicalScreen() {
   const [symptomLines, setSymptomLines] = useState<string[]>([""]);
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [completingAi, setCompletingAi] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [zoomVisible, setZoomVisible] = useState(false);
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
@@ -291,6 +296,28 @@ export default function AddMedicalScreen() {
     setRecordsFromApi(apiRecords, ownerId);
   };
 
+  const completeWithAi = async () => {
+    if (!accessToken || !isDiagnosis || !selectedPatientUserId) return;
+    const desc = title.trim();
+    if (!desc || completingAi || uploading) return;
+    setCompletingAi(true);
+    try {
+      const result = await completeDiagnosisWithAi(
+        { patient_id: selectedPatientUserId, desc, lang: getApiLang() },
+        accessToken,
+      );
+      const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
+      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
+      setSelectedDocumentIds(result.document_ids ?? []);
+      const part = parseBodyPart(result.body_part);
+      if (part) setBodyPart(part);
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الإكمال" : "AI complete failed", (e as Error).message);
+    } finally {
+      setCompletingAi(false);
+    }
+  };
+
   const submit = async () => {
     if (!profile || !accessToken) {
       Alert.alert("Sign in first");
@@ -406,16 +433,24 @@ export default function AddMedicalScreen() {
           lang: getApiLang(),
           body_part: bodyPart,
         };
-        if (isDoctor && selectedPatientUserId) {
-          await createPatientMedicalDocument(
-            { ...docPayload, patient_user_id: selectedPatientUserId },
-            accessToken,
-          );
-          await refetchMedicalHistory(selectedPatientUserId);
-        } else {
-          await createPatientMedicalDocument(docPayload, accessToken);
-          await refetchMedicalHistory(profile.id);
+        const saved =
+          isDoctor && selectedPatientUserId
+            ? await createPatientMedicalDocument(
+                { ...docPayload, patient_user_id: selectedPatientUserId },
+                accessToken,
+              )
+            : await createPatientMedicalDocument(docPayload, accessToken);
+        const requestId = requestIdParam?.trim();
+        if (requestId && saved?.id) {
+          try {
+            await fulfillMedicalDocumentRequest(requestId, saved.id, accessToken);
+          } catch {
+            // Record saved; request fulfill can be retried.
+          }
         }
+        await refetchMedicalHistory(
+          isDoctor && selectedPatientUserId ? selectedPatientUserId : profile.id,
+        );
         setUploading(false);
         router.back();
       } catch (e) {
@@ -532,6 +567,29 @@ export default function AddMedicalScreen() {
               textAlign={textAlign}
               multiline
             />
+            <Pressable
+              onPress={() => void completeWithAi()}
+              disabled={!title.trim() || completingAi || uploading}
+              style={[
+                styles.addSymptomBtn,
+                {
+                  flexDirection: dir,
+                  borderColor: colors.primary,
+                  backgroundColor: `${colors.primary}12`,
+                  opacity: !title.trim() || completingAi || uploading ? 0.55 : 1,
+                  marginBottom: 12,
+                },
+              ]}
+            >
+              {completingAi ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
+                <Sparkles size={16} color={colors.primary} />
+              )}
+              <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
+                {isRTL ? "أكمل بالذكاء الاصطناعي" : "Complete with AI"}
+              </Text>
+            </Pressable>
             <Text style={[styles.label, { color: colors.foreground, textAlign }]}>
               {isRTL ? "الأعراض " : "Symptoms "}
               <Text style={{ color: colors.mutedForeground, fontWeight: "400" }}>

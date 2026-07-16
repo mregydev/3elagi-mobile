@@ -50,7 +50,7 @@ export function AssistantCreateRecordDialog({
   const { isRTL } = useI18n();
   const apiLang = useApiLang();
   const isEn = !isRTL;
-  const [type, setType] = useState<"lab" | "xray">("lab");
+  const [type, setType] = useState<"lab" | "xray" | "prescription">("lab");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<AttachedFile | null>(null);
@@ -157,7 +157,9 @@ export function AssistantCreateRecordDialog({
           title: title.trim(),
           notes: notes.trim(),
           ai_insight: aiInsight,
-          patient_user_id: patientUserId,
+          ...(patientUserId?.trim()
+            ? { patient_user_id: patientUserId.trim() }
+            : {}),
         },
         token,
       );
@@ -193,8 +195,20 @@ export function AssistantCreateRecordDialog({
           </View>
 
           <View style={styles.typeRow}>
-            {(["lab", "xray"] as const).map((code) => {
+            {(["lab", "xray", "prescription"] as const).map((code) => {
               const selected = type === code;
+              const label =
+                code === "lab"
+                  ? isEn
+                    ? "Lab"
+                    : "مختبر"
+                  : code === "xray"
+                    ? isEn
+                      ? "X-ray"
+                      : "أشعة"
+                    : isEn
+                      ? "Prescription"
+                      : "روشتة";
               return (
                 <Pressable
                   key={code}
@@ -214,13 +228,7 @@ export function AssistantCreateRecordDialog({
                       fontWeight: "600",
                     }}
                   >
-                    {code === "lab"
-                      ? isEn
-                        ? "Lab"
-                        : "مختبر"
-                      : isEn
-                        ? "X-ray"
-                        : "أشعة"}
+                    {label}
                   </Text>
                 </Pressable>
               );

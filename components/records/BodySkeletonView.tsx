@@ -7,6 +7,7 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type ViewStyle,
 } from "react-native";
 import { X } from "lucide-react-native";
 import { BodyAnatomyFigure } from "@/components/records/BodyAnatomyFigure";
@@ -42,13 +43,21 @@ const ZONE_ACCENT: Record<BodyZone, string> = {
   bottom: "#EA580C",
 };
 
+const MOBILE_FIGURE_HEIGHT_RATIO = 0.7;
+const MOBILE_FIGURE_WIDTH_RATIO = 0.9;
+
 /** Prefer filling the parent pane; fallback fraction of viewport. */
 export function bodyFigureViewportHeight(
   screenHeight: number,
   screenWidth: number,
 ): number {
   const isDesktop = screenWidth >= WEB_BREAKPOINTS.desktop;
-  return Math.round(screenHeight * (isDesktop ? 0.72 : 0.78));
+  return Math.round(screenHeight * (isDesktop ? 0.72 : MOBILE_FIGURE_HEIGHT_RATIO));
+}
+
+/** Mobile / mobile-web skeleton width target (viewport fraction). */
+export function bodyFigureViewportWidth(screenWidth: number): number {
+  return Math.round(screenWidth * MOBILE_FIGURE_WIDTH_RATIO);
 }
 
 export function BodySkeletonView({
@@ -106,11 +115,24 @@ export function BodySkeletonView({
     if (w > 0 && w !== diagramW) setDiagramW(w);
   };
 
-  const fallbackH = bodyFigureViewportHeight(screenHeight, width);
-  const parentW = paneWidth > 0 ? paneWidth : Math.round(width * 0.52);
-  // Figure fills whatever space is left after chips + part strip.
-  const figureHeight = Math.max(180, diagramH > 0 ? diagramH : fallbackH);
-  const figureWidth = Math.max(180, diagramW > 0 ? diagramW : Math.round(parentW * 0.98));
+  // Mobile: fixed 90% of the screen (pixels). Do not use parent % / onLayout —
+  // contain-fit inside a short parent is what made the skeleton look tiny.
+  const mobileFigureH = Math.max(280, bodyFigureViewportHeight(screenHeight, width));
+  const mobileFigureW = Math.max(180, bodyFigureViewportWidth(width));
+  const parentW = paneWidth > 0 ? paneWidth : Math.round(width * 0.5);
+
+  const figureHeight = isDesktop
+    ? Math.max(180, diagramH > 0 ? diagramH : Math.round(screenHeight * 0.72))
+    : mobileFigureH;
+  const figureWidth = isDesktop
+    ? Math.max(180, diagramW > 0 ? diagramW : Math.round(parentW * 0.98))
+    : mobileFigureW;
+
+  const mobileBoxStyle: ViewStyle = {
+    width: mobileFigureW,
+    height: mobileFigureH,
+    alignSelf: "center",
+  };
 
   const selectZone = (zone: BodyZone) => {
     setOpenZone((prev) => (prev === zone ? null : zone));
@@ -283,68 +305,85 @@ export function BodySkeletonView({
     ) : null;
 
   return (
-    <View style={styles.wrap} onLayout={onPaneLayout}>
-      <View style={[styles.chipRow, { flexDirection: dir }]}>
-        {chip(null, t.records.bodyPartAll, !selectedPart && !openZone)}
-        {BODY_ZONES.map((zone) => {
-          const ZoneIcon = BODY_ZONE_ICONS[zone];
-          const active = openZone === zone;
-          const accent = ZONE_ACCENT[zone];
-          return (
-            <Pressable
-              key={zone}
-              onPress={() => selectZone(zone)}
+    <View
+      style={[styles.wrap, !isDesktop && styles.wrapMobile]}
+      onLayout={onPaneLayout}
+    >
+      {isDesktop ? (
+        <>
+          <View style={[styles.chipRow, { flexDirection: dir }]}>
+            {chip(null, t.records.bodyPartAll, !selectedPart && !openZone)}
+            {BODY_ZONES.map((zone) => {
+              const ZoneIcon = BODY_ZONE_ICONS[zone];
+              const active = openZone === zone;
+              const accent = ZONE_ACCENT[zone];
+              return (
+                <Pressable
+                  key={zone}
+                  onPress={() => selectZone(zone)}
+                  style={[
+                    styles.zoneChip,
+                    {
+                      flexDirection: dir,
+                      borderColor: active ? accent : colors.border,
+                      backgroundColor: active ? `${accent}18` : colors.muted,
+                    },
+                  ]}
+                >
+                  <View style={[styles.zoneDot, { backgroundColor: accent }]} />
+                  <ZoneIcon
+                    width={14}
+                    height={14}
+                    color={active ? accent : colors.foreground}
+                  />
+                  <Text
+                    style={{
+                      color: active ? accent : colors.foreground,
+                      fontWeight: "700",
+                      fontSize: 12,
+                    }}
+                  >
+                    {t.records.bodyZones[zone]}
+                    {zonesWithRecords.has(zone) ? " •" : ""}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {!openZone ? (
+            <Text
               style={[
-                styles.zoneChip,
-                {
-                  flexDirection: dir,
-                  borderColor: active ? accent : colors.border,
-                  backgroundColor: active ? `${accent}18` : colors.muted,
-                },
+                styles.hint,
+                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
               ]}
             >
-              <View style={[styles.zoneDot, { backgroundColor: accent }]} />
-              <ZoneIcon width={14} height={14} color={active ? accent : colors.foreground} />
-              <Text
-                style={{
-                  color: active ? accent : colors.foreground,
-                  fontWeight: "700",
-                  fontSize: 12,
-                }}
-              >
-                {t.records.bodyZones[zone]}
-                {zonesWithRecords.has(zone) ? " •" : ""}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {!openZone ? (
-        <Text
-          style={[
-            styles.hint,
-            { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-          ]}
-        >
-          {t.records.bodyZoneHint}
-        </Text>
+              {t.records.bodyZoneHint}
+            </Text>
+          ) : null}
+        </>
       ) : null}
 
-      <View style={styles.diagramCard} onLayout={onDiagramLayout}>
-        <BodyAnatomyFigure
-          width={figureWidth}
-          height={figureHeight}
-          openZone={openZone}
-          zonesWithRecords={zonesWithRecords}
-          zoneLabels={t.records.bodyZones}
-          onSelectZone={selectZone}
-          foreground={colors.foreground}
-          mutedForeground={colors.mutedForeground}
-          cardBg={colors.card}
-          border={colors.border}
-          isRTL={isRTL}
-        />
+      <View
+        style={isDesktop ? styles.diagramCard : [styles.diagramCardMobile, mobileBoxStyle]}
+        onLayout={onDiagramLayout}
+      >
+        {figureWidth > 0 && figureHeight > 0 ? (
+          <BodyAnatomyFigure
+            width={figureWidth}
+            height={figureHeight}
+            openZone={openZone}
+            zonesWithRecords={zonesWithRecords}
+            zoneLabels={t.records.bodyZones}
+            onSelectZone={selectZone}
+            foreground={colors.foreground}
+            mutedForeground={colors.mutedForeground}
+            cardBg={colors.card}
+            border={colors.border}
+            isRTL={isRTL}
+            compact={!isDesktop}
+          />
+        ) : null}
       </View>
 
       {!usePopupPicker && openZone ? (
@@ -396,6 +435,12 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 6,
   },
+  wrapMobile: {
+    flexGrow: 0,
+    flexShrink: 0,
+    width: "100%",
+    alignItems: "center",
+  },
   chipRow: {
     gap: 6,
     flexWrap: "wrap",
@@ -435,6 +480,14 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     overflow: "hidden",
     borderWidth: 0,
+  },
+  diagramCardMobile: {
+    flexGrow: 0,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    overflow: "visible",
   },
   partListCard: {
     flexShrink: 0,

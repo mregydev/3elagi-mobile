@@ -13,6 +13,7 @@ export function doctorsToConversations(
       presence: "offline" as const,
       role: "doctor" as const,
       specialty: (d.specialty ?? d.professionalTitle)?.trim() || undefined,
+      country: d.country?.trim().toUpperCase() || "EG",
       rating: d.ratingAverage ?? undefined,
       ratingTotal: d.ratingTotal ?? undefined,
       consultationPrice: d.consultationPrice ?? 1,

@@ -49,6 +49,12 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
         !pathHas(path, "activity")),
   },
   {
+    href: "/(tabs)/history",
+    labelKey: "history",
+    Icon: History,
+    match: (path) => pathHas(path, "history"),
+  },
+  {
     href: "/(tabs)/assistant",
     labelKey: "aiAssistant",
     Icon: Bot,
@@ -82,12 +88,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     Icon: ClipboardList,
     patientOnly: true,
     match: (path) => pathHas(path, "records") || path.includes("/medical"),
-  },
-  {
-    href: "/(tabs)/history",
-    labelKey: "history",
-    Icon: History,
-    match: (path) => pathHas(path, "history"),
   },
   {
     href: "/(tabs)/points",

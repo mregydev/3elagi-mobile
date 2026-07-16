@@ -206,13 +206,9 @@ export default function VideoCallScreen() {
     }
   };
 
-  const handleDiagnosisSubmit = async (payload: {
-    description: string;
-    symptoms: string[];
-    documentIds: string[];
-    note?: string;
-    bodyPart: import("@/domains/medical/bodyParts").BodyPart;
-  }) => {
+  const handleDiagnosisSubmit = async (
+    payload: import("@/components/DiagnosisChatForm").DiagnosisSubmitPayload,
+  ) => {
     const targetPatientId = session?.patientUserId?.trim() || patientUserIdParam;
     if (!accessToken || !doctorId || !targetPatientId) return;
     setSavingDiagnosis(true);
@@ -226,6 +222,10 @@ export default function VideoCallScreen() {
           document_ids:
             payload.documentIds.length > 0 ? payload.documentIds : undefined,
           body_part: payload.bodyPart,
+          prescription_id: payload.prescription_id,
+          prescription: payload.prescription,
+          intake_exam_assignment_id: payload.intake_exam_assignment_id,
+          intake_exam: payload.intake_exam,
         },
         accessToken,
       );

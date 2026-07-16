@@ -26,9 +26,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
 import { BodySkeletonView, bodyFigureViewportHeight } from "@/components/records/BodySkeletonView";
+import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
+import { MedicalRecordAddBar } from "@/components/records/MedicalRecordAddBar";
 import {
-  MedicalRecordAddBar,
-} from "@/components/records/MedicalRecordAddBar";
+  RecordsBottomChrome,
+  recordsBottomChromeHeight,
+} from "@/components/records/RecordsBottomChrome";
 import {
   RecordsViewModeToggle,
   type RecordsViewMode,
@@ -37,7 +40,7 @@ import {
   SHOW_INTAKE_RECORDS,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
-import { buildMedicalAddHref } from "@/domains/medical/addHref";
+import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
 import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
@@ -46,6 +49,7 @@ import {
   hasActiveFilters,
   type MedicalHistoryFilters,
 } from "@/domains/medical/search";
+import { useAuthStore } from "@/domains/auth/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -87,9 +91,12 @@ export function MedicalHistoryList({
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
+  const role = useAuthStore((s) => s.role);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
+  const [requestDialog, setRequestDialog] = useState<"lab" | "xray" | null>(null);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
   const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
@@ -116,19 +123,23 @@ export function MedicalHistoryList({
     return out;
   }, [displayRecords]);
 
-  const filteredGrouped = useMemo(() => {
-    const withBody: MedicalHistoryFilters = {
+  const effectiveFilters = useMemo(
+    (): MedicalHistoryFilters => ({
       ...filters,
       bodyPart: selectedBodyPart ?? filters.bodyPart,
-    };
+    }),
+    [filters, selectedBodyPart],
+  );
+
+  const filteredGrouped = useMemo(() => {
     const out = { ...grouped };
     for (const key of SEARCHABLE_CATEGORIES) {
-      out[key] = filterMedicalRecords(grouped[key], withBody);
+      out[key] = filterMedicalRecords(grouped[key], effectiveFilters);
     }
     return out;
-  }, [grouped, filters, selectedBodyPart]);
+  }, [grouped, effectiveFilters]);
 
-  const isFiltering = hasActiveFilters(filters) || !!selectedBodyPart;
+  const isFiltering = hasActiveFilters(effectiveFilters);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const dateLocale = localeTag(isRTL);
@@ -146,14 +157,21 @@ export function MedicalHistoryList({
 
   const openAdd = () => {
     router.push(
-      buildMedicalAddHref(null, {
+      buildMedicalAddEntryHref({
         patientUserId,
+        isPatient: role?.toLowerCase() === "patient",
       }) as never,
     );
   };
 
+  const handleFiltersChange = (next: MedicalHistoryFilters) => {
+    setFilters(next);
+    setSelectedBodyPart(next.bodyPart);
+  };
+
   const handleSelectPart = (part: BodyPart | null) => {
     setSelectedBodyPart(part);
+    setFilters((prev) => ({ ...prev, bodyPart: part }));
   };
 
   const recordsPanel = visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
@@ -372,16 +390,55 @@ export function MedicalHistoryList({
 
   const splitHeight = bodyFigureViewportHeight(screenHeight, screenWidth);
 
+  const bottomChromePad = recordsBottomChromeHeight({
+    canAdd,
+    extra: 0,
+  });
+
   return (
-    <>
+    <View
+      style={[
+        !isDesktop ? styles.mobileRoot : styles.desktopRoot,
+        !isDesktop && bottomChromePad > 0 ? { paddingBottom: bottomChromePad } : null,
+      ]}
+    >
       <View style={styles.viewToggleWrap}>
         <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
       </View>
 
-      {viewMode === "table" ? (
+      {doctorView && accessToken ? (
+        <View style={[styles.requestPills, { flexDirection: dir }]}>
+          <Pressable
+            onPress={() => setRequestDialog("lab")}
+            style={[
+              styles.requestPill,
+              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+            ]}
+          >
+            <Beaker size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
+              {t.records.requestLab}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setRequestDialog("xray")}
+            style={[
+              styles.requestPill,
+              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
+            ]}
+          >
+            <ScanLine size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
+              {t.records.requestXray}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {viewMode === "table" || isDesktop ? (
         <MedicalHistoryFilterPanel
-          filters={filters}
-          onChange={setFilters}
+          filters={effectiveFilters}
+          onChange={handleFiltersChange}
           isRTL={isRTL}
           dir={dir}
         />
@@ -415,7 +472,7 @@ export function MedicalHistoryList({
             </ScrollView>
           </View>
         ) : (
-          <View style={[styles.skeletonOnly, { height: splitHeight }]}>
+          <View style={styles.skeletonOnly}>
             <BodySkeletonView
               selectedPart={selectedBodyPart}
               records={displayRecords}
@@ -432,8 +489,29 @@ export function MedicalHistoryList({
         recordsPanel
       )}
 
-      {canAdd ? (
-        <MedicalRecordAddBar onAdd={openAdd} showDiagnosis={doctorView} layout="inline" />
+      {isDesktop && canAdd ? (
+        <MedicalRecordAddBar
+          onAdd={openAdd}
+          showDiagnosis={doctorView}
+          layout="inline"
+        />
+      ) : null}
+      {!isDesktop ? (
+        <RecordsBottomChrome
+          canAdd={canAdd}
+          onAdd={openAdd}
+          showDiagnosis={doctorView}
+        />
+      ) : null}
+
+      {doctorView && accessToken && requestDialog ? (
+        <DoctorMedicalRequestDialog
+          visible
+          patientUserId={patientUserId}
+          accessToken={accessToken}
+          initialType={requestDialog}
+          onClose={() => setRequestDialog(null)}
+        />
       ) : null}
 
       <Modal
@@ -467,12 +545,36 @@ export function MedicalHistoryList({
           )}
         </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  viewToggleWrap: { paddingHorizontal: 16, paddingTop: 8 },
+  mobileRoot: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+    position: "relative",
+  },
+  desktopRoot: {
+    width: "100%",
+  },
+  viewToggleWrap: { paddingHorizontal: 16, paddingTop: 8, flexShrink: 0 },
+  requestPills: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 8,
+    flexShrink: 0,
+  },
+  requestPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+  },
   splitRow: {
     marginTop: 8,
     marginHorizontal: 8,
@@ -481,8 +583,8 @@ const styles = StyleSheet.create({
   },
   skeletonOnly: {
     marginTop: 8,
-    marginHorizontal: 8,
-    minHeight: 0,
+    width: "100%",
+    alignItems: "center",
   },
   splitPane: {
     minWidth: 0,
