@@ -40,8 +40,6 @@ export const BODY_ZONE_ICONS: Record<BodyZone, HealthIcon> = {
   right_arm: Arm,
   left_leg: Leg,
   right_leg: Leg,
-  left_foot: Foot,
-  right_foot: Foot,
 };
 
 /**

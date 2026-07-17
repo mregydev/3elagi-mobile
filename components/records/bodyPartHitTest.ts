@@ -17,8 +17,6 @@ export const HIT_ORDER: BodyZone[] = [
   "chest",
   "right_leg",
   "left_leg",
-  "right_foot",
-  "left_foot",
   "right_arm",
   "left_arm",
 ];
@@ -27,8 +25,6 @@ export const HIT_ORDER: BodyZone[] = [
 const HIT_PRIORITY: BodyZone[] = [
   "left_arm",
   "right_arm",
-  "left_foot",
-  "right_foot",
   "left_leg",
   "right_leg",
   "head_neck",

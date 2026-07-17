@@ -31,8 +31,6 @@ const ZONE_ACCENT: Record<BodyZone, string> = {
   right_arm: "#D97706",
   left_leg: "#EA580C",
   right_leg: "#C2410C",
-  left_foot: "#FB7185",
-  right_foot: "#E11D48",
 };
 
 type Props = {

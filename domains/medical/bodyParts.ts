@@ -52,8 +52,6 @@ export const BODY_ZONES = [
   "right_arm",
   "left_leg",
   "right_leg",
-  "left_foot",
-  "right_foot",
 ] as const;
 export type BodyZone = (typeof BODY_ZONES)[number];
 
@@ -75,10 +73,8 @@ export const BODY_PARTS_BY_ZONE: Record<BodyZone, readonly Exclude<BodyPart, "ge
   pelvis: ["pelvis", "hip", "bladder", "reproductive"],
   left_arm: ["shoulder", "left_arm", "left_hand"],
   right_arm: ["shoulder", "right_arm", "right_hand"],
-  left_leg: ["left_leg"],
-  right_leg: ["right_leg"],
-  left_foot: ["left_foot"],
-  right_foot: ["right_foot"],
+  left_leg: ["left_leg", "left_foot"],
+  right_leg: ["right_leg", "right_foot"],
 };
 
 /** Skeleton diagram regions (excludes general — shown as a chip). */
