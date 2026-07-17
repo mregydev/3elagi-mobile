@@ -41,7 +41,7 @@ export default function PatientRecordScreen() {
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("skeleton");
+  const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
   const skeletonView = recordsViewMode === "skeleton";
 
   const isDoctor = role?.toLowerCase() === "doctor";

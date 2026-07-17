@@ -23,9 +23,16 @@ import { useI18n } from "@/hooks/useI18n";
 import { chatFlexRow } from "@/utils/rtl";
 
 const ZONE_ACCENT: Record<BodyZone, string> = {
-  top: "#6366F1",
-  medium: "#0D9488",
-  bottom: "#EA580C",
+  head_neck: "#6366F1",
+  chest: "#0EA5E9",
+  abdomen: "#0D9488",
+  pelvis: "#A855F7",
+  left_arm: "#F59E0B",
+  right_arm: "#D97706",
+  left_leg: "#EA580C",
+  right_leg: "#C2410C",
+  left_foot: "#FB7185",
+  right_foot: "#E11D48",
 };
 
 type Props = {

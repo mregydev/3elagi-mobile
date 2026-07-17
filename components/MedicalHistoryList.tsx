@@ -115,7 +115,7 @@ export function MedicalHistoryList({
   const [requestDialog, setRequestDialog] = useState<"lab" | "xray" | null>(null);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
-  const [internalViewMode, setInternalViewMode] = useState<RecordsViewMode>("skeleton");
+  const [internalViewMode, setInternalViewMode] = useState<RecordsViewMode>("table");
   const viewMode = viewModeProp ?? internalViewMode;
   const setViewMode = useCallback(
     (mode: RecordsViewMode) => {
@@ -749,8 +749,10 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   skeletonOnly: {
-    marginTop: 8,
-    marginBottom: 40,
+    flex: 1,
+    minHeight: 0,
+    marginTop: 4,
+    marginBottom: 8,
     width: "100%",
     alignItems: "center",
   },

@@ -93,7 +93,7 @@ export function RecordsWebView() {
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
+  const [viewMode, setViewMode] = useState<RecordsViewMode>("table");
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
 
   const displayRecords = useMemo(() => withoutIntakeRecords(records), [records]);
@@ -222,9 +222,11 @@ export function RecordsWebView() {
             <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
           </View>
 
-          <View style={{ marginBottom: 12, alignSelf: "stretch" }}>
-            <PatientMedicalRequestsPanel />
-          </View>
+          {!isSkeleton || isDesktop ? (
+            <View style={{ marginBottom: 12, alignSelf: "stretch", flexShrink: 0 }}>
+              <PatientMedicalRequestsPanel />
+            </View>
+          ) : null}
 
           <View
             style={

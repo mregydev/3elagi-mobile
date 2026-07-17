@@ -68,7 +68,7 @@ export function MedicalHistoryTimeline({
   const role = useAuthStore((s) => s.role);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-  const [viewMode, setViewMode] = useState<RecordsViewMode>("skeleton");
+  const [viewMode, setViewMode] = useState<RecordsViewMode>("table");
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
 
   const dir = flexRow(isRTL);

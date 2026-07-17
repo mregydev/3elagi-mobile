@@ -20,8 +20,8 @@ export function RecordsViewModeToggle({ mode, onChange }: Props) {
     <View style={[styles.row, { flexDirection: dir, borderColor: colors.border, backgroundColor: colors.muted }]}>
       {(
         [
-          { key: "skeleton" as const, label: t.records.skeletonView },
           { key: "table" as const, label: t.records.tableView },
+          { key: "skeleton" as const, label: t.records.skeletonView },
         ] as const
       ).map((opt) => {
         const active = mode === opt.key;

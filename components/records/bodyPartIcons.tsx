@@ -32,9 +32,16 @@ import type { BodyPart, BodyZone } from "@/domains/medical/bodyParts";
 export type HealthIcon = ComponentType<SvgProps>;
 
 export const BODY_ZONE_ICONS: Record<BodyZone, HealthIcon> = {
-  top: Head,
-  medium: HeartOrgan,
-  bottom: Leg,
+  head_neck: Head,
+  chest: Lungs,
+  abdomen: Stomach,
+  pelvis: Skeleton,
+  left_arm: Arm,
+  right_arm: Arm,
+  left_leg: Leg,
+  right_leg: Leg,
+  left_foot: Foot,
+  right_foot: Foot,
 };
 
 /**

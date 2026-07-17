@@ -1,24 +1,19 @@
 export const BODY_PARTS = [
   "general",
-  // Top — head & neck
+  // Head & neck
   "head",
   "neck",
   "eyes",
   "ears",
   "throat",
   "thyroid",
-  // Medium — arms, thorax, abdomen & mid-spine
-  "shoulder",
-  "left_arm",
-  "right_arm",
-  "left_hand",
-  "right_hand",
+  // Chest
   "chest",
   "thoracic_spine",
-  "lumbar_spine",
   "back",
   "heart",
   "lungs",
+  // Abdomen
   "abdomen",
   "stomach",
   "liver",
@@ -27,11 +22,19 @@ export const BODY_PARTS = [
   "spleen",
   "intestines",
   "kidney",
-  // Bottom — pelvis & lower extremities
+  "lumbar_spine",
+  // Pelvis
   "pelvis",
   "hip",
   "bladder",
   "reproductive",
+  // Upper limbs
+  "shoulder",
+  "left_arm",
+  "right_arm",
+  "left_hand",
+  "right_hand",
+  // Lower limbs
   "left_leg",
   "right_leg",
   "left_foot",
@@ -40,31 +43,25 @@ export const BODY_PARTS = [
 
 export type BodyPart = (typeof BODY_PARTS)[number];
 
-export const BODY_ZONES = ["top", "medium", "bottom"] as const;
+export const BODY_ZONES = [
+  "head_neck",
+  "chest",
+  "abdomen",
+  "pelvis",
+  "left_arm",
+  "right_arm",
+  "left_leg",
+  "right_leg",
+  "left_foot",
+  "right_foot",
+] as const;
 export type BodyZone = (typeof BODY_ZONES)[number];
 
 /** Parts shown when a skeleton zone is opened (excludes `general`). */
 export const BODY_PARTS_BY_ZONE: Record<BodyZone, readonly Exclude<BodyPart, "general">[]> = {
-  top: [
-    "head",
-    "neck",
-    "eyes",
-    "ears",
-    "throat",
-    "thyroid",
-  ],
-  medium: [
-    "shoulder",
-    "left_arm",
-    "right_arm",
-    "left_hand",
-    "right_hand",
-    "chest",
-    "thoracic_spine",
-    "lumbar_spine",
-    "back",
-    "heart",
-    "lungs",
+  head_neck: ["head", "neck", "eyes", "ears", "throat", "thyroid"],
+  chest: ["chest", "thoracic_spine", "back", "heart", "lungs"],
+  abdomen: [
     "abdomen",
     "stomach",
     "liver",
@@ -73,17 +70,15 @@ export const BODY_PARTS_BY_ZONE: Record<BodyZone, readonly Exclude<BodyPart, "ge
     "spleen",
     "intestines",
     "kidney",
+    "lumbar_spine",
   ],
-  bottom: [
-    "pelvis",
-    "hip",
-    "bladder",
-    "reproductive",
-    "left_leg",
-    "right_leg",
-    "left_foot",
-    "right_foot",
-  ],
+  pelvis: ["pelvis", "hip", "bladder", "reproductive"],
+  left_arm: ["shoulder", "left_arm", "left_hand"],
+  right_arm: ["shoulder", "right_arm", "right_hand"],
+  left_leg: ["left_leg"],
+  right_leg: ["right_leg"],
+  left_foot: ["left_foot"],
+  right_foot: ["right_foot"],
 };
 
 /** Skeleton diagram regions (excludes general — shown as a chip). */
