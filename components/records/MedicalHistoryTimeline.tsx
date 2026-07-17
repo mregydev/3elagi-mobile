@@ -8,16 +8,13 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPanel";
-import { BodySkeletonView } from "@/components/records/BodySkeletonView";
+import { PatientMedicalRequestsPanel } from "@/components/medical/PatientMedicalRequestsPanel";
 import {
   RecordsBottomChrome,
   recordsBottomChromeHeight,
 } from "@/components/records/RecordsBottomChrome";
-import {
-  RecordsViewModeToggle,
-  type RecordsViewMode,
-} from "@/components/records/RecordsViewModeToggle";
 import {
   getCategoryMeta,
   getDisplayMedicalRecordCategories,
@@ -31,7 +28,6 @@ import {
 } from "@/components/records/medicalRecordCategories";
 import { useAuthStore } from "@/domains/auth/store";
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
-import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -65,10 +61,10 @@ export function MedicalHistoryTimeline({
 }: MedicalHistoryTimelineProps) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const insets = useSafeAreaInsets();
   const role = useAuthStore((s) => s.role);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-  const [viewMode, setViewMode] = useState<RecordsViewMode>("table");
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
 
   const dir = flexRow(isRTL);
@@ -133,6 +129,7 @@ export function MedicalHistoryTimeline({
   const addBarSpace = recordsBottomChromeHeight({
     canAdd,
     extra: contentPaddingBottom,
+    safeAreaBottom: insets.bottom,
   });
 
   const timelineBody = (
@@ -226,41 +223,19 @@ export function MedicalHistoryTimeline({
       contentContainerStyle={[
         styles.scrollContent,
         { paddingBottom: addBarSpace },
-        viewMode === "skeleton" && styles.scrollContentSkeleton,
       ]}
       keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={viewMode !== "skeleton"}
-      scrollEnabled={viewMode !== "skeleton"}
     >
-      <View style={styles.toggleWrap}>
-        <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-      </View>
+      <MedicalHistoryFilterPanel
+        filters={filters}
+        onChange={setFilters}
+        isRTL={isRTL}
+        dir={dir}
+      />
 
-      {viewMode === "table" ? (
-        <MedicalHistoryFilterPanel
-          filters={filters}
-          onChange={setFilters}
-          isRTL={isRTL}
-          dir={dir}
-        />
-      ) : null}
+      <PatientMedicalRequestsPanel patientUserId={patientUserId} />
 
-      {viewMode === "skeleton" ? (
-        <View style={styles.skeletonOnly}>
-          <BodySkeletonView
-            selectedPart={selectedBodyPart}
-            records={displayRecords}
-            onSelectPart={setSelectedBodyPart}
-            onOpenPart={(part) => {
-              router.push(
-                buildBodyPartRecordsHref(part, { patientUserId }) as never,
-              );
-            }}
-          />
-        </View>
-      ) : (
-        timelineBody
-      )}
+      {timelineBody}
     </ScrollView>
 
     <RecordsBottomChrome
@@ -439,48 +414,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 4,
     gap: 12,
-  },
-  scrollContentSkeleton: {
-    flexGrow: 1,
-    flex: 1,
-    minHeight: 0,
-  },
-  toggleWrap: {
-    flexShrink: 0,
-    paddingHorizontal: 12,
-  },
-  splitRow: {
-    flex: 1,
-    minHeight: 0,
-    marginHorizontal: 12,
-    overflow: "hidden",
-    backgroundColor: "transparent",
-  },
-  skeletonOnly: {
-    flex: 1,
-    minHeight: 0,
-    width: "100%",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  splitPane: {
-    minWidth: 0,
-    minHeight: 0,
-  },
-  splitSkeleton: {
-    flex: 4,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    padding: 10,
-    backgroundColor: "transparent",
-  },
-  splitRecords: {
-    flex: 6,
-  },
-  splitRecordsContent: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 10,
-    paddingBottom: 24,
   },
   categoryRow: {
     paddingHorizontal: 16,

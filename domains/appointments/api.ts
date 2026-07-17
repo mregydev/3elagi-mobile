@@ -8,6 +8,8 @@ export interface UpcomingAppointment {
   time: string | null;
   status: string;
   meeting_link: string | null;
+  /** Doctor-configured video consultation length in minutes. */
+  duration_minutes?: number;
   other_name: string;
   /** Counterpart's user id (patient for a doctor, doctor for a patient). */
   other_user_id: string | null;

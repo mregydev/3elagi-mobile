@@ -18,6 +18,7 @@ import {
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
+  fetchPrescriptionPdf,
   generateMedicalRecordDetails,
   updateDiagnosis,
   updatePatientMedicalDocument,
@@ -37,6 +38,8 @@ import {
   canDeleteMedicalRecord,
   canEditDiagnosis,
 } from "@/domains/medical/permissions";
+import { showAppAlert } from "@/utils/appAlert";
+import { openBlankPdfTab, openPdfInNewTab } from "@/utils/openPdfInNewTab";
 import { showSuccessToast } from "@/utils/toast";
 
 export function useMedicalRecordDetail(isRTL: boolean) {
@@ -78,6 +81,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const [generatingDetails, setGeneratingDetails] = useState(false);
   const [intakeAnswersDraft, setIntakeAnswersDraft] = useState<Record<string, string[]>>({});
   const [savingIntake, setSavingIntake] = useState(false);
+  const [printingPrescription, setPrintingPrescription] = useState(false);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
 
@@ -358,6 +362,8 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         isDocImage: false,
         isIntakeExam: false,
         canTakeIntakeExam: false,
+        canPrintPrescription: false,
+        canEditLabDetails: false,
       };
     }
 
@@ -379,6 +385,11 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       isPrescription,
       isLabOrXray,
       isDocImage,
+      canPrintPrescription:
+        isPrescription &&
+        !!accessToken &&
+        !!record.doctorId &&
+        !!(record.ownerId || patientUserId || profile?.id),
       canEditLabDetails: isLabOrXray && !isDoctorView && !!accessToken,
       isIntakeExam: record.category === "intake" && !!record.intakeExam,
       canTakeIntakeExam:
@@ -387,7 +398,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         !isDoctorView &&
         record.intakeExam.status !== "completed",
     };
-  }, [record, isRTL, permissionCtx, isDoctorView, accessToken]);
+  }, [record, isRTL, permissionCtx, isDoctorView, accessToken, patientUserId, profile?.id]);
 
   const refetchListsAfterChange = async () => {
     if (!accessToken || !profile) return;
@@ -649,6 +660,34 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     }
   };
 
+  const printPrescription = async () => {
+    if (!accessToken || !record || !derived.canPrintPrescription) return;
+    const ownerId = record.ownerId || patientUserId || profile?.id;
+    if (!ownerId) return;
+    const pendingTab = openBlankPdfTab();
+    setPrintingPrescription(true);
+    try {
+      const { pdf_url } = await fetchPrescriptionPdf(
+        ownerId,
+        record.id,
+        accessToken,
+        getApiLang(),
+        true,
+      );
+      if (!pdf_url) throw new Error("PDF unavailable");
+      await openPdfInNewTab(pdf_url, pendingTab);
+    } catch (err) {
+      try {
+        pendingTab?.close();
+      } catch {
+        // ignore
+      }
+      showAppAlert(isRTL ? "فشل الطباعة" : "Print failed", (err as Error).message);
+    } finally {
+      setPrintingPrescription(false);
+    }
+  };
+
   return {
     id,
     profile,
@@ -687,6 +726,8 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     saveIntakeDraft,
     submitIntakeExam,
     resetIntakeExam,
+    printingPrescription,
+    printPrescription,
     ...derived,
     saveDiagnosisEdit,
     submitSymptom,

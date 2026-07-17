@@ -32,6 +32,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
   recordsOverride?: MedicalRecord[];
@@ -46,6 +47,7 @@ export function BodyPartRecordsView({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const dateLocale = localeTag(isRTL);
@@ -173,6 +175,7 @@ export function BodyPartRecordsView({
             paddingBottom: recordsBottomChromeHeight({
               canAdd,
               extra: 24,
+              safeAreaBottom: insets.bottom,
             }),
           },
         ]}

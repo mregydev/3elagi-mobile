@@ -12,13 +12,13 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
@@ -28,6 +28,7 @@ import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePa
 import { useProfileEditor } from "@/hooks/useProfileEditor";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { webConfirm } from "@/utils/webConfirm";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
   accessToken: string;
@@ -68,13 +69,15 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
   const { t } = useI18n();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
-  const { isWide, isDesktop, isTablet, isMobile } = useWebLayout();
+  const { isWide, isDesktop, isTablet } = useWebLayout();
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
-  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const showLogout = !isDesktop;
   const columns = gridColumns(isWide, isDesktop, isTablet);
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
+  const saveChromeHeight = profileSaveChromeHeight({ withLogout: showLogout });
+  const dockPadBottom = profileSaveDockBottomPad(insets.bottom);
 
   const editor = useProfileEditor({ accessToken, role, isRTL });
   const {
@@ -109,6 +112,10 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    digitalSignaturePreview,
+    signatureUploading,
+    pickDigitalSignature,
+    clearDigitalSignature,
     iban,
     setIban,
     accountHolderFullName,
@@ -183,7 +190,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          showLogout && { paddingBottom: tabBarHeight + 12 },
+          { paddingBottom: saveChromeHeight + dockPadBottom + 24 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -444,6 +451,64 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               </View>
 
               <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
+                {t.settings.digitalSignature}
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 13,
+                  textAlign,
+                  lineHeight: 18,
+                  marginBottom: 4,
+                }}
+              >
+                {t.settings.signatureHint}
+              </Text>
+              {digitalSignaturePreview ? (
+                <View style={[styles.signaturePreviewWrap, { borderColor: colors.border }]}>
+                  <Image
+                    source={{ uri: digitalSignaturePreview }}
+                    style={styles.signaturePreview}
+                    resizeMode="contain"
+                  />
+                  <Pressable
+                    onPress={clearDigitalSignature}
+                    style={[styles.signatureClear, { flexDirection: dir }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={isRTL ? "حذف التوقيع" : "Remove signature"}
+                  >
+                    <X size={16} color={colors.mutedForeground} />
+                    <Text style={{ color: colors.mutedForeground, fontWeight: "600", fontSize: 13 }}>
+                      {isRTL ? "إزالة" : "Remove"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={() => void pickDigitalSignature()}
+                disabled={signatureUploading}
+                style={[
+                  styles.certAddBtn,
+                  { borderColor: colors.primary, flexDirection: dir },
+                ]}
+              >
+                {signatureUploading ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <>
+                    <Plus size={18} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                      {digitalSignaturePreview
+                        ? isRTL
+                          ? "استبدال الصورة"
+                          : "Replace image"
+                        : t.settings.pickImage}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+
+              <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
                 {isRTL ? "الشهادات" : "Certifications"}
               </Text>
               {certifications.map((cert, i) => (
@@ -623,24 +688,21 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               <ProfileLanguageField embedded />
             </View>
           ) : null}
-
-          {showLogout ? actionButtons : null}
         </View>
       </ScrollView>
 
-      {!showLogout ? (
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-            },
-          ]}
-        >
-          {actionButtons}
-        </View>
-      ) : null}
+      <SafeAreaView
+        edges={["bottom"]}
+        style={[
+          styles.footer,
+          {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
+        {actionButtons}
+      </SafeAreaView>
     </View>
   );
 }
@@ -893,10 +955,27 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     marginTop: 4,
   },
+  signaturePreviewWrap: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  signaturePreview: {
+    width: "100%",
+    height: 110,
+  },
+  signatureClear: {
+    alignItems: "center",
+    gap: 6,
+  },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   footerInner: {
     width: "100%",
@@ -908,7 +987,6 @@ const styles = StyleSheet.create({
   mobileActions: {
     width: "100%",
     gap: 10,
-    paddingTop: 4,
   },
   mobileFullBtn: {
     width: "100%",

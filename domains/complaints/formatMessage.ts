@@ -91,6 +91,19 @@ export function formatComplaintMessageText(m: ComplaintMessage): string {
       const linkNote = link?.note?.trim();
       return linkNote ? `${base} — ${linkNote}` : base;
     }
+    case "document_request": {
+      const req = m.attachment_meta as {
+        request_type?: string;
+        title?: string;
+        description?: string;
+      } | null;
+      const kind =
+        req?.request_type === "xray" ? "X-ray request" : "Lab request";
+      const title = req?.title?.trim();
+      const base = title ? `${kind}: ${title}` : kind;
+      const desc = req?.description?.trim();
+      return desc ? `${base} — ${desc}` : base;
+    }
     case "access_action":
     case "appointment_action":
       return note || "System message";

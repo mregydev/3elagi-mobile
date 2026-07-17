@@ -44,6 +44,12 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [videoConsultationPrice, setVideoConsultationPrice] = useState(1);
   const [videoConsultationMinutes, setVideoConsultationMinutes] = useState(30);
+  const [digitalSignatureUrl, setDigitalSignatureUrl] = useState<string | null>(null);
+  const [digitalSignatureLocalUri, setDigitalSignatureLocalUri] = useState<string | null>(
+    null,
+  );
+  const [digitalSignatureDirty, setDigitalSignatureDirty] = useState(false);
+  const [signatureUploading, setSignatureUploading] = useState(false);
   const [iban, setIban] = useState("");
   const [accountHolderFullName, setAccountHolderFullName] = useState("");
   const [nationalId, setNationalId] = useState("");
@@ -72,6 +78,9 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setConsultationPrice(data.consultationPrice ?? 1);
       setVideoConsultationPrice(data.videoConsultationPrice ?? 1);
       setVideoConsultationMinutes(data.videoConsultationMinutes ?? 30);
+      setDigitalSignatureUrl(data.digitalSignatureUrl ?? null);
+      setDigitalSignatureLocalUri(null);
+      setDigitalSignatureDirty(false);
       setIban(data.iban ?? "");
       setAccountHolderFullName(data.accountHolderFullName ?? "");
       setNationalId(data.nationalId ?? "");
@@ -152,6 +161,38 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     );
   };
 
+  const pickDigitalSignature = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["image/png", "image/jpeg", "image/jpg", "image/webp"],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setSignatureUploading(true);
+    try {
+      const uploaded = await uploadFile(
+        asset.uri,
+        asset.mimeType ?? "image/png",
+        asset.name || `signature-${Date.now()}.png`,
+        accessToken,
+        asset.file,
+      );
+      setDigitalSignatureUrl(uploaded.url);
+      setDigitalSignatureLocalUri(asset.uri);
+      setDigitalSignatureDirty(true);
+    } catch (e) {
+      showErrorToast(isRTL ? "فشل الرفع" : "Upload failed", (e as Error).message);
+    } finally {
+      setSignatureUploading(false);
+    }
+  };
+
+  const clearDigitalSignature = () => {
+    setDigitalSignatureUrl(null);
+    setDigitalSignatureLocalUri(null);
+    setDigitalSignatureDirty(true);
+  };
+
   const save = async () => {
     if (!name.trim()) {
       showErrorToast(isRTL ? "الاسم مطلوب" : "Name required");
@@ -190,6 +231,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         consultationPrice: isDoctor ? consultationPrice : undefined,
         videoConsultationPrice: isDoctor ? videoConsultationPrice : undefined,
         videoConsultationMinutes: isDoctor ? videoConsultationMinutes : undefined,
+        digitalSignatureUrl: isDoctor
+          ? digitalSignatureDirty
+            ? digitalSignatureUrl
+            : undefined
+          : undefined,
         iban: isDoctor ? iban : undefined,
         accountHolderFullName: isDoctor ? accountHolderFullName : undefined,
         nationalId: isDoctor ? nationalId : undefined,
@@ -200,6 +246,10 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhotoUrl(updated.avatarUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
+      if (isDoctor && digitalSignatureDirty) {
+        setDigitalSignatureDirty(false);
+        setDigitalSignatureLocalUri(null);
+      }
       showSuccessToast(
         isRTL ? "تم الحفظ" : "Saved",
         isRTL ? "تم تحديث ملفك." : "Profile updated.",
@@ -245,6 +295,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    digitalSignatureUrl,
+    digitalSignaturePreview: digitalSignatureLocalUri ?? digitalSignatureUrl,
+    signatureUploading,
+    pickDigitalSignature,
+    clearDigitalSignature,
     iban,
     setIban,
     accountHolderFullName,

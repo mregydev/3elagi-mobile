@@ -59,7 +59,7 @@ export interface MedicalRecord {
   doctorName?: string | null;
   /** Doctor entity id when a doctor created this diagnosis */
   doctorId?: string | null;
-  /** Lab / X-ray records linked to this diagnosis */
+  /** Lab / X-ray / prescription records linked to this diagnosis */
   linkedDocuments?: MedicalRecord[];
   /** Diagnoses linked to this lab/xray record */
   linkedDiagnoses?: LinkedDiagnosisSummary[];

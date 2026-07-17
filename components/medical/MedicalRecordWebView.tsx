@@ -6,6 +6,7 @@ import {
   Bone,
   Calendar,
   Clock,
+  FileDown,
   FileText,
   Hash,
   Pill,
@@ -207,6 +208,9 @@ export function MedicalRecordWebView() {
     resetIntakeExam,
     isIntakeExam,
     canTakeIntakeExam,
+    canPrintPrescription,
+    printingPrescription,
+    printPrescription,
     accessToken,
     openLinkedDoc,
     goBack,
@@ -406,7 +410,9 @@ export function MedicalRecordWebView() {
           dir={dir}
         >
           <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
-            {isRTL ? "لا توجد نتائج مختبر أو أشعة مرتبطة" : "No linked lab results or X-rays"}
+            {isRTL
+              ? "لا توجد نتائج مختبر أو أشعة أو روشتات مرتبطة"
+              : "No linked lab results, imaging, or prescriptions"}
           </Text>
         </SectionCard>
       );
@@ -544,6 +550,33 @@ export function MedicalRecordWebView() {
         textAlign={textAlign}
         dir={dir}
       >
+        {canPrintPrescription ? (
+          <Pressable
+            testID="medical-record-print-prescription"
+            onPress={() => void printPrescription()}
+            disabled={printingPrescription}
+            style={[
+              styles.printBtn,
+              {
+                flexDirection: dir,
+                borderColor: colors.primary,
+                backgroundColor: `${colors.primary}12`,
+                opacity: printingPrescription ? 0.7 : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t.prescription.print}
+          >
+            {printingPrescription ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <FileDown size={16} color={colors.primary} />
+            )}
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 14 }}>
+              {t.prescription.print}
+            </Text>
+          </Pressable>
+        ) : null}
         {loadingDetail ? (
           <ActivityIndicator color={color} style={{ marginVertical: 8 }} />
         ) : record.medications?.length ? (
@@ -1238,6 +1271,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     gap: 4,
+  },
+  printBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
   medName: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
   addSymptomRow: { gap: 10, marginTop: 8, alignItems: "center" },

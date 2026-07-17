@@ -5,6 +5,14 @@ export const MOBILE_WEB_COMPOSER_FOOTER_GAP = 8;
 
 export const MOBILE_WEB_COMPOSER_BTN = 40;
 
+/**
+ * Chat composer chrome above the shared safe-area inset
+ * (paddingTop + input row + content paddingBottom). Kept for layout math
+ * elsewhere if needed.
+ */
+export const CHAT_COMPOSER_FAB_LIFT =
+  6 + MOBILE_WEB_COMPOSER_BTN + MOBILE_WEB_COMPOSER_FOOTER_GAP;
+
 export const mobileWebComposerStyles = StyleSheet.create({
   shell: {
     paddingHorizontal: 8,

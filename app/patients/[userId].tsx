@@ -42,7 +42,7 @@ export default function PatientRecordScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
-  const skeletonView = recordsViewMode === "skeleton";
+  const skeletonView = Platform.OS === "web" && recordsViewMode === "skeleton";
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const dir = isRTL ? "row-reverse" : "row";
@@ -157,7 +157,9 @@ export default function PatientRecordScreen() {
         <DoctorPatientAccessDenied isRTL={isRTL} />
       ) : skeletonView ? (
         // Non-scrolling host so the Skeleton/Tabular toggle stays pressable.
-        <View style={styles.body}>{historyList}</View>
+        <View style={styles.body}>
+          {historyList}
+        </View>
       ) : (
         <ScrollView
           style={[

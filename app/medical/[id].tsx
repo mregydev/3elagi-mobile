@@ -7,6 +7,7 @@ import {
   Bone,
   Calendar,
   ClipboardList,
+  FileDown,
   FileText,
   Hash,
   Pill,
@@ -44,6 +45,7 @@ import {
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
+  fetchPrescriptionPdf,
   generateMedicalRecordAiInsight,
   generateMedicalRecordDetails,
   updateDiagnosis,
@@ -72,6 +74,8 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useApiLang } from "@/hooks/useApiLang";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
+import { showAppAlert } from "@/utils/appAlert";
+import { openBlankPdfTab, openPdfInNewTab } from "@/utils/openPdfInNewTab";
 import { showSuccessToast } from "@/utils/toast";
 
 const CATEGORY_META: Record<
@@ -128,6 +132,7 @@ export default function MedicalRecordDetail() {
   const [editNotes, setEditNotes] = useState("");
   const [savingLabDetails, setSavingLabDetails] = useState(false);
   const [generatingDetails, setGeneratingDetails] = useState(false);
+  const [printingPrescription, setPrintingPrescription] = useState(false);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
 
@@ -467,6 +472,39 @@ export default function MedicalRecordDetail() {
   const isLabOrXray = record.category === "lab" || record.category === "xray";
   const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
   const canEditLabDetails = isLabOrXray && !isDoctorView && !!accessToken;
+  const canPrintPrescription =
+    isPrescription &&
+    !!accessToken &&
+    !!record.doctorId &&
+    !!(record.ownerId || patientUserId || profile?.id);
+
+  const printPrescription = async () => {
+    if (!accessToken || !canPrintPrescription) return;
+    const ownerId = record.ownerId || patientUserId || profile?.id;
+    if (!ownerId) return;
+    const pendingTab = openBlankPdfTab();
+    setPrintingPrescription(true);
+    try {
+      const { pdf_url } = await fetchPrescriptionPdf(
+        ownerId,
+        record.id,
+        accessToken,
+        apiLang,
+        true,
+      );
+      if (!pdf_url) throw new Error("PDF unavailable");
+      await openPdfInNewTab(pdf_url, pendingTab);
+    } catch (err) {
+      try {
+        pendingTab?.close();
+      } catch {
+        // ignore
+      }
+      showAppAlert(isRTL ? "فشل الطباعة" : "Print failed", (err as Error).message);
+    } finally {
+      setPrintingPrescription(false);
+    }
+  };
 
   const refetchListsAfterChange = async () => {
     if (!accessToken || !profile) return;
@@ -1202,7 +1240,7 @@ export default function MedicalRecordDetail() {
         ) : isDiagnosis && !loadingDetail ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
-              {isRTL ? "لا توجد نتائج مختبر أو أشعة مرتبطة" : "No linked lab results or X-rays"}
+              {isRTL ? "لا توجد نتائج مختبر أو أشعة أو روشتات مرتبطة" : "No linked lab results, imaging, or prescriptions"}
             </Text>
           </View>
         ) : null}
@@ -1286,6 +1324,32 @@ export default function MedicalRecordDetail() {
                 {isRTL ? "الأدوية" : "Medications"}
               </Text>
             </View>
+            {canPrintPrescription ? (
+              <Pressable
+                onPress={() => void printPrescription()}
+                disabled={printingPrescription}
+                style={[
+                  styles.printBtn,
+                  {
+                    flexDirection: dir,
+                    borderColor: colors.primary,
+                    backgroundColor: `${colors.primary}12`,
+                    opacity: printingPrescription ? 0.7 : 1,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t.prescription.print}
+              >
+                {printingPrescription ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <FileDown size={16} color={colors.primary} />
+                )}
+                <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 14 }}>
+                  {t.prescription.print}
+                </Text>
+              </Pressable>
+            ) : null}
             {loadingDetail ? (
               <ActivityIndicator color={color} style={{ marginVertical: 8 }} />
             ) : record.medications?.length ? (
@@ -1521,6 +1585,17 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 4,
     marginTop: 8,
+  },
+  printBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 4,
+    marginBottom: 4,
   },
   linkedDocRow: {
     alignItems: "center",

@@ -139,6 +139,7 @@ export default function RootLayout() {
             <Stack.Screen name="medical/add-ai" options={{ presentation: "modal" }} />
             <Stack.Screen name="medical/prescription/add" />
             <Stack.Screen name="medical/[id]" />
+            <Stack.Screen name="medical/request/[id]" />
             <Stack.Screen name="admin/index" />
             <Stack.Screen name="doctor-pending" />
             <Stack.Screen name="points/checkout" />

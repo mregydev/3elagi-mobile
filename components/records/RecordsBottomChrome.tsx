@@ -5,14 +5,16 @@ import {
   MedicalRecordAddBar,
 } from "@/components/records/MedicalRecordAddBar";
 
-/** Scroll/content padding for the add bar dock. */
+/** Scroll/content padding for the add bar dock (include safe-area when provided). */
 export function recordsBottomChromeHeight(options?: {
   canAdd?: boolean;
   extra?: number;
+  safeAreaBottom?: number;
 }): number {
   const canAdd = options?.canAdd ?? false;
   const extra = options?.extra ?? 16;
-  return (canAdd ? MEDICAL_RECORD_ADD_BAR_HEIGHT : 0) + extra;
+  const safeAreaBottom = options?.safeAreaBottom ?? 0;
+  return (canAdd ? MEDICAL_RECORD_ADD_BAR_HEIGHT + safeAreaBottom : 0) + extra;
 }
 
 interface Props {

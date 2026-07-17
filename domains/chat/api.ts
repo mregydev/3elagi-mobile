@@ -8,6 +8,7 @@ import type {
   ChatMessageType,
   ChatUser,
   ConsultationActionMeta,
+  DocumentRequestMeta,
   MedicalLinkMeta,
   SendMessageInput,
 } from "./types";
@@ -36,6 +37,7 @@ export interface MessageRow {
   attachment_url?: string | null;
   attachment_meta?:
     | MedicalLinkMeta
+    | DocumentRequestMeta
     | AccessActionMeta
     | AppointmentActionMeta
     | ConsultationActionMeta
@@ -85,6 +87,10 @@ export function mapMessageRow(
     medicalLink:
       row.type === "medical_link"
         ? (row.attachment_meta as MedicalLinkMeta | undefined) ?? null
+        : null,
+    documentRequest:
+      row.type === "document_request"
+        ? (row.attachment_meta as DocumentRequestMeta | undefined) ?? null
         : null,
     accessAction:
       row.type === "access_action"
@@ -187,7 +193,11 @@ export async function sendChatMessage(
       type: input.type ?? "text",
       content: input.content,
       attachment_url: input.attachmentUrl,
-      attachment_meta: input.accessAction ?? input.appointmentAction ?? input.medicalLink,
+      attachment_meta:
+        input.accessAction ??
+        input.appointmentAction ??
+        input.medicalLink ??
+        input.documentRequest,
     }),
   });
   const data = (await res.json().catch(() => ({}))) as MessageRow & { message?: string };

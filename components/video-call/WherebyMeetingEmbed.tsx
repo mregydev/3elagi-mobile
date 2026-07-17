@@ -27,7 +27,10 @@ export function WherebyMeetingEmbed({ embedUrl }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    minHeight: 0,
+    width: "100%",
     overflow: "hidden",
+    backgroundColor: "#0f172a",
   },
   webview: {
     flex: 1,

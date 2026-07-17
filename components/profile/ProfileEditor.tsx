@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
@@ -20,6 +21,10 @@ import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import {
+  profileSaveChromeHeight,
+  profileSaveDockBottomPad,
+} from "@/components/profile/profileSaveChrome";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
@@ -48,6 +53,7 @@ export function ProfileEditor({
 }) {
   const logout = useAuthStore((s) => s.logout);
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
 
@@ -84,6 +90,10 @@ export function ProfileEditor({
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    digitalSignaturePreview,
+    signatureUploading,
+    pickDigitalSignature,
+    clearDigitalSignature,
     iban,
     setIban,
     accountHolderFullName,
@@ -98,6 +108,8 @@ export function ProfileEditor({
 
   const displayName = name.trim() || (isRTL ? "مستخدم" : "Your name");
   const displayEmail = account?.email ?? (isRTL ? "—" : "—");
+  const saveChromeHeight = profileSaveChromeHeight({ withLogout: showLogout });
+  const dockPadBottom = profileSaveDockBottomPad(insets.bottom);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -105,9 +117,13 @@ export function ProfileEditor({
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
       ) : (
+        <>
         <KeyboardSafeScrollView
           style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: saveChromeHeight + dockPadBottom + 16 },
+          ]}
           bottomOffset={32}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -321,6 +337,62 @@ export function ProfileEditor({
 
             {isDoctor ? (
               <SectionCard
+                title={t.settings.digitalSignature}
+                colors={colors}
+                textAlign={textAlign}
+              >
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign, lineHeight: 18 }}>
+                  {t.settings.signatureHint}
+                </Text>
+                {digitalSignaturePreview ? (
+                  <View style={[styles.signaturePreviewWrap, { borderColor: colors.border }]}>
+                    <Image
+                      source={{ uri: digitalSignaturePreview }}
+                      style={styles.signaturePreview}
+                      resizeMode="contain"
+                    />
+                    <Pressable
+                      onPress={clearDigitalSignature}
+                      hitSlop={8}
+                      style={[styles.signatureClear, { flexDirection: dir }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={isRTL ? "حذف التوقيع" : "Remove signature"}
+                    >
+                      <X size={16} color={colors.mutedForeground} />
+                      <Text style={{ color: colors.mutedForeground, fontWeight: "600", fontSize: 13 }}>
+                        {isRTL ? "إزالة" : "Remove"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+                <Pressable
+                  onPress={() => void pickDigitalSignature()}
+                  disabled={signatureUploading}
+                  style={[
+                    styles.certAddBtn,
+                    { borderColor: colors.primary, flexDirection: dir },
+                  ]}
+                >
+                  {signatureUploading ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <>
+                      <Plus size={18} color={colors.primary} />
+                      <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                        {digitalSignaturePreview
+                          ? isRTL
+                            ? "استبدال الصورة"
+                            : "Replace image"
+                          : t.settings.pickImage}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </SectionCard>
+            ) : null}
+
+            {isDoctor ? (
+              <SectionCard
                 title={isRTL ? "الشهادات" : "Certifications"}
                 colors={colors}
                 textAlign={textAlign}
@@ -460,57 +532,67 @@ export function ProfileEditor({
             >
               <ProfileLanguageField embedded wideCards />
             </SectionCard>
-
-            <View style={styles.actions}>
-              <Pressable
-                onPress={() => void save()}
-                disabled={saving}
-                style={[
-                  styles.actionBtn,
-                  styles.saveBtn,
-                  { backgroundColor: colors.primary, opacity: saving ? 0.7 : 1 },
-                ]}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>
-                    {isRTL ? "حفظ التغييرات" : "Save changes"}
-                  </Text>
-                )}
-              </Pressable>
-
-              {showLogout ? (
-                <Pressable
-                  onPress={() =>
-                    Alert.alert(
-                      isRTL ? "تسجيل الخروج" : "Log out",
-                      isRTL ? "هل أنت متأكد؟" : "Are you sure?",
-                      [
-                        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-                        {
-                          text: isRTL ? "خروج" : "Log out",
-                          style: "destructive",
-                          onPress: () => {
-                            logout();
-                            router.replace("/welcome");
-                          },
-                        },
-                      ],
-                    )
-                  }
-                  style={[
-                    styles.actionBtn,
-                    styles.logoutBtn,
-                    { borderColor: colors.border, flexDirection: dir },
-                  ]}
-                >
-                  <LogOut size={16} color="#ef4444" />
-                  <Text style={styles.logoutText}>{isRTL ? "تسجيل الخروج" : "Log out"}</Text>
-                </Pressable>
-              ) : null}
-            </View>
         </KeyboardSafeScrollView>
+
+        <SafeAreaView
+          edges={["bottom"]}
+          style={[
+            styles.saveDock,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => void save()}
+            disabled={saving}
+            style={[
+              styles.actionBtn,
+              styles.saveBtn,
+              { backgroundColor: colors.primary, opacity: saving ? 0.7 : 1 },
+            ]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveBtnText}>
+                {isRTL ? "حفظ التغييرات" : "Save changes"}
+              </Text>
+            )}
+          </Pressable>
+
+          {showLogout ? (
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  isRTL ? "تسجيل الخروج" : "Log out",
+                  isRTL ? "هل أنت متأكد؟" : "Are you sure?",
+                  [
+                    { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+                    {
+                      text: isRTL ? "خروج" : "Log out",
+                      style: "destructive",
+                      onPress: () => {
+                        logout();
+                        router.replace("/welcome");
+                      },
+                    },
+                  ],
+                )
+              }
+              style={[
+                styles.actionBtn,
+                styles.logoutBtn,
+                { borderColor: colors.border, flexDirection: dir },
+              ]}
+            >
+              <LogOut size={16} color="#ef4444" />
+              <Text style={styles.logoutText}>{isRTL ? "تسجيل الخروج" : "Log out"}</Text>
+            </Pressable>
+          ) : null}
+        </SafeAreaView>
+        </>
       )}
     </View>
   );
@@ -742,7 +824,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
   },
+  signaturePreviewWrap: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    alignItems: "center",
+  },
+  signaturePreview: {
+    width: "100%",
+    height: 100,
+  },
+  signatureClear: {
+    alignItems: "center",
+    gap: 6,
+  },
   actions: {
+    gap: 10,
+  },
+  saveDock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
     gap: 10,
   },
   actionBtn: {

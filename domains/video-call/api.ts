@@ -15,6 +15,8 @@ export interface VideoCallSession {
   doctorUserId: string;
   patientName: string;
   doctorName: string;
+  /** Doctor-configured video consultation length (30 / 60 / 120). */
+  durationMinutes?: number;
 }
 
 async function authJson<T>(

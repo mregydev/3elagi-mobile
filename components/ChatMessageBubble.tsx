@@ -138,6 +138,7 @@ export function ChatMessageBubble({
   const isImage = item.type === "image" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
+  const isDocumentRequest = item.type === "document_request" && !!item.documentRequest;
   const medicalBubbleWidth = Math.min(300, maxBubbleWidth);
   const consultationBubbleWidth = Math.min(400, maxBubbleWidth);
   const videoWidth = imageWidth;
@@ -168,6 +169,13 @@ export function ChatMessageBubble({
               borderWidth: 1,
             }
         : { backgroundColor: "transparent" }
+      : isDocumentRequest
+      ? {
+          backgroundColor: "transparent",
+          borderWidth: 0,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
+        }
       : isMedicalLink || isConsultationAction
       ? {
           backgroundColor: colors.card,
@@ -182,7 +190,12 @@ export function ChatMessageBubble({
             borderWidth: 1,
           };
 
-  const textColor = isMedicalLink ? colors.foreground : mine ? "#fff" : colors.foreground;
+  const textColor =
+    isMedicalLink || isDocumentRequest
+      ? colors.foreground
+      : mine
+        ? "#fff"
+        : colors.foreground;
   const imageUri = item.localAttachmentUrl ?? item.attachmentUrl;
 
   let body: React.ReactNode = (
@@ -450,6 +463,126 @@ export function ChatMessageBubble({
           </Text>
         ) : null}
       </View>
+    );
+  } else if (isDocumentRequest && item.documentRequest) {
+    const req = item.documentRequest;
+    const typeLabel =
+      req.request_type === "xray"
+        ? isRTL
+          ? "طلب أشعة"
+          : "X-ray request"
+        : isRTL
+          ? "طلب تحليل"
+          : "Lab request";
+    const RecordIcon = req.request_type === "xray" ? ScanLine : Beaker;
+    const title = req.title?.trim() || (isRTL ? "طلب مستند" : "Document request");
+    const desc = req.description?.trim();
+
+    const openRequest = () => {
+      if (req.status === "fulfilled") {
+        const documentId = req.fulfilled_document_id?.trim();
+        if (!documentId) return;
+        openMedicalRecord(documentId);
+        return;
+      }
+      if (req.status === "cancelled") return;
+      const requestId = req.request_id?.trim();
+      if (!requestId) return;
+      router.push({
+        pathname: "/medical/request/[id]",
+        params: {
+          id: requestId,
+          ...(isDoctor && patientUserId?.trim()
+            ? { patientUserId: patientUserId.trim() }
+            : {}),
+        },
+      } as never);
+    };
+
+    body = (
+      <Pressable
+        onPress={openRequest}
+        onLongPress={onLongPress}
+        delayLongPress={400}
+        style={({ pressed }) => [
+          styles.medicalCard,
+          styles.documentRequestCard,
+          {
+            flexDirection: rowDir,
+            opacity: pressed ? 0.88 : 1,
+            backgroundColor: `${colors.primary}14`,
+            borderColor: `${colors.primary}55`,
+            width: medicalBubbleWidth,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.medicalIconWrap,
+            { backgroundColor: `${colors.primary}22` },
+          ]}
+        >
+          <RecordIcon size={20} color={colors.primary} />
+        </View>
+
+        <View style={styles.medicalTextWrap}>
+          <Text
+            style={[
+              styles.medicalType,
+              { color: colors.primary, textAlign: isRTL ? "right" : "left" },
+            ]}
+          >
+            {typeLabel}
+          </Text>
+          <Text
+            style={[
+              styles.medicalTitle,
+              { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+            ]}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
+          {desc ? (
+            <Text
+              style={[
+                styles.medicalHint,
+                {
+                  color: colors.mutedForeground,
+                  textAlign: isRTL ? "right" : "left",
+                  marginTop: 4,
+                },
+              ]}
+              numberOfLines={3}
+            >
+              {desc}
+            </Text>
+          ) : null}
+          <Text
+            style={[
+              styles.medicalHint,
+              { color: colors.primary, textAlign: isRTL ? "right" : "left", marginTop: 6 },
+            ]}
+          >
+            {req.status === "fulfilled"
+              ? isRTL
+                ? "تم رفع النتيجة — اضغط للعرض"
+                : "Result uploaded — tap to view"
+              : req.status === "cancelled"
+                ? isRTL
+                  ? "تم إلغاء الطلب"
+                  : "Request cancelled"
+                : isRTL
+                  ? "اضغط لعرض التفاصيل"
+                  : "Tap to view details"}
+          </Text>
+        </View>
+
+        {req.status === "cancelled" ||
+        (req.status === "fulfilled" && !req.fulfilled_document_id?.trim()) ? null : (
+          <ChevronRight size={18} color={colors.primary} />
+        )}
+      </Pressable>
     );
   }
 
@@ -773,6 +906,9 @@ export function ChatMessageBubble({
                   pathname: "/video-call",
                   params: {
                     meetingUrl: meetingLink,
+                    ...(meta.duration_minutes
+                      ? { durationMinutes: String(meta.duration_minutes) }
+                      : {}),
                     ...(patientUserId ? { patientUserId } : {}),
                   },
                 })
@@ -807,9 +943,11 @@ export function ChatMessageBubble({
           isImage && styles.imageBubble,
           isVideo && styles.imageBubble,
           isMedicalLink && styles.medicalBubble,
+          isDocumentRequest && styles.documentRequestBubble,
           isConsultationAction && styles.medicalBubble,
           bubbleColors,
           isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" },
+          isDocumentRequest && { width: medicalBubbleWidth, maxWidth: "100%" },
           isConsultationAction && { width: consultationBubbleWidth, maxWidth: "100%" },
           highlighted && {
             borderWidth: 2,
@@ -884,6 +1022,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
   },
+  documentRequestBubble: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    overflow: "visible",
+  },
   medicalBody: {
     width: "100%",
     gap: 8,
@@ -899,6 +1044,12 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  documentRequestCard: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
   },
   medicalIconWrap: {
     width: 40,

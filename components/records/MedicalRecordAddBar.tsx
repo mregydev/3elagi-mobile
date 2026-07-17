@@ -1,12 +1,14 @@
 import { Plus } from "lucide-react-native";
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
+/** Content height above safe-area padding (button + shell padding). */
 export const MEDICAL_RECORD_ADD_BAR_HEIGHT = 72;
 export const MEDICAL_RECORD_WEB_ADD_BAR_HEIGHT = 80;
 
@@ -35,6 +37,7 @@ export function MedicalRecordAddBar({
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
+  const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const isInline = layout === "inline";
   const isWebInline = layout === "web-inline";
@@ -42,6 +45,12 @@ export function MedicalRecordAddBar({
   const isStack = layout === "stack";
   const flushWebDock = Platform.OS === "web" && layout === "dock";
   const useDesktopBtn = isDesktop || isWebInline || isWebDock;
+  /** Keep the CTA above system nav / home indicator on edge-to-edge mobile. */
+  const safeBottomPad =
+    layout === "dock" || isStack ? Math.max(insets.bottom, 0) : 0;
+  const shellPaddingBottom = isInline || isWebInline
+    ? undefined
+    : (isWebDock ? 16 : 10) + safeBottomPad;
 
   const dockStyle: ViewStyle | undefined =
     layout === "dock"
@@ -76,6 +85,7 @@ export function MedicalRecordAddBar({
           borderTopColor: colors.border,
           shadowColor: colors.foreground,
           alignItems: useDesktopBtn ? "center" : undefined,
+          ...(shellPaddingBottom != null ? { paddingBottom: shellPaddingBottom } : null),
         },
       ]}
     >
@@ -111,7 +121,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     paddingTop: 10,
-    paddingBottom: 10,
+    // paddingBottom set inline (includes safe-area on dock/stack)
     zIndex: 100,
     shadowOpacity: 0.08,
     shadowRadius: 14,
@@ -143,7 +153,6 @@ const styles = StyleSheet.create({
   shellWebDocked: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16,
   },
   shellStack: {
     shadowOpacity: 0,

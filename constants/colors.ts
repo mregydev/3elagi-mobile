@@ -21,7 +21,7 @@ const colors = {
     filterPanel: "#e8efff",
     success: "#10b981",
     warning: "#f59e0b",
-    info: "#3057F2",
+    info: "#0ea5e9",
   },
   dark: {
     text: "#e8eef5",
@@ -45,7 +45,7 @@ const colors = {
     filterPanel: "#1a2438",
     success: "#10b981",
     warning: "#f59e0b",
-    info: "#4f6ef5",
+    info: "#38bdf8",
   },
   radius: 12,
 };

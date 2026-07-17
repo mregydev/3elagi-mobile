@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Beaker, Calendar, ClipboardList, FileText, Pill, ScanLine, Stethoscope } from "lucide-react-native";
+import { ArrowLeft, Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -54,6 +54,7 @@ import { sendAppointmentAction } from "@/domains/appointments/api";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
+import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -181,9 +182,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const canUseDiagnosisTemplates = canOpenPatientRecord && consultationOpen;
   const chatBlocked = !!accessStatus?.is_blocked;
   const patientUserIdForLinks =
-    isDoctor && peer?.role === "patient" && accessStatus?.records_allowed
-      ? peer.id
-      : undefined;
+    isDoctor && peer?.role === "patient" ? peer.id : undefined;
   const canOpenSharedMedicalLinks =
     isDoctor && peer?.role === "patient"
       ? !!accessStatus?.records_allowed && !accessStatus?.is_blocked
@@ -1217,6 +1216,24 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               {isRTL ? "فحص متابعة" : "Follow-up exam"}
             </Text>
           </Pressable>
+          <Pressable
+            onPress={() => openAsk3elagiAi(undefined, id)}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.ask3elagiAi}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
+                borderColor: "#e11d48",
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Bot size={15} color="#e11d48" />
+            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
+              {t.records.ask3elagiAi}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
       {/* Quick-action pill row — Book appointment stays available to patients at
@@ -1237,6 +1254,59 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             <Calendar size={15} color={colors.primary} />
             <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
               {isRTL ? "حجز موعد" : "Book appointment"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => openAsk3elagiAi()}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.ask3elagiAi}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
+                borderColor: "#e11d48",
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Bot size={15} color="#e11d48" />
+            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
+              {t.records.ask3elagiAi}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Ask AI when clinical / book rows are hidden (e.g. doctor before consultation). */}
+      {!chatBlocked &&
+      !(isDoctor && canUseDiagnosisTemplates) &&
+      !(isPatient && peer?.doctorEntityId) ? (
+        <View
+          style={[
+            styles.bookPillBar,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              flexDirection: chatFlexRow(),
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => openAsk3elagiAi(undefined, isDoctor ? id : undefined)}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.ask3elagiAi}
+            style={({ pressed }) => [
+              styles.bookPill,
+              {
+                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
+                borderColor: "#e11d48",
+                flexDirection: chatFlexRow(),
+              },
+            ]}
+          >
+            <Bot size={15} color="#e11d48" />
+            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
+              {t.records.ask3elagiAi}
             </Text>
           </Pressable>
         </View>

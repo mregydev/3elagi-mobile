@@ -32,6 +32,7 @@ import { MedicalHistoryFilterPanel } from "@/components/MedicalHistoryFilterPane
 import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
 import { BodySkeletonView, bodyFigureViewportHeight } from "@/components/records/BodySkeletonView";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
+import { PatientMedicalRequestsPanel } from "@/components/medical/PatientMedicalRequestsPanel";
 import { MedicalRecordAddBar } from "@/components/records/MedicalRecordAddBar";
 import {
   RecordsBottomChrome,
@@ -46,7 +47,6 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
-import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import { fetchActiveConsultation } from "@/domains/consultations/api";
 import {
@@ -271,6 +271,8 @@ export function MedicalHistoryList({
     setFilters((prev) => ({ ...prev, bodyPart: part }));
   };
 
+  const effectiveViewMode: RecordsViewMode = isDesktop ? viewMode : "table";
+
   const recordsPanel = visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
     const label = isRTL ? labelAr : labelEn;
     const isOpen = openSection === key;
@@ -282,7 +284,7 @@ export function MedicalHistoryList({
     return (
       <View
         key={key}
-        style={[styles.categoryBlock, viewMode === "skeleton" && styles.categoryBlockSplit]}
+        style={[styles.categoryBlock, effectiveViewMode === "skeleton" && styles.categoryBlockSplit]}
       >
         <View
           style={[
@@ -488,6 +490,7 @@ export function MedicalHistoryList({
   const bottomChromePad = recordsBottomChromeHeight({
     canAdd: showAddChrome,
     extra: 0,
+    safeAreaBottom: insets.bottom,
   });
 
   return (
@@ -500,9 +503,11 @@ export function MedicalHistoryList({
           : null,
       ]}
     >
-      <View style={styles.viewToggleWrap}>
-        <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-      </View>
+      {isDesktop ? (
+        <View style={styles.viewToggleWrap}>
+          <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+        </View>
+      ) : null}
 
       {doctorView && accessToken && consultationOpen ? (
         <View style={[styles.requestPills, { flexDirection: dir }]}>
@@ -569,56 +574,46 @@ export function MedicalHistoryList({
         </View>
       ) : null}
 
-      {viewMode === "table" || isDesktop ? (
-        <MedicalHistoryFilterPanel
-          filters={effectiveFilters}
-          onChange={handleFiltersChange}
-          isRTL={isRTL}
-          dir={dir}
-        />
-      ) : null}
+      {effectiveViewMode === "table" || isDesktop ? (
+        <>
+          <MedicalHistoryFilterPanel
+            filters={effectiveFilters}
+            onChange={handleFiltersChange}
+            isRTL={isRTL}
+            dir={dir}
+          />
+          <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+        </>
+      ) : (
+        <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+      )}
 
-      {viewMode === "skeleton" ? (
-        isDesktop ? (
-          <View
-            style={[
-              styles.splitRow,
-              {
-                flexDirection: dir,
-                height: splitHeight,
-              },
-            ]}
-          >
-            <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
-              <BodySkeletonView
-                selectedPart={selectedBodyPart}
-                records={displayRecords}
-                onSelectPart={handleSelectPart}
-              />
-            </View>
-            <ScrollView
-              style={[styles.splitPane, styles.splitRecords]}
-              contentContainerStyle={styles.splitRecordsContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {recordsPanel}
-            </ScrollView>
-          </View>
-        ) : (
-          <View style={styles.skeletonOnly}>
+      {effectiveViewMode === "skeleton" && isDesktop ? (
+        <View
+          style={[
+            styles.splitRow,
+            {
+              flexDirection: dir,
+              height: splitHeight,
+            },
+          ]}
+        >
+          <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
             <BodySkeletonView
               selectedPart={selectedBodyPart}
               records={displayRecords}
               onSelectPart={handleSelectPart}
-              onOpenPart={(part) => {
-                router.push(
-                  buildBodyPartRecordsHref(part, { patientUserId }) as never,
-                );
-              }}
             />
           </View>
-        )
+          <ScrollView
+            style={[styles.splitPane, styles.splitRecords]}
+            contentContainerStyle={styles.splitRecordsContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {recordsPanel}
+          </ScrollView>
+        </View>
       ) : (
         recordsPanel
       )}

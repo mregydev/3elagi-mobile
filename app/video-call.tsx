@@ -27,11 +27,19 @@ import { useI18n } from "@/hooks/useI18n";
 import { chatFlexRow } from "@/utils/rtl";
 import { showInfoToast, showSuccessToast, showErrorToast } from "@/utils/toast";
 
-const MEETING_DURATION_SEC = 30 * 60;
+const DEFAULT_MEETING_DURATION_MIN = 30;
 const WARNING_REMAINING_SEC = 5 * 60;
 
 function readParam(value?: string | string[]): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function parseDurationMinutes(value?: string | string[]): number | undefined {
+  const raw = readParam(value);
+  if (!raw) return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.round(n);
 }
 
 function formatRemainingTime(totalSeconds: number): string {
@@ -55,11 +63,13 @@ export default function VideoCallScreen() {
     sessionId?: string | string[];
     meetingUrl?: string | string[];
     patientUserId?: string | string[];
+    durationMinutes?: string | string[];
   }>();
 
   const sessionId = readParam(params.sessionId);
   const meetingUrlParam = readParam(params.meetingUrl);
   const patientUserIdParam = readParam(params.patientUserId);
+  const durationParam = parseDurationMinutes(params.durationMinutes);
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const isPatient = role?.toLowerCase() === "patient";
@@ -72,7 +82,12 @@ export default function VideoCallScreen() {
   const timerSessionKeyRef = useRef<string | null>(null);
   const warningShownRef = useRef(false);
   const endingRef = useRef(false);
-  const [remainingSeconds, setRemainingSeconds] = useState(MEETING_DURATION_SEC);
+  const meetingDurationMin =
+    session?.durationMinutes ?? durationParam ?? DEFAULT_MEETING_DURATION_MIN;
+  const meetingDurationSec = meetingDurationMin * 60;
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    DEFAULT_MEETING_DURATION_MIN * 60,
+  );
   const [meetingExpired, setMeetingExpired] = useState(false);
 
   const clearPoll = useCallback(() => {
@@ -109,6 +124,7 @@ export default function VideoCallScreen() {
           doctorUserId: "",
           patientName: "",
           doctorName: "",
+          durationMinutes: durationParam ?? DEFAULT_MEETING_DURATION_MIN,
         });
         return;
       }
@@ -133,7 +149,7 @@ export default function VideoCallScreen() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, isDoctor, isRTL, meetingUrlParam, sessionId]);
+  }, [accessToken, isDoctor, isRTL, meetingUrlParam, sessionId, durationParam]);
 
   useEffect(() => {
     void loadSession();
@@ -274,18 +290,18 @@ export default function VideoCallScreen() {
     if (!canJoin || !session?.roomUrl) {
       clearMeetingTimer();
       if (!meetingExpired) {
-        setRemainingSeconds(MEETING_DURATION_SEC);
+        setRemainingSeconds(meetingDurationSec);
       }
       return;
     }
 
-    const sessionKey = `${session.id}:${session.roomUrl}`;
+    const sessionKey = `${session.id}:${session.roomUrl}:${meetingDurationSec}`;
     if (timerSessionKeyRef.current !== sessionKey) {
       timerSessionKeyRef.current = sessionKey;
       warningShownRef.current = false;
       endingRef.current = false;
       setMeetingExpired(false);
-      setRemainingSeconds(MEETING_DURATION_SEC);
+      setRemainingSeconds(meetingDurationSec);
     }
 
     clearMeetingTimer();
@@ -314,6 +330,7 @@ export default function VideoCallScreen() {
     clearMeetingTimer,
     endMeetingForTimeout,
     isRTL,
+    meetingDurationSec,
     meetingExpired,
     session?.id,
     session?.roomUrl,
@@ -328,32 +345,57 @@ export default function VideoCallScreen() {
             paddingTop: insets.top + 8,
             borderBottomColor: colors.border,
             backgroundColor: colors.card,
-            flexDirection: rowDir,
           },
         ]}
       >
-        <Pressable
-          onPress={handleLeave}
-          accessibilityRole="button"
-          accessibilityLabel={isRTL ? "رجوع" : "Back"}
-          style={styles.backBtn}
-        >
-          <ArrowLeft size={22} color={colors.foreground} />
-        </Pressable>
+        <View style={[styles.headerTop, { flexDirection: rowDir }]}>
+          <Pressable
+            onPress={handleLeave}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "رجوع" : "Back"}
+            style={styles.backBtn}
+          >
+            <ArrowLeft size={22} color={colors.foreground} />
+          </Pressable>
 
-        <View style={[styles.brandRow, { flexDirection: rowDir }]}>
-          <Logo3elagi height={28} markOnly />
-          <View style={styles.brandText}>
-            <Text style={[styles.appName, { color: colors.foreground }]}>
-              3elagi
-            </Text>
-            <Text
-              style={[styles.doctorName, { color: colors.mutedForeground }]}
-              numberOfLines={1}
-            >
-              {peerName}
-            </Text>
+          <View style={[styles.brandRow, { flexDirection: rowDir }]}>
+            <Logo3elagi height={28} markOnly />
+            <View style={styles.brandText}>
+              <Text
+                style={[styles.peerName, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
+                {peerName}
+              </Text>
+              <Text
+                style={[styles.brandHint, { color: colors.mutedForeground }]}
+                numberOfLines={1}
+              >
+                3elagi
+              </Text>
+            </View>
           </View>
+
+          {canJoin ? (
+            <View
+              style={[
+                styles.timerBadge,
+                {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.timerLabel, { color: colors.mutedForeground }]}
+              >
+                {isRTL ? "الوقت المتبقي" : "Time left"}
+              </Text>
+              <Text style={[styles.timerValue, { color: colors.foreground }]}>
+                {countdownLabel}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {canAddClinicalNotes ? (
@@ -362,10 +404,13 @@ export default function VideoCallScreen() {
               onPress={() => setDiagnosisOpen(true)}
               accessibilityRole="button"
               accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-              style={[styles.diagnosisBtn, { backgroundColor: colors.primary }]}
+              style={[
+                styles.diagnosisBtn,
+                { backgroundColor: colors.primary, flex: 1 },
+              ]}
             >
               <Stethoscope size={16} color="#fff" />
-              <Text style={styles.diagnosisBtnText}>
+              <Text style={styles.diagnosisBtnText} numberOfLines={1}>
                 {isRTL ? "تشخيص" : "Diagnosis"}
               </Text>
             </Pressable>
@@ -381,6 +426,7 @@ export default function VideoCallScreen() {
               style={[
                 styles.diagnosisBtn,
                 {
+                  flex: 1,
                   backgroundColor: colors.card,
                   borderWidth: 1,
                   borderColor: colors.primary,
@@ -388,29 +434,13 @@ export default function VideoCallScreen() {
               ]}
             >
               <Pill size={16} color={colors.primary} />
-              <Text style={[styles.diagnosisBtnText, { color: colors.primary }]}>
+              <Text
+                style={[styles.diagnosisBtnText, { color: colors.primary }]}
+                numberOfLines={1}
+              >
                 {isRTL ? "روشتة" : "Prescription"}
               </Text>
             </Pressable>
-          </View>
-        ) : null}
-
-        {canJoin ? (
-          <View
-            style={[
-              styles.timerBadge,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>
-              {isRTL ? "الوقت المتبقي" : "Time left"}
-            </Text>
-            <Text style={[styles.timerValue, { color: colors.foreground }]}>
-              {countdownLabel}
-            </Text>
           </View>
         ) : null}
       </View>
@@ -453,8 +483,8 @@ export default function VideoCallScreen() {
             </Text>
             <Text style={[styles.errorBody, { color: colors.mutedForeground }]}>
               {isRTL
-                ? "تم إغلاق غرفة الاجتماع بعد 30 دقيقة."
-                : "The meeting room was closed after 30 minutes."}
+                ? `تم إغلاق غرفة الاجتماع بعد ${meetingDurationMin} دقيقة.`
+                : `The meeting room was closed after ${meetingDurationMin} minutes.`}
             </Text>
           </View>
         ) : waitingForDoctor ? (
@@ -540,16 +570,24 @@ export default function VideoCallScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    width: "100%",
+    height: "100%",
   },
   header: {
-    alignItems: "center",
-    gap: 12,
+    gap: 10,
     paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
+    zIndex: 2,
+  },
+  headerTop: {
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
   },
   backBtn: {
     padding: 4,
+    flexShrink: 0,
   },
   brandRow: {
     flex: 1,
@@ -560,52 +598,60 @@ const styles = StyleSheet.create({
   brandText: {
     flex: 1,
     minWidth: 0,
+    justifyContent: "center",
   },
   timerBadge: {
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 6,
     alignItems: "flex-end",
-    minWidth: 92,
+    flexShrink: 0,
   },
   timerLabel: {
     fontSize: 11,
     fontWeight: "600",
   },
   timerValue: {
-    marginTop: 2,
-    fontSize: 16,
+    marginTop: 1,
+    fontSize: 15,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
+  peerName: {
+    fontSize: 15,
     fontWeight: "800",
   },
-  appName: {
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  doctorName: {
-    fontSize: 13,
-    marginTop: 2,
+  brandHint: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 1,
   },
   body: {
     flex: 1,
+    minHeight: 0,
+    position: "relative",
   },
   clinicalActions: {
     alignItems: "center",
-    gap: 6,
-    flexShrink: 1,
+    gap: 8,
+    width: "100%",
   },
   diagnosisBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 999,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 0,
   },
   diagnosisBtnText: {
     color: "#fff",
     fontWeight: "800",
     fontSize: 13,
+    flexShrink: 1,
   },
   center: {
     flex: 1,

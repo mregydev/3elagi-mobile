@@ -24,12 +24,17 @@ import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
+import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
 import { viewportPortal } from "@/utils/viewportPortal";
 
 /** FAB size — used by pages that need bottom padding clearance. */
 export const ASK_3ELAGI_AI_FAB_SIZE = 56;
 /** Gap from the viewport edge. */
 export const ASK_3ELAGI_AI_FAB_CHROME_GAP = 8;
+
+function isProfileRoute(pathname: string | null, segments: string[]): boolean {
+  return segments.includes("profile") || Boolean(pathname?.includes("/profile"));
+}
 
 /** Records pages dock an add-record bar — lift the FAB above it on mobile. */
 function recordsAddBarFabOffset(
@@ -44,6 +49,29 @@ function recordsAddBarFabOffset(
   const onBodyPartRecords = Boolean(pathname?.includes("/medical/body"));
   if (!onRecordsTab && !onPatientRecords && !onBodyPartRecords) return 0;
   return MEDICAL_RECORD_ADD_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_CHROME_GAP;
+}
+
+/** Profile pages dock a Save bar — lift the FAB above it. */
+function profileSaveBarFabOffset(
+  pathname: string | null,
+  segments: string[],
+  isDesktop: boolean,
+): number {
+  if (!isProfileRoute(pathname, segments)) return 0;
+  return (
+    profileSaveChromeHeight({ withLogout: !isDesktop }) +
+    ASK_3ELAGI_AI_FAB_CHROME_GAP
+  );
+}
+
+/** Chat screens dock a composer (mic + input) — floating FAB is hidden;
+ * ChatComposer renders an inline Ask AI control above the input instead. */
+function hideFabOnChatRoute(
+  pathname: string | null,
+  segments: string[],
+): boolean {
+  if (pathname && /(^|\/)chat(\/|$)/.test(pathname)) return true;
+  return segments.some((s) => s === "chat");
 }
 /** Distinct red so the floating Ask 3elagi AI control stands out from primary CTAs. */
 const ASK_3ELAGI_AI_FAB_RED = "#e11d48";
@@ -387,8 +415,16 @@ export function Ask3elagiAiWidget() {
     segments as string[],
     isDesktop,
   );
+  const profileLift = profileSaveBarFabOffset(
+    pathname,
+    segments as string[],
+    isDesktop,
+  );
+  const hideFab = hideFabOnChatRoute(pathname, segments as string[]);
   const bottom =
-    Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) + addBarLift;
+    Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) +
+    addBarLift +
+    profileLift;
   // Bottom-right in English (LTR), bottom-left in Arabic (RTL).
   const sideStyle = isRTL
     ? { left: edge, right: undefined as number | undefined }
@@ -398,7 +434,7 @@ export function Ask3elagiAiWidget() {
     <View style={styles.host} pointerEvents="box-none">
       {open ? <Ask3elagiAiPanel /> : null}
 
-      {!open ? (
+      {!open && !hideFab ? (
         <Pressable
           onPress={() => openWidget(undefined, patientUserIdFromPath(pathname))}
           style={[

@@ -89,6 +89,7 @@ interface RawDiagnosis {
   created_at: string;
   symptoms?: RawSymptom[];
   documents?: RawDocument[];
+  prescriptions?: RawPrescription[];
   ai_insight?: MedicalAiInsight | null;
   body_part?: string | null;
 }
@@ -142,6 +143,8 @@ function mapDocument(doc: RawDocument): MedicalRecord {
 }
 
 function mapDiagnosis(d: RawDiagnosis): MedicalRecord {
+  const linkedDocs = (d.documents ?? []).map(mapDocument);
+  const linkedRx = (d.prescriptions ?? []).map(mapPrescription);
   return {
     id: d.id,
     ownerId: d.patient_id,
@@ -152,7 +155,7 @@ function mapDiagnosis(d: RawDiagnosis): MedicalRecord {
     symptoms: mapSymptoms(d.symptoms),
     doctorName: d.doctor_name ?? null,
     doctorId: d.doctor_id ?? null,
-    linkedDocuments: (d.documents ?? []).map(mapDocument),
+    linkedDocuments: [...linkedDocs, ...linkedRx],
     aiInsight: mapAiInsight(d.ai_insight) ?? null,
     bodyPart: parseBodyPart(d.body_part),
   };
@@ -836,6 +839,17 @@ export async function fetchMyMedicalDocumentRequests(
   return Array.isArray(data) ? data : [];
 }
 
+export async function fetchMedicalDocumentRequestById(
+  id: string,
+  token: string,
+  asDoctor = false,
+): Promise<MedicalDocumentRequest> {
+  const path = asDoctor
+    ? `/medical-document-requests/${id}`
+    : `/patient/medical-document-requests/${id}`;
+  return authJson(path, token);
+}
+
 export async function fulfillMedicalDocumentRequest(
   id: string,
   documentId: string,
@@ -852,13 +866,32 @@ export async function fetchMedicalDocumentRequestPdf(
   token: string,
   lang?: Locale,
   regenerate = false,
+  asDoctor = false,
+): Promise<{ pdf_url: string }> {
+  const params = new URLSearchParams();
+  if (lang) params.set("lang", lang);
+  if (regenerate) params.set("regenerate", "true");
+  const qs = params.toString();
+  const base = asDoctor
+    ? `/medical-document-requests/${id}/pdf`
+    : `/patient/medical-document-requests/${id}/pdf`;
+  return authJson(`${base}${qs ? `?${qs}` : ""}`, token);
+}
+
+/** Open/print a doctor-issued prescription PDF (3elagi logo + signature). */
+export async function fetchPrescriptionPdf(
+  patientUserId: string,
+  prescriptionId: string,
+  token: string,
+  lang?: Locale,
+  regenerate = true,
 ): Promise<{ pdf_url: string }> {
   const params = new URLSearchParams();
   if (lang) params.set("lang", lang);
   if (regenerate) params.set("regenerate", "true");
   const qs = params.toString();
   return authJson(
-    `/patient/medical-document-requests/${id}/pdf${qs ? `?${qs}` : ""}`,
+    `/prescriptions/patient-user/${encodeURIComponent(patientUserId)}/${encodeURIComponent(prescriptionId)}/pdf${qs ? `?${qs}` : ""}`,
     token,
   );
 }

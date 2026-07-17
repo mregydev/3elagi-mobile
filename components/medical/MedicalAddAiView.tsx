@@ -25,6 +25,7 @@ import {
   fulfillMedicalDocumentRequest,
   uploadFile,
 } from "@/domains/medical/api";
+import { MEDICAL_EVENTS } from "@/domains/medical/events";
 import { parseBodyPart, type BodyPart } from "@/domains/medical/bodyParts";
 import {
   isDoctorAddingForPatient,
@@ -42,6 +43,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { showAppAlert } from "@/utils/appAlert";
+import { emit } from "@/utils/eventBus";
 import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 import { showSuccessToast } from "@/utils/toast";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -159,7 +161,12 @@ export function MedicalAddAiView() {
         apiLang,
         attached.webFile,
       );
-      setType(analyzed.type);
+      setType(
+        requestIdParam?.trim() &&
+          (categoryParam === "lab" || categoryParam === "xray")
+          ? categoryParam
+          : analyzed.type,
+      );
       setTitle(analyzed.title);
       setNotes(analyzed.notes);
       setBodyPart(parseBodyPart(analyzed.body_part) ?? "general");
@@ -179,6 +186,13 @@ export function MedicalAddAiView() {
   };
 
   const selectType = (next: DocType) => {
+    // Fulfilling a doctor request locks the document type.
+    if (
+      requestIdParam?.trim() &&
+      (categoryParam === "lab" || categoryParam === "xray")
+    ) {
+      return;
+    }
     setType(next);
     if (next === "prescription" && file && !medsLoaded && !extractingMeds) {
       void extractMedications(file);
@@ -367,8 +381,16 @@ export function MedicalAddAiView() {
       if (requestId) {
         try {
           await fulfillMedicalDocumentRequest(requestId, record.id, accessToken);
-        } catch {
-          // Record is saved; request link can be retried later.
+          emit(MEDICAL_EVENTS.DOCUMENT_REQUEST_FULFILLED, { requestId });
+        } catch (fulfillErr) {
+          showAppAlert(
+            isRTL ? "تم حفظ النتيجة" : "Result saved",
+            fulfillErr instanceof Error
+              ? fulfillErr.message
+              : isRTL
+                ? "تعذر إغلاق الطلب — أعد المحاولة من الطلبات المعلقة."
+                : "Could not close the request — retry from Pending requests.",
+          );
         }
       }
       const ownerId =

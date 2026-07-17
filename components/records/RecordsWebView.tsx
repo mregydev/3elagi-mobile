@@ -16,6 +16,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
 
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -41,7 +42,6 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
-import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -81,10 +81,15 @@ export function RecordsWebView() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
+  const insets = useSafeAreaInsets();
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const mobileAddBarOffset = isDesktop
     ? 0
-    : recordsBottomChromeHeight({ canAdd: true, extra: 12 });
+    : recordsBottomChromeHeight({
+        canAdd: true,
+        extra: 12,
+        safeAreaBottom: insets.bottom,
+      });
   const { records, profile } = useRecordsPage();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -155,7 +160,7 @@ export function RecordsWebView() {
     setSelectedBodyPart(null);
   };
 
-  const isSkeleton = viewMode === "skeleton";
+  const isSkeleton = isDesktop && viewMode === "skeleton";
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
@@ -165,12 +170,10 @@ export function RecordsWebView() {
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
           isSkeleton && styles.scrollContentSkeleton,
-          isSkeleton && isDesktop && styles.scrollContentSkeletonDesktop,
+          isSkeleton && styles.scrollContentSkeletonDesktop,
           {
             paddingBottom: isSkeleton
-              ? isDesktop
-                ? 12
-                : mobileAddBarOffset
+              ? 12
               : isDesktop
                 ? 32
                 : mobileAddBarOffset,
@@ -183,8 +186,7 @@ export function RecordsWebView() {
           style={[
             styles.container,
             isSkeleton && styles.containerSkeleton,
-            isSkeleton && isDesktop && styles.containerSkeletonDesktop,
-            isSkeleton && !isDesktop && styles.containerSkeletonMobile,
+            isSkeleton && styles.containerSkeletonDesktop,
             { maxWidth: WEB_MAX_WIDTH.content },
           ]}
         >
@@ -218,22 +220,16 @@ export function RecordsWebView() {
             </Text>
           </View>
 
-          <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
-            <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-          </View>
-
-          {!isSkeleton || isDesktop ? (
-            <View style={{ marginBottom: 12, alignSelf: "stretch", flexShrink: 0 }}>
-              <PatientMedicalRequestsPanel />
+          {isDesktop ? (
+            <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
+              <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
             </View>
           ) : null}
 
           <View
             style={
               isSkeleton
-                ? isDesktop
-                  ? [styles.splitRow, { flexDirection: dir }]
-                  : styles.skeletonOnly
+                ? [styles.splitRow, { flexDirection: dir }]
                 : undefined
             }
           >
@@ -241,7 +237,7 @@ export function RecordsWebView() {
               <View
                 style={[
                   styles.splitPane,
-                  isDesktop ? styles.splitSkeleton : styles.splitSkeletonMobile,
+                  styles.splitSkeleton,
                   { borderColor: colors.border },
                 ]}
               >
@@ -249,17 +245,6 @@ export function RecordsWebView() {
                   selectedPart={selectedBodyPart}
                   records={displayRecords}
                   onSelectPart={setSelectedBodyPart}
-                  onOpenPart={
-                    isDesktop
-                      ? undefined
-                      : (part) => {
-                          router.push(
-                            buildBodyPartRecordsHref(part, {
-                              patientUserId: profile?.id,
-                            }) as never,
-                          );
-                        }
-                  }
                 />
               </View>
             ) : null}
@@ -301,6 +286,8 @@ export function RecordsWebView() {
                         </Pressable>
                       ) : null}
                     </View>
+
+                    <PatientMedicalRequestsPanel />
 
                     <ScrollView
                       horizontal
@@ -551,6 +538,8 @@ export function RecordsWebView() {
                       </Pressable>
                     ) : null}
                   </View>
+
+                  <PatientMedicalRequestsPanel />
 
                   <ScrollView
                     horizontal

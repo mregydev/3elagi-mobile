@@ -31,6 +31,7 @@ import {
   fulfillMedicalDocumentRequest,
   uploadFile,
 } from "@/domains/medical/api";
+import { MEDICAL_EVENTS } from "@/domains/medical/events";
 import { useMedicalStore } from "@/domains/medical/store";
 import type {
   MedicalAiInsight,
@@ -38,6 +39,7 @@ import type {
   MedicalRecord,
 } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
+import { emit } from "@/utils/eventBus";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
@@ -189,7 +191,10 @@ export default function AddMedicalScreen() {
     )
       .then((analyzed) => {
         if (cancelled || analyzeRunRef.current !== runId) return;
-        setCategory(analyzed.type);
+        const locked =
+          !!requestIdParam?.trim() &&
+          (categoryParam === "lab" || categoryParam === "xray");
+        if (!locked) setCategory(analyzed.type);
         setTitle(analyzed.title);
         setNotes(analyzed.notes);
         setDraftAiInsight(analyzed.ai_insight);
@@ -219,6 +224,12 @@ export default function AddMedicalScreen() {
   const isImage = attached?.mimeType.startsWith("image/") ?? false;
 
   const handleCategoryChange = (key: MedicalCategory) => {
+    if (
+      requestIdParam?.trim() &&
+      (categoryParam === "lab" || categoryParam === "xray")
+    ) {
+      return;
+    }
     setCategory(key);
     if (!ATTACHMENT_CATEGORIES.includes(key)) setAttached(null);
   };
@@ -455,8 +466,16 @@ export default function AddMedicalScreen() {
         if (requestId && saved?.id) {
           try {
             await fulfillMedicalDocumentRequest(requestId, saved.id, accessToken);
-          } catch {
-            // Record saved; request fulfill can be retried.
+            emit(MEDICAL_EVENTS.DOCUMENT_REQUEST_FULFILLED, { requestId });
+          } catch (fulfillErr) {
+            Alert.alert(
+              isRTL ? "تم حفظ النتيجة" : "Result saved",
+              fulfillErr instanceof Error
+                ? fulfillErr.message
+                : isRTL
+                  ? "تعذر إغلاق الطلب — أعد المحاولة من الطلبات المعلقة."
+                  : "Could not close the request — retry from Pending requests.",
+            );
           }
         }
         await refetchMedicalHistory(

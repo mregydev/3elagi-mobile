@@ -8,6 +8,7 @@ export type ChatMessageType =
   | "video"
   | "voice"
   | "medical_link"
+  | "document_request"
   | "access_action"
   | "appointment_action"
   | "consultation_action";
@@ -62,6 +63,8 @@ export interface AppointmentActionMeta {
   time: string;
   status?: string;
   meeting_link?: string | null;
+  /** Doctor-configured video consultation length in minutes. */
+  duration_minutes?: number;
   /** AI-written, doctor-facing note about why the patient booked + relevant history. */
   patient_insight?: string;
 }
@@ -71,6 +74,16 @@ export interface MedicalLinkMeta {
   record_id: string;
   title: string;
   note?: string;
+}
+
+export interface DocumentRequestMeta {
+  request_id: string;
+  request_type: "lab" | "xray";
+  title: string;
+  description?: string;
+  status: "pending" | "fulfilled" | "cancelled";
+  /** Medical document id when the patient uploaded the lab/x-ray result. */
+  fulfilled_document_id?: string;
 }
 
 export interface ChatUser {
@@ -100,6 +113,7 @@ export interface ChatMessage {
   attachmentUrl?: string | null;
   localAttachmentUrl?: string | null;
   medicalLink?: MedicalLinkMeta | null;
+  documentRequest?: DocumentRequestMeta | null;
   accessAction?: AccessActionMeta | null;
   appointmentAction?: AppointmentActionMeta | null;
   consultationAction?: ConsultationActionMeta | null;
@@ -123,6 +137,7 @@ export interface SendMessageInput {
   content?: string;
   attachmentUrl?: string;
   medicalLink?: MedicalLinkMeta;
+  documentRequest?: DocumentRequestMeta;
   accessAction?: AccessActionMeta;
   appointmentAction?: AppointmentActionMeta;
 }
