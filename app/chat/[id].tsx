@@ -20,6 +20,7 @@ import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
+import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
 import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
@@ -860,14 +861,15 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             presence={peer.presence}
           />
           <View style={{ flex: 1 }}>
-            <Text
-              style={[
+            <NameWithCountryFlag
+              name={peer.name}
+              country={peer.role === "patient" ? peer.country : undefined}
+              isRTL={isRTL}
+              nameStyle={[
                 styles.peerName,
                 { color: colors.foreground, textAlign: "left" },
               ]}
-            >
-              {peer.name}
-            </Text>
+            />
             <Text
               style={[
                 styles.presence,

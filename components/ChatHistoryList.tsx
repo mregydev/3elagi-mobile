@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Avatar } from "@/components/Avatar";
 import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta";
+import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { messagePreviewText } from "@/domains/chat/messagePreview";
 import type { Conversation } from "@/domains/chat/types";
 import { usePresenceStore } from "@/domains/presence/store";
@@ -61,15 +62,15 @@ function ConversationRow({
 
       <View style={[styles.content, { flexDirection: dir }]}>
         <View style={styles.mainCol}>
-          <Text
-            style={[
+          <NameWithCountryFlag
+            name={item.user.name}
+            country={peerRole === "patient" ? item.user.country : undefined}
+            isRTL={isRTL}
+            nameStyle={[
               styles.name,
               { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
             ]}
-            numberOfLines={1}
-          >
-            {item.user.name}
-          </Text>
+          />
 
           {peerRole === "doctor" ? (
             <DoctorSubtitle specialty={item.user.specialty} isRTL={isRTL} />

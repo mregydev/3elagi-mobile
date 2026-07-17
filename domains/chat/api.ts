@@ -25,6 +25,8 @@ export interface ChatContactRow {
   video_consultation_price?: number | null;
   rating_average?: number | null;
   rating_total?: number | null;
+  /** ISO 3166-1 alpha-2 residence country. */
+  country?: string | null;
 }
 
 export interface MessageRow {
@@ -63,6 +65,7 @@ function mapContact(row: ChatContactRow): ChatUser {
     presence: "offline",
     role: row.role === "doctor" ? "doctor" : row.role === "patient" ? "patient" : undefined,
     specialty: row.specialty?.trim() || undefined,
+    country: row.country?.trim().toUpperCase() || undefined,
     rating: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
     consultationPrice: row.consultation_price ?? undefined,

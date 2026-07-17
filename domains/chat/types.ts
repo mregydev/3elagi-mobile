@@ -94,7 +94,7 @@ export interface ChatUser {
   lastSeenAt?: string;
   role?: "doctor" | "patient" | "support";
   specialty?: string;
-  /** ISO 3166-1 alpha-2 (doctors). */
+  /** ISO 3166-1 alpha-2 residence country (doctor or patient). */
   country?: string;
   rating?: number;
   ratingTotal?: number;
