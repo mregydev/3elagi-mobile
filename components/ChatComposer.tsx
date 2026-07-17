@@ -149,7 +149,6 @@ export function ChatComposer({
   const colors = useColors();
   const { isMobile } = useWebLayout();
   const isMobileWeb = Platform.OS === "web" && isMobile;
-  const mobileWebBottomPadding = MOBILE_WEB_COMPOSER_FOOTER_GAP;
   const [text, setText] = useState("");
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
@@ -646,7 +645,9 @@ export function ChatComposer({
   const isEditing = !!editingMessage;
   const controlsDisabled = busy || !!recording || isEditing;
   const canSend = !!text.trim() || !!pendingAttachment;
-  const composerPaddingBottom = isMobileWeb ? mobileWebBottomPadding : bottomInset + 8;
+  const composerPaddingBottom = isMobileWeb
+    ? MOBILE_WEB_COMPOSER_FOOTER_GAP + Math.max(bottomInset, 0)
+    : Math.max(bottomInset, 0) + 8;
 
   const attachButtons = !isEditing ? (
     <>

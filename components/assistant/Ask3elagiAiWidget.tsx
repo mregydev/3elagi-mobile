@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,6 +11,11 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import {
+  KeyboardAvoidingView,
+  KeyboardStickyView,
+  useKeyboardState,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
@@ -105,9 +109,11 @@ function Ask3elagiAiPanel() {
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const pathname = usePathname();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { isDesktop } = useWebLayout();
+  const isNative = Platform.OS !== "web";
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
   const consumePendingQuestion = useAsk3elagiAiWidgetStore(
     (s) => s.consumePendingQuestion,
@@ -201,7 +207,9 @@ function Ask3elagiAiPanel() {
         height: windowHeight,
         borderRadius: 0,
         paddingTop: insets.top,
-        paddingBottom: insets.bottom,
+        // Safe area when keyboard closed; sticky composer sits on keyboard when open.
+        paddingBottom:
+          isNative && keyboardVisible ? 0 : Math.max(insets.bottom, 8),
       };
 
   const webShadow =
@@ -213,15 +221,22 @@ function Ask3elagiAiPanel() {
         } as const)
       : null;
 
+  const PanelShell = isNative ? View : KeyboardAvoidingView;
+  const panelShellProps = isNative
+    ? {}
+    : ({ behavior: "padding" as const });
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[
-        styles.panel,
-        panelStyle,
-        webShadow,
-        Platform.OS === "web" ? ({ position: "fixed" } as const) : null,
-      ]}
+    <PanelShell
+      {...panelShellProps}
+      style={
+        [
+          styles.panel,
+          panelStyle,
+          webShadow,
+          Platform.OS === "web" ? ({ position: "fixed" } as const) : null,
+        ] as object
+      }
     >
       <View
         style={[
@@ -310,6 +325,8 @@ function Ask3elagiAiPanel() {
           contentContainerStyle={styles.chatListContent}
           onContentSizeChange={() => scrollToLatest(false)}
           onLayout={() => scrollToLatest(false)}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           renderItem={({ item }) => (
             <AssistantMessageBubble
               message={item}
@@ -326,58 +343,60 @@ function Ask3elagiAiPanel() {
         />
       )}
 
-      <View
-        style={[
-          styles.composer,
-          {
-            flexDirection: dir,
-            borderTopColor: colors.border,
-            backgroundColor: colors.secondary,
-          },
-        ]}
-      >
-        <AppTextInput
-          value={text}
-          onChangeText={setText}
-          placeholder={t.records.ask3elagiAiPlaceholder}
+      <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
+        <View
           style={[
-            styles.input,
+            styles.composer,
             {
-              color: colors.foreground,
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderWidth: 1,
+              flexDirection: dir,
+              borderTopColor: colors.border,
+              backgroundColor: colors.secondary,
             },
           ]}
-          editable={!assistant.sending && !assistant.streaming}
-          onSubmitEditing={submit}
-          returnKeyType="send"
-        />
-        <Pressable
-          onPress={submit}
-          disabled={assistant.sending || assistant.streaming || !text.trim()}
-          style={[
-            styles.sendBtn,
-            {
-              backgroundColor: colors.primary,
-              opacity:
-                assistant.sending || assistant.streaming || !text.trim()
-                  ? 0.5
-                  : 1,
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t.records.ask3elagiAi}
         >
-          {assistant.sending || assistant.streaming ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Send size={16} color="#fff" />
-          )}
-        </Pressable>
+          <AppTextInput
+            value={text}
+            onChangeText={setText}
+            placeholder={t.records.ask3elagiAiPlaceholder}
+            style={[
+              styles.input,
+              {
+                color: colors.foreground,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderWidth: 1,
+              },
+            ]}
+            editable={!assistant.sending && !assistant.streaming}
+            onSubmitEditing={submit}
+            returnKeyType="send"
+          />
+          <Pressable
+            onPress={submit}
+            disabled={assistant.sending || assistant.streaming || !text.trim()}
+            style={[
+              styles.sendBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity:
+                  assistant.sending || assistant.streaming || !text.trim()
+                    ? 0.5
+                    : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.ask3elagiAi}
+          >
+            {assistant.sending || assistant.streaming ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Send size={16} color="#fff" />
+            )}
+          </Pressable>
+        </View>
+      </KeyboardStickyView>
       </View>
-      </View>
-    </KeyboardAvoidingView>
+    </PanelShell>
   );
 }
 

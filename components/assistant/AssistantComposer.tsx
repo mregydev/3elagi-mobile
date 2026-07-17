@@ -61,8 +61,8 @@ export function AssistantComposer({
   const recordPulse = useRef(new Animated.Value(1)).current;
   const isMobileWeb = Platform.OS === "web" && compact;
   const bottomPadding = isMobileWeb
-    ? MOBILE_WEB_COMPOSER_FOOTER_GAP
-    : (compact ? 6 : 12) + bottomInset;
+    ? MOBILE_WEB_COMPOSER_FOOTER_GAP + bottomInset
+    : 8 + Math.max(bottomInset, 0);
 
   useEffect(() => {
     if (!dictatedText) return;

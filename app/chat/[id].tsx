@@ -12,7 +12,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import {
+  KeyboardStickyView,
+  useKeyboardState,
+} from "react-native-keyboard-controller";
 import { ChatReactionOverlay, type ReactionAnchor } from "@/components/ChatReactionOverlay";
 import { Avatar } from "@/components/Avatar";
 import { ChatComposer } from "@/components/ChatComposer";
@@ -824,8 +827,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       ? openDoctorProfile
       : undefined;
 
+  const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const headerPaddingTop = desktopLayout ? 16 : insets.top + 8;
-  const composerBottomInset = desktopLayout ? 12 : insets.bottom;
+  // Drop home-indicator padding while keyboard is open — sticky view sits on the keyboard.
+  const composerBottomInset = desktopLayout
+    ? 12
+    : keyboardVisible
+      ? 0
+      : Math.max(insets.bottom, 0);
   const listPadding = desktopLayout
     ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8 }
     : { padding: 14, gap: 6, paddingBottom: 12 };
@@ -928,10 +937,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         <ChatAccessBanner isRTL={isRTL} isDoctor={isDoctor} access={accessStatus} />
       ) : null}
 
-      <KeyboardAvoidingView
-        style={[styles.chatBody, desktopLayout && styles.chatBodyDesktop]}
-        behavior="padding"
-      >
+      <View style={[styles.chatBody, desktopLayout && styles.chatBodyDesktop]}>
       <View ref={chatBodyRef} style={styles.chatBodyInner} collapsable={false}>
       {messagesLoading ? (
         <View style={styles.loadingMessages}>
@@ -945,7 +951,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           keyExtractor={(m) => m.id}
           extraData={`${reactionTarget?.id ?? ""}:${messages.length}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
-          automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           onScrollBeginDrag={closeReactionPicker}
@@ -1314,6 +1319,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         </View>
       ) : null}
 
+      <KeyboardStickyView
+        enabled={Platform.OS !== "web"}
+        offset={{ closed: 0, opened: 0 }}
+      >
       <ChatComposer
         isRTL={isRTL}
         isPatient={isPatient}
@@ -1364,8 +1373,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           );
         }}
       />
+      </KeyboardStickyView>
       </View>
-      </KeyboardAvoidingView>
+      </View>
     </>
   );
 

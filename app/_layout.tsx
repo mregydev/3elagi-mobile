@@ -130,7 +130,7 @@ export default function RootLayout() {
       ) : (
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.light.background }}>
           <SafeAreaProvider>
-            <KeyboardProvider>
+            <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
               <StatusBar style="dark" />
               <MedicalDataLoader />
               <PointsDataLoader />

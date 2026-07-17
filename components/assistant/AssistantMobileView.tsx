@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  KeyboardAvoidingView,
   KeyboardEvents,
+  KeyboardStickyView,
+  useKeyboardState,
 } from "react-native-keyboard-controller";
 import { AssistantComposer } from "@/components/assistant/AssistantComposer";
 import { ChatMedicalRecordPills } from "@/components/chat/ChatMedicalRecordPills";
@@ -101,6 +102,7 @@ export function AssistantMobileView({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const { t, isRTL } = useI18n();
   const { openSidebar } = useAppSidebar();
   const isEn = !isRTL;
@@ -307,7 +309,6 @@ export function AssistantMobileView({
         contentContainerStyle={
           messages.length === 0 ? styles.messagesEmpty : styles.messages
         }
-        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onScroll={handleScroll}
@@ -323,11 +324,7 @@ export function AssistantMobileView({
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      behavior="padding"
-      keyboardVerticalOffset={0}
-    >
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AssistantVoiceWebStyles />
       <View
         style={[
@@ -394,6 +391,10 @@ export function AssistantMobileView({
       </View>
 
       {!voice.isVoiceMode ? (
+      <KeyboardStickyView
+        enabled={Platform.OS !== "web"}
+        offset={{ closed: 0, opened: 0 }}
+      >
       <View style={styles.footer}>
         {(error || historyError || voice.voiceError) ? (
           error && !canRetry ? (
@@ -444,7 +445,9 @@ export function AssistantMobileView({
           isRTL={isRTL}
           sending={sending || medicalImageBusy}
           disabled={loadingHistory || medicalImageBusy}
-          bottomInset={bottomTabInset}
+          bottomInset={
+            keyboardVisible ? 0 : Math.max(insets.bottom, bottomTabInset)
+          }
           isDictating={voice.isDictating}
           micLoading={voice.isDictating && voice.isTranscribing}
           onMicPress={() =>
@@ -476,6 +479,7 @@ export function AssistantMobileView({
           onSend={handleSend}
         />
       </View>
+      </KeyboardStickyView>
       ) : null}
 
       <AssistantHistoryModal
@@ -500,7 +504,7 @@ export function AssistantMobileView({
           }}
         />
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

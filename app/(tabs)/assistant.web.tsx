@@ -12,6 +12,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useAssistantDeepLinkId } from "@/hooks/useAssistantDeepLinkId";
+import { useMobileWebTabBarHeight } from "@/hooks/useMobileWebTabBarHeight";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function AssistantScreenWeb() {
@@ -21,6 +22,7 @@ export default function AssistantScreenWeb() {
   const conversationId = useAssistantDeepLinkId();
   const signedIn = isSignedIn(profile, accessToken);
   const { isDesktop } = useWebLayout();
+  const bottomTabInset = useMobileWebTabBarHeight();
 
   const assistant = useAiAssistant();
 
@@ -82,7 +84,7 @@ export default function AssistantScreenWeb() {
   };
 
   if (!isDesktop) {
-    return <AssistantMobileView {...viewProps} />;
+    return <AssistantMobileView {...viewProps} bottomTabInset={bottomTabInset} />;
   }
 
   return <AssistantWebView {...viewProps} />;
