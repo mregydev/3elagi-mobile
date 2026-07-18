@@ -1,6 +1,7 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import {
+  CircleAlert,
   CircleStop,
   FileText,
   Image as ImageIcon,
@@ -433,7 +434,7 @@ export function ConsultationBar({
 
   return (
     <>
-      {/* Patient: start. Doctor: end (includes optional diagnosis). Hide when empty. */}
+      {/* Patient: start (+ complaint after an ended consultation). Doctor: end. */}
       {isPatient && !isOpen ? (
         <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
           <Pill
@@ -443,6 +444,29 @@ export function ConsultationBar({
             onPress={() => setModal("start")}
             Icon={Stethoscope}
           />
+          {endedConsultationId ? (
+            complaintLabel ? (
+              <Text
+                style={[
+                  styles.status,
+                  {
+                    color: colors.mutedForeground,
+                    textAlign: isRTL ? "right" : "left",
+                    flexShrink: 1,
+                  },
+                ]}
+              >
+                {complaintLabel}
+              </Text>
+            ) : (
+              <Pill
+                label={label("File a complaint", "تقديم شكوى")}
+                color="#dc2626"
+                onPress={() => setComplaintModal(true)}
+                Icon={CircleAlert}
+              />
+            )
+          ) : null}
         </View>
       ) : null}
 

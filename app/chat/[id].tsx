@@ -23,6 +23,7 @@ import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
+import { ArchivedMessagesToggle } from "@/components/chat/ArchivedMessagesToggle";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
@@ -72,6 +73,10 @@ import { scrollChatToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
+
+type ChatListItem =
+  | { kind: "message"; message: ChatMessage }
+  | { kind: "archive_toggle"; count: number };
 
 function canReactToMessage(message: ChatMessage): boolean {
   return !message.pending && !message.failed && !message.id.startsWith("pending-");
@@ -142,7 +147,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [accessLoading, setAccessLoading] = useState(false);
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
   const [appointmentActionBusy, setAppointmentActionBusy] = useState(false);
-  const listRef = useRef<FlatList<ChatMessage>>(null);
+  const listRef = useRef<FlatList<ChatListItem>>(null);
   const chatBodyRef = useRef<View>(null);
   const sendingRef = useRef(false);
   const messageAnchorsRef = useRef<Map<string, View>>(new Map());
@@ -182,6 +187,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [messages]);
   const [consultationOpen, setConsultationOpen] = useState(false);
   const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
+  /** Previous consultations' messages — collapsed by default under a toggle. */
+  const [archiveExpanded, setArchiveExpanded] = useState(false);
   // Doctor↔patient can only message while a consultation is open.
   const needsConsultation = isDoctorPatientChat && !consultationOpen;
   const canUseDiagnosisTemplates = canOpenPatientRecord && consultationOpen;
@@ -276,6 +283,53 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [id]);
 
   const chatMessages = useMemo(() => [...messages].reverse(), [messages]);
+
+  // When a consultation is open, everything before its "start" card is archived.
+  const archiveSplit = useMemo(() => {
+    if (!isDoctorPatientChat || !consultationOpen || !activeConsultationId) {
+      return null;
+    }
+    const startIdx = messages.findIndex(
+      (m) =>
+        m.type === "consultation_action" &&
+        m.consultationAction?.action === "start" &&
+        m.consultationAction.consultation_id === activeConsultationId,
+    );
+    if (startIdx <= 0) return null;
+    return {
+      archived: messages.slice(0, startIdx),
+      current: messages.slice(startIdx),
+    };
+  }, [
+    messages,
+    isDoctorPatientChat,
+    consultationOpen,
+    activeConsultationId,
+  ]);
+
+  const listData = useMemo((): ChatListItem[] => {
+    if (!archiveSplit) {
+      return chatMessages.map((message) => ({ kind: "message", message }));
+    }
+    const currentRev = [...archiveSplit.current]
+      .reverse()
+      .map((message) => ({ kind: "message" as const, message }));
+    const toggle: ChatListItem = {
+      kind: "archive_toggle",
+      count: archiveSplit.archived.length,
+    };
+    if (!archiveExpanded) return [...currentRev, toggle];
+    const archivedRev = [...archiveSplit.archived]
+      .reverse()
+      .map((message) => ({ kind: "message" as const, message }));
+    // Inverted list: newest at index 0 → archive header ends up at the visual top.
+    return [...currentRev, ...archivedRev, toggle];
+  }, [archiveSplit, archiveExpanded, chatMessages]);
+
+  useEffect(() => {
+    setArchiveExpanded(false);
+  }, [activeConsultationId, id]);
+
   const scrolledConsultationRef = useRef<string | null>(null);
   const [highlightConsultationId, setHighlightConsultationId] = useState<string | null>(null);
   const latestAppointmentMessageIds = useMemo(() => {
@@ -297,7 +351,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
     return map;
   }, [messages]);
-  const listInverted = chatMessages.length > 0;
+  const listInverted = listData.length > 0;
 
   const scrollToLatest = useCallback(
     (animated = false) => {
@@ -339,10 +393,16 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   useEffect(() => {
     if (!consultationId || messagesLoading) return;
     if (scrolledConsultationRef.current === consultationId) return;
-    const index = chatMessages.findIndex(
-      (m) => m.consultationAction?.consultation_id === consultationId,
+    const index = listData.findIndex(
+      (row) =>
+        row.kind === "message" &&
+        row.message.consultationAction?.consultation_id === consultationId,
     );
-    if (index < 0) return;
+    if (index < 0) {
+      // Message may be in the collapsed archive — expand so we can scroll to it.
+      if (archiveSplit) setArchiveExpanded(true);
+      return;
+    }
     scrolledConsultationRef.current = consultationId;
     stickToBottomRef.current = false;
     setHighlightConsultationId(consultationId);
@@ -355,7 +415,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     });
     const t = setTimeout(() => setHighlightConsultationId(null), 3000);
     return () => clearTimeout(t);
-  }, [consultationId, messagesLoading, chatMessages]);
+  }, [consultationId, messagesLoading, listData, archiveSplit]);
 
   if (!isSignedIn(profile, accessToken)) {
     return <Redirect href="/welcome" />;
@@ -946,10 +1006,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       ) : (
         <FlatList
           ref={listRef}
-          data={chatMessages}
+          data={listData}
           inverted={listInverted}
-          keyExtractor={(m) => m.id}
-          extraData={`${reactionTarget?.id ?? ""}:${messages.length}`}
+          keyExtractor={(row) =>
+            row.kind === "archive_toggle"
+              ? `archive-toggle-${row.count}`
+              : row.message.id
+          }
+          extraData={`${reactionTarget?.id ?? ""}:${messages.length}:${archiveExpanded}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -991,7 +1055,21 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               </Text>
             </View>
           }
-          renderItem={({ item, index }) => {
+          renderItem={({ item: row, index }) => {
+            if (row.kind === "archive_toggle") {
+              return (
+                <ArchivedMessagesToggle
+                  count={row.count}
+                  expanded={archiveExpanded}
+                  isRTL={isRTL}
+                  onToggle={() => setArchiveExpanded((v) => !v)}
+                  label={t.consultations.archivedMessages}
+                  countLabel={t.consultations.archivedCount}
+                />
+              );
+            }
+
+            const item = row.message;
             if (item.type === "access_action" || item.type === "appointment_action") {
               const apptId = item.appointmentAction?.appointment_id;
               const showAppointmentControls = apptId
@@ -1017,7 +1095,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             }
 
             const mine = item.senderId === "me";
-            const prev = chatMessages[index + 1];
+            let prev: ChatMessage | undefined;
+            for (let i = index + 1; i < listData.length; i += 1) {
+              const neighbor = listData[i];
+              if (neighbor?.kind === "message") {
+                prev = neighbor.message;
+                break;
+              }
+            }
             const showAvatar = !mine && (!prev || prev.senderId !== item.senderId);
 
             return (

@@ -15,7 +15,6 @@ import { FileText, Trash2, Upload } from "lucide-react-native";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
-  createAdminRagDocument,
   createAdminRagText,
   deleteAdminRagSource,
   fetchAdminRagSources,

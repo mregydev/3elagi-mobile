@@ -503,6 +503,8 @@ const en = {
       "Explain what went wrong. An admin will review the consultation and may refund your credits.",
     consultationStarted: "Consultation started",
     couldNotStart: "Could not start",
+    archivedMessages: "Archived messages",
+    archivedCount: (count: number) => `(${count})`,
   },
   doctor: {
     egpPerConsultation: "EGP/consultation",
@@ -1032,6 +1034,8 @@ const ar: typeof en = {
       "اشرح ما حدث. سيقوم المشرف بمراجعة الاستشارة وقد يعيد رصيدك.",
     consultationStarted: "بدأت الاستشارة",
     couldNotStart: "تعذر البدء",
+    archivedMessages: "الرسائل المؤرشفة",
+    archivedCount: (count: number) => `(${count})`,
   },
   doctor: {
     egpPerConsultation: "جنيه/استشارة",
@@ -1561,6 +1565,8 @@ const de: typeof en = {
       "Erklären Sie, was schiefgelaufen ist. Ein Administrator prüft die Beratung und erstattet ggf. Ihr Guthaben.",
     consultationStarted: "Beratung gestartet",
     couldNotStart: "Konnte nicht gestartet werden",
+    archivedMessages: "Archivierte Nachrichten",
+    archivedCount: (count: number) => `(${count})`,
   },
   doctor: {
     egpPerConsultation: "EGP/Beratung",
@@ -2091,6 +2097,8 @@ const es: typeof en = {
       "Explica qué salió mal. Un administrador revisará la consulta y podría reembolsar tus créditos.",
     consultationStarted: "Consulta iniciada",
     couldNotStart: "No se pudo iniciar",
+    archivedMessages: "Mensajes archivados",
+    archivedCount: (count: number) => `(${count})`,
   },
   doctor: {
     egpPerConsultation: "EGP/consulta",
