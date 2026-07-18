@@ -1,27 +1,15 @@
 import { Image } from "expo-image";
-import { useFocusEffect } from "@react-navigation/native";
-import { ArrowLeft } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
-import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
-import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { LOGO_HEIGHT } from "@/constants/brand";
-import { WEB_BREAKPOINTS } from "@/constants/webLayout";
-import { AUTH_EVENTS } from "@/domains/auth/events";
-import { isSignedIn } from "@/domains/auth/session";
-import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { on } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
 
 const WELCOME_HERO_LEFT = require("@/assets/images/welcome-hero-left.jpg");
-
-type WelcomePanel = "home" | "login" | "signup";
 
 export default function WelcomeScreenWeb() {
   const colors = useColors();
@@ -30,28 +18,6 @@ export default function WelcomeScreenWeb() {
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const stackVertical = !isTablet;
-  const [panel, setPanel] = useState<WelcomePanel>("home");
-  const showForm = panel !== "home";
-
-  const showHomePanel = useCallback(() => {
-    setPanel("home");
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      const { profile, accessToken } = useAuthStore.getState();
-      if (!isSignedIn(profile, accessToken)) {
-        showHomePanel();
-      }
-    }, [showHomePanel]),
-  );
-
-  useEffect(() => {
-    return on(AUTH_EVENTS.LOGOUT, showHomePanel);
-  }, [showHomePanel]);
-
-  const formTitle =
-    panel === "login" ? t.auth.logIn : panel === "signup" ? t.auth.register : "";
 
   return (
     <View
@@ -82,106 +48,31 @@ export default function WelcomeScreenWeb() {
         ]}
       >
         <View style={[styles.actionTopBar, { flexDirection: dir, paddingHorizontal: isMobile ? 16 : 20 }]}>
-          {showForm ? (
-            <Pressable
-              onPress={() => setPanel("home")}
-              style={styles.backBtn}
-              accessibilityRole="button"
-              accessibilityLabel={t.auth.goBack}
-            >
-              <ArrowLeft
-                size={22}
-                color={colors.foreground}
-                style={isRTL ? { transform: [{ rotate: "180deg" }] } : undefined}
-              />
-            </Pressable>
-          ) : (
-            <View style={styles.backBtnPlaceholder} />
-          )}
           <View style={styles.actionTopSpacer} />
-          <View style={[styles.topActions, { flexDirection: dir }]}>
-            <MobileAppLink variant="toolbar" />
-            <AuthLanguageField />
-          </View>
+          <AuthLanguageField />
         </View>
 
-        <ScrollView
-          style={styles.actionScroll}
-          contentContainerStyle={[
-            styles.actionScrollContent,
-            { paddingHorizontal: isMobile ? 16 : 24 },
-            !showForm && styles.actionScrollContentCentered,
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {panel === "home" ? (
-            <View style={styles.actionContent}>
-              <Logo3elagi
-                height={isDesktop ? LOGO_HEIGHT.welcomeDesktop : LOGO_HEIGHT.welcomeHero}
-                centered
-              />
+        <View style={[styles.actionBody, { paddingHorizontal: isMobile ? 16 : 24 }]}>
+          <View style={styles.actionContent}>
+            <Logo3elagi
+              height={isDesktop ? LOGO_HEIGHT.welcomeDesktop : LOGO_HEIGHT.welcomeHero}
+              centered
+            />
 
-              <Text
-                style={[
-                  styles.ctaTitle,
-                  { color: colors.foreground, textAlign },
-                  isMobile && styles.ctaTitleMobile,
-                ]}
-              >
-                {t.auth.welcomeCtaTitle}
-              </Text>
-              <Text style={[styles.ctaSubtitle, { color: colors.mutedForeground, textAlign }]}>
-                {t.auth.welcomeCtaSubtitle}
-              </Text>
-
-              <View style={styles.btnColumn}>
-                <Pressable
-                  onPress={() => setPanel("login")}
-                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                    styles.btn,
-                    styles.btnLogin,
-                    { backgroundColor: colors.primary },
-                    pressed && styles.btnPressed,
-                    hovered && styles.btnLoginHovered,
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.btnLoginText}>{t.auth.logIn}</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setPanel("signup")}
-                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                    styles.btn,
-                    styles.btnSignup,
-                    {
-                      borderColor: colors.primary,
-                      backgroundColor: hovered ? `${colors.primary}08` : colors.card,
-                    },
-                    pressed && styles.btnPressed,
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text style={[styles.btnSignupText, { color: colors.primary }]}>
-                    {t.auth.register}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.formSection}>
-              <Text style={[styles.formTitle, { color: colors.foreground, textAlign }]}>
-                {formTitle}
-              </Text>
-              {panel === "login" ? (
-                <WelcomeLoginForm onSwitchToSignup={() => setPanel("signup")} />
-              ) : (
-                <WelcomeSignupForm onSwitchToLogin={() => setPanel("login")} />
-              )}
-            </View>
-          )}
-        </ScrollView>
+            <Text
+              style={[
+                styles.ctaTitle,
+                { color: colors.foreground, textAlign },
+                isMobile && styles.ctaTitleMobile,
+              ]}
+            >
+              {t.auth.comingSoonTitle}
+            </Text>
+            <Text style={[styles.ctaSubtitle, { color: colors.mutedForeground, textAlign }]}>
+              {t.auth.comingSoonSubtitle}
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -222,108 +113,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  backBtn: {
-    padding: 6,
-    cursor: "pointer" as "auto",
-  },
-  backBtnPlaceholder: {
-    width: 34,
-    height: 34,
-  },
   actionTopSpacer: { flex: 1 },
-  topActions: {
-    alignItems: "center",
-    gap: 10,
-  },
-  actionScroll: {
+  actionBody: {
     flex: 1,
     minHeight: 0,
-  },
-  actionScrollContent: {
-    flexGrow: 1,
-    paddingBottom: 32,
-  },
-  actionScrollContentCentered: {
     justifyContent: "center",
     alignItems: "center",
+    paddingBottom: 32,
   },
   actionContent: {
     width: "100%",
     maxWidth: 420,
     alignItems: "center",
-    gap: 16,
+    gap: 18,
     alignSelf: "center",
-  },
-  formSection: {
-    width: "100%",
-    maxWidth: 420,
-    alignSelf: "center",
-    gap: 20,
-    paddingTop: 8,
-  },
-  formTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.3,
   },
   ctaTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    lineHeight: 32,
-    letterSpacing: -0.4,
+    fontSize: 42,
+    fontWeight: "900",
+    lineHeight: 48,
+    letterSpacing: -0.6,
     marginTop: 8,
   },
   ctaTitleMobile: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 34,
+    lineHeight: 40,
   },
   ctaSubtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  btnColumn: {
-    width: "100%",
-    gap: 12,
-    marginTop: 4,
-  },
-  btn: {
-    width: "100%",
-    minHeight: 56,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 15,
-    cursor: "pointer" as "auto",
-  },
-  btnLogin: {
-    shadowColor: "#3057F2",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  btnLoginHovered: {
-    opacity: 0.95,
-    transform: [{ translateY: -1 }],
-  },
-  btnLoginText: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
-  btnSignup: {
-    borderWidth: 2.5,
-  },
-  btnSignupText: {
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
-  btnPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.99 }],
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600",
   },
 });
