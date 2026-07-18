@@ -63,7 +63,7 @@ export function AssignIntakeExamDialog({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deadlineDate, setDeadlineDate] = useState(defaultDeadlineDate);
   const [deadlineTime, setDeadlineTime] = useState("09:00");
-  const [recurrence, setRecurrence] = useState<IntakeExamRecurrence>("weekly");
+  const [recurrence, setRecurrence] = useState<IntakeExamRecurrence>("none");
   const [interval, setInterval] = useState("1");
   const [assigning, setAssigning] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -72,7 +72,8 @@ export function AssignIntakeExamDialog({
     if (!visible || !accessToken) return;
     setDeadlineDate(defaultDeadlineDate());
     setDeadlineTime("09:00");
-    setRecurrence("weekly");
+    // One-shot by default: patient status updates stay on the same instance.
+    setRecurrence("none");
     setInterval("1");
     setLoading(true);
     void fetchIntakeTests(accessToken)

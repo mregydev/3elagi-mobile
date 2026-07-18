@@ -59,7 +59,10 @@ import {
   saveIntakeExamAnswers,
 } from "@/domains/intake-exams/api";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
-import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
+import {
+  IntakeExamTaker,
+  type IntakeExamTakerHandle,
+} from "@/components/intake/IntakeExamTaker";
 import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
 import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
@@ -115,6 +118,9 @@ export default function MedicalRecordDetail() {
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const intakeDraftDirtyRef = useRef(false);
   const intakeAnswersDraftRef = useRef<Record<string, string[]>>({});
+  const intakeExamTakerRef = useRef<IntakeExamTakerHandle | null>(null);
+  /** Bumped to ignore in-flight instance fetches after a local save/reset. */
+  const intakeLoadSeqRef = useRef(0);
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadState, setLoadState] = useState<"loading" | "done">("loading");
@@ -205,9 +211,12 @@ export default function MedicalRecordDetail() {
       setLoadState("done");
     };
 
-    const applyIntake = (raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>) => {
+    const applyIntake = (
+      raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>,
+      seq: number,
+    ) => {
       const mapped = mapInstance(raw);
-      if (cancelled) return mapped;
+      if (cancelled || seq !== intakeLoadSeqRef.current) return mapped;
       setDetail(mapped);
       upsertIntake(mapped);
       if (!intakeDraftDirtyRef.current) {
@@ -216,11 +225,13 @@ export default function MedicalRecordDetail() {
       return mapped;
     };
 
-    const loadIntakeInstance = () =>
-      fetchIntakeExamInstance(id, accessToken)
-        .then(applyIntake)
+    const loadIntakeInstance = () => {
+      const seq = ++intakeLoadSeqRef.current;
+      return fetchIntakeExamInstance(id, accessToken)
+        .then((raw) => applyIntake(raw, seq))
         .then(() => true)
         .catch(() => false);
+    };
 
     if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
       if (cached?.intakeExam?.answers && !intakeDraftDirtyRef.current) {
@@ -369,17 +380,32 @@ export default function MedicalRecordDetail() {
 
     const timer = setTimeout(() => {
       if (!intakeDraftDirtyRef.current) return;
-      const snapshot = intakeAnswersDraftRef.current;
-      void saveIntakeExamAnswers(id, { answers: snapshot, complete: false }, accessToken)
-        .then((raw) => {
+      void (async () => {
+        try {
+          await intakeExamTakerRef.current?.flushPendingAudio();
+        } catch {
+          /* still save other answers */
+        }
+        if (!intakeDraftDirtyRef.current) return;
+        const snapshot = intakeAnswersDraftRef.current;
+        try {
+          const raw = await saveIntakeExamAnswers(
+            id,
+            { answers: snapshot, complete: false },
+            accessToken,
+          );
           const mapped = mapInstance(raw);
+          intakeLoadSeqRef.current += 1;
           setDetail(mapped);
           upsertIntake(mapped);
           if (intakeAnswersDraftRef.current === snapshot) {
             intakeDraftDirtyRef.current = false;
+            setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
           }
-        })
-        .catch(() => undefined);
+        } catch {
+          /* keep dirty for retry */
+        }
+      })();
     }, 900);
 
     return () => clearTimeout(timer);
@@ -935,6 +961,7 @@ export default function MedicalRecordDetail() {
                   : "Complete exam"}
             </Text>
             <IntakeExamTaker
+              ref={intakeExamTakerRef}
               isRTL={isRTL}
               questions={record.intakeExam.questions}
               answers={
@@ -967,6 +994,7 @@ export default function MedicalRecordDetail() {
                           onPress: () => {
                             void resetIntakeExamAnswers(record.id, accessToken).then((raw) => {
                               const mapped = mapInstance(raw);
+                              intakeLoadSeqRef.current += 1;
                               intakeDraftDirtyRef.current = false;
                               setDetail(mapped);
                               upsertIntake(mapped);
@@ -996,24 +1024,32 @@ export default function MedicalRecordDetail() {
                   onPress={() => {
                     if (!accessToken) return;
                     setSavingIntake(true);
-                    void saveIntakeExamAnswers(
-                      record.id,
-                      { answers: intakeAnswersDraft, complete: false },
-                      accessToken,
-                    )
-                      .then((raw) => {
+                    void (async () => {
+                      try {
+                        try {
+                          await intakeExamTakerRef.current?.flushPendingAudio();
+                        } catch {
+                          /* still save other answers */
+                        }
+                        const raw = await saveIntakeExamAnswers(
+                          record.id,
+                          { answers: intakeAnswersDraftRef.current, complete: false },
+                          accessToken,
+                        );
                         const mapped = mapInstance(raw);
+                        intakeLoadSeqRef.current += 1;
                         intakeDraftDirtyRef.current = false;
                         setDetail(mapped);
                         upsertIntake(mapped);
                         setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
                         void refetchListsAfterChange();
                         showSuccessToast(isRTL ? "تم حفظ المسودة" : "Draft saved");
-                      })
-                      .catch((e) =>
-                        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message),
-                      )
-                      .finally(() => setSavingIntake(false));
+                      } catch (e) {
+                        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+                      } finally {
+                        setSavingIntake(false);
+                      }
+                    })();
                   }}
                   disabled={savingIntake}
                   style={[styles.addSymptomBtn, { backgroundColor: colors.muted }]}
@@ -1026,23 +1062,31 @@ export default function MedicalRecordDetail() {
                   onPress={() => {
                     if (!accessToken) return;
                     setSavingIntake(true);
-                    void saveIntakeExamAnswers(
-                      record.id,
-                      { answers: intakeAnswersDraft, complete: true },
-                      accessToken,
-                    )
-                      .then((raw) => {
+                    void (async () => {
+                      try {
+                        try {
+                          await intakeExamTakerRef.current?.flushPendingAudio();
+                        } catch {
+                          /* continue */
+                        }
+                        const raw = await saveIntakeExamAnswers(
+                          record.id,
+                          { answers: intakeAnswersDraftRef.current, complete: true },
+                          accessToken,
+                        );
                         const mapped = mapInstance(raw);
+                        intakeLoadSeqRef.current += 1;
                         intakeDraftDirtyRef.current = false;
                         setDetail(mapped);
                         upsertIntake(mapped);
                         setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
                         void refetchListsAfterChange();
-                      })
-                      .catch((e) =>
-                        Alert.alert(isRTL ? "فشل الإرسال" : "Submit failed", (e as Error).message),
-                      )
-                      .finally(() => setSavingIntake(false));
+                      } catch (e) {
+                        Alert.alert(isRTL ? "فشل الإرسال" : "Submit failed", (e as Error).message);
+                      } finally {
+                        setSavingIntake(false);
+                      }
+                    })();
                   }}
                   disabled={savingIntake}
                   style={[styles.addSymptomBtn, { backgroundColor: colors.primary }]}

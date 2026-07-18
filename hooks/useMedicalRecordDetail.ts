@@ -30,6 +30,7 @@ import {
   resetIntakeExamAnswers,
   saveIntakeExamAnswers,
 } from "@/domains/intake-exams/api";
+import type { IntakeExamTakerHandle } from "@/components/intake/IntakeExamTaker";
 import { useMedicalStore } from "@/domains/medical/store";
 import { getApiLang } from "@/domains/i18n/store";
 import type { MedicalRecord } from "@/domains/medical/types";
@@ -64,6 +65,9 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const intakeDraftDirtyRef = useRef(false);
   const intakeAnswersDraftRef = useRef<Record<string, string[]>>({});
+  const intakeExamTakerRef = useRef<IntakeExamTakerHandle | null>(null);
+  /** Bumped to ignore in-flight instance fetches after a local save/reset. */
+  const intakeLoadSeqRef = useRef(0);
 
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -153,9 +157,13 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       setLoadState("done");
     };
 
-    const applyIntake = (raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>) => {
+    const applyIntake = (
+      raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>,
+      seq: number,
+    ) => {
       const mapped = mapInstance(raw);
-      if (cancelled) return mapped;
+      // Ignore stale responses (superseded load, or a save completed while this was in flight).
+      if (cancelled || seq !== intakeLoadSeqRef.current) return mapped;
       setDetail(mapped);
       upsertIntake(mapped);
       // Never wipe in-progress local edits with a slower network response.
@@ -165,11 +173,13 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       return mapped;
     };
 
-    const loadIntakeInstance = () =>
-      fetchIntakeExamInstance(id, accessToken)
-        .then(applyIntake)
+    const loadIntakeInstance = () => {
+      const seq = ++intakeLoadSeqRef.current;
+      return fetchIntakeExamInstance(id, accessToken)
+        .then((raw) => applyIntake(raw, seq))
         .then(() => true)
         .catch(() => false);
+    };
 
     if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
       if (cached?.intakeExam?.answers && !intakeDraftDirtyRef.current) {
@@ -543,20 +553,35 @@ export function useMedicalRecordDetail(isRTL: boolean) {
 
     const timer = setTimeout(() => {
       if (!intakeDraftDirtyRef.current) return;
-      const snapshot = intakeAnswersDraftRef.current;
-      void saveIntakeExamAnswers(id, { answers: snapshot, complete: false }, accessToken)
-        .then((updated) => {
+      void (async () => {
+        // Best-effort: never block saving other answers if audio flush fails.
+        try {
+          await intakeExamTakerRef.current?.flushPendingAudio();
+        } catch {
+          /* keep going */
+        }
+        if (!intakeDraftDirtyRef.current) return;
+        const snapshot = intakeAnswersDraftRef.current;
+        try {
+          const updated = await saveIntakeExamAnswers(
+            id,
+            { answers: snapshot, complete: false },
+            accessToken,
+          );
           const mapped = mapInstance(updated);
+          // Invalidate in-flight detail fetches so they can't wipe this save.
+          intakeLoadSeqRef.current += 1;
           setDetail(mapped);
           upsertIntake(mapped);
           // Only clear dirty if the user hasn't typed more since this save started.
           if (intakeAnswersDraftRef.current === snapshot) {
             intakeDraftDirtyRef.current = false;
+            setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
           }
-        })
-        .catch(() => {
+        } catch {
           // Keep dirty so the next edit / manual save can retry.
-        });
+        }
+      })();
     }, 900);
 
     return () => clearTimeout(timer);
@@ -573,12 +598,20 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     if (!record?.intakeExam || !accessToken || isDoctorView) return;
     setSavingIntake(true);
     try {
+      try {
+        await intakeExamTakerRef.current?.flushPendingAudio();
+      } catch {
+        // Still save whatever answers we already have (text/choices/uploaded media).
+      }
+      const answers = intakeAnswersDraftRef.current;
       const updated = await saveIntakeExamAnswers(
         record.id,
-        { answers: intakeAnswersDraft, complete: false },
+        { answers, complete: false },
         accessToken,
       );
       const mapped = mapInstance(updated);
+      // Prevent the original open-fetch from overwriting this save with empty answers.
+      intakeLoadSeqRef.current += 1;
       intakeDraftDirtyRef.current = false;
       setDetail(mapped);
       upsertIntake(mapped);
@@ -596,12 +629,19 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     if (!record?.intakeExam || !accessToken || isDoctorView) return;
     setSavingIntake(true);
     try {
+      try {
+        await intakeExamTakerRef.current?.flushPendingAudio();
+      } catch {
+        /* continue */
+      }
+      const answers = intakeAnswersDraftRef.current;
       const updated = await saveIntakeExamAnswers(
         record.id,
-        { answers: intakeAnswersDraft, complete: true },
+        { answers, complete: true },
         accessToken,
       );
       const mapped = mapInstance(updated);
+      intakeLoadSeqRef.current += 1;
       intakeDraftDirtyRef.current = false;
       setDetail(mapped);
       upsertIntake(mapped);
@@ -632,6 +672,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
               try {
                 const updated = await resetIntakeExamAnswers(record.id, accessToken);
                 const mapped = mapInstance(updated);
+                intakeLoadSeqRef.current += 1;
                 intakeDraftDirtyRef.current = false;
                 setDetail(mapped);
                 upsertIntake(mapped);
@@ -722,6 +763,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     generateLabDetails,
     intakeAnswersDraft,
     setIntakeAnswersDraft: updateIntakeAnswersDraft,
+    intakeExamTakerRef,
     savingIntake,
     saveIntakeDraft,
     submitIntakeExam,

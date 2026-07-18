@@ -202,6 +202,7 @@ export function MedicalRecordWebView() {
     confirmDelete,
     intakeAnswersDraft,
     setIntakeAnswersDraft,
+    intakeExamTakerRef,
     savingIntake,
     saveIntakeDraft,
     submitIntakeExam,
@@ -642,6 +643,7 @@ export function MedicalRecordWebView() {
         dir={dir}
       >
         <IntakeExamTaker
+          ref={intakeExamTakerRef}
           isRTL={isRTL}
           questions={exam.questions}
           answers={readOnly ? exam.answers : intakeAnswersDraft}
