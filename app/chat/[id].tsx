@@ -86,6 +86,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const colors = useColors();
   const { isRTL, t } = useI18n();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const role = useAuthStore((s) => s.role);
   const { id: rawPeerId, consultationId: rawConsultationId } =
     useLocalSearchParams<{ id: string; consultationId?: string }>();
@@ -827,7 +828,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       ? openDoctorProfile
       : undefined;
 
-  const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const headerPaddingTop = desktopLayout ? 16 : insets.top + 8;
   // Drop home-indicator padding while keyboard is open — sticky view sits on the keyboard.
   const composerBottomInset = desktopLayout
