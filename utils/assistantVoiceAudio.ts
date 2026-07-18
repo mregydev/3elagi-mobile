@@ -1,6 +1,6 @@
 import { Audio as ExpoAudio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -16,16 +16,89 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return Buffer.from(bytes).toString("base64");
 }
 
-async function prepareNativeAudioMode() {
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function isAudioFocusError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  return (
+    /AudioFocusNotAcquired/i.test(message) ||
+    /currently in the background/i.test(message) ||
+    /audio session could not be activated/i.test(message) ||
+    /audio focus could not be acquired/i.test(message)
+  );
+}
+
+/** Map raw expo-av / OS errors to a short user-facing string. */
+export function friendlyAssistantVoiceError(err: unknown, fallback: string): string {
+  if (isAudioFocusError(err)) {
+    return "Could not start audio. Keep the app open and try again.";
+  }
+  if (err instanceof Error && err.message.trim()) {
+    // Avoid dumping Java exception class names into the UI.
+    if (/Exception:|Error Domain=|expo\.modules/i.test(err.message)) {
+      return fallback;
+    }
+    return err.message;
+  }
+  return fallback;
+}
+
+/** Wait until the JS AppState is active — expo-av rejects focus while “background”. */
+async function waitForForeground(timeoutMs = 2500): Promise<boolean> {
+  if (Platform.OS === "web") return true;
+  if (AppState.currentState === "active") return true;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      sub.remove();
+      clearTimeout(timer);
+      resolve(ok);
+    };
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") finish(true);
+    });
+    const timer = setTimeout(() => finish(AppState.currentState === "active"), timeoutMs);
+  });
+}
+
+async function prepareNativeAudioMode(allowsRecording: boolean) {
   await ExpoAudio.setAudioModeAsync({
-    allowsRecordingIOS: true,
+    allowsRecordingIOS: allowsRecording,
     playsInSilentModeIOS: true,
     interruptionModeIOS: InterruptionModeIOS.DoNotMix,
     interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
     shouldDuckAndroid: true,
     playThroughEarpieceAndroid: false,
-    staysActiveInBackground: false,
+    // Helps Android avoid false “background” focus failures after permission / focus return.
+    staysActiveInBackground: true,
   });
+}
+
+async function withAudioFocusRetry<T>(run: () => Promise<T>): Promise<T> {
+  const foreground = await waitForForeground();
+  if (!foreground) {
+    throw new Error("Could not start audio. Keep the app open and try again.");
+  }
+
+  try {
+    return await run();
+  } catch (err) {
+    if (!isAudioFocusError(err)) throw err;
+    // Common after mic permission sheet / brief inactivity — brief pause then retry once.
+    await sleep(400);
+    if (AppState.currentState !== "active") {
+      const ok = await waitForForeground(1500);
+      if (!ok) {
+        throw new Error("Could not start audio. Keep the app open and try again.");
+      }
+    }
+    return await run();
+  }
 }
 
 export class NativeAssistantRecorder {
@@ -41,12 +114,17 @@ export class NativeAssistantRecorder {
     if (status !== "granted") {
       throw new Error("Microphone permission is required for voice chat.");
     }
-    await prepareNativeAudioMode();
-    const { recording } = await ExpoAudio.Recording.createAsync(
-      ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY,
-    );
-    this.recording = recording;
-    this.startedAt = Date.now();
+
+    await withAudioFocusRetry(async () => {
+      await prepareNativeAudioMode(true);
+      // Small delay after permission / mode change so Android can grant focus.
+      await sleep(150);
+      const { recording } = await ExpoAudio.Recording.createAsync(
+        ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      this.recording = recording;
+      this.startedAt = Date.now();
+    });
   }
 
   async stop(): Promise<{ base64: string; mimeType: string }> {
@@ -56,7 +134,7 @@ export class NativeAssistantRecorder {
     const durationMs = Date.now() - this.startedAt;
     await recording.stopAndUnloadAsync();
     this.recording = null;
-    await prepareNativeAudioMode();
+    await prepareNativeAudioMode(false);
 
     if (durationMs < 800) {
       throw new Error("Recording too short. Hold the mic a little longer.");
@@ -85,6 +163,11 @@ export class NativeAssistantRecorder {
       /* ignore */
     }
     this.recording = null;
+    try {
+      await prepareNativeAudioMode(false);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -123,14 +206,37 @@ export async function playAssistantTtsBuffer(
     };
   }
 
-  await ExpoAudio.setAudioModeAsync({ playsInSilentModeIOS: true });
   const path = `${FileSystem.cacheDirectory}assistant-tts-${Date.now()}.mp3`;
   await FileSystem.writeAsStringAsync(path, arrayBufferToBase64(audioBuffer), {
     encoding: FileSystem.EncodingType.Base64,
   });
-  const { sound } = await ExpoAudio.Sound.createAsync({ uri: path });
+
+  let sound: ExpoAudio.Sound;
+  try {
+    sound = await withAudioFocusRetry(async () => {
+      await prepareNativeAudioMode(false);
+      const created = await ExpoAudio.Sound.createAsync(
+        { uri: path },
+        { shouldPlay: false },
+      );
+      return created.sound;
+    });
+  } catch (err) {
+    callbacks.onError?.(
+      friendlyAssistantVoiceError(err, "Could not play voice response."),
+    );
+    throw err;
+  }
+
   sound.setOnPlaybackStatusUpdate((status) => {
-    if (!status.isLoaded) return;
+    if (!status.isLoaded) {
+      if ("error" in status && status.error) {
+        callbacks.onError?.(
+          friendlyAssistantVoiceError(status.error, "Could not play voice response."),
+        );
+      }
+      return;
+    }
     if (status.isPlaying) callbacks.onStart?.();
     if (status.durationMillis && status.positionMillis != null) {
       callbacks.onProgress?.(status.positionMillis / status.durationMillis);
@@ -141,7 +247,23 @@ export async function playAssistantTtsBuffer(
       callbacks.onEnd?.();
     }
   });
-  await sound.playAsync();
+
+  try {
+    await withAudioFocusRetry(async () => {
+      await sound.playAsync();
+    });
+  } catch (err) {
+    try {
+      await sound.unloadAsync();
+    } catch {
+      /* ignore */
+    }
+    callbacks.onError?.(
+      friendlyAssistantVoiceError(err, "Could not play voice response."),
+    );
+    throw err;
+  }
+
   callbacks.onStart?.();
   return async () => {
     try {

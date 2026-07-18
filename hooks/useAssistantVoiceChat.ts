@@ -16,6 +16,7 @@ import { resolveWebSpeechLang } from "@/utils/webSpeechLang";
 import { stripMarkdownForTts } from "@/utils/stripMarkdownForTts";
 import { splitSpokenWords } from "@/utils/spokenWords";
 import {
+  friendlyAssistantVoiceError,
   NativeAssistantRecorder,
   playAssistantTtsBuffer,
 } from "@/utils/assistantVoiceAudio";
@@ -277,7 +278,9 @@ export function useAssistantVoiceChat({
         setIsTalking(false);
         if (voiceTurnRef.current === turnAtStart) {
           applyHighlight(null);
-          setVoiceError((err as Error).message || "Voice playback failed.");
+          setVoiceError(
+            friendlyAssistantVoiceError(err, "Voice playback failed."),
+          );
         }
       }
     },
@@ -520,7 +523,9 @@ export function useAssistantVoiceChat({
         nativeRecorderRef.current = recorder;
         setIsRecording(true);
       } catch (err) {
-        setVoiceError((err as Error).message || "Could not start recording.");
+        setVoiceError(
+          friendlyAssistantVoiceError(err, "Could not start recording."),
+        );
       }
     },
     [
