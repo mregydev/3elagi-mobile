@@ -10,11 +10,13 @@ import type { AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useColors } from "@/hooks/useColors";
 import { AiBookingCard } from "@/components/assistant/AiBookingCard";
+import { AiConsultationCard } from "@/components/assistant/AiConsultationCard";
 import {
   getAiUserMessageDisplay,
 } from "@/utils/aiMessageDisplay";
 import { handleAssistantLink } from "@/utils/assistantLinks";
 import { parseBookingDirective } from "@/utils/assistantBooking";
+import { parseConsultationDirective } from "@/utils/assistantConsultation";
 import { prepareAssistantMarkdown } from "@/utils/assistantMarkdown";
 import { stripMarkdownForTts } from "@/utils/stripMarkdownForTts";
 import { splitSpokenWords } from "@/utils/spokenWords";
@@ -81,11 +83,15 @@ function AssistantMessageBubbleBase({
     ? splitSpokenWords(stripMarkdownForTts(message.content || ""))
     : [];
   const imageSource = message.imageUri ?? message.imageUrl;
-  // Assistant replies may carry an inline booking directive; split it out so the
-  // card renders below the text and the raw ```booking block never shows.
+  // Assistant replies may carry booking / consultation fences; strip them so
+  // cards render below the text and raw JSON never shows.
   const booking = isUser
     ? { directive: null, text: message.content || "" }
     : parseBookingDirective(message.content || "");
+  const consultation = isUser
+    ? { directive: null, text: booking.text }
+    : parseConsultationDirective(booking.text);
+  const assistantText = isUser ? message.content || "" : consultation.text;
   const userDisplay = isUser ? getAiUserMessageDisplay(message) : null;
   const userText = userDisplay?.text ?? "";
   const attachmentLabel = userDisplay?.attachmentLabel ?? null;
@@ -268,11 +274,14 @@ function AssistantMessageBubbleBase({
                 link: { color: colors.primary, textDecorationLine: "underline" },
               }}
             >
-              {prepareAssistantMarkdown(booking.text || " ")}
+              {prepareAssistantMarkdown(assistantText || " ")}
             </Markdown>
           )}
           {!isUser && booking.directive ? (
             <AiBookingCard directive={booking.directive} />
+          ) : null}
+          {!isUser && consultation.directive ? (
+            <AiConsultationCard directive={consultation.directive} />
           ) : null}
           <Text
             style={[
