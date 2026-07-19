@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     width: "100%",
     gap: 6,
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   wrapMobile: {
     flex: 1,

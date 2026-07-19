@@ -486,6 +486,9 @@ export function MedicalHistoryList({
   });
 
   const splitHeight = bodyFigureViewportHeight(screenHeight, screenWidth);
+  /** Doctor skeleton host is non-scrolling — fill leftover space so pending banners don't clip the figure. */
+  const fillSkeletonViewport =
+    doctorView && effectiveViewMode === "skeleton" && isDesktop;
 
   const bottomChromePad = recordsBottomChromeHeight({
     canAdd: showAddChrome,
@@ -498,6 +501,7 @@ export function MedicalHistoryList({
       style={[
         // Doctor patient page scrolls externally — avoid flex:1 locking height to the viewport.
         doctorView || isDesktop ? styles.desktopRoot : styles.mobileRoot,
+        fillSkeletonViewport ? styles.desktopRootSkeletonFill : null,
         !isDesktop && !doctorView && bottomChromePad > 0
           ? { paddingBottom: bottomChromePad }
           : null,
@@ -576,26 +580,30 @@ export function MedicalHistoryList({
 
       {effectiveViewMode === "table" || isDesktop ? (
         <>
-          <MedicalHistoryFilterPanel
-            filters={effectiveFilters}
-            onChange={handleFiltersChange}
-            isRTL={isRTL}
-            dir={dir}
-          />
-          <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+          <View style={styles.chromeBlock}>
+            <MedicalHistoryFilterPanel
+              filters={effectiveFilters}
+              onChange={handleFiltersChange}
+              isRTL={isRTL}
+              dir={dir}
+            />
+            <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+          </View>
         </>
       ) : (
-        <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+        <View style={styles.chromeBlock}>
+          <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+        </View>
       )}
 
       {effectiveViewMode === "skeleton" && isDesktop ? (
         <View
           style={[
             styles.splitRow,
-            {
-              flexDirection: dir,
-              height: splitHeight,
-            },
+            fillSkeletonViewport
+              ? styles.splitRowFill
+              : { height: splitHeight },
+            { flexDirection: dir },
           ]}
         >
           <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
@@ -718,6 +726,14 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingBottom: 72,
   },
+  desktopRootSkeletonFill: {
+    flex: 1,
+    minHeight: 0,
+    paddingBottom: 12,
+  },
+  chromeBlock: {
+    flexShrink: 0,
+  },
   viewToggleWrap: { paddingHorizontal: 16, paddingTop: 8, flexShrink: 0 },
   requestPills: {
     paddingHorizontal: 16,
@@ -742,6 +758,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     overflow: "hidden",
     backgroundColor: "transparent",
+  },
+  splitRowFill: {
+    flex: 1,
+    minHeight: 0,
+    marginBottom: 8,
   },
   skeletonOnly: {
     flex: 1,
