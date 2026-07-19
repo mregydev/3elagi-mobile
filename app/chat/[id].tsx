@@ -74,9 +74,7 @@ import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
-type ChatListItem =
-  | { kind: "message"; message: ChatMessage }
-  | { kind: "archive_toggle"; count: number };
+type ChatListItem = { kind: "message"; message: ChatMessage };
 
 function canReactToMessage(message: ChatMessage): boolean {
   return !message.pending && !message.failed && !message.id.startsWith("pending-");
@@ -314,16 +312,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     const currentRev = [...archiveSplit.current]
       .reverse()
       .map((message) => ({ kind: "message" as const, message }));
-    const toggle: ChatListItem = {
-      kind: "archive_toggle",
-      count: archiveSplit.archived.length,
-    };
-    if (!archiveExpanded) return [...currentRev, toggle];
+    if (!archiveExpanded) return currentRev;
     const archivedRev = [...archiveSplit.archived]
       .reverse()
       .map((message) => ({ kind: "message" as const, message }));
-    // Inverted list: newest at index 0 → archive header ends up at the visual top.
-    return [...currentRev, ...archivedRev, toggle];
+    // Inverted list: archived block sits above current messages; toggle is ListFooter (visual top).
+    return [...currentRev, ...archivedRev];
   }, [archiveSplit, archiveExpanded, chatMessages]);
 
   useEffect(() => {
@@ -1004,15 +998,22 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
+        <>
+        {archiveSplit ? (
+          <ArchivedMessagesToggle
+            count={archiveSplit.archived.length}
+            expanded={archiveExpanded}
+            isRTL={isRTL}
+            onToggle={() => setArchiveExpanded((v) => !v)}
+            label={t.consultations.archivedMessages}
+            countLabel={t.consultations.archivedCount}
+          />
+        ) : null}
         <FlatList
           ref={listRef}
           data={listData}
           inverted={listInverted}
-          keyExtractor={(row) =>
-            row.kind === "archive_toggle"
-              ? `archive-toggle-${row.count}`
-              : row.message.id
-          }
+          keyExtractor={(row) => row.message.id}
           extraData={`${reactionTarget?.id ?? ""}:${messages.length}:${archiveExpanded}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           keyboardShouldPersistTaps="handled"
@@ -1056,19 +1057,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             </View>
           }
           renderItem={({ item: row, index }) => {
-            if (row.kind === "archive_toggle") {
-              return (
-                <ArchivedMessagesToggle
-                  count={row.count}
-                  expanded={archiveExpanded}
-                  isRTL={isRTL}
-                  onToggle={() => setArchiveExpanded((v) => !v)}
-                  label={t.consultations.archivedMessages}
-                  countLabel={t.consultations.archivedCount}
-                />
-              );
-            }
-
             const item = row.message;
             if (item.type === "access_action" || item.type === "appointment_action") {
               const apptId = item.appointmentAction?.appointment_id;
@@ -1095,15 +1083,59 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             }
 
             const mine = item.senderId === "me";
-            let prev: ChatMessage | undefined;
-            for (let i = index + 1; i < listData.length; i += 1) {
-              const neighbor = listData[i];
-              if (neighbor?.kind === "message") {
-                prev = neighbor.message;
-                break;
-              }
-            }
-            const showAvatar = !mine && (!prev || prev.senderId !== item.senderId);
+            const senderAvatar = mine ? (
+              <Avatar
+                uri={profile?.avatarUrl}
+                seed={profile?.id ?? "me"}
+                role={role === "doctor" ? "doctor" : "patient"}
+                size={22}
+              />
+            ) : (
+              <Avatar
+                uri={peer.photoUrl}
+                seed={peer.id}
+                role={peer.role === "doctor" ? "doctor" : "patient"}
+                size={22}
+              />
+            );
+
+            const bubble = (
+              <View
+                ref={(node) => {
+                  if (node) messageAnchorsRef.current.set(item.id, node);
+                  else messageAnchorsRef.current.delete(item.id);
+                }}
+                collapsable={false}
+                style={[
+                  styles.messageColumn,
+                  mine ? styles.messageColumnMine : styles.messageColumnTheirs,
+                ]}
+              >
+                <ChatMessageBubble
+                  item={item}
+                  mine={mine}
+                  isRTL={isRTL}
+                  rowDir={rowDir}
+                  patientUserId={patientUserIdForLinks}
+                  canOpenMedicalLink={canOpenSharedMedicalLinks}
+                  onImagePress={setFullscreenImage}
+                  onVideoPress={setFullscreenVideo}
+                  selfUserId={profile?.id}
+                  onLongPress={
+                    canReactToMessage(item) ? () => showReactionPicker(item) : undefined
+                  }
+                  onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
+                  highlighted={
+                    editingMessage?.id === item.id ||
+                    replacingMedicalMessage?.id === item.id ||
+                    reactionTarget?.id === item.id ||
+                    (!!highlightConsultationId &&
+                      item.consultationAction?.consultation_id ===
+                        highlightConsultationId)
+                  }
+                />
+              </View>
+            );
 
             return (
               <View
@@ -1115,58 +1147,22 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   },
                 ]}
               >
-                {!mine ? (
-                  <View style={{ width: 22 }}>
-                    {showAvatar ? (
-                      <Avatar
-                        uri={peer.photoUrl}
-                        seed={peer.id}
-                        role={peer.role === "doctor" ? "doctor" : "patient"}
-                        size={22}
-                      />
-                    ) : null}
-                  </View>
-                ) : null}
-
-                <View
-                  ref={(node) => {
-                    if (node) messageAnchorsRef.current.set(item.id, node);
-                    else messageAnchorsRef.current.delete(item.id);
-                  }}
-                  collapsable={false}
-                  style={[
-                    styles.messageColumn,
-                    mine ? styles.messageColumnMine : styles.messageColumnTheirs,
-                  ]}
-                >
-                  <ChatMessageBubble
-                    item={item}
-                    mine={mine}
-                    isRTL={isRTL}
-                    rowDir={rowDir}
-                    patientUserId={patientUserIdForLinks}
-                    canOpenMedicalLink={canOpenSharedMedicalLinks}
-                    onImagePress={setFullscreenImage}
-                    onVideoPress={setFullscreenVideo}
-                    selfUserId={profile?.id}
-                    onLongPress={
-                      canReactToMessage(item) ? () => showReactionPicker(item) : undefined
-                    }
-                    onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
-                    highlighted={
-                      editingMessage?.id === item.id ||
-                      replacingMedicalMessage?.id === item.id ||
-                      reactionTarget?.id === item.id ||
-                      (!!highlightConsultationId &&
-                        item.consultationAction?.consultation_id ===
-                          highlightConsultationId)
-                    }
-                  />
-                </View>
+                {mine ? (
+                  <>
+                    {bubble}
+                    {senderAvatar}
+                  </>
+                ) : (
+                  <>
+                    {senderAvatar}
+                    {bubble}
+                  </>
+                )}
               </View>
             );
           }}
         />
+        </>
       )}
 
       {reactionTarget && reactionAnchor ? (
