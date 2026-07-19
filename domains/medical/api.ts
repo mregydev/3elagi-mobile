@@ -438,15 +438,11 @@ export async function fetchPatientMedicalHistoryAsDoctor(
     fetchPrescriptionsForPatientUser(patientUserId, token),
     fetchIntakeExamsForPatient(patientUserId, token).catch(() => [] as MedicalRecord[]),
   ]);
-  // Doctors only see submitted exams (API also filters; keep FE guard for older backends).
-  const completedIntake = intakeExams.filter(
-    (r) => r.category === "intake" && r.intakeExam?.status === "completed",
-  );
   return [
     ...(Array.isArray(diagnoses) ? diagnoses : []).map(mapDiagnosis),
     ...(Array.isArray(prescriptions) ? prescriptions : []),
     ...(Array.isArray(documents) ? documents : []).map(mapDocument),
-    ...completedIntake,
+    ...intakeExams,
   ];
 }
 
@@ -614,10 +610,7 @@ export async function fetchAllMedicalHistory(
       fetchPrescriptionsForPatientUser(patientId, token),
       fetchIntakeExamsForPatient(patientId, token).catch(() => [] as MedicalRecord[]),
     ]);
-    const completedIntake = intakeExams.filter(
-      (r) => r.category === "intake" && r.intakeExam?.status === "completed",
-    );
-    return [...diagnoses, ...prescriptions, ...documents, ...completedIntake];
+    return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
   }
   const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
     fetchPatientDocuments(patientId, token),
