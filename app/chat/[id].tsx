@@ -69,7 +69,7 @@ import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
 import { leaveChatToHistory } from "@/utils/chatNavigation";
-import { scrollChatToLatest } from "@/utils/chatListScroll";
+import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -349,7 +349,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
   const scrollToLatest = useCallback(
     (animated = false) => {
-      scrollChatToLatest(listRef, listInverted, animated);
+      scrollChatToLatest(listRef, listInverted, animated, {
+        shouldContinue: () => stickToBottomRef.current,
+      });
     },
     [listInverted],
   );
@@ -378,8 +380,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
     if (messages.length === 0) return;
 
-    stickToBottomRef.current = true;
     const isInitialBatch = prevToken === "" || prevToken === "empty";
+    const newest = messages[messages.length - 1];
+    const isOwnMessage = newest?.senderId === "me";
+
+    // Never yank the user back down while reading older messages.
+    // Only auto-follow when stuck to latest, on first load, or after sending.
+    if (!isInitialBatch && !isOwnMessage && !stickToBottomRef.current) return;
+
+    if (isInitialBatch || isOwnMessage) {
+      stickToBottomRef.current = true;
+    }
     scrollToLatest(!isInitialBatch);
   }, [id, messages, messagesLoading, scrollToLatest]);
 
@@ -1018,7 +1029,20 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          onScrollBeginDrag={closeReactionPicker}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={() => {
+            stickToBottomRef.current = false;
+            closeReactionPicker();
+          }}
+          onScroll={(event) => {
+            stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
+          }}
+          onMomentumScrollEnd={(event) => {
+            stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
+          }}
+          onScrollEndDrag={(event) => {
+            stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
+          }}
           onScrollToIndexFailed={(info) => {
             setTimeout(() => {
               try {
@@ -1038,6 +1062,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           onLayout={() => {
             if (stickToBottomRef.current && messages.length > 0) scrollToLatest(false);
           }}
+          maintainVisibleContentPosition={
+            listInverted
+              ? { minIndexForVisible: 0 }
+              : undefined
+          }
           contentContainerStyle={
             messages.length === 0
               ? [styles.emptyListContent, desktopLayout && styles.emptyListContentDesktop]
