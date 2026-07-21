@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
+import { ArrowLeft, ClipboardList, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,8 +12,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { WherebyMeetingEmbed } from "@/components/video-call/WherebyMeetingEmbed";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
+import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
 import { useAuthStore } from "@/domains/auth/store";
+import { useChatStore } from "@/domains/chat/store";
+import type { MedicalLinkMeta } from "@/domains/chat/types";
+import { mapInstance } from "@/domains/intake-exams/api";
 import { createDiagnosis } from "@/domains/medical/api";
+import { useMedicalStore } from "@/domains/medical/store";
 import {
   acceptVideoCall,
   declineVideoCall,
@@ -57,8 +62,14 @@ export default function VideoCallScreen() {
   const profile = useAuthStore((s) => s.profile);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
+  const sendMessage = useChatStore((s) => s.sendMessage);
+  const notifyMedicalHistoryChanged = useMedicalStore(
+    (s) => s.notifyMedicalHistoryChanged,
+  );
   const [diagnosisOpen, setDiagnosisOpen] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
+  const [intakeExamOpen, setIntakeExamOpen] = useState(false);
+  const [assigningIntakeExam, setAssigningIntakeExam] = useState(false);
   const params = useLocalSearchParams<{
     sessionId?: string | string[];
     meetingUrl?: string | string[];
@@ -257,6 +268,50 @@ export default function VideoCallScreen() {
     }
   };
 
+  const handleIntakeExamAssigned = async (
+    instance: Awaited<
+      ReturnType<typeof import("@/domains/intake-exams/api").assignIntakeExam>
+    >,
+  ) => {
+    const targetPatientId = session?.patientUserId?.trim() || patientUserIdParam;
+    if (!accessToken || !profile?.id || !targetPatientId) return;
+
+    const mapped = mapInstance(instance);
+    const title =
+      mapped.title?.trim() || (isRTL ? "فحص متابعة" : "Follow-up exam");
+    const meta: MedicalLinkMeta = {
+      record_type: "intake",
+      record_id: mapped.id,
+      title,
+    };
+
+    try {
+      await sendMessage(
+        targetPatientId,
+        {
+          recipientId: targetPatientId,
+          type: "medical_link",
+          content: title,
+          medicalLink: meta,
+        },
+        accessToken,
+        profile.id,
+        role,
+      );
+      notifyMedicalHistoryChanged(targetPatientId);
+      showSuccessToast(
+        isRTL ? "تم إرسال فحص المتابعة للمريض" : "Follow-up exam shared with patient",
+      );
+    } catch (e) {
+      // Assignment already succeeded — still notify history even if chat share fails.
+      notifyMedicalHistoryChanged(targetPatientId);
+      showErrorToast(
+        isRTL ? "تم التعيين لكن تعذر الإرسال في المحادثة" : "Assigned, but could not share in chat",
+        e instanceof Error ? e.message : undefined,
+      );
+    }
+  };
+
   const rowDir = chatFlexRow();
   const peerName =
     session && isDoctor
@@ -415,6 +470,28 @@ export default function VideoCallScreen() {
               </Text>
             </Pressable>
             <Pressable
+              onPress={() => setIntakeExamOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "فحص متابعة" : "Follow-up exam"}
+              style={[
+                styles.diagnosisBtn,
+                {
+                  flex: 1,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                },
+              ]}
+            >
+              <ClipboardList size={16} color={colors.primary} />
+              <Text
+                style={[styles.diagnosisBtnText, { color: colors.primary }]}
+                numberOfLines={1}
+              >
+                {isRTL ? "فحص متابعة" : "Follow-up"}
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() =>
                 router.push({
                   pathname: "/medical/prescription/add",
@@ -561,6 +638,27 @@ export default function VideoCallScreen() {
             setDiagnosisOpen(false);
           }}
           onSubmit={(payload) => void handleDiagnosisSubmit(payload)}
+        />
+      ) : null}
+
+      {canAddClinicalNotes && diagPatientId && accessToken ? (
+        <AssignIntakeExamDialog
+          visible={intakeExamOpen}
+          isRTL={isRTL}
+          patientUserId={diagPatientId}
+          accessToken={accessToken}
+          saving={assigningIntakeExam}
+          onClose={() => {
+            if (assigningIntakeExam) return;
+            setIntakeExamOpen(false);
+          }}
+          onAssigned={(instance) => {
+            setAssigningIntakeExam(true);
+            void handleIntakeExamAssigned(instance).finally(() => {
+              setAssigningIntakeExam(false);
+              setIntakeExamOpen(false);
+            });
+          }}
         />
       ) : null}
     </View>

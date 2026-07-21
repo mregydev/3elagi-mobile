@@ -30,6 +30,8 @@ type Props = {
   disabled?: boolean;
   /** Show country name under the flag. */
   showNames?: boolean;
+  /** Smaller cards for tight layouts (side drawer). */
+  compact?: boolean;
 };
 
 /**
@@ -41,6 +43,7 @@ export function CountryFlagToggle({
   persist,
   disabled,
   showNames = true,
+  compact = false,
 }: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
@@ -95,6 +98,7 @@ export function CountryFlagToggle({
             onPress={() => void select(code)}
             style={({ pressed }) => [
               styles.option,
+              compact && styles.optionCompact,
               {
                 borderColor: active ? colors.primary : colors.border,
                 backgroundColor: active ? `${colors.primary}14` : colors.card,
@@ -105,12 +109,15 @@ export function CountryFlagToggle({
             {saving && active ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={styles.flag}>{countryFlagEmoji(code)}</Text>
+              <Text style={[styles.flag, compact && styles.flagCompact]}>
+                {countryFlagEmoji(code)}
+              </Text>
             )}
             {showNames ? (
               <Text
                 style={[
                   styles.name,
+                  compact && styles.nameCompact,
                   { color: active ? colors.primary : colors.foreground },
                 ]}
                 numberOfLines={1}
@@ -121,6 +128,7 @@ export function CountryFlagToggle({
             <Text
               style={[
                 styles.currency,
+                compact && styles.currencyCompact,
                 { color: active ? colors.primary : colors.mutedForeground },
               ]}
             >
@@ -149,17 +157,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     minHeight: 88,
   },
+  optionCompact: {
+    gap: 2,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    minHeight: 64,
+  },
   flag: {
     fontSize: 28,
     lineHeight: 34,
+  },
+  flagCompact: {
+    fontSize: 22,
+    lineHeight: 26,
   },
   name: {
     fontSize: 13,
     fontWeight: "800",
     textAlign: "center",
   },
+  nameCompact: {
+    fontSize: 12,
+  },
   currency: {
     fontSize: 11,
     fontWeight: "700",
+  },
+  currencyCompact: {
+    fontSize: 10,
   },
 });

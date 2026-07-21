@@ -1,7 +1,15 @@
 import { Href, usePathname, useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import React from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { CountryFlagToggle } from "@/components/country/CountryFlagToggle";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
@@ -70,7 +78,13 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
   };
 
   return (
-    <View style={styles.root}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      bounces={false}
+    >
       {showBrand ? (
         <View style={styles.brandRow}>
           <Logo3elagi height={LOGO_HEIGHT.sidebar} />
@@ -117,7 +131,7 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
             <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
               {t.tabs.country}
             </Text>
-            <CountryFlagToggle showNames />
+            <CountryFlagToggle showNames compact />
           </View>
         ) : null}
         <View style={styles.prefBlock}>
@@ -152,23 +166,26 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
           <Text style={styles.logoutText}>{t.tabs.logout}</Text>
         </Pressable>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 8,
     paddingBottom: 16,
-    gap: 20,
+    gap: 16,
   },
   brandRow: {
     alignItems: "center",
     justifyContent: "center",
   },
-  nav: { gap: 6, flex: 1 },
+  nav: { gap: 6 },
   navItem: {
     alignItems: "center",
     gap: 10,

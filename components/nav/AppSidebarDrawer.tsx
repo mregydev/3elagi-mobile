@@ -71,7 +71,9 @@ export function AppSidebarDrawer() {
               <X size={22} color={colors.foreground} />
             </Pressable>
           </View>
-          <AppSidebarNav onNavigate={closeSidebar} />
+          <View style={styles.navHost}>
+            <AppSidebarNav onNavigate={closeSidebar} />
+          </View>
         </View>
       </View>
     </Modal>
@@ -122,6 +124,11 @@ const styles = StyleSheet.create({
     width: 300,
     maxWidth: "86%",
     zIndex: 2,
+    overflow: "hidden",
+  },
+  navHost: {
+    flex: 1,
+    minHeight: 0,
   },
   closeRow: {
     flexDirection: "row",
