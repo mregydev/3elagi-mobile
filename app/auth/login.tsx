@@ -18,7 +18,7 @@ import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { useAuthStore } from "@/domains/auth/store";
-import { getPostAuthRoute } from "@/domains/auth/navigation";
+import { getPostLoginRoute } from "@/domains/auth/navigation";
 import {
   hasFieldErrors,
   validateLoginFields,
@@ -27,7 +27,6 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING } from "@/constants/webLayout";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -58,7 +57,7 @@ export default function LoginScreen() {
     try {
       await login({ email: email.trim(), password });
       const { role, doctorApprovalStatus } = useAuthStore.getState();
-      router.replace(getPostAuthRoute(role, doctorApprovalStatus));
+      router.replace(getPostLoginRoute(role, doctorApprovalStatus));
     } catch (e) {
       const message = (e as Error).message;
       if (message === "__UNSUPPORTED_ROLE__") {

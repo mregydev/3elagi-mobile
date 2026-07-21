@@ -15,12 +15,18 @@ import {
   PaymentMethodCard,
   type PaymentMethodId,
 } from "@/components/points/PaymentMethodCard";
+import {
+  marketCurrencyCode,
+  moneyForPoints,
+  pricePerPoint,
+} from "@/constants/patientCountries";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { createVisaCheckout } from "@/domains/points/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { formatMoney } from "@/utils/credits";
 import { showErrorToast } from "@/utils/toast";
 import { flexRow } from "@/utils/rtl";
 
@@ -34,11 +40,15 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const profileCountry = useAuthStore((s) => s.profile?.country);
   const [payingMethod, setPayingMethod] = useState<PaymentMethodId | null>(null);
   const useWideLayout = desktopLayout || isDesktop;
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
+  const currency = marketCurrencyCode(profileCountry);
+  const rate = pricePerPoint(profileCountry);
+  const due = moneyForPoints(amount, profileCountry);
 
   const methods: Array<{
     id: PaymentMethodId;
@@ -113,16 +123,24 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
                   {t.credits.checkoutTitle}
                 </Text>
                 <Text style={{ color: colors.mutedForeground, textAlign }}>
-                  {t.credits.checkoutSubtitle}
+                  {t.credits.pricePerPointLabel(rate, currency)}
                 </Text>
               </View>
             </View>
             <View style={[styles.amountRow, { borderTopColor: colors.border }]}>
               <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
+                {t.credits.checkoutPoints}
+              </Text>
+              <Text style={[styles.pointsValue, { color: colors.foreground }]}>
+                {amount}
+              </Text>
+            </View>
+            <View style={[styles.amountRow, { borderTopColor: colors.border, borderTopWidth: 0, paddingTop: 8 }]}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
                 {t.credits.checkoutAmount}
               </Text>
               <Text style={[styles.amountValue, { color: colors.primary }]}>
-                {t.credits.egp(amount)}
+                {formatMoney(due, t, profileCountry)}
               </Text>
             </View>
           </View>
@@ -211,6 +229,10 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 28,
     fontWeight: "900",
+  },
+  pointsValue: {
+    fontSize: 22,
+    fontWeight: "800",
   },
   sectionTitle: {
     fontSize: 16,

@@ -1,12 +1,11 @@
-import { ArrowLeft, ArrowRight, Check, ChevronDown } from "lucide-react-native";
+import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Image,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -15,12 +14,13 @@ import {
 import { Avatar } from "@/components/Avatar";
 import type { Conversation } from "@/domains/chat/types";
 import {
-  DOCTOR_FILTER_COUNTRY_CODES,
   countryFlagEmoji,
+  normalizeMarketCountry,
   patientCountryLabel,
 } from "@/constants/patientCountries";
 import type { Speciality, SpecialityDoctor } from "@/domains/home/api";
 import { doctorsToConversations } from "@/domains/home/doctorConversations";
+import { useAuthStore } from "@/domains/auth/store";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 
@@ -105,49 +105,25 @@ export function DoctorChatRoster({
 }: Props) {
   const colors = useColors();
   const onlineUsers = usePresenceStore((s) => s.users);
+  const profileCountry = useAuthStore((s) => s.profile?.country);
+  const marketCountry = normalizeMarketCountry(profileCountry);
   const dir = isRTL ? "row-reverse" : "row";
   const label = isRTL ? speciality.nameAr : speciality.nameEn;
   const backLabel = isRTL ? "التخصصات" : "Specialities";
-  const [countryFilter, setCountryFilter] = useState<string | null>(null);
-  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
 
   const conversations = useMemo(
     () => doctorsToConversations(doctors),
     [doctors, onlineUsers],
   );
 
-  const countryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of conversations) {
-      const code = c.user.country?.trim().toUpperCase() || "EG";
-      counts.set(code, (counts.get(code) ?? 0) + 1);
-    }
-    return counts;
-  }, [conversations]);
-
-  const filtered = useMemo(() => {
-    if (!countryFilter) return conversations;
-    return conversations.filter(
-      (c) => (c.user.country?.trim().toUpperCase() || "EG") === countryFilter,
-    );
-  }, [conversations, countryFilter]);
-
-  const showCountryFilter = !loading && conversations.length > 0;
-
-  const selectedCountryLabel = countryFilter
-    ? `${countryFlagEmoji(countryFilter)}  ${patientCountryLabel(countryFilter, isRTL)}${
-        (countryCounts.get(countryFilter) ?? 0) > 0
-          ? ` (${countryCounts.get(countryFilter)})`
-          : ""
-      }`
-    : isRTL
-      ? `كل الدول (${conversations.length})`
-      : `All countries (${conversations.length})`;
-
-  const selectCountry = (code: string | null) => {
-    setCountryFilter(code);
-    setCountryMenuOpen(false);
-  };
+  const filtered = useMemo(
+    () =>
+      conversations.filter(
+        (c) =>
+          (c.user.country?.trim().toUpperCase() || "EG") === marketCountry,
+      ),
+    [conversations, marketCountry],
+  );
 
   return (
     <View style={styles.root}>
@@ -187,139 +163,27 @@ export function DoctorChatRoster({
           </Text>
         </View>
 
-        {showCountryFilter ? (
-          <View style={styles.filterBlock}>
-            <Text
-              style={[
-                styles.filterLabel,
-                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
-              ]}
-            >
-              {isRTL ? "تصفية حسب الدولة" : "Filter by country"}
-            </Text>
-            <Pressable
-              onPress={() => setCountryMenuOpen(true)}
-              style={[
-                styles.dropdownTrigger,
-                {
-                  flexDirection: dir,
-                  borderColor: countryFilter ? colors.primary : colors.border,
-                  backgroundColor: colors.card,
-                },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "تصفية حسب الدولة" : "Filter by country"}
-            >
-              <Text
-                style={[
-                  styles.dropdownValue,
-                  {
-                    color: colors.foreground,
-                    textAlign: isRTL ? "right" : "left",
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {selectedCountryLabel}
-              </Text>
-              <ChevronDown size={18} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
-
-      <Modal
-        visible={countryMenuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCountryMenuOpen(false)}
-      >
-        <View style={styles.dropdownBackdrop}>
-          <Pressable
-            style={StyleSheet.absoluteFillObject}
-            onPress={() => setCountryMenuOpen(false)}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إغلاق" : "Close"}
-          />
-          <View
+        {!loading ? (
+          <Text
             style={[
-              styles.dropdownSheet,
-              { backgroundColor: colors.card, borderColor: colors.border },
+              styles.marketHint,
+              { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
             ]}
           >
-            <Text
-              style={[
-                styles.dropdownTitle,
-                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-              ]}
-            >
-              {isRTL ? "اختر الدولة" : "Select country"}
-            </Text>
-            <FlatList
-              data={[
-                { code: null as string | null, count: conversations.length },
-                ...DOCTOR_FILTER_COUNTRY_CODES.map((code) => ({
-                  code: code as string | null,
-                  count: countryCounts.get(code) ?? 0,
-                })),
-              ]}
-              keyExtractor={(item) => item.code ?? "all"}
-              style={styles.dropdownList}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => {
-                const active = countryFilter === item.code;
-                const flag = item.code ? countryFlagEmoji(item.code) : "";
-                const labelText = item.code
-                  ? patientCountryLabel(item.code, isRTL)
-                  : isRTL
-                    ? "كل الدول"
-                    : "All countries";
-                return (
-                  <Pressable
-                    onPress={() => selectCountry(item.code)}
-                    style={[
-                      styles.dropdownOption,
-                      {
-                        flexDirection: dir,
-                        backgroundColor: active ? `${colors.primary}12` : "transparent",
-                      },
-                    ]}
-                  >
-                    <View style={[styles.dropdownOptionMain, { flexDirection: dir }]}>
-                      {flag ? <Text style={styles.filterFlag}>{flag}</Text> : null}
-                      <Text
-                        style={{
-                          color: active ? colors.primary : colors.foreground,
-                          fontWeight: active ? "800" : "600",
-                          fontSize: 14,
-                          flexShrink: 1,
-                        }}
-                      >
-                        {labelText}
-                        {item.count > 0 ? ` (${item.count})` : ""}
-                      </Text>
-                    </View>
-                    {active ? <Check size={16} color={colors.primary} /> : null}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
+            {countryFlagEmoji(marketCountry)}{" "}
+            {patientCountryLabel(marketCountry, isRTL)}
+          </Text>
+        ) : null}
+      </View>
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
-            {conversations.length === 0
-              ? isRTL
-                ? "لا يوجد أطباء في هذا التخصص"
-                : "No doctors in this speciality"
-              : isRTL
-                ? "لا يوجد أطباء في هذه الدولة"
-                : "No doctors in this country"}
+            {isRTL
+              ? "لا يوجد أطباء في هذه الدولة لهذا التخصص"
+              : "No doctors in this country for this speciality"}
           </Text>
         </View>
       ) : (
@@ -382,66 +246,10 @@ const styles = StyleSheet.create({
     color: "#1D4ED8",
     flexShrink: 1,
   },
-  filterBlock: {
-    marginTop: 12,
-    gap: 6,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  dropdownTrigger: {
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  dropdownValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  dropdownBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  dropdownSheet: {
-    maxHeight: "70%",
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: "hidden",
-    paddingTop: 14,
-    zIndex: 1,
-  },
-  dropdownTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  dropdownList: {
-    maxHeight: 420,
-  },
-  dropdownOption: {
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  dropdownOptionMain: {
-    flex: 1,
-    alignItems: "center",
-    gap: 8,
-    minWidth: 0,
-  },
-  filterFlag: {
-    fontSize: 16,
-    lineHeight: 20,
+  marketHint: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: "600",
   },
   row: {
     alignItems: "center",

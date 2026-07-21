@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  PATIENT_COUNTRY_CODES,
+  MARKET_COUNTRY_CODES,
   patientCountryLabel,
+  type MarketCountryCode,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { useColors } from "@/hooks/useColors";
@@ -10,11 +11,13 @@ import { flexRow } from "@/utils/rtl";
 
 type Props = {
   label: string;
-  value: PatientCountryCode;
-  onChange: (code: PatientCountryCode) => void;
+  value: PatientCountryCode | MarketCountryCode;
+  onChange: (code: MarketCountryCode) => void;
   error?: string;
   isRTL: boolean;
   disabled?: boolean;
+  /** Defaults to Egypt & Jordan (live markets). */
+  codes?: readonly MarketCountryCode[];
 };
 
 export function CountryChipsField({
@@ -24,6 +27,7 @@ export function CountryChipsField({
   error,
   isRTL,
   disabled,
+  codes = MARKET_COUNTRY_CODES,
 }: Props) {
   const colors = useColors();
   const dir = flexRow(isRTL);
@@ -39,7 +43,7 @@ export function CountryChipsField({
         {label}
       </Text>
       <View style={[styles.row, { flexDirection: dir }]}>
-        {PATIENT_COUNTRY_CODES.map((code) => {
+        {codes.map((code) => {
           const active = value === code;
           return (
             <Pressable

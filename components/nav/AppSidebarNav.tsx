@@ -3,6 +3,7 @@ import { LogOut } from "lucide-react-native";
 import React from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { CountryFlagToggle } from "@/components/country/CountryFlagToggle";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { filterAppNavItems } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
@@ -111,7 +112,20 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
 
       <View style={styles.footer}>
         {footerExtra}
-        <LanguageDropdown compact showLabel fullWidth placement="top" />
+        {role?.toLowerCase() === "patient" ? (
+          <View style={styles.prefBlock}>
+            <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
+              {t.tabs.country}
+            </Text>
+            <CountryFlagToggle showNames />
+          </View>
+        ) : null}
+        <View style={styles.prefBlock}>
+          <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
+            {t.settings.language}
+          </Text>
+          <LanguageDropdown compact showLabel fullWidth placement="top" />
+        </View>
 
         {role ? (
           <Text style={[styles.roleHint, { color: colors.mutedForeground, textAlign }]}>
@@ -165,9 +179,17 @@ const styles = StyleSheet.create({
   },
   navLabel: { fontSize: 14, fontWeight: "700", flex: 1 },
   footer: {
-    gap: 10,
+    gap: 12,
     marginTop: "auto",
     paddingTop: 8,
+  },
+  prefBlock: {
+    gap: 6,
+  },
+  prefLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    paddingHorizontal: 2,
   },
   roleHint: { fontSize: 12, fontWeight: "600", paddingHorizontal: 4 },
   logoutBtn: {

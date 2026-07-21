@@ -19,7 +19,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
-import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import {
   profileSaveChromeHeight,
@@ -198,13 +198,6 @@ export function ProfileEditor({
                 keyboardType="phone-pad"
                 colors={colors}
                 isRTL={isRTL}
-              />
-              <CountryChipsField
-                label={t.auth.countryOfResidence}
-                value={country}
-                onChange={setCountry}
-                isRTL={isRTL}
-                disabled={saving}
               />
               {!isDoctor ? (
                 <Field
@@ -530,6 +523,11 @@ export function ProfileEditor({
               colors={colors}
               textAlign={textAlign}
             >
+              <ProfileCountryField
+                value={country}
+                onChange={setCountry}
+                disabled={saving}
+              />
               <ProfileLanguageField embedded wideCards />
             </SectionCard>
         </KeyboardSafeScrollView>

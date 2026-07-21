@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
-import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -304,15 +304,6 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                     isRTL={isRTL}
                   />
                 </View>
-                <View style={spanStyle(columns, columns)}>
-                  <CountryChipsField
-                    label={t.auth.countryOfResidence}
-                    value={country}
-                    onChange={setCountry}
-                    isRTL={isRTL}
-                    disabled={saving}
-                  />
-                </View>
                 {!isDoctor ? (
                   <View style={spanStyle(columns, 1)}>
                     <ProfileField
@@ -348,21 +339,25 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                 ) : null}
               </View>
             </View>
+          </View>
 
-            {!isDoctor ? (
-              <View
-                style={[
-                  styles.card,
-                  showSplitCards && styles.cardHalf,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
-                  {t.settings.preferences}
-                </Text>
-                <ProfileLanguageField embedded />
-              </View>
-            ) : null}
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
+              {t.settings.preferences}
+            </Text>
+            <View style={{ gap: 16 }}>
+              <ProfileCountryField
+                value={country}
+                onChange={setCountry}
+                disabled={saving}
+              />
+              <ProfileLanguageField embedded wideCards />
+            </View>
           </View>
 
           {isDoctor ? (
@@ -672,20 +667,6 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                   label={t.auth.videoConsultationPrice}
                 />
               </View>
-            </View>
-          ) : null}
-
-          {isDoctor ? (
-            <View
-              style={[
-                styles.card,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
-                {t.settings.preferences}
-              </Text>
-              <ProfileLanguageField embedded />
             </View>
           ) : null}
         </View>

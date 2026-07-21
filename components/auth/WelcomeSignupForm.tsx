@@ -19,7 +19,7 @@ import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  type PatientCountryCode,
+  type MarketCountryCode,
 } from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
@@ -59,7 +59,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
   const [consultationPrice, setConsultationPrice] = useState(1);
-  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [country, setCountry] = useState<MarketCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);

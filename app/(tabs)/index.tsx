@@ -16,6 +16,7 @@ import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard"
 import { AppHeader } from "@/components/AppHeader";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
+import { normalizeMarketCountry } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -36,6 +37,8 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 function ChatsHomeBrowse() {
   const colors = useColors();
   const { isRTL } = useI18n();
+  const profileCountry = useAuthStore((s) => s.profile?.country);
+  const marketCountry = normalizeMarketCountry(profileCountry);
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
@@ -76,33 +79,49 @@ function ChatsHomeBrowse() {
     }, [loadHome, selectedSpeciality, specialities.length]),
   );
 
-  const openSpeciality = useCallback(async (speciality: Speciality) => {
-    setSelectedSpeciality(speciality);
-    setLoadingDoctors(true);
-    setDoctors([]);
-    setError(null);
-    try {
-      const rows = await fetchDoctorsBySpeciality(speciality.id);
-      setDoctors(rows);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load doctors");
-    } finally {
-      setLoadingDoctors(false);
-    }
-  }, []);
+  useEffect(() => {
+    if (!selectedSpeciality) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingDoctors(true);
+      setDoctors([]);
+      setError(null);
+      try {
+        const rows = await fetchDoctorsBySpeciality(
+          selectedSpeciality.id,
+          marketCountry,
+        );
+        if (!cancelled) setDoctors(rows);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load doctors");
+        }
+      } finally {
+        if (!cancelled) setLoadingDoctors(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSpeciality?.id, marketCountry]);
 
   useEffect(() => {
     if (!selectedSpeciality) return;
 
     onDoctorRegistered((payload: SpecialityDoctorRow) => {
       setDoctors((current) =>
-        mergeDoctorIntoRoster(current, payload, selectedSpeciality.id),
+        mergeDoctorIntoRoster(
+          current,
+          payload,
+          selectedSpeciality.id,
+          marketCountry,
+        ),
       );
       setLoadingDoctors(false);
     });
 
     return () => onDoctorRegistered(null);
-  }, [selectedSpeciality?.id]);
+  }, [selectedSpeciality?.id, marketCountry]);
 
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
@@ -194,7 +213,7 @@ function ChatsHomeBrowse() {
         <SpecialityGrid
           specialities={specialities}
           isRTL={isRTL}
-          onSelect={(s) => void openSpeciality(s)}
+          onSelect={setSelectedSpeciality}
         />
       )}
     </ScrollView>

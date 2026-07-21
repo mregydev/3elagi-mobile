@@ -11,8 +11,8 @@ import {
 import { useAuthStore } from "@/domains/auth/store";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  isPatientCountryCode,
-  type PatientCountryCode,
+  normalizeMarketCountry,
+  type MarketCountryCode,
 } from "@/constants/patientCountries";
 import { uploadFile } from "@/domains/medical/api";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
@@ -32,7 +32,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [country, setCountry] = useState<MarketCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [birthDate, setBirthDate] = useState("");
   const [professionalTitle, setProfessionalTitle] = useState("");
   const [info, setInfo] = useState("");
@@ -64,11 +64,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setAccount(data);
       setName(data.name);
       setPhone(data.phone);
-      setCountry(
-        data.country && isPatientCountryCode(data.country)
-          ? data.country
-          : DEFAULT_PATIENT_COUNTRY,
-      );
+      setCountry(normalizeMarketCountry(data.country));
       setBirthDate(data.birthDate ?? "");
       setProfessionalTitle(data.professionalTitle ?? "");
       setInfo(data.info ?? "");

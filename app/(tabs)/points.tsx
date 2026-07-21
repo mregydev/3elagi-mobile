@@ -25,6 +25,12 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { usePointsPage } from "@/hooks/usePointsPage";
 import { flexRow } from "@/utils/rtl";
+import { formatMoney } from "@/utils/credits";
+import {
+  marketCurrencyCode,
+  moneyForPoints,
+  pricePerPoint,
+} from "@/constants/patientCountries";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 export default function PointsTab() {
@@ -38,6 +44,8 @@ export default function PointsTab() {
   const tabBarHeight = useBottomTabBarHeight();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
+  const rate = pricePerPoint(profile?.country);
+  const currency = marketCurrencyCode(profile?.country);
 
   const {
     loading,
@@ -181,6 +189,9 @@ export default function PointsTab() {
           >
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.credits.addCredits}</Text>
             <Text style={[styles.modalHint, { color: colors.mutedForeground, textAlign }]}>
+              {t.credits.pricePerPointLabel(rate, currency)}
+            </Text>
+            <Text style={[styles.modalHint, { color: colors.mutedForeground, textAlign }]}>
               {t.credits.creditAmountHint}
             </Text>
             <AppTextInput
@@ -198,6 +209,16 @@ export default function PointsTab() {
                 },
               ]}
             />
+            {(() => {
+              const pts = parseInt(amountText.trim(), 10);
+              if (!Number.isFinite(pts) || pts < 1) return null;
+              return (
+                <Text style={{ color: colors.primary, fontWeight: "800", textAlign, fontSize: 15 }}>
+                  {t.credits.checkoutAmount}:{" "}
+                  {formatMoney(moneyForPoints(pts, profile?.country), t, profile?.country)}
+                </Text>
+              );
+            })()}
             <View style={[styles.modalActions, { flexDirection: dir }]}>
               <Pressable
                 onPress={() => setModalOpen(false)}

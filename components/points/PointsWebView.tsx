@@ -15,6 +15,11 @@ import { AppTextInput } from "@/components/AppTextInput";
 
 import { router } from "expo-router";
 import { PointsPieChart } from "@/components/PointsPieChart";
+import {
+  marketCurrencyCode,
+  moneyForPoints,
+  pricePerPoint,
+} from "@/constants/patientCountries";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
@@ -24,6 +29,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 import { useAuthStore } from "@/domains/auth/store";
 import { usePointsStore } from "@/domains/points/store";
 import { reimbursePoints } from "@/domains/points/api";
+import { formatMoney } from "@/utils/credits";
 import { webConfirm } from "@/utils/webConfirm";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 import type { Translations } from "@/constants/translations";
@@ -97,6 +103,14 @@ function AddPointsForm({
 }) {
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
+  const profileCountry = useAuthStore((s) => s.profile?.country);
+  const rate = pricePerPoint(profileCountry);
+  const currency = marketCurrencyCode(profileCountry);
+  const ptsPreview = parseInt(amountText.trim(), 10);
+  const duePreview =
+    Number.isFinite(ptsPreview) && ptsPreview >= 1
+      ? moneyForPoints(ptsPreview, profileCountry)
+      : null;
 
   const handleContinue = () => {
     const amount = parseAmount();
@@ -108,6 +122,9 @@ function AddPointsForm({
   return (
     <View style={{ gap: 16 }}>
       <View style={styles.addCardIntro}>
+        <Text style={[styles.addCardHint, { color: colors.mutedForeground, textAlign }]}>
+          {t.credits.pricePerPointLabel(rate, currency)}
+        </Text>
         <Text style={[styles.addCardHint, { color: colors.mutedForeground, textAlign }]}>
           {t.credits.creditAmountHint}
         </Text>
@@ -140,6 +157,11 @@ function AddPointsForm({
               },
             ]}
           />
+          {duePreview != null ? (
+            <Text style={{ color: colors.primary, fontWeight: "800", textAlign, marginTop: 8 }}>
+              {t.credits.checkoutAmount}: {formatMoney(duePreview, t, profileCountry)}
+            </Text>
+          ) : null}
         </View>
 
         <Pressable

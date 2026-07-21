@@ -11,7 +11,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { useAuthStore } from "@/domains/auth/store";
-import { getPostAuthRoute } from "@/domains/auth/navigation";
+import { getPostLoginRoute } from "@/domains/auth/navigation";
 import {
   hasFieldErrors,
   validateLoginFields,
@@ -49,7 +49,7 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
     try {
       await login({ email: email.trim(), password });
       const { role, doctorApprovalStatus } = useAuthStore.getState();
-      router.replace(getPostAuthRoute(role, doctorApprovalStatus));
+      router.replace(getPostLoginRoute(role, doctorApprovalStatus));
     } catch (e) {
       const message = (e as Error).message;
       if (message === "__UNSUPPORTED_ROLE__") {

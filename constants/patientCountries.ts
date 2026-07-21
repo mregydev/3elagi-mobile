@@ -26,47 +26,18 @@ export const PATIENT_COUNTRY_CODES = [
 
 export type PatientCountryCode = (typeof PATIENT_COUNTRY_CODES)[number];
 
-export const DEFAULT_PATIENT_COUNTRY: PatientCountryCode = "EG";
-
-/** Latin America (Spanish/Portuguese-speaking Americas + common regional set). */
-export const LATIN_AMERICA_COUNTRY_CODES = [
-  "MX", // Mexico
-  "GT", // Guatemala
-  "BZ", // Belize
-  "HN", // Honduras
-  "SV", // El Salvador
-  "NI", // Nicaragua
-  "CR", // Costa Rica
-  "PA", // Panama
-  "CU", // Cuba
-  "DO", // Dominican Republic
-  "HT", // Haiti
-  "PR", // Puerto Rico
-  "CO", // Colombia
-  "VE", // Venezuela
-  "GY", // Guyana
-  "SR", // Suriname
-  "EC", // Ecuador
-  "PE", // Peru
-  "BR", // Brazil
-  "BO", // Bolivia
-  "PY", // Paraguay
-  "CL", // Chile
-  "AR", // Argentina
-  "UY", // Uruguay
-] as const;
-
 /**
- * Countries shown in the doctor-list filter dropdown:
- * Egypt, Jordan, and all Latin America countries.
+ * Live markets: Egypt & Jordan.
+ * Signup, doctor browse, and currency use this set.
  */
-export const DOCTOR_FILTER_COUNTRY_CODES = [
-  "EG",
-  "JO",
-  ...LATIN_AMERICA_COUNTRY_CODES,
-] as const;
+export const MARKET_COUNTRY_CODES = ["EG", "JO"] as const;
+export type MarketCountryCode = (typeof MARKET_COUNTRY_CODES)[number];
 
-export type DoctorFilterCountryCode = (typeof DOCTOR_FILTER_COUNTRY_CODES)[number];
+export const DEFAULT_PATIENT_COUNTRY: MarketCountryCode = "EG";
+
+/** @deprecated use MARKET_COUNTRY_CODES — alias for roster filter. */
+export const DOCTOR_FILTER_COUNTRY_CODES = MARKET_COUNTRY_CODES;
+export type DoctorFilterCountryCode = MarketCountryCode;
 
 export const PATIENT_COUNTRY_LABELS: Record<
   PatientCountryCode,
@@ -96,52 +67,57 @@ export const PATIENT_COUNTRY_LABELS: Record<
   ES: { en: "Spain", ar: "إسبانيا" },
 };
 
-const LATIN_AMERICA_COUNTRY_LABELS: Record<
-  (typeof LATIN_AMERICA_COUNTRY_CODES)[number],
-  { en: string; ar: string }
-> = {
-  MX: { en: "Mexico", ar: "المكسيك" },
-  GT: { en: "Guatemala", ar: "غواتيمالا" },
-  BZ: { en: "Belize", ar: "بليز" },
-  HN: { en: "Honduras", ar: "هندوراس" },
-  SV: { en: "El Salvador", ar: "السلفادور" },
-  NI: { en: "Nicaragua", ar: "نيكاراغوا" },
-  CR: { en: "Costa Rica", ar: "كوستاريكا" },
-  PA: { en: "Panama", ar: "بنما" },
-  CU: { en: "Cuba", ar: "كوبا" },
-  DO: { en: "Dominican Republic", ar: "جمهورية الدومينيكان" },
-  HT: { en: "Haiti", ar: "هايتي" },
-  PR: { en: "Puerto Rico", ar: "بورتوريكو" },
-  CO: { en: "Colombia", ar: "كولومبيا" },
-  VE: { en: "Venezuela", ar: "فنزويلا" },
-  GY: { en: "Guyana", ar: "غيانا" },
-  SR: { en: "Suriname", ar: "سورينام" },
-  EC: { en: "Ecuador", ar: "الإكوادور" },
-  PE: { en: "Peru", ar: "بيرو" },
-  BR: { en: "Brazil", ar: "البرازيل" },
-  BO: { en: "Bolivia", ar: "بوليفيا" },
-  PY: { en: "Paraguay", ar: "باراغواي" },
-  CL: { en: "Chile", ar: "تشيلي" },
-  AR: { en: "Argentina", ar: "الأرجنتين" },
-  UY: { en: "Uruguay", ar: "أوروغواي" },
-};
-
-const ALL_COUNTRY_LABELS: Record<string, { en: string; ar: string }> = {
-  ...PATIENT_COUNTRY_LABELS,
-  ...LATIN_AMERICA_COUNTRY_LABELS,
-};
-
 export function patientCountryLabel(
   code: string | null | undefined,
   preferArabic: boolean,
 ): string {
-  const key = (code?.trim().toUpperCase() || DEFAULT_PATIENT_COUNTRY);
-  const row = ALL_COUNTRY_LABELS[key] ?? PATIENT_COUNTRY_LABELS.EG;
+  const key = code?.trim().toUpperCase() || DEFAULT_PATIENT_COUNTRY;
+  const row = PATIENT_COUNTRY_LABELS[key as PatientCountryCode] ?? PATIENT_COUNTRY_LABELS.EG;
   return preferArabic ? row.ar : row.en;
 }
 
 export function isPatientCountryCode(value: string): value is PatientCountryCode {
   return (PATIENT_COUNTRY_CODES as readonly string[]).includes(value.trim().toUpperCase());
+}
+
+export function isMarketCountryCode(value: string): value is MarketCountryCode {
+  return (MARKET_COUNTRY_CODES as readonly string[]).includes(value.trim().toUpperCase());
+}
+
+/** Clamp any stored country to a live market (default Egypt). */
+export function normalizeMarketCountry(
+  value?: string | null,
+): MarketCountryCode {
+  if (!value?.trim()) return DEFAULT_PATIENT_COUNTRY;
+  const code = value.trim().toUpperCase();
+  return isMarketCountryCode(code) ? code : DEFAULT_PATIENT_COUNTRY;
+}
+
+/** Display currency for the patient's selected market. */
+export function marketCurrencyLabel(
+  country: string | null | undefined,
+  preferArabic: boolean,
+): string {
+  const code = normalizeMarketCountry(country);
+  if (code === "JO") return preferArabic ? "دينار" : "JOD";
+  return preferArabic ? "جنيه" : "EGP";
+}
+
+export function marketCurrencyCode(country: string | null | undefined): "EGP" | "JOD" {
+  return normalizeMarketCountry(country) === "JO" ? "JOD" : "EGP";
+}
+
+/** Cash charged per 1 credit/point in the live market. */
+export function pricePerPoint(country: string | null | undefined): number {
+  return normalizeMarketCountry(country) === "JO" ? 5 : 100;
+}
+
+/** Total cash to charge for buying `points` in the given market. */
+export function moneyForPoints(
+  points: number,
+  country: string | null | undefined,
+): number {
+  return Math.round(points) * pricePerPoint(country);
 }
 
 /** Regional-indicator flag emoji for an ISO 3166-1 alpha-2 code (e.g. EG → 🇪🇬). */
