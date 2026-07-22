@@ -17,17 +17,39 @@ interface AuthState {
   specialty: string | null;
   specialityId: string | null;
   doctorApprovalStatus: DoctorApprovalStatus | null;
+  emailVerified: boolean;
   loading: boolean;
   error: string | null;
   hydrated: boolean;
   login: (c: Credentials) => Promise<void>;
   signup: (s: SignupInput) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
+  setEmailVerified: (verified: boolean) => void;
   logout: () => void;
   clearError: () => void;
   setProfile: (profile: PatientProfile) => void;
   setDoctorApprovalStatus: (status: DoctorApprovalStatus | null) => void;
   applyWebViewSession: (session: WebViewAuthSession) => void;
   clearWebViewSession: () => void;
+}
+
+function applySession(
+  set: (partial: Partial<AuthState>) => void,
+  session: Awaited<ReturnType<typeof authRepository.login>>,
+) {
+  set({
+    profile: session.profile,
+    accessToken: session.accessToken,
+    role: session.role,
+    doctorId: session.doctorId ?? null,
+    specialty: session.specialty ?? null,
+    specialityId: session.specialityId ?? null,
+    doctorApprovalStatus: session.doctorApprovalStatus ?? null,
+    emailVerified: session.emailVerified !== false,
+    loading: false,
+  });
+  applyLocaleAfterAuth(session.preferredLocale);
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -40,6 +62,7 @@ export const useAuthStore = create<AuthState>()(
       specialty: null,
       specialityId: null,
       doctorApprovalStatus: null,
+      emailVerified: true,
       loading: false,
       error: null,
       hydrated: false,
@@ -56,17 +79,7 @@ export const useAuthStore = create<AuthState>()(
             set({ loading: false });
             throw new Error("__UNSUPPORTED_ROLE__");
           }
-          set({
-            profile: session.profile,
-            accessToken: session.accessToken,
-            role: session.role,
-            doctorId: session.doctorId ?? null,
-            specialty: session.specialty ?? null,
-            specialityId: session.specialityId ?? null,
-            doctorApprovalStatus: session.doctorApprovalStatus ?? null,
-            loading: false,
-          });
-          applyLocaleAfterAuth(session.preferredLocale);
+          applySession(set, session);
         } catch (e) {
           set({ error: (e as Error).message, loading: false });
           throw e;
@@ -76,22 +89,26 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true, error: null });
         try {
           const session = await authRepository.signup(input);
-          set({
-            profile: session.profile,
-            accessToken: session.accessToken,
-            role: session.role,
-            doctorId: session.doctorId ?? null,
-            specialty: session.specialty ?? null,
-            specialityId: session.specialityId ?? null,
-            doctorApprovalStatus: session.doctorApprovalStatus ?? null,
-            loading: false,
-          });
-          applyLocaleAfterAuth(session.preferredLocale);
+          applySession(set, session);
         } catch (e) {
           set({ error: (e as Error).message, loading: false });
           throw e;
         }
       },
+      verifyEmail: async (email, code) => {
+        set({ loading: true, error: null });
+        try {
+          const session = await authRepository.verifyEmail(email, code);
+          applySession(set, { ...session, emailVerified: true });
+        } catch (e) {
+          set({ error: (e as Error).message, loading: false });
+          throw e;
+        }
+      },
+      resendVerification: async (email) => {
+        await authRepository.resendVerification(email);
+      },
+      setEmailVerified: (verified) => set({ emailVerified: verified }),
       logout: () => {
         const userId = useAuthStore.getState().profile?.id;
         set({
@@ -102,6 +119,7 @@ export const useAuthStore = create<AuthState>()(
           specialty: null,
           specialityId: null,
           doctorApprovalStatus: null,
+          emailVerified: true,
           error: null,
         });
         emit(AUTH_EVENTS.LOGOUT, { userId });
@@ -118,6 +136,7 @@ export const useAuthStore = create<AuthState>()(
           specialty: session.specialty,
           specialityId: session.specialityId,
           doctorApprovalStatus: session.doctorApprovalStatus,
+          emailVerified: session.emailVerified !== false,
           hydrated: true,
           error: null,
         });
@@ -132,6 +151,7 @@ export const useAuthStore = create<AuthState>()(
           specialty: null,
           specialityId: null,
           doctorApprovalStatus: null,
+          emailVerified: true,
           error: null,
         });
         emit(AUTH_EVENTS.LOGOUT, { userId });
@@ -148,6 +168,7 @@ export const useAuthStore = create<AuthState>()(
         specialty: s.specialty,
         specialityId: s.specialityId,
         doctorApprovalStatus: s.doctorApprovalStatus,
+        emailVerified: s.emailVerified,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) state.hydrated = true;

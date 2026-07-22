@@ -2,6 +2,20 @@ import { API_BASE } from "@/constants/api";
 import { uploadFile } from "@/domains/medical";
 import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, SignupInput, SignupFile } from "./types";
 
+export class AuthApiError extends Error {
+  code?: string;
+  email?: string;
+  status: number;
+
+  constructor(message: string, opts?: { code?: string; email?: string; status?: number }) {
+    super(message);
+    this.name = "AuthApiError";
+    this.code = opts?.code;
+    this.email = opts?.email;
+    this.status = opts?.status ?? 400;
+  }
+}
+
 async function post<T>(path: string, body: object): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
@@ -10,11 +24,23 @@ async function post<T>(path: string, body: object): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    const nested =
+      data?.message && typeof data.message === "object" && !Array.isArray(data.message)
+        ? data.message
+        : null;
     const msg =
-      (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
+      (typeof data?.message === "string"
+        ? data.message
+        : Array.isArray(data?.message)
+          ? data.message.join(", ")
+          : nested?.message) ??
       data?.error ??
       `Request failed (${res.status})`;
-    throw new Error(msg);
+    throw new AuthApiError(String(msg), {
+      code: nested?.code ?? data?.code,
+      email: nested?.email ?? data?.email,
+      status: res.status,
+    });
   }
   return data as T;
 }
@@ -45,6 +71,7 @@ interface RawAuthResponse {
   user_id: string;
   profile: Record<string, unknown>;
   preferred_locale?: PreferredLocale | null;
+  email_verified?: boolean;
 }
 
 function doctorSpecialtyFromProfile(profile: Record<string, unknown>): {
@@ -101,6 +128,36 @@ function normalizeProfile(
   };
 }
 
+function toSession(raw: RawAuthResponse, fallbackEmail: string, photoUrl?: string): AuthSession {
+  const profile = raw.profile ?? {};
+  const isDoctor = raw.role?.toLowerCase() === "doctor";
+  const isAdmin = raw.role?.toLowerCase() === "admin";
+  const { specialty, specialityId } = isDoctor
+    ? doctorSpecialtyFromProfile(profile)
+    : {};
+  return {
+    accessToken: raw.access_token,
+    role: raw.role,
+    userId: raw.user_id,
+    preferredLocale: raw.preferred_locale ?? null,
+    emailVerified: raw.email_verified !== false,
+    doctorId: isDoctor ? String(profile.id ?? "") : undefined,
+    specialty,
+    specialityId,
+    doctorApprovalStatus: isDoctor ? readDoctorApprovalStatus(profile) : null,
+    profile: normalizeProfile(
+      {
+        ...profile,
+        user_id: isDoctor || isAdmin ? raw.user_id : profile.user_id ?? raw.user_id,
+        name: isAdmin ? "Admin" : profile.name,
+        email: isAdmin ? fallbackEmail : profile.email,
+      },
+      fallbackEmail,
+      photoUrl,
+    ),
+  };
+}
+
 async function uploadSignupFile(file: SignupFile, token: string): Promise<string> {
   const result = await uploadFile(file.uri, file.mimeType, file.fileName, token);
   return result.url;
@@ -139,35 +196,23 @@ async function applySignupUploads(
 
 export const authRepository = {
   async login(creds: Credentials): Promise<AuthSession> {
-    const raw = await post<RawAuthResponse>("/auth/login", {
-      email: creds.email.trim().toLowerCase(),
-      password: creds.password,
-    });
-    const profile = raw.profile ?? {};
-    const isDoctor = raw.role?.toLowerCase() === "doctor";
-    const isAdmin = raw.role?.toLowerCase() === "admin";
-    const { specialty, specialityId } = isDoctor
-      ? doctorSpecialtyFromProfile(profile)
-      : {};
-    return {
-      accessToken: raw.access_token,
-      role: raw.role,
-      userId: raw.user_id,
-      preferredLocale: raw.preferred_locale ?? null,
-      doctorId: isDoctor ? String(profile.id ?? "") : undefined,
-      specialty,
-      specialityId,
-      doctorApprovalStatus: isDoctor ? readDoctorApprovalStatus(profile) : null,
-      profile: normalizeProfile(
-        {
-          ...profile,
-          user_id: isDoctor || isAdmin ? raw.user_id : profile.user_id ?? raw.user_id,
-          name: isAdmin ? "Admin" : profile.name,
-          email: isAdmin ? creds.email : profile.email,
-        },
-        creds.email,
-      ),
-    };
+    const email = creds.email.trim().toLowerCase();
+    try {
+      const raw = await post<RawAuthResponse>("/auth/login", {
+        email,
+        password: creds.password,
+      });
+      return toSession(raw, email);
+    } catch (e) {
+      if (e instanceof AuthApiError && e.code === "EMAIL_NOT_VERIFIED") {
+        throw new AuthApiError(e.message, {
+          code: "EMAIL_NOT_VERIFIED",
+          email: e.email ?? email,
+          status: e.status,
+        });
+      }
+      throw e;
+    }
   },
 
   async signup(input: SignupInput): Promise<AuthSession> {
@@ -200,32 +245,34 @@ export const authRepository = {
       isDoctor,
     ).catch(() => undefined);
 
-    const profileRaw = raw.profile ?? {};
-    const isDoctorRole = raw.role?.toLowerCase() === "doctor";
-    const { specialty, specialityId: profileSpecialityId } = isDoctorRole
-      ? doctorSpecialtyFromProfile(profileRaw)
-      : {};
-    const specialityId = isDoctorRole
-      ? input.specialityId ?? profileSpecialityId
-      : undefined;
+    return toSession(raw, email, photoUrl);
+  },
 
-    return {
-      accessToken: raw.access_token,
-      role: raw.role,
-      userId: raw.user_id,
-      preferredLocale: raw.preferred_locale ?? null,
-      doctorId: isDoctorRole ? String(profileRaw.id ?? "") : undefined,
-      specialty,
-      specialityId,
-      doctorApprovalStatus: isDoctorRole ? readDoctorApprovalStatus(profileRaw) : null,
-      profile: normalizeProfile(
-        {
-          ...profileRaw,
-          user_id: isDoctorRole ? raw.user_id : profileRaw.user_id ?? raw.user_id,
-        },
-        email,
-        photoUrl,
-      ),
-    };
+  async verifyEmail(email: string, code: string): Promise<AuthSession> {
+    const normalized = email.trim().toLowerCase();
+    const raw = await post<RawAuthResponse>("/auth/verify-email", {
+      email: normalized,
+      code: code.trim(),
+    });
+    return toSession(raw, normalized);
+  },
+
+  async resendVerification(email: string): Promise<void> {
+    await post("/auth/resend-verification", {
+      email: email.trim().toLowerCase(),
+    });
+  },
+
+  async forgotPassword(email: string): Promise<void> {
+    await post("/auth/forgot-password", {
+      email: email.trim().toLowerCase(),
+    });
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await post("/auth/reset-password", {
+      token: token.trim(),
+      new_password: newPassword,
+    });
   },
 };

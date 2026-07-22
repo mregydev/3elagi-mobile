@@ -30,6 +30,7 @@ import {
   type SpecialityDoctorRow,
 } from "@/domains/home/api";
 import { onDoctorRegistered } from "@/domains/presence/socket";
+import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -180,8 +181,10 @@ function ChatsHomeBrowse() {
 
   return (
     <ScrollView
+      nativeID={BRAND_SCROLL_NATIVE_ID}
       style={styles.scroll}
       contentContainerStyle={{ paddingBottom: 24 }}
+      showsVerticalScrollIndicator
       refreshControl={
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }

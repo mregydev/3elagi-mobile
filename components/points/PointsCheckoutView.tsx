@@ -20,6 +20,7 @@ import {
   moneyForPoints,
   pricePerPoint,
 } from "@/constants/patientCountries";
+import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { createVisaCheckout } from "@/domains/points/api";
 import { useAuthStore } from "@/domains/auth/store";
@@ -93,11 +94,13 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
+        nativeID={BRAND_SCROLL_NATIVE_ID}
         contentContainerStyle={[
           styles.scroll,
           useWideLayout && styles.scrollDesktop,
         ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
       >
         <View
           style={[

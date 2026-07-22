@@ -9,6 +9,7 @@ import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
+import { GlobalWebStyles } from "@/components/web/GlobalWebStyles";
 import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridge.web";
 import { NativeWebViewPushNavigation } from "@/components/web/NativeWebViewPushNavigation.web";
 import { AppointmentNotifications } from "@/components/AppointmentNotifications";
@@ -104,6 +105,7 @@ export default function RootLayout() {
       <KeyboardProvider>
         <View style={[styles.root, { backgroundColor: colors.background }]}>
           <StatusBar style="dark" />
+          <GlobalWebStyles />
           <MedicalDataLoader />
           <PointsDataLoader />
           <NativeWebViewAuthBridge />
@@ -129,6 +131,11 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
             <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
+            <Stack.Screen name="auth/verify-email" options={{ presentation: "modal" }} />
+            <Stack.Screen name="auth/forgot-password" options={{ presentation: "modal" }} />
+            <Stack.Screen name="auth/reset-password" options={{ presentation: "modal" }} />
+            <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
+            <Stack.Screen name="contact" />
             <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="video-call" />
             <Stack.Screen name="ai/[id]" />

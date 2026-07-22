@@ -426,6 +426,18 @@ export function Ask3elagiAiWidget() {
     if (!signedIn || !roleOk || hidden) closeWidget();
   }, [signedIn, roleOk, hidden, closeWidget]);
 
+  // Escape key closes the floating AI chat (web / mobile browser).
+  useEffect(() => {
+    if (Platform.OS !== "web" || !open || typeof window === "undefined") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeWidget();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, closeWidget]);
+
   if (!hydrated || !signedIn || !roleOk || hidden) return null;
 
   const edge = 16;

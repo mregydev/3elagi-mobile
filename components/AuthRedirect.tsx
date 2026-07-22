@@ -24,12 +24,15 @@ export function AuthRedirect() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorApprovalStatus = useAuthStore((s) => s.doctorApprovalStatus);
+  const emailVerified = useAuthStore((s) => s.emailVerified);
   const signedIn = isSignedIn(profile, accessToken);
 
   useEffect(() => {
     if (!hydrated) return;
 
     const root = segments[0];
+    const authScreen = root === "auth" ? String(segments[1] ?? "") : "";
+    const isVerifyEmailRoute = authScreen === "verify-email";
     const isPublic =
       root === "welcome" ||
       root === "auth" ||
@@ -44,6 +47,16 @@ export function AuthRedirect() {
         } else {
           router.replace("/welcome");
         }
+      }
+      return;
+    }
+
+    if (!emailVerified) {
+      if (!isVerifyEmailRoute) {
+        router.replace({
+          pathname: "/auth/verify-email",
+          params: { email: profile?.email ?? "" },
+        });
       }
       return;
     }
@@ -79,6 +92,8 @@ export function AuthRedirect() {
   }, [
     hydrated,
     signedIn,
+    emailVerified,
+    profile?.email,
     segments,
     router,
     role,

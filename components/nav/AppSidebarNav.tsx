@@ -1,5 +1,5 @@
 import { Href, usePathname, useRouter } from "expo-router";
-import { LogOut } from "lucide-react-native";
+import { LogOut, Mail } from "lucide-react-native";
 import React from "react";
 import {
   Alert,
@@ -148,6 +148,26 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
               : t.tabs.patientAccount}
           </Text>
         ) : null}
+
+        <Pressable
+          onPress={() => go("/contact")}
+          accessibilityRole="button"
+          accessibilityLabel={t.tabs.contactUs}
+          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+            styles.logoutBtn,
+            {
+              flexDirection: dir,
+              borderColor: colors.border,
+              backgroundColor:
+                pressed || hovered ? colors.muted : "transparent",
+            },
+          ]}
+        >
+          <Mail size={18} color={colors.primary} />
+          <Text style={[styles.navLabel, { color: colors.foreground }]}>
+            {t.tabs.contactUs}
+          </Text>
+        </Pressable>
 
         <Pressable
           onPress={handleLogout}

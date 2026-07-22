@@ -46,6 +46,8 @@ export interface AuthSession {
   userId: string;
   profile: PatientProfile;
   preferredLocale?: PreferredLocale | null;
+  /** False until the user confirms the email verification code. */
+  emailVerified?: boolean;
   /** Set when role is doctor */
   doctorId?: string;
   /** Set when role is doctor */

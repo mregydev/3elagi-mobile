@@ -23,7 +23,6 @@ import {
 } from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
-import { getPostAuthRoute } from "@/domains/auth/navigation";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
 import {
   hasFieldErrors,
@@ -211,8 +210,10 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
-      const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
-      router.replace(getPostAuthRoute(signedRole, doctorApprovalStatus));
+      router.replace({
+        pathname: "/auth/verify-email",
+        params: { email: email.trim().toLowerCase() },
+      });
     } catch (e) {
       setFormError((e as Error).message || t.auth.genericError);
     }

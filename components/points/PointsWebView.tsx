@@ -21,6 +21,7 @@ import {
   pricePerPoint,
 } from "@/constants/patientCountries";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { useColors } from "@/hooks/useColors";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useI18n } from "@/hooks/useI18n";
@@ -291,12 +292,14 @@ export function PointsWebView() {
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
       <ScrollView
+        nativeID={BRAND_SCROLL_NATIVE_ID}
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           useSplitLayout && styles.scrollContentDesktop,
         ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
       >
         <View
           style={[

@@ -29,7 +29,7 @@ type Props = {
   fullWidth?: boolean;
 };
 
-type WebMenuPos = {
+type MenuPos = {
   top: number;
   left: number;
   width: number;
@@ -38,9 +38,86 @@ type WebMenuPos = {
 const MENU_MIN_WIDTH = 220;
 const MENU_ITEM_HEIGHT = 56;
 const IS_WEB = Platform.OS === "web";
+const VIEWPORT_PADDING = 8;
+const GAP = 6;
 
 function estimatedMenuHeight(): number {
   return LANGUAGE_OPTIONS.length * MENU_ITEM_HEIGHT + 2;
+}
+
+/** Viewport-relative box — reliable inside nested Modals (side drawer). */
+function measureTriggerInViewport(
+  node: View | null,
+  cb: (x: number, y: number, width: number, height: number) => void,
+): void {
+  if (!node) return;
+
+  if (IS_WEB) {
+    const host = node as unknown as HTMLElement & {
+      getBoundingClientRect?: () => DOMRect;
+      measureInWindow?: (
+        callback: (x: number, y: number, width: number, height: number) => void,
+      ) => void;
+    };
+
+    const el =
+      typeof host.getBoundingClientRect === "function"
+        ? host
+        : ((host as unknown as { _node?: HTMLElement })._node ?? null);
+
+    if (el && typeof el.getBoundingClientRect === "function") {
+      const rect = el.getBoundingClientRect();
+      cb(rect.left, rect.top, rect.width, rect.height);
+      return;
+    }
+  }
+
+  node.measureInWindow((x, y, width, height) => {
+    cb(x, y, width, height);
+  });
+}
+
+function computeMenuPos(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  opts: { fullWidth: boolean; isRTL: boolean; opensUp: boolean },
+): MenuPos {
+  const menuWidth = opts.fullWidth ? width : Math.max(MENU_MIN_WIDTH, width);
+  const viewportWidth =
+    typeof window !== "undefined" ? window.innerWidth : menuWidth + 32;
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : 800;
+  const menuHeight = estimatedMenuHeight();
+
+  let left = opts.fullWidth
+    ? x
+    : opts.isRTL
+      ? x
+      : x + width - menuWidth;
+  left = Math.max(
+    VIEWPORT_PADDING,
+    Math.min(left, viewportWidth - menuWidth - VIEWPORT_PADDING),
+  );
+
+  let top = opts.opensUp ? y - menuHeight - GAP : y + height + GAP;
+
+  // Keep the menu on-screen; prefer staying above the trigger when possible.
+  if (opts.opensUp) {
+    if (top < VIEWPORT_PADDING) {
+      const below = y + height + GAP;
+      top =
+        below + menuHeight <= viewportHeight - VIEWPORT_PADDING
+          ? below
+          : VIEWPORT_PADDING;
+    }
+  } else if (top + menuHeight > viewportHeight - VIEWPORT_PADDING) {
+    const above = y - menuHeight - GAP;
+    top = above >= VIEWPORT_PADDING ? above : VIEWPORT_PADDING;
+  }
+
+  return { top, left, width: menuWidth };
 }
 
 export function LanguageDropdown({
@@ -56,7 +133,7 @@ export function LanguageDropdown({
   const locale = value ?? storeLocale;
   const applyLocale = onChange ?? setLocale;
   const [open, setOpen] = useState(false);
-  const [webMenuPos, setWebMenuPos] = useState<WebMenuPos | null>(null);
+  const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
   const triggerRef = useRef<View>(null);
   const clipSuffix = useId().replace(/:/g, "");
   const flagW = compact ? 24 : 30;
@@ -68,40 +145,25 @@ export function LanguageDropdown({
   const ChevronIcon = opensUp ? ChevronUp : ChevronDown;
 
   const openMenu = () => {
-    if (IS_WEB && triggerRef.current) {
-      triggerRef.current.measureInWindow((x, y, width, height) => {
-        const menuWidth = fullWidth
-          ? width
-          : Math.max(MENU_MIN_WIDTH, width);
-        const viewportWidth =
-          typeof window !== "undefined" ? window.innerWidth : menuWidth;
-        const padding = 8;
-        let left = fullWidth
-          ? x
-          : isRTL
-            ? x
-            : x + width - menuWidth;
-        left = Math.max(
-          padding,
-          Math.min(left, viewportWidth - menuWidth - padding),
+    const apply = () => {
+      measureTriggerInViewport(triggerRef.current, (x, y, width, height) => {
+        setMenuPos(
+          computeMenuPos(x, y, width, height, {
+            fullWidth,
+            isRTL,
+            opensUp,
+          }),
         );
-
-        const menuHeight = estimatedMenuHeight();
-        let top =
-          opensUp
-            ? y - menuHeight - 6
-            : y + height + 6;
-        if (opensUp && top < padding) {
-          top = y + height + 6;
-        }
-
-        setWebMenuPos({ top, left, width: menuWidth });
         setOpen(true);
       });
+    };
+
+    // Nested drawer Modals need a frame for DOM layout to settle.
+    if (IS_WEB && typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => requestAnimationFrame(apply));
       return;
     }
-    setWebMenuPos(null);
-    setOpen(true);
+    apply();
   };
 
   const closeMenu = () => {
@@ -110,9 +172,30 @@ export function LanguageDropdown({
 
   useEffect(() => {
     if (!open) {
-      setWebMenuPos(null);
+      setMenuPos(null);
+      return;
     }
-  }, [open]);
+    if (!IS_WEB || typeof window === "undefined") return;
+
+    const reposition = () => {
+      measureTriggerInViewport(triggerRef.current, (x, y, width, height) => {
+        setMenuPos(
+          computeMenuPos(x, y, width, height, {
+            fullWidth,
+            isRTL,
+            opensUp,
+          }),
+        );
+      });
+    };
+
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [open, fullWidth, isRTL, opensUp]);
 
   const selectLocale = (next: Locale) => {
     closeMenu();
@@ -189,46 +272,48 @@ export function LanguageDropdown({
 
   return (
     <View style={[styles.wrap, fullWidth && styles.wrapFullWidth]}>
-      <Pressable
-        ref={triggerRef}
-        accessibilityRole="button"
-        accessibilityLabel={current.label}
-        onPress={openMenu}
-        style={[
-          styles.trigger,
-          fullWidth && styles.triggerFullWidth,
-          {
-            flexDirection: isRTL ? "row-reverse" : "row",
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-          },
-        ]}
-      >
-        <View
+      {/* Outer View ref: reliable getBoundingClientRect inside nested drawer Modals. */}
+      <View ref={triggerRef} collapsable={false}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={current.label}
+          onPress={openMenu}
           style={[
-            styles.triggerLeading,
-            { flexDirection: isRTL ? "row-reverse" : "row" },
+            styles.trigger,
+            fullWidth && styles.triggerFullWidth,
+            {
+              flexDirection: isRTL ? "row-reverse" : "row",
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+            },
           ]}
         >
-          <FlagFrame w={flagW} h={flagH} selected colors={colors}>
-            <Flag
-              locale={locale}
-              w={flagW}
-              h={flagH}
-              clipSuffix={`trigger-${clipSuffix}`}
-            />
-          </FlagFrame>
-          {showLabel ? (
-            <Text
-              style={[styles.triggerLabel, { color: colors.foreground }]}
-              numberOfLines={1}
-            >
-              {current.label}
-            </Text>
-          ) : null}
-        </View>
-        <ChevronIcon size={compact ? 14 : 16} color={colors.mutedForeground} />
-      </Pressable>
+          <View
+            style={[
+              styles.triggerLeading,
+              { flexDirection: isRTL ? "row-reverse" : "row" },
+            ]}
+          >
+            <FlagFrame w={flagW} h={flagH} selected colors={colors}>
+              <Flag
+                locale={locale}
+                w={flagW}
+                h={flagH}
+                clipSuffix={`trigger-${clipSuffix}`}
+              />
+            </FlagFrame>
+            {showLabel ? (
+              <Text
+                style={[styles.triggerLabel, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
+                {current.label}
+              </Text>
+            ) : null}
+          </View>
+          <ChevronIcon size={compact ? 14 : 16} color={colors.mutedForeground} />
+        </Pressable>
+      </View>
 
       <Modal
         visible={open}
@@ -243,22 +328,21 @@ export function LanguageDropdown({
             accessibilityRole="button"
             accessibilityLabel="Close language menu"
           />
-          {IS_WEB && webMenuPos ? (
+          {menuPos ? (
             <View
               pointerEvents="box-none"
               style={[
-                styles.menuWebFixed,
+                styles.menuFixed,
                 {
-                  top: webMenuPos.top,
-                  left: webMenuPos.left,
-                  width: webMenuPos.width,
+                  top: menuPos.top,
+                  left: menuPos.left,
+                  width: menuPos.width,
                 },
               ]}
             >
               {menu}
             </View>
-          ) : null}
-          {!IS_WEB ? (
+          ) : !IS_WEB ? (
             <View style={styles.modalCenter} pointerEvents="box-none">
               <View
                 style={[
@@ -321,7 +405,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "transparent",
   },
-  menuWebFixed: {
+  menuFixed: {
     position: "absolute",
     zIndex: 2,
   },

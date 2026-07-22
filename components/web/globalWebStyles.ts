@@ -1,3 +1,6 @@
+/** Shared nativeID for branded blue scrollbars on web ScrollViews / overflow panels. */
+export const BRAND_SCROLL_NATIVE_ID = "brand-scroll";
+
 export const GLOBAL_WEB_CSS = `
 html, body, #root {
   height: 100%;
@@ -36,40 +39,44 @@ textarea:focus-visible {
   box-shadow: none;
 }
 
-@media (min-width: 1024px) {
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(93, 111, 135, 0.35);
-    border-radius: 999px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
+/*
+ * Chromium ignores ::-webkit-scrollbar-* when scrollbar-color is set (including via inheritance).
+ * Keep scrollbar-color for Firefox only; use webkit rules for Chrome/Safari/Edge.
+ */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin !important;
+    scrollbar-color: #3057f2 rgba(48, 87, 242, 0.12) !important;
   }
 }
 
-#auth-form-scroll {
+/* Force classic blue scrollbars on every overflow container (incl. RN Web ScrollView). */
+*::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #3057f2 !important;
+  border-radius: 999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #2546c4 !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(48, 87, 242, 0.12) !important;
+}
+
+#auth-form-scroll,
+#brand-scroll {
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #3057f2 rgba(48, 87, 242, 0.1);
-}
-
-#auth-form-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-#auth-form-scroll::-webkit-scrollbar-thumb {
-  background: #3057f2;
-  border-radius: 999px;
-}
-
-#auth-form-scroll::-webkit-scrollbar-track {
-  background: rgba(48, 87, 242, 0.1);
 }
 
 @media (min-width: 1024px) {
