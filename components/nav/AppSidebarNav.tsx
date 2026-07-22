@@ -193,12 +193,14 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    minHeight: 0,
   },
   content: {
     flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 16,
+    // Extra bottom pad so logout isn’t clipped at the viewport edge.
+    paddingBottom: 28,
     gap: 16,
   },
   brandRow: {

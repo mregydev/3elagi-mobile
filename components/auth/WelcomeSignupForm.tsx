@@ -17,9 +17,13 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  type MarketCountryCode,
+  isMarketCountryCode,
+  MARKET_COUNTRY_CODES,
+  PATIENT_COUNTRY_CODES,
+  type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useAuthStore } from "@/domains/auth/store";
@@ -58,7 +62,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
   const [consultationPrice, setConsultationPrice] = useState(1);
-  const [country, setCountry] = useState<MarketCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -237,6 +241,9 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           onPress={() => {
             setRole("doctor");
             setMedicalRecordsConsent(false);
+            setCountry((prev) =>
+              isMarketCountryCode(prev) ? prev : DEFAULT_PATIENT_COUNTRY,
+            );
             setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
           }}
           label={t.auth.doctor}
@@ -333,19 +340,37 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         isRTL={isRTL}
       />
 
-      <CountryChipsField
-        label={t.auth.countryOfResidence}
-        value={country}
-        onChange={(code) => {
-          setCountry(code);
-          if (fieldErrors.country) {
-            setFieldErrors((prev) => ({ ...prev, country: undefined }));
-          }
-        }}
-        error={fieldErrors.country}
-        isRTL={isRTL}
-        disabled={loading}
-      />
+      {isDoctor ? (
+        <CountryChipsField
+          label={t.auth.countryOfResidence}
+          value={country}
+          codes={MARKET_COUNTRY_CODES}
+          onChange={(code) => {
+            setCountry(code);
+            if (fieldErrors.country) {
+              setFieldErrors((prev) => ({ ...prev, country: undefined }));
+            }
+          }}
+          error={fieldErrors.country}
+          isRTL={isRTL}
+          disabled={loading}
+        />
+      ) : (
+        <CountrySelectField
+          label={t.auth.countryOfResidence}
+          value={country}
+          codes={PATIENT_COUNTRY_CODES}
+          onChange={(code) => {
+            setCountry(code);
+            if (fieldErrors.country) {
+              setFieldErrors((prev) => ({ ...prev, country: undefined }));
+            }
+          }}
+          error={fieldErrors.country}
+          isRTL={isRTL}
+          disabled={loading}
+        />
+      )}
 
       {isDoctor ? (
         <View style={styles.doctorBlock}>

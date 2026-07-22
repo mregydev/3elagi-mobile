@@ -34,5 +34,9 @@ const styles = StyleSheet.create({
   sidebar: {
     width: 248,
     height: "100%",
+    minHeight: 0,
+    // Bound height so AppSidebarNav ScrollView scrolls instead of clipping logout.
+    overflow: "hidden",
+    flexShrink: 0,
   },
 });

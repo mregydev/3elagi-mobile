@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   MARKET_COUNTRY_CODES,
   patientCountryLabel,
-  type MarketCountryCode,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { useColors } from "@/hooks/useColors";
@@ -11,13 +10,13 @@ import { flexRow } from "@/utils/rtl";
 
 type Props = {
   label: string;
-  value: PatientCountryCode | MarketCountryCode;
-  onChange: (code: MarketCountryCode) => void;
+  value: PatientCountryCode;
+  onChange: (code: PatientCountryCode) => void;
   error?: string;
   isRTL: boolean;
   disabled?: boolean;
-  /** Defaults to Egypt & Jordan (live markets). */
-  codes?: readonly MarketCountryCode[];
+  /** Defaults to Egypt & Jordan (doctor / live markets). Pass PATIENT_COUNTRY_CODES for patients. */
+  codes?: readonly PatientCountryCode[];
 };
 
 export function CountryChipsField({

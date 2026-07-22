@@ -177,6 +177,6 @@ export default function TabsLayoutWeb() {
 }
 
 const styles = StyleSheet.create({
-  shell: { flex: 1, minHeight: 0 },
+  shell: { flex: 1, minHeight: 0, overflow: "hidden" },
   main: { minWidth: 0 },
 });
