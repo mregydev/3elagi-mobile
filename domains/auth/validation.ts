@@ -68,7 +68,7 @@ export function validateSignupFields(
     errors.specialityId = t.specialityRequiredMsg;
   }
 
-  if (!input.country?.trim()) {
+  if (!input.isDoctor && !input.country?.trim()) {
     errors.country = t.countryRequired;
   }
 

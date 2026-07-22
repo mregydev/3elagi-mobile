@@ -16,12 +16,9 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
-import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  isMarketCountryCode,
-  MARKET_COUNTRY_CODES,
   PATIENT_COUNTRY_CODES,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
@@ -185,7 +182,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         password,
         isDoctor,
         specialityId,
-        country,
+        country: isDoctor ? undefined : country,
         medicalRecordsStorageConsent: medicalRecordsConsent,
       },
       t.auth,
@@ -211,7 +208,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
-        country,
+        country: isDoctor ? undefined : country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       router.replace({
@@ -241,10 +238,11 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           onPress={() => {
             setRole("doctor");
             setMedicalRecordsConsent(false);
-            setCountry((prev) =>
-              isMarketCountryCode(prev) ? prev : DEFAULT_PATIENT_COUNTRY,
-            );
-            setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+            setFieldErrors((prev) => ({
+              ...prev,
+              medicalRecordsConsent: undefined,
+              country: undefined,
+            }));
           }}
           label={t.auth.doctor}
           Icon={Stethoscope}
@@ -340,22 +338,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         isRTL={isRTL}
       />
 
-      {isDoctor ? (
-        <CountryChipsField
-          label={t.auth.countryOfResidence}
-          value={country}
-          codes={MARKET_COUNTRY_CODES}
-          onChange={(code) => {
-            setCountry(code);
-            if (fieldErrors.country) {
-              setFieldErrors((prev) => ({ ...prev, country: undefined }));
-            }
-          }}
-          error={fieldErrors.country}
-          isRTL={isRTL}
-          disabled={loading}
-        />
-      ) : (
+      {!isDoctor ? (
         <CountrySelectField
           label={t.auth.countryOfResidence}
           value={country}
@@ -370,7 +353,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           isRTL={isRTL}
           disabled={loading}
         />
-      )}
+      ) : null}
 
       {isDoctor ? (
         <View style={styles.doctorBlock}>

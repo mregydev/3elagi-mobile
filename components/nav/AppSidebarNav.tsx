@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { CountryFlagToggle } from "@/components/country/CountryFlagToggle";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { filterAppNavItems } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
@@ -126,14 +125,6 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
 
       <View style={styles.footer}>
         {footerExtra}
-        {role?.toLowerCase() === "patient" ? (
-          <View style={styles.prefBlock}>
-            <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
-              {t.tabs.country}
-            </Text>
-            <CountryFlagToggle showNames compact />
-          </View>
-        ) : null}
         <View style={styles.prefBlock}>
           <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
             {t.settings.language}
@@ -201,26 +192,27 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     // Extra bottom pad so logout isn’t clipped at the viewport edge.
     paddingBottom: 28,
-    gap: 16,
+    gap: 8,
   },
   brandRow: {
     alignItems: "center",
     justifyContent: "center",
   },
-  nav: { gap: 6 },
+  nav: { gap: 4 },
   navItem: {
     alignItems: "center",
     gap: 10,
     paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingVertical: 9,
     borderRadius: 12,
     borderWidth: 1,
   },
   navLabel: { fontSize: 14, fontWeight: "700", flex: 1 },
   footer: {
     gap: 12,
+    // Push Android / language / contact / logout toward the sidebar bottom.
     marginTop: "auto",
-    paddingTop: 8,
+    paddingTop: 16,
   },
   prefBlock: {
     gap: 6,

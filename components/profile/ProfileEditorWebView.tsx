@@ -16,7 +16,6 @@ import { useRouter } from "expo-router";
 import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
-import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -351,11 +350,6 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               {t.settings.preferences}
             </Text>
             <View style={{ gap: 16 }}>
-              <ProfileCountryField
-                value={country}
-                onChange={setCountry}
-                disabled={saving}
-              />
               <ProfileLanguageField embedded wideCards />
             </View>
           </View>

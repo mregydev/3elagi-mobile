@@ -23,16 +23,12 @@ export function getPostAuthRoute(
 }
 
 /**
- * After login only: patients pick Egypt/Jordan before the main app.
- * Signup already collected country, so it uses {@link getPostAuthRoute}.
+ * After login: same destinations as signup (no Egypt/Jordan country gate for now).
  */
 export function getPostLoginRoute(
   role: string | null,
   doctorApprovalStatus: DoctorApprovalStatus | null,
-): "/admin" | "/doctor-pending" | "/auth/choose-country" | "/(tabs)" {
-  if (role?.toLowerCase() === "patient") {
-    return "/auth/choose-country";
-  }
+): "/admin" | "/doctor-pending" | "/(tabs)" {
   return getPostAuthRoute(role, doctorApprovalStatus);
 }
 

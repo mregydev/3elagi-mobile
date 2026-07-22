@@ -21,12 +21,9 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
-import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  isMarketCountryCode,
-  MARKET_COUNTRY_CODES,
   PATIENT_COUNTRY_CODES,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
@@ -195,7 +192,7 @@ export default function SignupScreen() {
         password,
         isDoctor,
         specialityId,
-        country,
+        country: isDoctor ? undefined : country,
         medicalRecordsStorageConsent: medicalRecordsConsent,
       },
       t.auth,
@@ -221,7 +218,7 @@ export default function SignupScreen() {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
-        country,
+        country: isDoctor ? undefined : country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       router.replace({
@@ -293,10 +290,11 @@ export default function SignupScreen() {
             onPress={() => {
               setRole("doctor");
               setMedicalRecordsConsent(false);
-              setCountry((prev) =>
-                isMarketCountryCode(prev) ? prev : DEFAULT_PATIENT_COUNTRY,
-              );
-              setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+              setFieldErrors((prev) => ({
+                ...prev,
+                medicalRecordsConsent: undefined,
+                country: undefined,
+              }));
             }}
             label={t.auth.doctor}
             Icon={Stethoscope}
@@ -392,22 +390,7 @@ export default function SignupScreen() {
             isRTL={isRTL}
           />
 
-          {isDoctor ? (
-            <CountryChipsField
-              label={t.auth.countryOfResidence}
-              value={country}
-              codes={MARKET_COUNTRY_CODES}
-              onChange={(code) => {
-                setCountry(code);
-                if (fieldErrors.country) {
-                  setFieldErrors((prev) => ({ ...prev, country: undefined }));
-                }
-              }}
-              error={fieldErrors.country}
-              isRTL={isRTL}
-              disabled={loading}
-            />
-          ) : (
+          {!isDoctor ? (
             <CountrySelectField
               label={t.auth.countryOfResidence}
               value={country}
@@ -422,7 +405,7 @@ export default function SignupScreen() {
               isRTL={isRTL}
               disabled={loading}
             />
-          )}
+          ) : null}
 
           {isDoctor && (
             <View style={{ gap: 12, marginTop: 4 }}>
