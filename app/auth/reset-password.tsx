@@ -84,7 +84,12 @@ export default function ResetPasswordScreen() {
     try {
       await authRepository.resetPassword(token, password);
       showSuccessToast(t.auth.passwordResetSuccess);
-      router.replace("/auth/login");
+      // Land on APP_WEB_URL root only — no /auth/login or other relative path.
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.location.replace(window.location.origin);
+        return;
+      }
+      router.replace("/welcome");
     } catch (e) {
       setFormError((e as Error).message || t.auth.resetLinkInvalid);
     } finally {
