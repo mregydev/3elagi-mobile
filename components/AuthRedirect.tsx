@@ -24,7 +24,6 @@ export function AuthRedirect() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorApprovalStatus = useAuthStore((s) => s.doctorApprovalStatus);
-  const emailVerified = useAuthStore((s) => s.emailVerified);
   const signedIn = isSignedIn(profile, accessToken);
 
   useEffect(() => {
@@ -32,7 +31,9 @@ export function AuthRedirect() {
 
     const root = segments[0];
     const authScreen = root === "auth" ? String(segments[1] ?? "") : "";
-    const isVerifyEmailRoute = authScreen === "verify-email";
+    // Password reset / forgot must stay reachable even when a session exists.
+    const isAuthUtilityRoute =
+      authScreen === "forgot-password" || authScreen === "reset-password";
     const isPublic =
       root === "welcome" ||
       root === "auth" ||
@@ -51,13 +52,7 @@ export function AuthRedirect() {
       return;
     }
 
-    if (!emailVerified) {
-      if (!isVerifyEmailRoute) {
-        router.replace({
-          pathname: "/auth/verify-email",
-          params: { email: profile?.email ?? "" },
-        });
-      }
+    if (isAuthUtilityRoute) {
       return;
     }
 
@@ -92,8 +87,6 @@ export function AuthRedirect() {
   }, [
     hydrated,
     signedIn,
-    emailVerified,
-    profile?.email,
     segments,
     router,
     role,

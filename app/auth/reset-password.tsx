@@ -24,13 +24,41 @@ function readParam(value?: string | string[]): string {
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 }
 
+/** Expo Router sometimes misses query params from external email links — read the URL too. */
+function readTokenFromWindow(): string {
+  if (Platform.OS !== "web" || typeof window === "undefined") return "";
+  try {
+    const fromSearch = new URLSearchParams(window.location.search).get("token");
+    if (fromSearch?.trim()) return decodeURIComponent(fromSearch.trim());
+    const hash = window.location.hash;
+    const q = hash.indexOf("?");
+    if (q >= 0) {
+      const fromHash = new URLSearchParams(hash.slice(q)).get("token");
+      if (fromHash?.trim()) return decodeURIComponent(fromHash.trim());
+    }
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
 export default function ResetPasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const params = useLocalSearchParams<{ token?: string | string[] }>();
-  const token = useMemo(() => readParam(params.token), [params.token]);
+  const token = useMemo(() => {
+    const fromParams = readParam(params.token);
+    if (fromParams) {
+      try {
+        return decodeURIComponent(fromParams);
+      } catch {
+        return fromParams;
+      }
+    }
+    return readTokenFromWindow();
+  }, [params.token]);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);

@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
-import { AuthApiError } from "@/domains/auth/repository";
 import { useAuthStore } from "@/domains/auth/store";
 import { getPostLoginRoute } from "@/domains/auth/navigation";
 import {
@@ -52,13 +51,6 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
       const { role, doctorApprovalStatus } = useAuthStore.getState();
       router.replace(getPostLoginRoute(role, doctorApprovalStatus));
     } catch (e) {
-      if (e instanceof AuthApiError && e.code === "EMAIL_NOT_VERIFIED") {
-        router.replace({
-          pathname: "/auth/verify-email",
-          params: { email: e.email ?? email.trim().toLowerCase() },
-        });
-        return;
-      }
       const message = (e as Error).message;
       if (message === "__UNSUPPORTED_ROLE__") {
         setFormError(t.auth.unsupportedAccountMsg);

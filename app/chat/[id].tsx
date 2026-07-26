@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, Stethoscope } from "lucide-react-native";
+import { ArrowLeft, Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -71,6 +71,7 @@ import { showChatMessageActions } from "@/utils/chatMessageActions";
 import { leaveChatToHistory } from "@/utils/chatNavigation";
 import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
+import { webConfirm } from "@/utils/webConfirm";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
@@ -680,6 +681,47 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         : true;
 
     if (!confirmBlock) return;
+
+    if (action === "revoke_records") {
+      const title = isRTL ? "إلغاء صلاحية السجل" : "Revoke record access";
+      const message = isRTL
+        ? "لن يتمكن الطبيب من عرض أو تعديل سجلك الطبي بعد الإلغاء."
+        : "The doctor will no longer be able to view or edit your medical records.";
+      const confirmed =
+        Platform.OS === "web"
+          ? webConfirm(title, message)
+          : await new Promise<boolean>((resolve) => {
+              Alert.alert(title, message, [
+                { text: isRTL ? "إلغاء" : "Cancel", style: "cancel", onPress: () => resolve(false) },
+                {
+                  text: isRTL ? "إلغاء الصلاحية" : "Revoke",
+                  style: "destructive",
+                  onPress: () => resolve(true),
+                },
+              ]);
+            });
+      if (!confirmed) return;
+    }
+
+    if (action === "grant_records") {
+      const title = isRTL ? "منح صلاحية السجل" : "Grant record access";
+      const message = isRTL
+        ? "سيتمكن الطبيب من عرض وتعديل سجلك الطبي."
+        : "The doctor will be able to view and edit your medical records.";
+      const confirmed =
+        Platform.OS === "web"
+          ? webConfirm(title, message)
+          : await new Promise<boolean>((resolve) => {
+              Alert.alert(title, message, [
+                { text: isRTL ? "إلغاء" : "Cancel", style: "cancel", onPress: () => resolve(false) },
+                {
+                  text: isRTL ? "منح" : "Grant",
+                  onPress: () => resolve(true),
+                },
+              ]);
+            });
+      if (!confirmed) return;
+    }
 
     setSending(true);
     try {
@@ -1353,26 +1395,73 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           </Pressable>
         </View>
       ) : null}
-      {/* Quick-action pill row — Book appointment stays available to patients at
-          all times, even without a consultation. */}
-      {isPatient && peer?.doctorEntityId && !chatBlocked ? (
+      {/* Quick-action pill row — book, grant/revoke records, Ask AI. */}
+      {isPatient && isDoctorPatientChat && !chatBlocked ? (
         <View style={[styles.bookPillBar, { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: chatFlexRow() }]}>
-          <Pressable
-            onPress={() => setBookAppointmentOpen(true)}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Calendar size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "حجز موعد" : "Book appointment"}
-            </Text>
-          </Pressable>
+          {peer?.doctorEntityId ? (
+            <Pressable
+              onPress={() => setBookAppointmentOpen(true)}
+              style={({ pressed }) => [
+                styles.bookPill,
+                {
+                  backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                  borderColor: colors.primary,
+                  flexDirection: chatFlexRow(),
+                },
+              ]}
+            >
+              <Calendar size={15} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+                {isRTL ? "حجز موعد" : "Book appointment"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {!accessLoading && !accessStatus?.records_allowed ? (
+            <Pressable
+              onPress={() => void handleAccessAction("grant_records")}
+              disabled={sending}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "منح صلاحية السجل" : "Grant record access"}
+              style={({ pressed }) => [
+                styles.bookPill,
+                {
+                  backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
+                  borderColor: colors.primary,
+                  flexDirection: chatFlexRow(),
+                  opacity: sending ? 0.55 : 1,
+                },
+              ]}
+            >
+              <ShieldCheck size={15} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
+                {isRTL ? "منح صلاحية السجل" : "Grant record access"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {!accessLoading && accessStatus?.records_allowed ? (
+            <Pressable
+              onPress={() => void handleAccessAction("revoke_records")}
+              disabled={sending}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "إلغاء صلاحية السجل" : "Revoke record access"}
+              style={({ pressed }) => [
+                styles.bookPill,
+                {
+                  backgroundColor: pressed
+                    ? `${colors.mutedForeground}22`
+                    : `${colors.mutedForeground}12`,
+                  borderColor: colors.mutedForeground,
+                  flexDirection: chatFlexRow(),
+                  opacity: sending ? 0.55 : 1,
+                },
+              ]}
+            >
+              <ShieldOff size={15} color={colors.mutedForeground} />
+              <Text style={{ color: colors.mutedForeground, fontWeight: "700", fontSize: 13 }}>
+                {isRTL ? "إلغاء صلاحية السجل" : "Revoke access"}
+              </Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => openAsk3elagiAi()}
             accessibilityRole="button"
@@ -1397,7 +1486,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       {/* Ask AI when clinical / book rows are hidden (e.g. doctor before consultation). */}
       {!chatBlocked &&
       !(isDoctor && canUseDiagnosisTemplates) &&
-      !(isPatient && peer?.doctorEntityId) ? (
+      !(isPatient && isDoctorPatientChat) ? (
         <View
           style={[
             styles.bookPillBar,

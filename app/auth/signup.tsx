@@ -28,6 +28,7 @@ import {
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
+import { getPostAuthRoute } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
 import {
@@ -221,10 +222,8 @@ export default function SignupScreen() {
         country: isDoctor ? undefined : country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
-      router.replace({
-        pathname: "/auth/verify-email",
-        params: { email: email.trim().toLowerCase() },
-      });
+      const { role: nextRole, doctorApprovalStatus } = useAuthStore.getState();
+      router.replace(getPostAuthRoute(nextRole, doctorApprovalStatus));
     } catch (e) {
       setFormError((e as Error).message || t.auth.genericError);
     }
