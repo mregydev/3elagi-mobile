@@ -535,6 +535,23 @@ export function ChatComposer({
     });
   };
 
+  const cancelRecording = async () => {
+    const active = recordingRef.current ?? recording;
+    if (!active) return;
+    try {
+      await active.stopAndUnloadAsync();
+    } catch {
+      /* already stopped */
+    }
+    setRecording(null);
+    setRecordingStartedAt(null);
+    try {
+      await prepareAudioMode();
+    } catch {
+      /* ignore */
+    }
+  };
+
   const toggleRecording = async () => {
     if (recording) {
       try {
@@ -888,9 +905,29 @@ export function ChatComposer({
       </View>
 
       {recording ? (
-        <Text style={{ textAlign: "center", color: "#ef4444", paddingBottom: 8, fontSize: 12 }}>
-          {isRTL ? "جاري التسجيل… اضغط الميكروفون للإرسال" : "Recording… tap mic to send"}
-        </Text>
+        <View
+          style={[
+            styles.recordingBar,
+            { flexDirection: rowDir },
+          ]}
+        >
+          <Pressable
+            onPress={() => void cancelRecording()}
+            hitSlop={8}
+            accessibilityLabel={isRTL ? "إلغاء التسجيل" : "Cancel recording"}
+            style={[styles.recordingCancelBtn, { borderColor: "#ef4444" }]}
+          >
+            <X size={16} color="#ef4444" />
+            <Text style={styles.recordingCancelText}>
+              {isRTL ? "إلغاء" : "Cancel"}
+            </Text>
+          </Pressable>
+          <Text style={styles.recordingHint}>
+            {isRTL
+              ? "جاري التسجيل… اضغط الميكروفون للإرسال"
+              : "Recording… tap mic to send"}
+          </Text>
+        </View>
       ) : uploading ? (
         <Text
           style={{
@@ -950,5 +987,34 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingHorizontal: 16,
     paddingTop: 14,
+  },
+  recordingBar: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    paddingTop: 2,
+  },
+  recordingHint: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  recordingCancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    backgroundColor: "rgba(239, 68, 68, 0.08)",
+  },
+  recordingCancelText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

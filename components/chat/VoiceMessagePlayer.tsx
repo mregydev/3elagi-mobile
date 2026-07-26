@@ -20,7 +20,8 @@ type Props = {
   trackColor: string;
   fillColor: string;
   isRTL: boolean;
-  rowDir: "row" | "row-reverse";
+  /** Ignored — voice layout uses `isRTL` so Arabic is always right-to-left. */
+  rowDir?: "row" | "row-reverse";
   onLongPress?: () => void;
 };
 
@@ -46,7 +47,6 @@ export function VoiceMessagePlayer({
   trackColor,
   fillColor,
   isRTL,
-  rowDir,
   onLongPress,
 }: Props) {
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -265,11 +265,13 @@ export function VoiceMessagePlayer({
 
   const knobSize = scrubbing ? 14 : 11;
   const knobOffset = knobSize / 2;
+  // Voice player follows locale RTL even though chat chrome stays LTR.
+  const voiceRowDir: "row" | "row-reverse" = isRTL ? "row-reverse" : "row";
 
   const iconColor = "#ffffff";
 
   return (
-    <View style={[styles.row, { flexDirection: rowDir }]}>
+    <View style={[styles.row, { flexDirection: voiceRowDir }]}>
       <Pressable
         onPress={() => void togglePlay()}
         onLongPress={onLongPress}
@@ -290,7 +292,7 @@ export function VoiceMessagePlayer({
         ) : playing ? (
           <Pause size={15} color={iconColor} fill={iconColor} />
         ) : (
-          <View style={styles.playIconWrap}>
+          <View style={[styles.playIconWrap, isRTL && styles.playIconWrapRtl]}>
             <Play size={15} color={iconColor} fill={iconColor} />
           </View>
         )}
@@ -303,8 +305,9 @@ export function VoiceMessagePlayer({
           style={[styles.trackHit, Platform.OS === "web" && styles.trackHitWeb]}
           {...panResponder.panHandlers}
         >
-          <View style={[styles.waveRow, { flexDirection: rowDir }]}>
+          <View style={[styles.waveRow, { flexDirection: voiceRowDir }]}>
             {WAVE_BARS.map((h, i) => {
+              // Progress grows from the start edge: left in LTR, right in RTL.
               const barProgress = (i + 0.5) / WAVE_BARS.length;
               const active = barProgress <= progress;
               return (
@@ -343,10 +346,16 @@ export function VoiceMessagePlayer({
           </View>
         </View>
 
-        <View style={[styles.timeRow, { flexDirection: rowDir }]}>
-          <Text style={[styles.time, { color }]}>{timeLabel}</Text>
+        <View style={[styles.timeRow, { flexDirection: voiceRowDir }]}>
+          <Text style={[styles.time, { color, textAlign: isRTL ? "right" : "left" }]}>
+            {timeLabel}
+          </Text>
           {!pending && durationMs > 0 && (playing || positionMs > 0 || scrubbing) ? (
-            <Text style={[styles.timeMuted, { color }]}>{durationLabel}</Text>
+            <Text
+              style={[styles.timeMuted, { color, textAlign: isRTL ? "left" : "right" }]}
+            >
+              {durationLabel}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -369,6 +378,10 @@ const styles = StyleSheet.create({
   },
   playIconWrap: {
     marginLeft: 1,
+  },
+  playIconWrapRtl: {
+    marginLeft: 0,
+    marginRight: 1,
   },
   trackBlock: {
     flex: 1,
