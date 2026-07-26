@@ -117,6 +117,7 @@ interface ChatState {
   failPendingMessage: (peerId: string, tempId: string) => void;
   getPeer: (conversationId: string) => ChatUser | undefined;
   updateMessageEmotions: (messageId: string, emotions: MessageEmotionItem[]) => void;
+  patchMessage: (messageId: string, patch: Partial<ChatMessage>) => void;
   clear: () => void;
 }
 
@@ -542,8 +543,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (idx >= 0) {
       baseConversations[idx] = { ...baseConversations[idx], unreadCount: 0 };
     }
+    const now = new Date().toISOString();
     set((s) => ({
       conversations: applyPresenceToConversations(baseConversations),
+      messages: {
+        ...s.messages,
+        [peerId]: (s.messages[peerId] || []).map((m) =>
+          m.senderId !== "me" && !m.readAt ? { ...m, readAt: now } : m,
+        ),
+      },
     }));
   },
 
@@ -818,6 +826,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
         );
       }
       return { messages: nextMessages };
+    });
+  },
+
+  patchMessage: (messageId, patch) => {
+    set((state) => {
+      const nextMessages: Record<string, ChatMessage[]> = {};
+      let peerForUnread: string | null = null;
+      let unreadDelta = 0;
+      for (const [peerId, rows] of Object.entries(state.messages)) {
+        nextMessages[peerId] = rows.map((message) => {
+          if (message.id !== messageId) return message;
+          const next = { ...message, ...patch };
+          if (
+            message.senderId !== "me" &&
+            "readAt" in patch &&
+            Boolean(message.readAt) !== Boolean(next.readAt)
+          ) {
+            peerForUnread = peerId;
+            unreadDelta = next.readAt ? -1 : 1;
+          }
+          return next;
+        });
+      }
+      const conversations =
+        peerForUnread && unreadDelta !== 0
+          ? state.conversations.map((c) =>
+              c.id === peerForUnread
+                ? {
+                    ...c,
+                    unreadCount: Math.max(0, (c.unreadCount ?? 0) + unreadDelta),
+                  }
+                : c,
+            )
+          : state.conversations;
+      return { messages: nextMessages, conversations };
     });
   },
 

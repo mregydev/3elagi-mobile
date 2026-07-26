@@ -1,7 +1,6 @@
-import { Audio } from "expo-av";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Beaker, ChevronRight, ClipboardList, ImageIcon, Play, ScanLine, Stethoscope } from "lucide-react-native";
+import { Beaker, Check, CheckCheck, ChevronRight, ClipboardList, ImageIcon, ScanLine, Stethoscope } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +15,7 @@ import {
 import type { ChatMessage } from "@/domains/chat/types";
 import type { MessageEmotionType } from "@/domains/emotions/types";
 import { ChatInlineVideo } from "@/components/chat/ChatInlineVideo";
+import { VoiceMessagePlayer } from "@/components/chat/VoiceMessagePlayer";
 import { MessageEmotionsBar } from "@/components/MessageEmotionsBar";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -66,7 +66,6 @@ export function ChatMessageBubble({
   const colors = useColors();
   const { t } = useI18n();
   const { width: screenWidth } = useWindowDimensions();
-  const [playing, setPlaying] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const maxBubbleWidth = useMemo(() => Math.round(screenWidth * 0.78), [screenWidth]);
@@ -112,24 +111,6 @@ export function ChatMessageBubble({
       return;
     }
     openMedicalRecord(diagnosisId);
-  };
-
-  const playVoice = async () => {
-    if (!item.attachmentUrl || playing || item.pending) return;
-    setPlaying(true);
-    try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync({ uri: item.attachmentUrl });
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setPlaying(false);
-          void sound.unloadAsync();
-        }
-      });
-      await sound.playAsync();
-    } catch {
-      setPlaying(false);
-    }
   };
 
   const isAccessAction = item.type === "access_action";
@@ -323,32 +304,16 @@ export function ChatMessageBubble({
     );
   } else if (item.type === "voice") {
     body = (
-      <Pressable
-        onPress={playVoice}
+      <VoiceMessagePlayer
+        uri={item.localAttachmentUrl ?? item.attachmentUrl}
+        pending={item.pending}
+        color={textColor}
+        trackColor={`${textColor}33`}
+        fillColor={textColor}
+        isRTL={isRTL}
+        rowDir={rowDir}
         onLongPress={onLongPress}
-        delayLongPress={400}
-        disabled={item.pending || !item.attachmentUrl}
-        style={[styles.voiceRow, { flexDirection: rowDir }]}
-      >
-        {item.pending ? (
-          <ActivityIndicator size="small" color={textColor} />
-        ) : (
-          <Play size={16} color={textColor} />
-        )}
-        <Text style={{ color: textColor }}>
-          {item.pending
-            ? isRTL
-              ? "جاري الإرسال…"
-              : "Sending…"
-            : playing
-              ? isRTL
-                ? "جاري التشغيل…"
-                : "Playing…"
-              : isRTL
-                ? "رسالة صوتية"
-                : "Voice message"}
-        </Text>
-      </Pressable>
+      />
     );
   } else if (isMedicalLink && item.medicalLink) {
     const link = item.medicalLink;
@@ -957,6 +922,15 @@ export function ChatMessageBubble({
         ]}
       >
         {body}
+        {mine && !item.pending && !isAccessAction ? (
+          <View style={[styles.readRow, { flexDirection: rowDir }]}>
+            {item.readAt ? (
+              <CheckCheck size={14} color={mine ? "rgba(255,255,255,0.9)" : colors.primary} />
+            ) : (
+              <Check size={14} color={mine ? "rgba(255,255,255,0.65)" : colors.mutedForeground} />
+            )}
+          </View>
+        ) : null}
       </Pressable>
       <MessageEmotionsBar
         emotions={item.emotions ?? []}
@@ -1017,7 +991,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 12,
   },
-  voiceRow: { alignItems: "center", gap: 8 },
+  readRow: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 4,
+    alignSelf: "flex-end",
+  },
   medicalBubble: {
     paddingHorizontal: 10,
     paddingVertical: 10,

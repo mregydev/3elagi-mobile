@@ -54,7 +54,11 @@ import {
   type DoctorPatientAccessStatus,
 } from "@/domains/chat/access";
 import type { ChatMessage, MedicalLinkMeta, SendMessageInput } from "@/domains/chat/types";
-import { mapMessageRow } from "@/domains/chat/api";
+import {
+  mapMessageRow,
+  markChatMessageRead,
+  markChatMessageUnread,
+} from "@/domains/chat/api";
 import { sendAppointmentAction } from "@/domains/appointments/api";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
@@ -116,6 +120,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const editMessage = useChatStore((s) => s.editMessage);
   const editMedicalMessage = useChatStore((s) => s.editMedicalMessage);
   const updateMessageEmotions = useChatStore((s) => s.updateMessageEmotions);
+  const patchMessage = useChatStore((s) => s.patchMessage);
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const doctorId = useAuthStore((s) => s.doctorId);
@@ -488,21 +493,63 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, []);
 
   const openMessageActions = (item: ChatMessage) => {
-    if (!id || !accessToken || !profile?.id || item.senderId !== "me") return;
+    if (!id || !accessToken || !profile?.id) return;
+    if (item.pending || item.failed || item.id.startsWith("pending-")) return;
 
     showChatMessageActions({
       message: item,
       isRTL,
-      onEditText: () => setEditingMessage(item),
-      onChangeRecord: () => void openMedicalPickerForReplace(item),
-      onDelete: () => {
-        void deleteMessage(id, item.id, accessToken, profile.id, role).catch(() => {
-          Alert.alert(
-            isRTL ? "تعذر الحذف" : "Could not delete",
-            isRTL ? "حاول مرة أخرى." : "Please try again.",
-          );
-        });
-      },
+      onEditText:
+        item.senderId === "me" ? () => setEditingMessage(item) : undefined,
+      onChangeRecord:
+        item.senderId === "me"
+          ? () => void openMedicalPickerForReplace(item)
+          : undefined,
+      onDelete:
+        item.senderId === "me"
+          ? () => {
+              void deleteMessage(id, item.id, accessToken, profile.id, role).catch(
+                () => {
+                  Alert.alert(
+                    isRTL ? "تعذر الحذف" : "Could not delete",
+                    isRTL ? "حاول مرة أخرى." : "Please try again.",
+                  );
+                },
+              );
+            }
+          : undefined,
+      onToggleRead:
+        item.senderId !== "me"
+          ? () => {
+              void (async () => {
+                try {
+                  const next = item.readAt
+                    ? await markChatMessageUnread(
+                        accessToken,
+                        item.id,
+                        id,
+                        profile.id,
+                      )
+                    : await markChatMessageRead(
+                        accessToken,
+                        item.id,
+                        id,
+                        profile.id,
+                      );
+                  patchMessage(item.id, { readAt: next.readAt ?? null });
+                } catch (e) {
+                  Alert.alert(
+                    isRTL ? "تعذر التحديث" : "Could not update",
+                    e instanceof Error
+                      ? e.message
+                      : isRTL
+                        ? "حاول مرة أخرى."
+                        : "Please try again.",
+                  );
+                }
+              })();
+            }
+          : undefined,
     });
   };
 
@@ -1243,15 +1290,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           selfUserId={profile?.id}
           onSelect={(emotion) => void handleToggleEmotion(reactionTarget, emotion)}
           onClose={closeReactionPicker}
-          onMore={
-            reactionTarget.senderId === "me"
-              ? () => {
-                  const target = reactionTarget;
-                  closeReactionPicker();
-                  openMessageActions(target);
-                }
-              : undefined
-          }
+          onMore={() => {
+            const target = reactionTarget;
+            closeReactionPicker();
+            openMessageActions(target);
+          }}
         />
       ) : null}
       </View>

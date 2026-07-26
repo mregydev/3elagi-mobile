@@ -162,11 +162,11 @@ const en = {
     forgotPasswordEyebrow: "3elagi · Reset password",
     forgotPasswordTitle: "Forgot password",
     forgotPasswordSubtitle:
-      "Enter the email for your account and we'll send a reset link.",
+      "Enter your email. We'll send a reset link — open it and choose a new password.",
     sendResetLink: "Send reset link",
     resetLinkSent: "Reset link sent",
     resetLinkSentDetail:
-      "If an account exists for that email, a password reset link is on its way. Check your inbox.",
+      "Check your email for a reset link. Open the link, then enter your new password. If you don't see it, check spam.",
     backToLogin: "Back to log in",
     resetPasswordEyebrow: "3elagi · New password",
     resetPasswordTitle: "Set a new password",
@@ -755,11 +755,11 @@ const ar: typeof en = {
     forgotPasswordEyebrow: "3elagi · إعادة تعيين كلمة المرور",
     forgotPasswordTitle: "نسيت كلمة المرور",
     forgotPasswordSubtitle:
-      "أدخل البريد الإلكتروني لحسابك وسنرسل رابط إعادة التعيين.",
+      "أدخل بريدك الإلكتروني. سنرسل رابط إعادة التعيين — افتحه ثم أدخل كلمة مرور جديدة.",
     sendResetLink: "إرسال رابط إعادة التعيين",
     resetLinkSent: "تم إرسال رابط إعادة التعيين",
     resetLinkSentDetail:
-      "إذا كان هناك حساب بهذا البريد، سيصلك رابط إعادة تعيين كلمة المرور. تحقق من صندوق الوارد.",
+      "تحقق من بريدك وافتح رابط إعادة التعيين، ثم أدخل كلمة المرور الجديدة. إن لم تجده، راجع البريد المزعج.",
     backToLogin: "العودة لتسجيل الدخول",
     resetPasswordEyebrow: "3elagi · كلمة مرور جديدة",
     resetPasswordTitle: "تعيين كلمة مرور جديدة",

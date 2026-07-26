@@ -120,6 +120,8 @@ export interface ChatMessage {
   pending?: boolean;
   failed?: boolean;
   editedAt?: string | null;
+  /** When the recipient read this message (ISO). */
+  readAt?: string | null;
   pointsBalance?: number;
   emotions?: MessageEmotionItem[];
 }

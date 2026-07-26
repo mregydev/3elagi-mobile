@@ -108,6 +108,7 @@ export function mapMessageRow(
         ? (row.attachment_meta as ConsultationActionMeta | undefined) ?? null
         : null,
     editedAt: row.edited_at ?? null,
+    readAt: row.read_at ?? null,
     pointsBalance: row.points_balance,
     emotions: mapEmotionRows(row.emotions),
   };
@@ -222,6 +223,44 @@ export async function markMessagesRead(
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     throw new Error(data.message ?? `Failed to mark read (${res.status})`);
   }
+}
+
+export async function markChatMessageRead(
+  token: string,
+  messageId: string,
+  peerId: string,
+  selfId: string,
+): Promise<ChatMessage> {
+  const res = await fetch(`${API_BASE}/messages/${messageId}/read`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as MessageRow & {
+    message?: string;
+  };
+  if (!res.ok) {
+    throw new Error(data.message ?? `Failed to mark read (${res.status})`);
+  }
+  return mapMessageRow(data, peerId, selfId);
+}
+
+export async function markChatMessageUnread(
+  token: string,
+  messageId: string,
+  peerId: string,
+  selfId: string,
+): Promise<ChatMessage> {
+  const res = await fetch(`${API_BASE}/messages/${messageId}/unread`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as MessageRow & {
+    message?: string;
+  };
+  if (!res.ok) {
+    throw new Error(data.message ?? `Failed to mark unread (${res.status})`);
+  }
+  return mapMessageRow(data, peerId, selfId);
 }
 
 export async function deleteChatMessage(
