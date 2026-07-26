@@ -139,17 +139,11 @@ export function ChatMessageBubble({
         })()
       : null;
 
+  const isVoiceMsg = item.type === "voice";
+
   const bubbleColors =
-    isImage || isVideo
-      ? mediaCaption
-        ? mine
-          ? { backgroundColor: colors.primary }
-          : {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderWidth: 1,
-            }
-        : { backgroundColor: "transparent" }
+    isImage || isVideo || isVoiceMsg
+      ? { backgroundColor: "transparent", borderWidth: 0 }
       : isDocumentRequest
       ? {
           backgroundColor: "transparent",
@@ -172,7 +166,7 @@ export function ChatMessageBubble({
           };
 
   const textColor =
-    isMedicalLink || isDocumentRequest
+    isMedicalLink || isDocumentRequest || isVoiceMsg || isImage || isVideo
       ? colors.foreground
       : mine
         ? "#fff"
@@ -210,7 +204,7 @@ export function ChatMessageBubble({
   if (isImage && imageUri) {
     const showLoader = item.pending || !imageLoaded;
     body = (
-      <View>
+      <View style={[styles.mediaBlock, { width: imageWidth }]}>
         <Pressable
           onPress={() => {
             const fullUri = item.attachmentUrl ?? item.localAttachmentUrl;
@@ -220,7 +214,7 @@ export function ChatMessageBubble({
           onLongPress={onLongPress}
           delayLongPress={400}
           disabled={!(item.attachmentUrl ?? item.localAttachmentUrl)}
-          style={{ width: imageWidth, height: imageHeight }}
+          style={[styles.mediaShadow, { width: imageWidth, height: imageHeight }]}
         >
           <View style={[styles.mediaWrap, { width: imageWidth, height: imageHeight }]}>
             {!imageLoaded ? (
@@ -262,13 +256,10 @@ export function ChatMessageBubble({
         </Pressable>
         {mediaCaption ? (
           <Text
-            style={{
-              color: textColor,
-              fontSize: 14,
-              lineHeight: 20,
-              marginTop: 8,
-              textAlign: isRTL ? "right" : "left",
-            }}
+            style={[
+              styles.mediaCaptionText,
+              { color: colors.primary, width: imageWidth, backgroundColor: "transparent" },
+            ]}
           >
             {mediaCaption}
           </Text>
@@ -277,7 +268,13 @@ export function ChatMessageBubble({
     );
   } else if (isVideo && imageUri) {
     body = (
-      <View style={Platform.OS === "web" ? styles.webMediaFrame : undefined}>
+      <View
+        style={[
+          Platform.OS === "web" ? styles.webMediaFrame : null,
+          styles.mediaBlock,
+          { width: responsiveMediaWidth },
+        ]}
+      >
         <ChatInlineVideo
           uri={imageUri}
           width={responsiveMediaWidth}
@@ -289,13 +286,14 @@ export function ChatMessageBubble({
         />
         {mediaCaption ? (
           <Text
-            style={{
-              color: textColor,
-              fontSize: 14,
-              lineHeight: 20,
-              marginTop: 8,
-              textAlign: isRTL ? "right" : "left",
-            }}
+            style={[
+              styles.mediaCaptionText,
+              {
+                color: colors.primary,
+                width: responsiveMediaWidth,
+                backgroundColor: "transparent",
+              },
+            ]}
           >
             {mediaCaption}
           </Text>
@@ -307,9 +305,9 @@ export function ChatMessageBubble({
       <VoiceMessagePlayer
         uri={item.localAttachmentUrl ?? item.attachmentUrl}
         pending={item.pending}
-        color={textColor}
-        trackColor={`${textColor}33`}
-        fillColor={textColor}
+        color={colors.primary}
+        trackColor={`${colors.primary}33`}
+        fillColor={colors.primary}
         isRTL={isRTL}
         rowDir={rowDir}
         onLongPress={onLongPress}
@@ -888,6 +886,53 @@ export function ChatMessageBubble({
     );
   }
 
+  const isVoice = isVoiceMsg;
+  const bubbleStyle = [
+    styles.bubble,
+    isVoice && styles.voiceBubble,
+    isImage && styles.imageBubble,
+    isVideo && styles.imageBubble,
+    isMedicalLink && styles.medicalBubble,
+    isDocumentRequest && styles.documentRequestBubble,
+    isConsultationAction && styles.medicalBubble,
+    bubbleColors,
+    isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" as const },
+    isDocumentRequest && { width: medicalBubbleWidth, maxWidth: "100%" as const },
+    isConsultationAction && {
+      width: consultationBubbleWidth,
+      maxWidth: "100%" as const,
+    },
+    highlighted && {
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+  ];
+
+  const readTicks =
+    mine && !item.pending && !isAccessAction ? (
+      <View style={[styles.readRow, { flexDirection: rowDir }]}>
+        {item.readAt ? (
+          <CheckCheck
+            size={14}
+            color={
+              isVoice || isImage || isVideo
+                ? colors.primary
+                : "rgba(255,255,255,0.9)"
+            }
+          />
+        ) : (
+          <Check
+            size={14}
+            color={
+              isVoice || isImage || isVideo
+                ? colors.mutedForeground
+                : "rgba(255,255,255,0.65)"
+            }
+          />
+        )}
+      </View>
+    ) : null;
+
   return (
     <View
       style={[
@@ -899,39 +944,26 @@ export function ChatMessageBubble({
         (item.emotions?.length ?? 0) > 0 && styles.wrapWithReactions,
       ]}
     >
-      <Pressable
-        onLongPress={onLongPress}
-        delayLongPress={400}
-        disabled={!onLongPress}
-        style={({ pressed }) => [
-          styles.bubble,
-          isImage && styles.imageBubble,
-          isVideo && styles.imageBubble,
-          isMedicalLink && styles.medicalBubble,
-          isDocumentRequest && styles.documentRequestBubble,
-          isConsultationAction && styles.medicalBubble,
-          bubbleColors,
-          isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" },
-          isDocumentRequest && { width: medicalBubbleWidth, maxWidth: "100%" },
-          isConsultationAction && { width: consultationBubbleWidth, maxWidth: "100%" },
-          highlighted && {
-            borderWidth: 2,
-            borderColor: colors.primary,
-          },
-          pressed && onLongPress ? { opacity: 0.92 } : null,
-        ]}
-      >
-        {body}
-        {mine && !item.pending && !isAccessAction ? (
-          <View style={[styles.readRow, { flexDirection: rowDir }]}>
-            {item.readAt ? (
-              <CheckCheck size={14} color={mine ? "rgba(255,255,255,0.9)" : colors.primary} />
-            ) : (
-              <Check size={14} color={mine ? "rgba(255,255,255,0.65)" : colors.mutedForeground} />
-            )}
-          </View>
-        ) : null}
-      </Pressable>
+      {/* Voice uses View so the scrubber PanResponder isn't blocked by Pressable. */}
+      {isVoice ? (
+        <View style={bubbleStyle}>
+          {body}
+          {readTicks}
+        </View>
+      ) : (
+        <Pressable
+          onLongPress={onLongPress}
+          delayLongPress={400}
+          disabled={!onLongPress}
+          style={({ pressed }) => [
+            ...bubbleStyle,
+            pressed && onLongPress ? { opacity: 0.92 } : null,
+          ]}
+        >
+          {body}
+          {readTicks}
+        </Pressable>
+      )}
       <MessageEmotionsBar
         emotions={item.emotions ?? []}
         selfUserId={selfUserId}
@@ -956,16 +988,44 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     flexShrink: 1,
   },
+  voiceBubble: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    minWidth: 200,
+  },
   imageBubble: {
     padding: 0,
     borderRadius: 12,
-    overflow: "hidden",
+    overflow: "visible",
     borderWidth: 0,
   },
   webMediaFrame: {
     width: "100%",
     maxWidth: "100%",
     alignSelf: "stretch",
+  },
+  mediaBlock: {
+    alignSelf: "stretch",
+    overflow: "visible",
+  },
+  mediaShadow: {
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#1a2132",
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+    // @ts-expect-error web box-shadow
+    boxShadow: "0 4px 14px rgba(26, 33, 50, 0.16)",
+  },
+  mediaCaptionText: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20,
+    textAlign: "center",
+    backgroundColor: "transparent",
   },
   mediaWrap: {
     borderRadius: 12,

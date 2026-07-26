@@ -164,7 +164,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
   },
-  body: { padding: 24, alignItems: "center", paddingBottom: Platform.OS === "web" ? 32 : 24 },
+  body: {
+    padding: 24,
+    alignItems: "center",
+    paddingBottom: Platform.OS === "web" ? 32 : 24,
+    ...(Platform.OS === "web" ? { flexGrow: 1, justifyContent: "center" as const } : null),
+  },
   bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
   title: { fontSize: 28, fontWeight: "800", textAlign: "center" },
   sub: { fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },

@@ -1,12 +1,16 @@
 import { Audio, type AVPlaybackStatus } from "expo-av";
 import { Pause, Play } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
 } from "react-native";
 
 type Props = {
@@ -20,6 +24,13 @@ type Props = {
   onLongPress?: () => void;
 };
 
+/** Decorative waveform heights (0–1). Looks like real audio without needing peaks. */
+const WAVE_BARS = [
+  0.32, 0.48, 0.72, 0.4, 0.88, 0.55, 0.7, 0.38, 0.92, 0.5, 0.65, 0.78, 0.42,
+  0.85, 0.58, 0.68, 0.36, 0.8, 0.52, 0.74, 0.45, 0.9, 0.48, 0.62, 0.34, 0.76,
+  0.56, 0.7,
+];
+
 function formatMs(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(total / 60);
@@ -27,7 +38,7 @@ function formatMs(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** WhatsApp-style voice bubble: play/pause + scrubbable progress. */
+/** WhatsApp-style voice bubble: large play control + waveform scrubber. */
 export function VoiceMessagePlayer({
   uri,
   pending,
@@ -39,11 +50,26 @@ export function VoiceMessagePlayer({
   onLongPress,
 }: Props) {
   const soundRef = useRef<Audio.Sound | null>(null);
+  const trackRef = useRef<View>(null);
   const trackWidthRef = useRef(0);
+  const trackPageXRef = useRef(0);
+  const durationRef = useRef(0);
+  const scrubbingRef = useRef(false);
+  const wasPlayingRef = useRef(false);
+  const playingRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
+  const [scrubbing, setScrubbing] = useState(false);
+
+  useEffect(() => {
+    durationRef.current = durationMs;
+  }, [durationMs]);
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
 
   useEffect(() => {
     return () => {
@@ -55,8 +81,13 @@ export function VoiceMessagePlayer({
 
   const onStatus = (status: AVPlaybackStatus) => {
     if (!status.isLoaded) return;
-    setPositionMs(status.positionMillis ?? 0);
-    if (status.durationMillis) setDurationMs(status.durationMillis);
+    if (status.durationMillis) {
+      durationRef.current = status.durationMillis;
+      setDurationMs(status.durationMillis);
+    }
+    if (!scrubbingRef.current) {
+      setPositionMs(status.positionMillis ?? 0);
+    }
     if (status.didJustFinish) {
       setPlaying(false);
       setPositionMs(0);
@@ -74,12 +105,13 @@ export function VoiceMessagePlayer({
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const { sound } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: false, progressUpdateIntervalMillis: 100 },
+        { shouldPlay: false, progressUpdateIntervalMillis: 80 },
         onStatus,
       );
       soundRef.current = sound;
       const status = await sound.getStatusAsync();
       if (status.isLoaded && status.durationMillis) {
+        durationRef.current = status.durationMillis;
         setDurationMs(status.durationMillis);
       }
       return sound;
@@ -87,6 +119,105 @@ export function VoiceMessagePlayer({
       setLoading(false);
     }
   };
+
+  const measureTrack = () => {
+    trackRef.current?.measureInWindow((x, _y, width) => {
+      trackPageXRef.current = x;
+      if (width > 0) trackWidthRef.current = width;
+    });
+  };
+
+  const ratioFromPageX = (pageX: number) => {
+    const w = trackWidthRef.current || 1;
+    const raw = Math.max(0, Math.min(1, (pageX - trackPageXRef.current) / w));
+    return isRTL ? 1 - raw : raw;
+  };
+
+  const ratioFromEvent = (e: GestureResponderEvent) => {
+    if (typeof e.nativeEvent.pageX === "number") {
+      return ratioFromPageX(e.nativeEvent.pageX);
+    }
+    const x = e.nativeEvent.locationX;
+    const w = trackWidthRef.current || 1;
+    const raw = Math.max(0, Math.min(1, x / w));
+    return isRTL ? 1 - raw : raw;
+  };
+
+  const applyScrubPreview = (ratio: number) => {
+    const clamped = Math.max(0, Math.min(1, ratio));
+    const duration = durationRef.current;
+    if (duration > 0) {
+      setPositionMs(clamped * duration);
+    } else {
+      setPositionMs(clamped);
+    }
+  };
+
+  const seekToRatio = async (ratio: number, resumeIfWasPlaying?: boolean) => {
+    const clamped = Math.max(0, Math.min(1, ratio));
+    const sound = await ensureSound();
+    const duration = durationRef.current;
+    if (!sound || !duration) {
+      applyScrubPreview(clamped);
+      return;
+    }
+    const next = clamped * duration;
+    setPositionMs(next);
+    try {
+      await sound.setPositionAsync(next);
+      if (resumeIfWasPlaying) {
+        await sound.playAsync();
+        setPlaying(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !pending && !!uri,
+        onMoveShouldSetPanResponder: () => !pending && !!uri,
+        onStartShouldSetPanResponderCapture: () => !pending && !!uri,
+        onMoveShouldSetPanResponderCapture: () => !pending && !!uri,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: (e) => {
+          scrubbingRef.current = true;
+          setScrubbing(true);
+          wasPlayingRef.current = playingRef.current;
+          measureTrack();
+          const ratio = ratioFromEvent(e);
+          applyScrubPreview(ratio);
+          void (async () => {
+            const sound = await ensureSound();
+            if (sound && playingRef.current) {
+              try {
+                await sound.pauseAsync();
+              } catch {
+                /* ignore */
+              }
+            }
+            void seekToRatio(ratio);
+          })();
+        },
+        onPanResponderMove: (e) => {
+          applyScrubPreview(ratioFromEvent(e));
+        },
+        onPanResponderRelease: (e) => {
+          const ratio = ratioFromEvent(e);
+          scrubbingRef.current = false;
+          setScrubbing(false);
+          void seekToRatio(ratio, wasPlayingRef.current);
+        },
+        onPanResponderTerminate: () => {
+          scrubbingRef.current = false;
+          setScrubbing(false);
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pan handlers use latest refs
+    [pending, uri, isRTL],
+  );
 
   const togglePlay = async () => {
     if (!uri || pending) return;
@@ -116,25 +247,26 @@ export function VoiceMessagePlayer({
     }
   };
 
-  const seekTo = async (ratio: number) => {
-    const sound = soundRef.current;
-    if (!sound || !durationMs) return;
-    const next = Math.max(0, Math.min(1, ratio)) * durationMs;
-    try {
-      await sound.setPositionAsync(next);
-      setPositionMs(next);
-    } catch {
-      /* ignore */
-    }
+  const progress = durationMs > 0 ? Math.min(1, positionMs / durationMs) : 0;
+  const elapsedLabel = formatMs(positionMs);
+  const durationLabel = durationMs > 0 ? formatMs(durationMs) : "0:00";
+  const timeLabel = pending
+    ? isRTL
+      ? "جاري الإرسال…"
+      : "Sending…"
+    : playing || positionMs > 0 || scrubbing
+      ? elapsedLabel
+      : durationLabel;
+
+  const onTrackLayout = (e: LayoutChangeEvent) => {
+    trackWidthRef.current = e.nativeEvent.layout.width;
+    measureTrack();
   };
 
-  const progress = durationMs > 0 ? Math.min(1, positionMs / durationMs) : 0;
-  const timeLabel =
-    playing || positionMs > 0
-      ? formatMs(positionMs)
-      : durationMs > 0
-        ? formatMs(durationMs)
-        : "0:00";
+  const knobSize = scrubbing ? 14 : 11;
+  const knobOffset = knobSize / 2;
+
+  const iconColor = "#ffffff";
 
   return (
     <View style={[styles.row, { flexDirection: rowDir }]}>
@@ -143,56 +275,80 @@ export function VoiceMessagePlayer({
         onLongPress={onLongPress}
         delayLongPress={400}
         disabled={pending || !uri || loading}
-        hitSlop={8}
-        style={styles.playBtn}
+        hitSlop={10}
+        style={({ pressed }) => [
+          styles.playBtn,
+          {
+            backgroundColor: fillColor,
+            opacity: pressed ? 0.88 : 1,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+          },
+        ]}
       >
         {pending || loading ? (
-          <ActivityIndicator size="small" color={color} />
+          <ActivityIndicator size="small" color={iconColor} />
         ) : playing ? (
-          <Pause size={18} color={color} fill={color} />
+          <Pause size={15} color={iconColor} fill={iconColor} />
         ) : (
-          <Play size={18} color={color} fill={color} />
+          <View style={styles.playIconWrap}>
+            <Play size={15} color={iconColor} fill={iconColor} />
+          </View>
         )}
       </Pressable>
 
       <View style={styles.trackBlock}>
-        <Pressable
-          onLongPress={onLongPress}
-          delayLongPress={400}
-          onPress={(e) => {
-            const x = e.nativeEvent.locationX;
-            const w = trackWidthRef.current || 1;
-            const ratio = isRTL ? 1 - x / w : x / w;
-            void seekTo(ratio);
-          }}
-          onLayout={(e) => {
-            trackWidthRef.current = e.nativeEvent.layout.width;
-          }}
-          style={[styles.track, { backgroundColor: trackColor }]}
+        <View
+          ref={trackRef}
+          onLayout={onTrackLayout}
+          style={[styles.trackHit, Platform.OS === "web" && styles.trackHitWeb]}
+          {...panResponder.panHandlers}
         >
-          <View
-            style={[
-              styles.fill,
-              {
-                backgroundColor: fillColor,
-                width: `${Math.max(progress * 100, playing ? 2 : 0)}%`,
-                [isRTL ? "right" : "left"]: 0,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.knob,
-              {
-                backgroundColor: fillColor,
-                [isRTL ? "right" : "left"]: `${Math.max(progress * 100 - 2, 0)}%`,
-              },
-            ]}
-          />
-        </Pressable>
-        <Text style={[styles.time, { color, textAlign: isRTL ? "right" : "left" }]}>
-          {pending ? (isRTL ? "جاري الإرسال…" : "Sending…") : timeLabel}
-        </Text>
+          <View style={[styles.waveRow, { flexDirection: rowDir }]}>
+            {WAVE_BARS.map((h, i) => {
+              const barProgress = (i + 0.5) / WAVE_BARS.length;
+              const active = barProgress <= progress;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.waveBar,
+                    {
+                      height: 4 + h * 12,
+                      backgroundColor: active ? fillColor : trackColor,
+                      opacity: active ? 1 : 0.7,
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
+
+          <View style={styles.scrubRail} pointerEvents="none">
+            <View
+              style={[
+                styles.knob,
+                {
+                  width: knobSize,
+                  height: knobSize,
+                  borderRadius: knobSize / 2,
+                  backgroundColor: fillColor,
+                  borderColor: "#ffffff",
+                  [isRTL ? "right" : "left"]: `${progress * 100}%`,
+                  marginLeft: isRTL ? 0 : -knobOffset,
+                  marginRight: isRTL ? -knobOffset : 0,
+                  transform: [{ scale: scrubbing ? 1.1 : 1 }],
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        <View style={[styles.timeRow, { flexDirection: rowDir }]}>
+          <Text style={[styles.time, { color }]}>{timeLabel}</Text>
+          {!pending && durationMs > 0 && (playing || positionMs > 0 || scrubbing) ? (
+            <Text style={[styles.timeMuted, { color }]}>{durationLabel}</Text>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -201,44 +357,77 @@ export function VoiceMessagePlayer({
 const styles = StyleSheet.create({
   row: {
     alignItems: "center",
-    gap: 10,
-    minWidth: 180,
+    gap: 8,
+    minWidth: 190,
   },
   playBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
+  playIconWrap: {
+    marginLeft: 1,
+  },
   trackBlock: {
     flex: 1,
-    gap: 4,
+    gap: 1,
     minWidth: 120,
   },
-  track: {
-    height: 4,
-    borderRadius: 2,
-    overflow: "visible",
+  trackHit: {
+    height: 26,
     justifyContent: "center",
   },
-  fill: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    borderRadius: 2,
+  trackHitWeb: {
+    // @ts-expect-error web-only cursor
+    cursor: "pointer",
+    userSelect: "none",
+  },
+  waveRow: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: 18,
+    gap: 1.5,
+  },
+  waveBar: {
+    flex: 1,
+    maxWidth: 3,
+    minWidth: 2,
+    borderRadius: 1.5,
+  },
+  scrubRail: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
   },
   knob: {
     position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginLeft: -6,
-    top: -4,
+    borderWidth: 1.5,
+    zIndex: 2,
+    shadowColor: "#3057F2",
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  timeRow: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
   },
   time: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
     opacity: 0.85,
+    letterSpacing: 0.2,
+    lineHeight: 13,
+  },
+  timeMuted: {
+    fontSize: 10,
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
+    opacity: 0.5,
+    lineHeight: 12,
   },
 });

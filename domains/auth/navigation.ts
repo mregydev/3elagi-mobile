@@ -37,7 +37,8 @@ export function getPostLogoutRoute(): "/welcome" {
   return WELCOME_ROUTE;
 }
 
-function isPublicWebPath(pathname: string): boolean {
+/** Paths guests may stay on (welcome + auth flows like forgot/reset password). */
+export function isPublicWebPath(pathname: string): boolean {
   return (
     pathname === "/" ||
     pathname === WELCOME_ROUTE ||
