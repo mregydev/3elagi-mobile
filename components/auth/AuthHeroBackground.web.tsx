@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
-const AUTH_HERO_WEB = require("@/assets/images/auth-login-hero.jpg");
+const AUTH_HERO_WEB = require("@/assets/images/auth-login-hero.png");
 
 interface Props {
   children: React.ReactNode;
@@ -17,7 +17,7 @@ export function AuthHeroBackground({ children, overlayOpacity = 0.38 }: Props) {
       <Image
         source={AUTH_HERO_WEB}
         style={styles.image}
-        contentFit="contain"
+        contentFit="cover"
         contentPosition="center"
         accessibilityLabel=""
       />
