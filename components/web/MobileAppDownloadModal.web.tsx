@@ -124,14 +124,15 @@ const styles = StyleSheet.create({
   },
   qrWrap: {
     alignSelf: "center",
-    padding: 16,
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
+    padding: 8,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E4E4E7",
+    borderColor: "#3a3a3a",
+    overflow: "hidden",
   },
   qr: {
-    width: 200,
-    height: 200,
+    width: 220,
+    height: 220,
   },
 });
