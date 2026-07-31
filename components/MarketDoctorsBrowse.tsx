@@ -1,9 +1,7 @@
-import { useFocusEffect } from "@react-navigation/native";
-import { Redirect, router } from "expo-router";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,44 +9,40 @@ import {
   Text,
   View,
 } from "react-native";
-import { AdvertisementCarousel } from "@/components/AdvertisementCarousel";
-import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard";
-import { AppHeader } from "@/components/AppHeader";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
+import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import {
   countryFlagEmoji,
   patientCountryLabel,
+  type MarketCountryCode,
 } from "@/constants/patientCountries";
-import { useAuthStore } from "@/domains/auth/store";
-import { isSignedIn } from "@/domains/auth/session";
 import {
-  fetchAdvertisements,
   fetchDoctorsBySpeciality,
   fetchSpecialities,
   mergeDoctorIntoRoster,
-  type Advertisement,
   type Speciality,
   type SpecialityDoctor,
   type SpecialityDoctorRow,
 } from "@/domains/home/api";
-import {
-  getDomainMarketCountry,
-  resolveBrowseMarketCountry,
-} from "@/domains/market/resolveMarketCountry";
 import { onDoctorRegistered } from "@/domains/presence/socket";
-import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useWebLayout } from "@/hooks/useWebLayout";
 
-function ChatsHomeBrowse() {
+type Props = {
+  marketCountry: MarketCountryCode;
+  /** Show a flag + country banner above specialities. */
+  showMarketBanner?: boolean;
+  onBackFromSpeciality?: () => void;
+};
+
+/** Speciality grid → doctor roster for a fixed market (EG / JO). */
+export function MarketDoctorsBrowse({
+  marketCountry,
+  showMarketBanner = true,
+}: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
-  const profileCountry = useAuthStore((s) => s.profile?.country);
-  const marketCountry = resolveBrowseMarketCountry(profileCountry);
-  const domainMarket = getDomainMarketCountry();
-  const [ads, setAds] = useState<Advertisement[]>([]);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
     null,
@@ -62,14 +56,9 @@ function ChatsHomeBrowse() {
     setLoadingHome(true);
     setError(null);
     try {
-      const [adRows, specRows] = await Promise.all([
-        fetchAdvertisements(),
-        fetchSpecialities(),
-      ]);
-      setAds(adRows);
-      setSpecialities(specRows);
+      setSpecialities(await fetchSpecialities());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load home data");
+      setError(e instanceof Error ? e.message : "Failed to load specialities");
     } finally {
       setLoadingHome(false);
     }
@@ -78,15 +67,6 @@ function ChatsHomeBrowse() {
   useEffect(() => {
     void loadHome();
   }, [loadHome]);
-
-  useFocusEffect(
-    useCallback(() => {
-      // Only fetch when we have nothing yet — refetching on every tab focus
-      // caused a network round-trip + re-render that made the home tab feel
-      // like it hung when switching back to it.
-      if (!selectedSpeciality && specialities.length === 0) void loadHome();
-    }, [loadHome, selectedSpeciality, specialities.length]),
-  );
 
   useEffect(() => {
     if (!selectedSpeciality) return;
@@ -116,7 +96,6 @@ function ChatsHomeBrowse() {
 
   useEffect(() => {
     if (!selectedSpeciality) return;
-
     onDoctorRegistered((payload: SpecialityDoctorRow) => {
       setDoctors((current) =>
         mergeDoctorIntoRoster(
@@ -126,9 +105,7 @@ function ChatsHomeBrowse() {
           marketCountry,
         ),
       );
-      setLoadingDoctors(false);
     });
-
     return () => onDoctorRegistered(null);
   }, [selectedSpeciality?.id, marketCountry]);
 
@@ -152,24 +129,6 @@ function ChatsHomeBrowse() {
     );
   }
 
-  if (error && specialities.length === 0 && !selectedSpeciality) {
-    return (
-      <View style={styles.empty}>
-        <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
-          {error}
-        </Text>
-        <Pressable
-          onPress={() => void loadHome()}
-          style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 12 }]}
-        >
-          <Text style={{ color: colors.primary, fontWeight: "700" }}>
-            {isRTL ? "إعادة المحاولة" : "Retry"}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   if (selectedSpeciality) {
     return (
       <DoctorChatRoster
@@ -188,6 +147,9 @@ function ChatsHomeBrowse() {
     );
   }
 
+  const countryName = patientCountryLabel(marketCountry, isRTL);
+  const flag = countryFlagEmoji(marketCountry);
+
   return (
     <ScrollView
       nativeID={BRAND_SCROLL_NATIVE_ID}
@@ -198,12 +160,10 @@ function ChatsHomeBrowse() {
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }
     >
-      <AiAssistantHomeCard />
-      <AdvertisementCarousel items={ads} isRTL={isRTL} />
-      {domainMarket ? (
+      {showMarketBanner ? (
         <View
           style={[
-            styles.marketBanner,
+            styles.banner,
             {
               backgroundColor: `${colors.primary}12`,
               borderColor: `${colors.primary}33`,
@@ -211,14 +171,13 @@ function ChatsHomeBrowse() {
             },
           ]}
         >
-          <Text style={styles.marketFlag}>{countryFlagEmoji(domainMarket)}</Text>
-          <Text style={[styles.marketBannerText, { color: colors.foreground }]}>
-            {isRTL
-              ? `أطباء ${patientCountryLabel(domainMarket, true)} فقط`
-              : `Showing doctors from ${patientCountryLabel(domainMarket, false)} only`}
+          <Text style={styles.flag}>{flag}</Text>
+          <Text style={[styles.bannerText, { color: colors.foreground }]}>
+            {isRTL ? `أطباؤنا في ${countryName}` : `Our doctors in ${countryName}`}
           </Text>
         </View>
       ) : null}
+
       {error ? (
         <View style={styles.empty}>
           <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
@@ -234,6 +193,7 @@ function ChatsHomeBrowse() {
           </Pressable>
         </View>
       ) : null}
+
       {specialities.length === 0 && !loadingHome && !error ? (
         <View style={styles.empty}>
           <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
@@ -251,41 +211,20 @@ function ChatsHomeBrowse() {
   );
 }
 
-export default function ChatsTab() {
-  const colors = useColors();
-  const { isDesktop } = useWebLayout();
-  const profile = useAuthStore((s) => s.profile);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const role = useAuthStore((s) => s.role);
-  const showHeader = Platform.OS !== "web" || !isDesktop;
-
-  if (!isSignedIn(profile, accessToken) || !role) {
-    return <Redirect href="/welcome" />;
-  }
-
-  return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {showHeader ? <AppHeader /> : null}
-      <ChatsHomeBrowse />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  root: { flex: 1 },
   scroll: { flex: 1 },
   empty: { alignItems: "center", paddingVertical: 60 },
-  marketBanner: {
+  banner: {
     marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 12,
+    marginBottom: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
     alignItems: "center",
     gap: 10,
   },
-  marketFlag: { fontSize: 24 },
-  marketBannerText: { fontSize: 14, fontWeight: "700", flex: 1 },
+  flag: { fontSize: 28 },
+  bannerText: { fontSize: 15, fontWeight: "700", flex: 1 },
 });

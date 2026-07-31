@@ -20,6 +20,7 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
 import {
   profileSaveChromeHeight,
   profileSaveDockBottomPad,
@@ -518,11 +519,16 @@ export function ProfileEditor({
             ) : null}
 
             <SectionCard
-              title={isRTL ? "التفضيلات" : "Preferences"}
+              title={t.settings.preferences}
               colors={colors}
               textAlign={textAlign}
             >
               <ProfileLanguageField embedded wideCards />
+              {Platform.OS !== "web" ? (
+                <View style={{ marginTop: 12 }}>
+                  <ProfileNotificationsField />
+                </View>
+              ) : null}
             </SectionCard>
         </KeyboardSafeScrollView>
 

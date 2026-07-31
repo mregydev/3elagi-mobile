@@ -8,6 +8,7 @@ import {
   Home,
   ListChecks,
   MessageSquare,
+  Stethoscope,
   User,
   Users,
   type LucideIcon,
@@ -47,7 +48,14 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
         !pathHas(path, "intake") &&
         !pathHas(path, "reviews") &&
         !pathHas(path, "patients") &&
-        !pathHas(path, "activity")),
+        !pathHas(path, "activity") &&
+        !pathHas(path, "our-doctors")),
+  },
+  {
+    href: "/(tabs)/our-doctors",
+    labelKey: "ourDoctors",
+    Icon: Stethoscope,
+    match: (path) => pathHas(path, "our-doctors"),
   },
   {
     href: "/(tabs)/history",

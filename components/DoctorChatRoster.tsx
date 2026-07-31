@@ -15,12 +15,13 @@ import { Avatar } from "@/components/Avatar";
 import type { Conversation } from "@/domains/chat/types";
 import {
   countryFlagEmoji,
-  normalizeMarketCountry,
   patientCountryLabel,
+  type MarketCountryCode,
 } from "@/constants/patientCountries";
 import type { Speciality, SpecialityDoctor } from "@/domains/home/api";
 import { doctorsToConversations } from "@/domains/home/doctorConversations";
 import { useAuthStore } from "@/domains/auth/store";
+import { resolveBrowseMarketCountry } from "@/domains/market/resolveMarketCountry";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 
@@ -92,6 +93,8 @@ interface Props {
   onBack: () => void;
   onSelectDoctor: (doctorUserId: string, doctorEntityId?: string) => void;
   hideHeaderBorder?: boolean;
+  /** Override browse market (Our Doctors / domain lock). */
+  marketCountry?: MarketCountryCode;
 }
 
 export function DoctorChatRoster({
@@ -102,11 +105,13 @@ export function DoctorChatRoster({
   onBack,
   onSelectDoctor,
   hideHeaderBorder = false,
+  marketCountry: marketCountryProp,
 }: Props) {
   const colors = useColors();
   const onlineUsers = usePresenceStore((s) => s.users);
   const profileCountry = useAuthStore((s) => s.profile?.country);
-  const marketCountry = normalizeMarketCountry(profileCountry);
+  const marketCountry =
+    marketCountryProp ?? resolveBrowseMarketCountry(profileCountry);
   const dir = isRTL ? "row-reverse" : "row";
   const label = isRTL ? speciality.nameAr : speciality.nameEn;
   const backLabel = isRTL ? "التخصصات" : "Specialities";

@@ -41,6 +41,11 @@ const en = {
     saved: "Saved successfully",
     saveFailed: "Failed to save",
     language: "Language",
+    notifications: "Notifications",
+    notificationsHint: "Receive alerts for chats, appointments, and calls.",
+    notificationsPermissionDenied:
+      "Notification permission was denied. Enable it in system settings.",
+    notificationsUpdateFailed: "Could not update notification settings.",
   },
   prescription: {
     newTitle: "New Prescription",
@@ -304,6 +309,9 @@ const en = {
     patientAccount: "Patient account",
     country: "Country",
     contactUs: "Contact us",
+    ourDoctors: "Our doctors",
+    ourDoctorsSubtitle: "Browse doctors by country — Egypt or Jordan.",
+    ourDoctorsBrowseHint: "View specialities and doctors in this market",
   },
   contact: {
     title: "Contact us",
@@ -634,6 +642,11 @@ const ar: typeof en = {
     saved: "تم الحفظ بنجاح",
     saveFailed: "فشل الحفظ",
     language: "اللغة",
+    notifications: "الإشعارات",
+    notificationsHint: "استلام تنبيهات للمحادثات والمواعيد والمكالمات.",
+    notificationsPermissionDenied:
+      "تم رفض إذن الإشعارات. فعّله من إعدادات النظام.",
+    notificationsUpdateFailed: "تعذر تحديث إعدادات الإشعارات.",
   },
   prescription: {
     newTitle: "روشتة جديدة",
@@ -897,6 +910,9 @@ const ar: typeof en = {
     patientAccount: "حساب مريض",
     country: "الدولة",
     contactUs: "تواصل معنا",
+    ourDoctors: "أطباؤنا",
+    ourDoctorsSubtitle: "تصفح الأطباء حسب البلد — مصر أو الأردن.",
+    ourDoctorsBrowseHint: "عرض التخصصات والأطباء في هذا السوق",
   },
   contact: {
     title: "تواصل معنا",
@@ -1224,6 +1240,13 @@ const de: typeof en = {
     saved: "Erfolgreich gespeichert",
     saveFailed: "Speichern fehlgeschlagen",
     language: "Sprache",
+    notifications: "Benachrichtigungen",
+    notificationsHint:
+      "Erhalten Sie Hinweise zu Chats, Terminen und Anrufen.",
+    notificationsPermissionDenied:
+      "Benachrichtigungen wurden verweigert. Bitte in den Systemeinstellungen aktivieren.",
+    notificationsUpdateFailed:
+      "Benachrichtigungseinstellungen konnten nicht aktualisiert werden.",
   },
   prescription: {
     newTitle: "Neues Rezept",
@@ -1487,6 +1510,9 @@ const de: typeof en = {
     patientAccount: "Patientenkonto",
     country: "Land",
     contactUs: "Kontakt",
+    ourDoctors: "Unsere Ärzte",
+    ourDoctorsSubtitle: "Ärzte nach Land durchsuchen — Ägypten oder Jordanien.",
+    ourDoctorsBrowseHint: "Fachrichtungen und Ärzte in diesem Markt anzeigen",
   },
   contact: {
     title: "Kontakt",
@@ -1817,6 +1843,11 @@ const es: typeof en = {
     saved: "Guardado correctamente",
     saveFailed: "Error al guardar",
     language: "Idioma",
+    notifications: "Notificaciones",
+    notificationsHint: "Recibe alertas de chats, citas y llamadas.",
+    notificationsPermissionDenied:
+      "Se denegó el permiso de notificaciones. Actívalo en los ajustes del sistema.",
+    notificationsUpdateFailed: "No se pudieron actualizar las notificaciones.",
   },
   prescription: {
     newTitle: "Nueva receta",
@@ -2080,6 +2111,9 @@ const es: typeof en = {
     patientAccount: "Cuenta de paciente",
     country: "País",
     contactUs: "Contáctanos",
+    ourDoctors: "Nuestros médicos",
+    ourDoctorsSubtitle: "Explora médicos por país — Egipto o Jordania.",
+    ourDoctorsBrowseHint: "Ver especialidades y médicos en este mercado",
   },
   contact: {
     title: "Contáctanos",

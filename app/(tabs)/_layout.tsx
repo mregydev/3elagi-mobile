@@ -9,6 +9,7 @@ import {
   ListChecks,
   MessageSquare,
   Star,
+  Stethoscope,
   User,
   Users,
 } from "lucide-react-native";
@@ -51,6 +52,15 @@ export default function TabsLayout() {
           options={{
             title: t.tabs.home,
             tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="our-doctors"
+          options={{
+            title: t.tabs.ourDoctors,
+            tabBarIcon: ({ color, size }) => (
+              <Stethoscope color={color} size={size} />
+            ),
           }}
         />
         <Tabs.Screen

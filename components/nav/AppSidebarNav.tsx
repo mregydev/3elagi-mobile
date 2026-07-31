@@ -83,6 +83,8 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       bounces={false}
+      // @ts-expect-error web writing direction
+      dir={isRTL ? "rtl" : "ltr"}
     >
       {showBrand ? (
         <View style={styles.brandRow}>
@@ -114,7 +116,11 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
             <Text
               style={[
                 styles.navLabel,
-                { color: active ? colors.primary : colors.foreground },
+                {
+                  color: active ? colors.primary : colors.foreground,
+                  textAlign,
+                  writingDirection: isRTL ? "rtl" : "ltr",
+                },
               ]}
             >
               {t.tabs[labelKey]}
@@ -155,7 +161,16 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
           ]}
         >
           <Mail size={18} color={colors.primary} />
-          <Text style={[styles.navLabel, { color: colors.foreground }]}>
+          <Text
+            style={[
+              styles.navLabel,
+              {
+                color: colors.foreground,
+                textAlign,
+                writingDirection: isRTL ? "rtl" : "ltr",
+              },
+            ]}
+          >
             {t.tabs.contactUs}
           </Text>
         </Pressable>
@@ -174,7 +189,14 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
           ]}
         >
           <LogOut size={18} color="#ef4444" />
-          <Text style={styles.logoutText}>{t.tabs.logout}</Text>
+          <Text
+            style={[
+              styles.logoutText,
+              { textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
+            ]}
+          >
+            {t.tabs.logout}
+          </Text>
         </Pressable>
       </View>
     </ScrollView>

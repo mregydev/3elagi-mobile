@@ -49,8 +49,11 @@ export function AppSidebarDrawer() {
               borderColor: colors.border,
               borderRightWidth: isRTL ? 0 : StyleSheet.hairlineWidth,
               borderLeftWidth: isRTL ? StyleSheet.hairlineWidth : 0,
+              direction: isRTL ? "rtl" : "ltr",
             },
           ]}
+          // @ts-expect-error web writing direction
+          dir={isRTL ? "rtl" : "ltr"}
         >
           <View
             style={[
