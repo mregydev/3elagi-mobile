@@ -8,6 +8,7 @@ import { AppSplash } from "@/components/SplashScreen";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
+import { SessionTransferBootstrap } from "@/components/auth/SessionTransferBootstrap";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
 import { GlobalWebStyles } from "@/components/web/GlobalWebStyles";
 import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridge.web";
@@ -123,6 +124,7 @@ export default function RootLayout() {
           <IncomingVideoCallOverlay />
           <WebChatNotificationsBootstrap />
           <HardwareBackHandler />
+          <SessionTransferBootstrap />
           <AuthRedirect />
           <WebLogoutRedirect />
           <Stack screenOptions={{ headerShown: false }}>

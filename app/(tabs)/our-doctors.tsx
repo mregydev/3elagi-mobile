@@ -17,6 +17,10 @@ import {
 } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import {
+  isOnMarketHost,
+  navigateToMarketSite,
+} from "@/domains/market/marketSiteUrl";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -49,6 +53,24 @@ export default function OurDoctorsTab() {
       })),
     [isRTL],
   );
+
+  const openMarket = (code: MarketCountryCode) => {
+    const host =
+      Platform.OS === "web" && typeof window !== "undefined"
+        ? window.location.hostname
+        : "";
+    const isLocal =
+      !host || host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+
+    // Native / local / already on that market host → browse in-app.
+    if (Platform.OS !== "web" || isLocal || isOnMarketHost(code)) {
+      setSelectedMarket(code);
+      return;
+    }
+
+    // Web: jump to egypt/jordan site URL and carry the session so login persists.
+    navigateToMarketSite(code, "/");
+  };
 
   if (!isSignedIn(profile, accessToken) || !role) {
     return <Redirect href="/welcome" />;
@@ -87,7 +109,7 @@ export default function OurDoctorsTab() {
             {marketCards.map(({ code, flag, name }) => (
               <Pressable
                 key={code}
-                onPress={() => setSelectedMarket(code)}
+                onPress={() => openMarket(code)}
                 style={({ pressed }) => [
                   styles.card,
                   {

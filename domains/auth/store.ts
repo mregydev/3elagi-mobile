@@ -8,6 +8,7 @@ import { AUTH_EVENTS } from "./events";
 import { applyLocaleAfterAuth } from "@/domains/i18n/store";
 import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
 import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
+import { readAndStripSessionTransferFromUrl } from "@/domains/auth/sessionTransfer";
 
 interface AuthState {
   profile: PatientProfile | null;
@@ -171,6 +172,20 @@ export const useAuthStore = create<AuthState>()(
         emailVerified: s.emailVerified,
       }),
       onRehydrateStorage: () => (state) => {
+        // Market subdomain hops pass `_st`; apply before AuthRedirect sees hydrated.
+        if (state && Platform.OS === "web") {
+          const transferred = readAndStripSessionTransferFromUrl();
+          if (transferred) {
+            state.profile = transferred.profile;
+            state.accessToken = transferred.accessToken;
+            state.role = transferred.role;
+            state.doctorId = transferred.doctorId;
+            state.specialty = transferred.specialty;
+            state.specialityId = transferred.specialityId;
+            state.doctorApprovalStatus = transferred.doctorApprovalStatus;
+            state.emailVerified = transferred.emailVerified !== false;
+          }
+        }
         if (state) state.hydrated = true;
       },
     },
