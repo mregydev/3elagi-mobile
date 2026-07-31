@@ -1,7 +1,6 @@
 import React from "react";
 import { View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
-import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
   height?: number;
@@ -20,13 +19,11 @@ export function Logo3elagi({
   centered = false,
   style,
 }: Props) {
-  const { isRTL } = useI18n();
   const stroke = dark ? "#ffffff" : "#3057F2";
   const fill = dark ? "rgba(255,255,255,0.12)" : "rgba(48,87,242,0.08)";
-  // Arabic wordmark needs a bit more horizontal room.
-  const ratio = markOnly ? 1 : isRTL ? 320 / 90 : 360 / 90;
+  const ratio = markOnly ? 1 : 360 / 90;
   const width = height * ratio;
-  const viewBox = markOnly ? "0 0 90 90" : isRTL ? "0 0 320 90" : "0 0 360 90";
+  const viewBox = markOnly ? "0 0 90 90" : "0 0 360 90";
 
   const svg = (
     <Svg
@@ -34,7 +31,7 @@ export function Logo3elagi({
       height={height}
       viewBox={viewBox}
       fill="none"
-      accessibilityLabel={isRTL ? "علاجي" : "3elagi"}
+      accessibilityLabel="3elagi"
     >
       <Circle cx={45} cy={45} r={42} fill={fill} stroke={stroke} strokeWidth={3} />
       <Path
@@ -68,29 +65,16 @@ export function Logo3elagi({
       <Circle cx={45} cy={65} r={7} stroke={stroke} strokeWidth={4} fill="none" />
       <Circle cx={45} cy={65} r={2.5} fill={stroke} />
       {!markOnly ? (
-        isRTL ? (
-          <SvgText
-            x={100}
-            y={60}
-            fontFamily="System"
-            fontWeight="800"
-            fontSize={48}
-            fill={stroke}
-          >
-            علاجي
-          </SvgText>
-        ) : (
-          <SvgText
-            x={98}
-            y={62}
-            fontFamily="System"
-            fontWeight="800"
-            fontSize={58}
-            fill={stroke}
-          >
-            3elagi
-          </SvgText>
-        )
+        <SvgText
+          x={98}
+          y={62}
+          fontFamily="System"
+          fontWeight="800"
+          fontSize={58}
+          fill={stroke}
+        >
+          3elagi
+        </SvgText>
       ) : null}
     </Svg>
   );

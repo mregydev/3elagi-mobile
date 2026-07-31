@@ -158,6 +158,11 @@ const en = {
     countrySearchPlaceholder: "Search country…",
     countryNoResults: "No countries match your search.",
     countryRequired: "Please select a country.",
+    doctorMarketRequiredTitle: "Egypt or Jordan required",
+    doctorMarketRequiredSubtitle:
+      "Doctor signup only works on the Egypt or Jordan site. Choose one to continue.",
+    doctorMarketRequired:
+      "Open the Egypt or Jordan site URL to sign up as a doctor.",
     chooseCountryEyebrow: "3elagi · Country",
     chooseCountryTitle: "Choose your country",
     chooseCountrySubtitle:
@@ -759,6 +764,11 @@ const ar: typeof en = {
     countrySearchPlaceholder: "ابحث عن البلد…",
     countryNoResults: "لا توجد دول مطابقة لبحثك.",
     countryRequired: "يرجى اختيار البلد.",
+    doctorMarketRequiredTitle: "مصر أو الأردن مطلوب",
+    doctorMarketRequiredSubtitle:
+      "تسجيل الأطباء متاح فقط على موقع مصر أو الأردن. اختر أحدهما للمتابعة.",
+    doctorMarketRequired:
+      "افتح رابط موقع مصر أو الأردن للتسجيل كطبيب.",
     chooseCountryEyebrow: "3elagi · الدولة",
     chooseCountryTitle: "اختر دولتك",
     chooseCountrySubtitle:
@@ -1359,6 +1369,11 @@ const de: typeof en = {
     countrySearchPlaceholder: "Land suchen…",
     countryNoResults: "Keine Länder passen zu Ihrer Suche.",
     countryRequired: "Bitte wählen Sie ein Land.",
+    doctorMarketRequiredTitle: "Ägypten oder Jordanien erforderlich",
+    doctorMarketRequiredSubtitle:
+      "Arzt-Registrierung nur auf der Ägypten- oder Jordanien-Seite. Wählen Sie eine aus, um fortzufahren.",
+    doctorMarketRequired:
+      "Öffnen Sie die Ägypten- oder Jordanien-URL, um sich als Arzt zu registrieren.",
     chooseCountryEyebrow: "3elagi · Land",
     chooseCountryTitle: "Wählen Sie Ihr Land",
     chooseCountrySubtitle:
@@ -1960,6 +1975,11 @@ const es: typeof en = {
     countrySearchPlaceholder: "Buscar país…",
     countryNoResults: "Ningún país coincide con tu búsqueda.",
     countryRequired: "Selecciona un país.",
+    doctorMarketRequiredTitle: "Se requiere Egipto o Jordania",
+    doctorMarketRequiredSubtitle:
+      "El registro de médicos solo funciona en el sitio de Egipto o Jordania. Elige uno para continuar.",
+    doctorMarketRequired:
+      "Abre la URL del sitio de Egipto o Jordania para registrarte como médico.",
     chooseCountryEyebrow: "3elagi · País",
     chooseCountryTitle: "Elige tu país",
     chooseCountrySubtitle:

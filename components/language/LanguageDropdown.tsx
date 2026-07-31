@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { LANGUAGE_OPTIONS } from "@/components/language/LanguageFlags";
-import { LanguageLocaleIcon } from "@/components/language/LanguageLocaleIcon";
 import type { Locale } from "@/domains/i18n/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -131,7 +130,6 @@ export function LanguageDropdown({
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
   const triggerRef = useRef<View>(null);
-  const iconSize = compact ? 28 : 34;
   const current =
     LANGUAGE_OPTIONS.find((option) => option.locale === locale) ??
     LANGUAGE_OPTIONS[1];
@@ -226,17 +224,12 @@ export function LanguageDropdown({
               },
             ]}
           >
-            <LanguageLocaleIcon
-              locale={option.locale}
-              size={iconSize}
-              selected={active}
-            />
             <View style={styles.menuText}>
               <Text
                 style={[
                   styles.menuLabel,
                   {
-                    color: colors.foreground,
+                    color: active ? colors.primary : colors.foreground,
                     textAlign: isRTL ? "right" : "left",
                   },
                 ]}
@@ -285,15 +278,18 @@ export function LanguageDropdown({
               { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
-            <LanguageLocaleIcon locale={locale} size={iconSize} selected />
-            {showLabel ? (
-              <Text
-                style={[styles.triggerLabel, { color: colors.foreground }]}
-                numberOfLines={1}
-              >
-                {current.label}
-              </Text>
-            ) : null}
+            <Text
+              style={[
+                styles.triggerLabel,
+                {
+                  color: colors.foreground,
+                  fontSize: compact ? 13 : 14,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {current.label}
+            </Text>
           </View>
           <ChevronIcon size={compact ? 14 : 16} color={colors.mutedForeground} />
         </Pressable>

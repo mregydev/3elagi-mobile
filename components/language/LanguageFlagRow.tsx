@@ -1,50 +1,31 @@
-import React, { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LANGUAGE_OPTIONS } from "@/components/language/LanguageFlags";
-import { LanguageLocaleIcon } from "@/components/language/LanguageLocaleIcon";
 import type { Locale } from "@/domains/i18n/store";
+import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
 type Props = {
   value?: Locale;
   onChange?: (locale: Locale) => void;
-  /** Size icons to fill the row width (profile preferences). */
+  /** Stretch chips across the row (profile preferences). */
   fillWidth?: boolean;
 };
 
-const ICON_GAP = 12;
-const MIN_ICON = 40;
-const MAX_ICON = 56;
-
 export function LanguageFlagRow({ value, onChange, fillWidth = false }: Props) {
+  const colors = useColors();
   const { locale: storeLocale, setLocale, isRTL } = useI18n();
   const locale = value ?? storeLocale;
   const applyLocale = onChange ?? setLocale;
-  const [rowWidth, setRowWidth] = useState(0);
-
-  const iconSize =
-    fillWidth && rowWidth > 0
-      ? Math.min(
-          MAX_ICON,
-          Math.max(
-            MIN_ICON,
-            Math.floor(
-              (rowWidth - ICON_GAP * (LANGUAGE_OPTIONS.length - 1)) /
-                LANGUAGE_OPTIONS.length,
-            ),
-          ),
-        )
-      : 44;
 
   return (
     <View
-      onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
       style={[
         styles.row,
         {
           flexDirection: isRTL ? "row-reverse" : "row",
           justifyContent: fillWidth ? "space-between" : "flex-start",
-          gap: ICON_GAP,
+          flexWrap: fillWidth ? "nowrap" : "wrap",
         },
       ]}
     >
@@ -58,15 +39,24 @@ export function LanguageFlagRow({ value, onChange, fillWidth = false }: Props) {
             accessibilityLabel={option.label}
             onPress={() => applyLocale(option.locale)}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.iconBtn,
-              (pressed || hovered) && { opacity: 0.85 },
+              styles.chip,
+              fillWidth && styles.chipFill,
+              {
+                backgroundColor: active ? `${colors.primary}14` : colors.muted,
+                borderColor: active ? colors.primary : colors.border,
+                opacity: pressed || hovered ? 0.85 : 1,
+              },
             ]}
           >
-            <LanguageLocaleIcon
-              locale={option.locale}
-              size={iconSize}
-              selected={active}
-            />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.chipLabel,
+                { color: active ? colors.primary : colors.foreground },
+              ]}
+            >
+              {option.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -78,8 +68,23 @@ const styles = StyleSheet.create({
   row: {
     width: "100%",
     alignItems: "center",
+    gap: 8,
   },
-  iconBtn: {
+  chip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     cursor: "pointer" as "auto",
+  },
+  chipFill: {
+    flex: 1,
+    alignItems: "center",
+    minWidth: 0,
+    paddingHorizontal: 8,
+  },
+  chipLabel: {
+    fontSize: 13,
+    fontWeight: "700",
   },
 });
