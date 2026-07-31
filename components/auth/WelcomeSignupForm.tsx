@@ -74,6 +74,10 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const passwordRef = useRef<TextInput>(null);
 
   const isDoctor = role === "doctor";
+  const phonePlaceholder =
+    isDoctor && getDoctorSignupMarket() === "JO"
+      ? t.auth.phonePlaceholderJordan
+      : t.auth.phonePlaceholder;
 
   useEffect(() => {
     if (!isDoctor) return;
@@ -316,7 +320,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           if (formError) setFormError(null);
         }}
         error={fieldErrors.phone}
-        placeholder={t.auth.phonePlaceholder}
+        placeholder={phonePlaceholder}
         keyboardType="phone-pad"
         returnKeyType="next"
         blurOnSubmit={false}

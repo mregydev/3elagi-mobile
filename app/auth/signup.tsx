@@ -77,6 +77,10 @@ export default function SignupScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   const isDoctor = role === "doctor";
+  const phonePlaceholder =
+    isDoctor && getDoctorSignupMarket() === "JO"
+      ? t.auth.phonePlaceholderJordan
+      : t.auth.phonePlaceholder;
 
   useEffect(() => {
     if (!isDoctor) return;
@@ -368,7 +372,7 @@ export default function SignupScreen() {
               if (formError) setFormError(null);
             }}
             error={fieldErrors.phone}
-            placeholder={t.auth.phonePlaceholder}
+            placeholder={phonePlaceholder}
             keyboardType="phone-pad"
             returnKeyType="next"
             blurOnSubmit={false}
