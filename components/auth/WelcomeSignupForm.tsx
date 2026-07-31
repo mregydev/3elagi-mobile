@@ -36,6 +36,7 @@ import {
   getDoctorSignupMarket,
   setDoctorSignupMarketOverride,
 } from "@/domains/market/doctorSignupMarket";
+import { getUrlMarketCountry } from "@/domains/market/resolveMarketCountry";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
@@ -44,6 +45,10 @@ type LocalFile = SignupFile & { label: string };
 
 interface Props {
   onSwitchToLogin: () => void;
+}
+
+function initialSignupCountry(): PatientCountryCode {
+  return getUrlMarketCountry() ?? DEFAULT_PATIENT_COUNTRY;
 }
 
 export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
@@ -65,7 +70,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState("");
   const [consultationPrice, setConsultationPrice] = useState(1);
-  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -74,8 +79,11 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const passwordRef = useRef<TextInput>(null);
 
   const isDoctor = role === "doctor";
+  const urlMarket = getUrlMarketCountry();
   const phonePlaceholder =
-    isDoctor && getDoctorSignupMarket() === "JO"
+    urlMarket === "JO" ||
+    (isDoctor && getDoctorSignupMarket() === "JO") ||
+    (!isDoctor && country === "JO")
       ? t.auth.phonePlaceholderJordan
       : t.auth.phonePlaceholder;
 
