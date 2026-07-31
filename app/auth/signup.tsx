@@ -21,9 +21,11 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
+import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
+  isMarketCountryCode,
   PATIENT_COUNTRY_CODES,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
@@ -193,7 +195,7 @@ export default function SignupScreen() {
         password,
         isDoctor,
         specialityId,
-        country: isDoctor ? undefined : country,
+        country,
         medicalRecordsStorageConsent: medicalRecordsConsent,
       },
       t.auth,
@@ -219,7 +221,7 @@ export default function SignupScreen() {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
-        country: isDoctor ? undefined : country,
+        country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       const { role: nextRole, doctorApprovalStatus } = useAuthStore.getState();
@@ -288,6 +290,9 @@ export default function SignupScreen() {
             active={role === "doctor"}
             onPress={() => {
               setRole("doctor");
+              setCountry((c) =>
+                isMarketCountryCode(c) ? c : DEFAULT_PATIENT_COUNTRY,
+              );
               setMedicalRecordsConsent(false);
               setFieldErrors((prev) => ({
                 ...prev,
@@ -404,7 +409,23 @@ export default function SignupScreen() {
               isRTL={isRTL}
               disabled={loading}
             />
-          ) : null}
+          ) : (
+            <CountryChipsField
+              label={t.auth.countryOfPractice}
+              value={
+                isMarketCountryCode(country) ? country : DEFAULT_PATIENT_COUNTRY
+              }
+              onChange={(code) => {
+                setCountry(code);
+                if (fieldErrors.country) {
+                  setFieldErrors((prev) => ({ ...prev, country: undefined }));
+                }
+              }}
+              error={fieldErrors.country}
+              isRTL={isRTL}
+              disabled={loading}
+            />
+          )}
 
           {isDoctor && (
             <View style={{ gap: 12, marginTop: 4 }}>

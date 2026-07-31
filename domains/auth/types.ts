@@ -31,7 +31,7 @@ export interface SignupInput extends Credentials {
   workPermit?: SignupFile;
   specialityId?: string;
   consultationPrice?: number;
-  /** Required for patient signup — ISO country code. */
+  /** ISO country code — patients: residence; doctors: EG or JO. */
   country?: string;
   medicalRecordsStorageConsent?: boolean;
 }

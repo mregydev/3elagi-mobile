@@ -154,10 +154,10 @@ const en = {
     medicalRecordsConsentRequired:
       "You must consent to medical records storage to create a patient account.",
     countryOfResidence: "Country you currently reside in",
-    countryOfPractice: "Country you currently reside in",
+    countryOfPractice: "Country of practice",
     countrySearchPlaceholder: "Search country…",
     countryNoResults: "No countries match your search.",
-    countryRequired: "Please select the country you currently reside in.",
+    countryRequired: "Please select a country.",
     chooseCountryEyebrow: "3elagi · Country",
     chooseCountryTitle: "Choose your country",
     chooseCountrySubtitle:
@@ -755,10 +755,10 @@ const ar: typeof en = {
     medicalRecordsConsentRequired:
       "يجب الموافقة على تخزين السجلات الطبية لإنشاء حساب مريض.",
     countryOfResidence: "البلد الذي تقيم فيه حالياً",
-    countryOfPractice: "البلد الذي تقيم فيه حالياً",
+    countryOfPractice: "بلد الممارسة",
     countrySearchPlaceholder: "ابحث عن البلد…",
     countryNoResults: "لا توجد دول مطابقة لبحثك.",
-    countryRequired: "يرجى اختيار البلد الذي تقيم فيه حالياً.",
+    countryRequired: "يرجى اختيار البلد.",
     chooseCountryEyebrow: "3elagi · الدولة",
     chooseCountryTitle: "اختر دولتك",
     chooseCountrySubtitle:
@@ -1355,10 +1355,10 @@ const de: typeof en = {
     medicalRecordsConsentRequired:
       "Sie müssen der Speicherung medizinischer Aufzeichnungen zustimmen, um ein Patientenkonto zu erstellen.",
     countryOfResidence: "Land, in dem Sie derzeit wohnen",
-    countryOfPractice: "Land, in dem Sie derzeit wohnen",
+    countryOfPractice: "Land der Praxis",
     countrySearchPlaceholder: "Land suchen…",
     countryNoResults: "Keine Länder passen zu Ihrer Suche.",
-    countryRequired: "Bitte wählen Sie das Land, in dem Sie derzeit wohnen.",
+    countryRequired: "Bitte wählen Sie ein Land.",
     chooseCountryEyebrow: "3elagi · Land",
     chooseCountryTitle: "Wählen Sie Ihr Land",
     chooseCountrySubtitle:
@@ -1956,10 +1956,10 @@ const es: typeof en = {
     medicalRecordsConsentRequired:
       "Debes consentir el almacenamiento de registros médicos para crear una cuenta de paciente.",
     countryOfResidence: "País en el que resides actualmente",
-    countryOfPractice: "País en el que resides actualmente",
+    countryOfPractice: "País de práctica",
     countrySearchPlaceholder: "Buscar país…",
     countryNoResults: "Ningún país coincide con tu búsqueda.",
-    countryRequired: "Selecciona el país en el que resides actualmente.",
+    countryRequired: "Selecciona un país.",
     chooseCountryEyebrow: "3elagi · País",
     chooseCountryTitle: "Elige tu país",
     chooseCountrySubtitle:

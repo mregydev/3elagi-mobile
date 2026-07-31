@@ -16,9 +16,11 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
+import { CountryChipsField } from "@/components/auth/CountryChipsField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
+  isMarketCountryCode,
   PATIENT_COUNTRY_CODES,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
@@ -183,7 +185,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         password,
         isDoctor,
         specialityId,
-        country: isDoctor ? undefined : country,
+        country,
         medicalRecordsStorageConsent: medicalRecordsConsent,
       },
       t.auth,
@@ -209,7 +211,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
-        country: isDoctor ? undefined : country,
+        country,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
       const { role: nextRole, doctorApprovalStatus } = useAuthStore.getState();
@@ -236,6 +238,9 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           active={role === "doctor"}
           onPress={() => {
             setRole("doctor");
+            setCountry((c) =>
+              isMarketCountryCode(c) ? c : DEFAULT_PATIENT_COUNTRY,
+            );
             setMedicalRecordsConsent(false);
             setFieldErrors((prev) => ({
               ...prev,
@@ -352,7 +357,21 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           isRTL={isRTL}
           disabled={loading}
         />
-      ) : null}
+      ) : (
+        <CountryChipsField
+          label={t.auth.countryOfPractice}
+          value={isMarketCountryCode(country) ? country : DEFAULT_PATIENT_COUNTRY}
+          onChange={(code) => {
+            setCountry(code);
+            if (fieldErrors.country) {
+              setFieldErrors((prev) => ({ ...prev, country: undefined }));
+            }
+          }}
+          error={fieldErrors.country}
+          isRTL={isRTL}
+          disabled={loading}
+        />
+      )}
 
       {isDoctor ? (
         <View style={styles.doctorBlock}>

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from "lucide-react-native";
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Modal,
   Platform,
@@ -8,12 +8,8 @@ import {
   Text,
   View,
 } from "react-native";
-import {
-  FLAG_RATIO,
-  Flag,
-  FlagFrame,
-  LANGUAGE_OPTIONS,
-} from "@/components/language/LanguageFlags";
+import { LANGUAGE_OPTIONS } from "@/components/language/LanguageFlags";
+import { LanguageLocaleIcon } from "@/components/language/LanguageLocaleIcon";
 import type { Locale } from "@/domains/i18n/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -135,9 +131,7 @@ export function LanguageDropdown({
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
   const triggerRef = useRef<View>(null);
-  const clipSuffix = useId().replace(/:/g, "");
-  const flagW = compact ? 24 : 30;
-  const flagH = Math.round(flagW / FLAG_RATIO);
+  const iconSize = compact ? 28 : 34;
   const current =
     LANGUAGE_OPTIONS.find((option) => option.locale === locale) ??
     LANGUAGE_OPTIONS[1];
@@ -232,14 +226,11 @@ export function LanguageDropdown({
               },
             ]}
           >
-            <FlagFrame w={flagW} h={flagH} selected={active} colors={colors}>
-              <Flag
-                locale={option.locale}
-                w={flagW}
-                h={flagH}
-                clipSuffix={`menu-${option.locale}-${clipSuffix}`}
-              />
-            </FlagFrame>
+            <LanguageLocaleIcon
+              locale={option.locale}
+              size={iconSize}
+              selected={active}
+            />
             <View style={styles.menuText}>
               <Text
                 style={[
@@ -294,14 +285,7 @@ export function LanguageDropdown({
               { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
-            <FlagFrame w={flagW} h={flagH} selected colors={colors}>
-              <Flag
-                locale={locale}
-                w={flagW}
-                h={flagH}
-                clipSuffix={`trigger-${clipSuffix}`}
-              />
-            </FlagFrame>
+            <LanguageLocaleIcon locale={locale} size={iconSize} selected />
             {showLabel ? (
               <Text
                 style={[styles.triggerLabel, { color: colors.foreground }]}

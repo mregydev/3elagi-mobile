@@ -1,48 +1,40 @@
-import React, { useId, useState } from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import {
-  FLAG_RATIO,
-  Flag,
-  FlagFrame,
-  LANGUAGE_OPTIONS,
-} from "@/components/language/LanguageFlags";
+import { LANGUAGE_OPTIONS } from "@/components/language/LanguageFlags";
+import { LanguageLocaleIcon } from "@/components/language/LanguageLocaleIcon";
 import type { Locale } from "@/domains/i18n/store";
-import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
 type Props = {
   value?: Locale;
   onChange?: (locale: Locale) => void;
-  /** Size flags to fill the row width (profile preferences). */
+  /** Size icons to fill the row width (profile preferences). */
   fillWidth?: boolean;
 };
 
-const FLAG_GAP = 12;
-const MIN_FLAG_W = 36;
-const MAX_FLAG_W = 56;
+const ICON_GAP = 12;
+const MIN_ICON = 40;
+const MAX_ICON = 56;
 
 export function LanguageFlagRow({ value, onChange, fillWidth = false }: Props) {
-  const colors = useColors();
   const { locale: storeLocale, setLocale, isRTL } = useI18n();
   const locale = value ?? storeLocale;
   const applyLocale = onChange ?? setLocale;
-  const clipSuffix = useId().replace(/:/g, "");
   const [rowWidth, setRowWidth] = useState(0);
 
-  const flagW =
+  const iconSize =
     fillWidth && rowWidth > 0
       ? Math.min(
-          MAX_FLAG_W,
+          MAX_ICON,
           Math.max(
-            MIN_FLAG_W,
+            MIN_ICON,
             Math.floor(
-              (rowWidth - FLAG_GAP * (LANGUAGE_OPTIONS.length - 1)) /
+              (rowWidth - ICON_GAP * (LANGUAGE_OPTIONS.length - 1)) /
                 LANGUAGE_OPTIONS.length,
             ),
           ),
         )
       : 44;
-  const flagH = Math.round(flagW / FLAG_RATIO);
 
   return (
     <View
@@ -52,7 +44,7 @@ export function LanguageFlagRow({ value, onChange, fillWidth = false }: Props) {
         {
           flexDirection: isRTL ? "row-reverse" : "row",
           justifyContent: fillWidth ? "space-between" : "flex-start",
-          gap: FLAG_GAP,
+          gap: ICON_GAP,
         },
       ]}
     >
@@ -66,18 +58,15 @@ export function LanguageFlagRow({ value, onChange, fillWidth = false }: Props) {
             accessibilityLabel={option.label}
             onPress={() => applyLocale(option.locale)}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.flagBtn,
+              styles.iconBtn,
               (pressed || hovered) && { opacity: 0.85 },
             ]}
           >
-            <FlagFrame w={flagW} h={flagH} selected={active} colors={colors}>
-              <Flag
-                locale={option.locale}
-                w={flagW}
-                h={flagH}
-                clipSuffix={`row-${option.locale}-${clipSuffix}`}
-              />
-            </FlagFrame>
+            <LanguageLocaleIcon
+              locale={option.locale}
+              size={iconSize}
+              selected={active}
+            />
           </Pressable>
         );
       })}
@@ -90,7 +79,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  flagBtn: {
+  iconBtn: {
     cursor: "pointer" as "auto",
   },
 });
