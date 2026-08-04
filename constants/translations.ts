@@ -249,7 +249,13 @@ const en = {
     search: "Search patients...",
     count: (n: number) => `${n} patient${n !== 1 ? "s" : ""}`,
     noPatientsYet: "No patients yet",
-    noPatientsYetSub: "Patients will appear here",
+    noPatientsYetSub: "Patients who started a consultation with you will appear here",
+    consultationPatientsSub:
+      "Patients who opened a consultation with you",
+    consultationCount: (n: number) =>
+      `${n} consultation${n !== 1 ? "s" : ""}`,
+    openConsultations: (n: number) =>
+      `${n} open consultation${n !== 1 ? "s" : ""}`,
     noResults: "No results",
     noResultsSub: (q: string) => `No patients matching "${q}"`,
     visits: "visits",
@@ -392,7 +398,12 @@ const en = {
     addWithAi: "Use AI assistant",
     addWithAiHint: "Upload a photo or document — AI suggests type, title, description, and body part.",
     addAiUploadTitle: "Upload for AI",
-    addAiUploadHint: "Take a photo or choose a file. Review AI suggestions before saving.",
+    addAiUploadHint:
+      "Optional: add a title first, then take a photo or choose a file. AI uses your title with the attachment for insights.",
+    addAiTitleLabel: "Record title (optional)",
+    addAiTitleHint:
+      "Tell AI what this record is about — e.g. “CBC blood test” or “Chest X-ray”.",
+    addAiTitlePlaceholder: "e.g. Blood test results",
     addAiConfirmTitle: "Confirm AI suggestions",
     addAiConfirmHint: "Edit anything that looks wrong, then save.",
     addAiAnalyzing: "Analyzing with AI…",
@@ -458,6 +469,8 @@ const en = {
     },
     bodyZonePick: "Choose a part",
     bodyZoneHint: "Tap a body region to see related organs",
+    bodyZoneLegend: "Body areas",
+    bodyZoneHasRecords: "Has records",
     bodyParts: {
       general: "General",
       head: "Head & brain",
@@ -856,7 +869,10 @@ const ar: typeof en = {
     search: "البحث عن مريض...",
     count: (n: number) => `${n} ${n === 1 ? "مريض" : "مرضى"}`,
     noPatientsYet: "لا يوجد مرضى بعد",
-    noPatientsYetSub: "سيظهر المرضى هنا",
+    noPatientsYetSub: "سيظهر هنا المرضى الذين بدأوا استشارة معك",
+    consultationPatientsSub: "المرضى الذين فتحوا استشارة معك",
+    consultationCount: (n: number) => `${n} استشارة`,
+    openConsultations: (n: number) => `${n} استشارة مفتوحة`,
     noResults: "لا توجد نتائج",
     noResultsSub: (q: string) => `لا يوجد مرضى يطابقون "${q}"`,
     visits: "زيارات",
@@ -999,7 +1015,12 @@ const ar: typeof en = {
     addWithAi: "استخدام مساعد الذكاء",
     addWithAiHint: "ارفع صورة أو مستنداً — يقترح الذكاء النوع والعنوان والوصف وجزء الجسم.",
     addAiUploadTitle: "رفع للذكاء الاصطناعي",
-    addAiUploadHint: "التقط صورة أو اختر ملفاً. راجع اقتراحات الذكاء قبل الحفظ.",
+    addAiUploadHint:
+      "اختياري: أضف عنواناً أولاً، ثم التقط صورة أو اختر ملفاً. يستخدم الذكاء عنوانك مع المرفق لتحليل السجل.",
+    addAiTitleLabel: "عنوان السجل (اختياري)",
+    addAiTitleHint:
+      "أخبر الذكاء بما يخص هذا السجل — مثل «تحليل دم CBC» أو «أشعة صدر».",
+    addAiTitlePlaceholder: "مثال: نتائج تحليل الدم",
     addAiConfirmTitle: "تأكيد اقتراحات الذكاء",
     addAiConfirmHint: "عدّل أي خطأ ثم احفظ.",
     addAiAnalyzing: "جاري التحليل بالذكاء…",
@@ -1065,6 +1086,8 @@ const ar: typeof en = {
     },
     bodyZonePick: "اختر جزءاً",
     bodyZoneHint: "اضغط على جزء من الجسم لعرض الأعضاء المرتبطة",
+    bodyZoneLegend: "مناطق الجسم",
+    bodyZoneHasRecords: "يوجد سجل",
     bodyParts: {
       general: "عام",
       head: "الرأس والدماغ",
@@ -1462,7 +1485,12 @@ const de: typeof en = {
     search: "Patienten suchen...",
     count: (n: number) => `${n} Patient${n !== 1 ? "en" : ""}`,
     noPatientsYet: "Noch keine Patienten",
-    noPatientsYetSub: "Patienten erscheinen hier",
+    noPatientsYetSub: "Patienten, die eine Beratung mit Ihnen gestartet haben, erscheinen hier",
+    consultationPatientsSub: "Patienten, die eine Beratung mit Ihnen eröffnet haben",
+    consultationCount: (n: number) =>
+      `${n} Beratung${n !== 1 ? "en" : ""}`,
+    openConsultations: (n: number) =>
+      `${n} offene Beratung${n !== 1 ? "en" : ""}`,
     noResults: "Keine Ergebnisse",
     noResultsSub: (q: string) => `Keine Patienten für „${q}“`,
     visits: "Besuche",
@@ -1605,7 +1633,12 @@ const de: typeof en = {
     addWithAi: "KI-Assistent nutzen",
     addWithAiHint: "Foto oder Dokument hochladen — die KI schlägt Typ, Titel, Beschreibung und Körperteil vor.",
     addAiUploadTitle: "Für KI hochladen",
-    addAiUploadHint: "Foto aufnehmen oder Datei wählen. Vorschläge vor dem Speichern prüfen.",
+    addAiUploadHint:
+      "Optional: zuerst Titel eingeben, dann Foto oder Datei wählen. Die KI nutzt Ihren Titel mit dem Anhang für Insights.",
+    addAiTitleLabel: "Datensatz-Titel (optional)",
+    addAiTitleHint:
+      "Sagen Sie der KI, worum es geht — z. B. „Blutbild CBC“ oder „Röntgen Thorax“.",
+    addAiTitlePlaceholder: "z. B. Blutuntersuchung",
     addAiConfirmTitle: "KI-Vorschläge bestätigen",
     addAiConfirmHint: "Fehler korrigieren und speichern.",
     addAiAnalyzing: "KI analysiert…",
@@ -1671,6 +1704,8 @@ const de: typeof en = {
     },
     bodyZonePick: "Teil wählen",
     bodyZoneHint: "Tippe auf einen Körperbereich, um zugehörige Organe zu sehen",
+    bodyZoneLegend: "Körperbereiche",
+    bodyZoneHasRecords: "Hat Einträge",
     bodyParts: {
       general: "Allgemein",
       head: "Kopf & Gehirn",
@@ -2069,7 +2104,12 @@ const es: typeof en = {
     search: "Buscar pacientes...",
     count: (n: number) => `${n} paciente${n !== 1 ? "s" : ""}`,
     noPatientsYet: "Aún no hay pacientes",
-    noPatientsYetSub: "Los pacientes aparecerán aquí",
+    noPatientsYetSub: "Los pacientes que iniciaron una consulta contigo aparecerán aquí",
+    consultationPatientsSub: "Pacientes que abrieron una consulta contigo",
+    consultationCount: (n: number) =>
+      `${n} consulta${n !== 1 ? "s" : ""}`,
+    openConsultations: (n: number) =>
+      `${n} consulta${n !== 1 ? "s" : ""} abierta${n !== 1 ? "s" : ""}`,
     noResults: "Sin resultados",
     noResultsSub: (q: string) => `No hay pacientes que coincidan con «${q}»`,
     visits: "visitas",
@@ -2212,7 +2252,12 @@ const es: typeof en = {
     addWithAi: "Usar asistente de IA",
     addWithAiHint: "Sube una foto o documento — la IA sugiere tipo, título, descripción y parte del cuerpo.",
     addAiUploadTitle: "Subir para la IA",
-    addAiUploadHint: "Toma una foto o elige un archivo. Revisa las sugerencias antes de guardar.",
+    addAiUploadHint:
+      "Opcional: escribe un título primero, luego toma una foto o elige un archivo. La IA usa tu título con el adjunto para los insights.",
+    addAiTitleLabel: "Título del registro (opcional)",
+    addAiTitleHint:
+      "Dile a la IA de qué trata — p. ej. “Hemograma CBC” o “Radiografía de tórax”.",
+    addAiTitlePlaceholder: "p. ej. Resultados de análisis de sangre",
     addAiConfirmTitle: "Confirmar sugerencias de IA",
     addAiConfirmHint: "Edita lo necesario y guarda.",
     addAiAnalyzing: "Analizando con IA…",
@@ -2278,6 +2323,8 @@ const es: typeof en = {
     },
     bodyZonePick: "Elige una parte",
     bodyZoneHint: "Toca una región del cuerpo para ver los órganos relacionados",
+    bodyZoneLegend: "Áreas del cuerpo",
+    bodyZoneHasRecords: "Tiene registros",
     bodyParts: {
       general: "General",
       head: "Cabeza y cerebro",

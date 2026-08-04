@@ -16,8 +16,11 @@ import {
   type ZoneTapAnchor,
 } from "@/components/records/BodyAnatomyFigure";
 import { BODY_PART_ICONS, BodyPartIcon } from "@/components/records/bodyPartIcons";
+import { RecordPulseDot } from "@/components/records/RecordPulseDot";
 import {
   BODY_PARTS_BY_ZONE,
+  BODY_ZONES,
+  zoneForBodyPart,
   type BodyPart,
   type BodyZone,
 } from "@/domains/medical/bodyParts";
@@ -110,6 +113,9 @@ export function BodySkeletonView({
   const [diagramH, setDiagramH] = useState(0);
   const [diagramW, setDiagramW] = useState(0);
   const [openZone, setOpenZone] = useState<BodyZone | null>(null);
+  const [highlightedZone, setHighlightedZone] = useState<BodyZone | null>(null);
+  /** Only true when the zone was tapped on the skeleton (not the legend). */
+  const [highlightOnSkeleton, setHighlightOnSkeleton] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<ZoneTapAnchor | null>(null);
 
   const partsWithRecords = useMemo(() => {
@@ -119,6 +125,22 @@ export function BodySkeletonView({
     }
     return set;
   }, [records]);
+
+  const zonesWithRecords = useMemo(() => {
+    const set = new Set<BodyZone>();
+    for (const part of partsWithRecords) {
+      const zone = zoneForBodyPart(part);
+      if (zone) set.add(zone);
+    }
+    return set;
+  }, [partsWithRecords]);
+
+  const activeZone =
+    openZone ??
+    highlightedZone ??
+    (selectedPart && selectedPart !== "general"
+      ? zoneForBodyPart(selectedPart)
+      : null);
 
   const onPaneLayout = (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
@@ -157,6 +179,8 @@ export function BodySkeletonView({
   };
 
   const selectPart = (part: BodyPart) => {
+    const zone = zoneForBodyPart(part);
+    if (zone) setHighlightedZone(zone);
     if (onOpenPart) {
       onSelectPart(part);
       onOpenPart(part);
@@ -165,10 +189,20 @@ export function BodySkeletonView({
     }
     const next = selectedPart === part ? null : part;
     onSelectPart(next);
+    if (!next) {
+      setHighlightedZone(null);
+      setHighlightOnSkeleton(false);
+    }
     closePartPicker();
   };
 
-  const selectZone = (zone: BodyZone, anchor: ZoneTapAnchor) => {
+  const selectZone = (
+    zone: BodyZone,
+    anchor: ZoneTapAnchor,
+    opts?: { fromLegend?: boolean },
+  ) => {
+    setHighlightedZone(zone);
+    setHighlightOnSkeleton(!opts?.fromLegend);
     const parts = BODY_PARTS_BY_ZONE[zone];
     // Single-organ zones (e.g. left foot) select immediately — no menu needed.
     if (parts.length === 1) {
@@ -184,6 +218,17 @@ export function BodySkeletonView({
       x: Number.isFinite(anchor.x) ? anchor.x : width / 2,
       y: Number.isFinite(anchor.y) ? anchor.y : screenHeight / 2,
     });
+  };
+
+  const openZoneFromLegend = (zone: BodyZone) => {
+    selectZone(
+      zone,
+      {
+        x: width / 2,
+        y: Math.round(screenHeight * 0.35),
+      },
+      { fromLegend: true },
+    );
   };
 
   const zoneParts = openZone ? BODY_PARTS_BY_ZONE[openZone] : [];
@@ -213,10 +258,12 @@ export function BodySkeletonView({
               ? `${t.records.bodyPart}: ${t.records.bodyParts[selectedPart]}`
               : t.records.bodyZoneHint}
           </Text>
-          {selectedPart ? (
+          {selectedPart || highlightedZone ? (
             <Pressable
               onPress={() => {
                 onSelectPart(null);
+                setHighlightedZone(null);
+                setHighlightOnSkeleton(false);
                 closePartPicker();
               }}
               accessibilityRole="button"
@@ -256,8 +303,63 @@ export function BodySkeletonView({
             zoneLabels={t.records.bodyZones}
             onSelectZone={selectZone}
             compact={!isDesktop}
+            zonesWithRecords={zonesWithRecords}
+            highlightedZone={highlightOnSkeleton ? activeZone : null}
           />
         ) : null}
+
+        {/* Compact legend overlaid top-left — keeps skeleton at full size. */}
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.legendOverlay,
+            isRTL ? styles.legendOverlayRtl : styles.legendOverlayLtr,
+          ]}
+        >
+          <View style={styles.legend}>
+            {BODY_ZONES.map((zone) => {
+              const active = activeZone === zone;
+              const hasRecords = zonesWithRecords.has(zone);
+              const accent = ZONE_ACCENT[zone];
+              return (
+                <Pressable
+                  key={zone}
+                  onPress={() => openZoneFromLegend(zone)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={t.records.bodyZones[zone]}
+                  style={[
+                    styles.legendChip,
+                    {
+                      flexDirection: dir,
+                      borderColor: active ? accent : "transparent",
+                      backgroundColor: active ? `${accent}22` : "transparent",
+                    },
+                  ]}
+                >
+                  <View style={[styles.legendSwatch, { backgroundColor: accent }]} />
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: active ? accent : colors.foreground,
+                      fontWeight: active ? "800" : "600",
+                      fontSize: 9,
+                      maxWidth: 72,
+                      textAlign: isRTL ? "right" : "left",
+                    }}
+                  >
+                    {t.records.bodyZones[zone]}
+                  </Text>
+                  {hasRecords ? (
+                    <View style={styles.legendPulseWrap}>
+                      <RecordPulseDot size="sm" />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </View>
 
       <Modal
@@ -332,7 +434,7 @@ export function BodySkeletonView({
                 {zoneParts.map((part) => {
                   const Icon = BODY_PART_ICONS[part];
                   const active = selectedPart === part;
-                  const hasDot = partsWithRecords.has(part);
+                  const hasRecords = partsWithRecords.has(part);
                   const accent = ZONE_ACCENT[openZone];
                   return (
                     <Pressable
@@ -343,46 +445,66 @@ export function BodySkeletonView({
                       style={({ pressed }) => [
                         styles.partTile,
                         {
-                          borderColor: active ? accent : colors.border,
-                          backgroundColor: active
-                            ? `${accent}16`
-                            : pressed
-                              ? colors.muted
-                              : colors.background,
+                          borderColor: hasRecords
+                            ? "#EF4444"
+                            : active
+                              ? accent
+                              : colors.border,
+                          borderWidth: hasRecords || active ? 2 : 1.5,
+                          backgroundColor: hasRecords
+                            ? "rgba(239, 68, 68, 0.08)"
+                            : active
+                              ? `${accent}16`
+                              : pressed
+                                ? colors.muted
+                                : colors.background,
                           transform: pressed ? [{ scale: 0.97 }] : undefined,
                         },
                       ]}
                     >
-                      {hasDot ? (
+                      {hasRecords ? (
                         <View
                           style={[
-                            styles.partRecordDot,
-                            isRTL ? { left: 5 } : { right: 5 },
-                            { backgroundColor: accent },
+                            styles.partRecordBadge,
+                            isRTL ? { left: 2 } : { right: 2 },
                           ]}
-                        />
+                        >
+                          <RecordPulseDot size="md" />
+                        </View>
                       ) : null}
                       <View
                         style={[
                           styles.partIconBubble,
                           {
-                            backgroundColor: active
-                              ? `${accent}22`
-                              : `${colors.foreground}08`,
+                            backgroundColor: hasRecords
+                              ? "rgba(239, 68, 68, 0.14)"
+                              : active
+                                ? `${accent}22`
+                                : `${colors.foreground}08`,
                           },
                         ]}
                       >
                         <BodyPartIcon
                           icon={Icon}
                           size={18}
-                          color={active ? accent : colors.foreground}
+                          color={
+                            hasRecords
+                              ? "#EF4444"
+                              : active
+                                ? accent
+                                : colors.foreground
+                          }
                         />
                       </View>
                       <Text
                         numberOfLines={2}
                         style={{
-                          color: active ? accent : colors.foreground,
-                          fontWeight: active ? "800" : "600",
+                          color: hasRecords
+                            ? "#EF4444"
+                            : active
+                              ? accent
+                              : colors.foreground,
+                          fontWeight: hasRecords || active ? "800" : "600",
                           fontSize: 11,
                           textAlign: "center",
                           lineHeight: 14,
@@ -455,6 +577,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     overflow: "hidden",
     borderWidth: 0,
+    position: "relative",
   },
   diagramCardMobile: {
     flex: 1,
@@ -464,6 +587,43 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "transparent",
     overflow: "hidden",
+    position: "relative",
+  },
+  legendOverlay: {
+    position: "absolute",
+    top: 4,
+    zIndex: 20,
+    maxWidth: "42%",
+  },
+  legendOverlayLtr: {
+    left: 4,
+  },
+  legendOverlayRtl: {
+    right: 4,
+  },
+  legend: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    gap: 8,
+  },
+  legendChip: {
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
+  },
+  legendSwatch: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendPulseWrap: {
+    transform: [{ scale: 0.65 }],
+    marginHorizontal: -2,
   },
   menuRoot: {
     flex: 1,
@@ -528,7 +688,6 @@ const styles = StyleSheet.create({
     maxWidth: "32%",
     alignItems: "center",
     gap: 4,
-    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 6,
     paddingVertical: 8,
@@ -541,11 +700,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  partRecordDot: {
+  partRecordBadge: {
     position: "absolute",
-    top: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    top: 0,
+    zIndex: 2,
   },
 });

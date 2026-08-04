@@ -1,6 +1,7 @@
 import { router } from "expo-router";
+import { navigateBack } from "@/utils/appNavigation";
 
-/** Leave a normal chat thread and open the conversations history tab. */
+/** Leave a chat thread — pop previous push state, else open history. */
 export function leaveChatToHistory(): void {
-  router.replace("/(tabs)/history");
+  navigateBack(router, "/(tabs)/history");
 }

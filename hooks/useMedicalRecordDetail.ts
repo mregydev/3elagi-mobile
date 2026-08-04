@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { isMedicalImageAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
+import { navigateBack } from "@/utils/appNavigation";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -521,7 +522,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
                 }
                 await refetchListsAfterChange();
                 remove(profile.id, record.id);
-                router.back();
+                navigateBack(router, "/(tabs)/records");
               } catch (e) {
                 Alert.alert(
                   isRTL ? "فشل الحذف" : "Delete failed",
@@ -775,6 +776,8 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     submitSymptom,
     confirmDelete,
     openLinkedDoc,
-    goBack: () => router.back(),
+    goBack: () => {
+      navigateBack(router, "/(tabs)/records");
+    },
   };
 }

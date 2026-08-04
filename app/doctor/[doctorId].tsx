@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, Coins, MessageCircle, Star } from "lucide-react-native";
+import { Coins, MessageCircle, Star } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -178,9 +179,7 @@ export default function DoctorProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border, flexDirection: dir }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          {isRTL ? <ArrowRight size={22} color={colors.primary} /> : <ArrowLeft size={22} color={colors.primary} />}
-        </Pressable>
+        <AppBackButton color={colors.primary} hitSlop={8} />
         <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
           {doctor.name}
         </Text>

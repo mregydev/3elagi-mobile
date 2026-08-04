@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -115,9 +115,11 @@ export default function ResetPasswordScreen() {
             },
           ]}
         >
-          <Pressable onPress={() => router.replace("/auth/login")} style={{ padding: 6 }}>
-            <ArrowLeft size={22} color={colors.foreground} />
-          </Pressable>
+          <AppBackButton
+            color={colors.foreground}
+            style={{ padding: 6 }}
+            fallback="/auth/login"
+          />
           <AuthLanguageField />
         </View>
       ) : null}

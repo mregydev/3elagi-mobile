@@ -1,5 +1,6 @@
 import type { Router } from "expo-router";
 import { isAiChatWebPath, isNormalChatWebPath } from "@/constants/webAppPaths";
+import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
 import { leaveChatToHistory } from "@/utils/chatNavigation";
 import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 
@@ -31,7 +32,9 @@ export function getHardwareBackAction(
   }
 
   if (isAiChatPath(path)) {
-    return () => router.replace("/(tabs)/assistant");
+    return () => {
+      navigateBack(router, "/(tabs)/assistant");
+    };
   }
 
   if (path.includes("/medical/add") || path.includes("/prescription/add")) {
@@ -40,16 +43,14 @@ export function getHardwareBackAction(
 
   if (path.includes("/points/checkout")) {
     return () => {
-      if (typeof router.canGoBack === "function" && router.canGoBack()) {
-        router.back();
-        return;
-      }
-      router.replace("/(tabs)/points");
+      navigateBack(router, "/(tabs)/points");
     };
   }
 
-  if (typeof router.canGoBack === "function" && router.canGoBack()) {
-    return () => router.back();
+  if (canNavigateBack(router)) {
+    return () => {
+      navigateBack(router);
+    };
   }
 
   return null;

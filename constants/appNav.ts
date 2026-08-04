@@ -8,6 +8,7 @@ import {
   Home,
   ListChecks,
   MessageSquare,
+  Star,
   Stethoscope,
   User,
   Users,
@@ -74,7 +75,14 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "patients",
     Icon: Users,
     doctorOnly: true,
-    match: (path) => pathHas(path, "patients") || pathHas(path, "reviews"),
+    match: (path) => pathHas(path, "patients"),
+  },
+  {
+    href: "/(tabs)/reviews",
+    labelKey: "reviews",
+    Icon: Star,
+    doctorOnly: true,
+    match: (path) => pathHas(path, "reviews"),
   },
   {
     href: "/(tabs)/intake",

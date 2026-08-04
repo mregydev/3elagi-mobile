@@ -7,13 +7,13 @@ import {
   useWebMobileBackHandler,
 } from "@/hooks/useHardwareBackHandler";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import {
-  getHardwareBackAction,
-  isAiChatPath,
-  isNormalChatPath,
-} from "@/utils/hardwareBackNavigation";
+import { getHardwareBackAction } from "@/utils/hardwareBackNavigation";
 
-/** Global hardware / mobile-browser back handling for stack and deep-link routes. */
+/**
+ * Global hardware / browser back handling.
+ * Forward navigation should use `router.push` so history is preserved;
+ * this handler pops that history (or a route-specific fallback).
+ */
 export function HardwareBackHandler() {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,12 +33,13 @@ export function HardwareBackHandler() {
     return true;
   }, [pathname, router, closeAiWidget]);
 
+  // Only intercept browser history for the floating AI overlay.
+  // Chat / stack screens rely on real push history from expo-router.
   const webBackGuardKey = useMemo(() => {
     if (Platform.OS !== "web" || !isMobile) return undefined;
     if (aiWidgetOpen) return "ask-3elagi-ai-widget";
-    if (isNormalChatPath(pathname) || isAiChatPath(pathname)) return pathname;
     return undefined;
-  }, [aiWidgetOpen, isMobile, pathname]);
+  }, [aiWidgetOpen, isMobile]);
 
   useHardwareBackHandler(runBackAction);
 

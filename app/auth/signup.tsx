@@ -1,7 +1,8 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { ArrowLeft, Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
+import { Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -265,9 +266,7 @@ export default function SignupScreen() {
             },
           ]}
         >
-          <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
-            <ArrowLeft size={22} color={colors.foreground} />
-          </Pressable>
+          <AppBackButton color={colors.foreground} style={{ padding: 6 }} />
           <AuthLanguageField />
         </View>
       ) : null}

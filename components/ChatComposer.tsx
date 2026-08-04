@@ -3,6 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ClipboardList, Mic, Paperclip, Send, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -28,6 +29,7 @@ import {
   MedicalImageAttachOptions,
   type MedicalImageAttachOptionsValue,
 } from "@/components/medical/MedicalImageAttachOptions";
+import { useFieldDictation } from "@/hooks/useFieldDictation";
 import {
   emitConversationStopTyping,
   emitConversationTyping,
@@ -150,6 +152,7 @@ export function ChatComposer({
   const { isMobile } = useWebLayout();
   const isMobileWeb = Platform.OS === "web" && isMobile;
   const [text, setText] = useState("");
+  const dictation = useFieldDictation({ value: text, onChangeText: setText });
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -739,6 +742,7 @@ export function ChatComposer({
     />
   );
 
+  const micActive = !!recording || dictation.listening || dictation.busy;
   const sendOrMicButton = canSend ? (
     <Pressable
       onPress={() => void sendMessage()}
@@ -752,19 +756,51 @@ export function ChatComposer({
     </Pressable>
   ) : isEditing ? null : (
     <Pressable
-      onPress={() => void toggleRecording()}
-      disabled={uploading || sending || isEditing || !!pendingAttachment}
+      onPress={() => {
+        if (recording) {
+          void toggleRecording();
+          return;
+        }
+        // Tap: multilingual speech-to-text into the input (ar/en/de/es auto).
+        dictation.toggle();
+      }}
+      onLongPress={() => {
+        if (dictation.listening || dictation.busy || recording) return;
+        // Long-press: send a voice message (audio attachment).
+        void toggleRecording();
+      }}
+      delayLongPress={350}
+      disabled={uploading || sending || isEditing || !!pendingAttachment || dictation.busy}
       style={[
         isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
         {
-          backgroundColor: recording ? "#ef4444" : colors.muted,
-          opacity: uploading || sending || isEditing || pendingAttachment ? 0.45 : 1,
+          backgroundColor: micActive ? "#ef4444" : colors.muted,
+          opacity:
+            uploading || sending || isEditing || pendingAttachment || dictation.busy
+              ? 0.45
+              : 1,
         },
       ]}
       hitSlop={6}
-      accessibilityLabel={isRTL ? "رسالة صوتية" : "Voice message"}
+      accessibilityLabel={
+        recording
+          ? isRTL
+            ? "إيقاف وإرسال الرسالة الصوتية"
+            : "Stop and send voice message"
+          : dictation.listening
+            ? isRTL
+              ? "إيقاف الإملاء"
+              : "Stop dictation"
+            : isRTL
+              ? "إملاء نص — اضغط مطولاً لرسالة صوتية"
+              : "Dictate text — long-press for voice message"
+      }
     >
-      <Mic size={18} color={recording ? "#fff" : colors.mutedForeground} />
+      {dictation.busy ? (
+        <ActivityIndicator size="small" color="#fff" />
+      ) : (
+        <Mic size={18} color={micActive ? "#fff" : colors.mutedForeground} />
+      )}
     </Pressable>
   );
 
@@ -903,6 +939,16 @@ export function ChatComposer({
           </>
         )}
       </View>
+
+      {dictation.listening && !recording ? (
+        <View style={[styles.recordingBar, { flexDirection: rowDir }]}>
+          <Text style={styles.recordingHint}>
+            {isRTL
+              ? "جاري الاستماع… تكلم ثم اضغط الميكروفون للإيقاف"
+              : "Listening… speak, then tap mic to stop"}
+          </Text>
+        </View>
+      ) : null}
 
       {recording ? (
         <View

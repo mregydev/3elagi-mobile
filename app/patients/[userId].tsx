@@ -1,11 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useLocalSearchParams, router } from "expo-router";
-import { ArrowLeft, ArrowRight } from "lucide-react-native";
+import { useLocalSearchParams } from "expo-router";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -42,7 +40,8 @@ export default function PatientRecordScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
-  const skeletonView = Platform.OS === "web" && recordsViewMode === "skeleton";
+  /** Non-scrolling host so skeleton diagram gets a real flex height (web + native). */
+  const skeletonView = recordsViewMode === "skeleton";
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const dir = isRTL ? "row-reverse" : "row";
@@ -137,13 +136,7 @@ export default function PatientRecordScreen() {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton color={colors.primary} style={styles.backBtn} hitSlop={8} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
             {isRTL ? `سجل ${patientName}` : `${patientName}'s record`}
@@ -162,10 +155,7 @@ export default function PatientRecordScreen() {
         </View>
       ) : (
         <ScrollView
-          style={[
-            styles.body,
-            Platform.OS === "web" ? ({ overflow: "auto" } as const) : null,
-          ]}
+          style={styles.body}
           contentContainerStyle={styles.bodyContent}
           nestedScrollEnabled
           showsVerticalScrollIndicator

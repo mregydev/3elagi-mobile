@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
+import { Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -72,7 +72,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
-import { leaveChatToHistory } from "@/utils/chatNavigation";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
@@ -1007,9 +1007,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           },
         ]}
       >
-        <Pressable onPress={leaveChatToHistory} style={styles.backBtn}>
-          <ArrowLeft size={22} color={colors.foreground} />
-        </Pressable>
+        <AppBackButton
+          color={colors.foreground}
+          style={styles.backBtn}
+          fallback="/(tabs)/history"
+          accessibilityLabel="Back"
+        />
 
         <Pressable
           onPress={onPeerHeaderPress}

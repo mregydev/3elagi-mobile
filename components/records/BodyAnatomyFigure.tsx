@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import {
   HIT_ORDER,
@@ -7,6 +7,7 @@ import {
   zoneAtViewPoint,
 } from "@/components/records/bodyPartHitTest";
 import { ANATOMY_VIEWBOX } from "@/components/records/bodyPartShapes";
+import { RecordPulseDot } from "@/components/records/RecordPulseDot";
 import type { BodyZone } from "@/domains/medical/bodyParts";
 
 /** Transparent anatomy PNG — skeleton + organs. */
@@ -24,6 +25,10 @@ type Props = {
   onSelectZone: (zone: BodyZone, anchor: ZoneTapAnchor) => void;
   /** Mobile / mobile-web: fill the slot; still keeps anatomy aspect (letterbox). */
   compact?: boolean;
+  /** Zones that already have medical records — show indicator dots. */
+  zonesWithRecords?: ReadonlySet<BodyZone>;
+  /** Currently highlighted body area (legend sync). */
+  highlightedZone?: BodyZone | null;
 };
 
 export function BodyAnatomyFigure({
@@ -32,6 +37,8 @@ export function BodyAnatomyFigure({
   zoneLabels,
   onSelectZone,
   compact = false,
+  zonesWithRecords,
+  highlightedZone = null,
 }: Props) {
   const slotW = Math.max(1, Math.round(width));
   const slotH = Math.max(1, Math.round(height));
@@ -42,6 +49,20 @@ export function BodyAnatomyFigure({
   const drawH = Math.max(1, Math.round(ANATOMY_ASSET_H * scale));
   const sx = drawW / ANATOMY_VIEWBOX.w;
   const sy = drawH / ANATOMY_VIEWBOX.h;
+
+  const recordDots = useMemo(() => {
+    if (!zonesWithRecords?.size) return [];
+    return HIT_ORDER.filter((zone) => zonesWithRecords.has(zone)).map((zone) => {
+      const box = ZONE_BBOXES[zone];
+      const cx = (box.minX + box.maxX) / 2;
+      const cy = (box.minY + box.maxY) / 2;
+      return {
+        zone,
+        left: Math.round(cx * sx),
+        top: Math.round(cy * sy),
+      };
+    });
+  }, [zonesWithRecords, sx, sy]);
 
   return (
     <View
@@ -65,11 +86,13 @@ export function BodyAnatomyFigure({
           const top = Math.round(box.minY * sy);
           const w = Math.max(16, Math.round((box.maxX - box.minX) * sx));
           const h = Math.max(16, Math.round((box.maxY - box.minY) * sy));
+          const highlighted = highlightedZone === zone;
           return (
             <Pressable
               key={`hit-${zone}`}
               accessibilityRole="button"
               accessibilityLabel={zoneLabels[zone]}
+              accessibilityState={{ selected: highlighted }}
               hitSlop={4}
               onPress={(e) => {
                 const { pageX, pageY, locationX, locationY } = e.nativeEvent;
@@ -96,11 +119,25 @@ export function BodyAnatomyFigure({
                 width: w,
                 height: h,
                 zIndex: 10 + index,
-                backgroundColor: "rgba(0,0,0,0.001)",
+                backgroundColor: highlighted
+                  ? "rgba(239, 68, 68, 0.12)"
+                  : "rgba(0,0,0,0.001)",
+                borderWidth: highlighted ? 2 : 0,
+                borderColor: highlighted ? "rgba(239, 68, 68, 0.55)" : "transparent",
+                borderRadius: 8,
               }}
             />
           );
         })}
+
+        {recordDots.map((dot) => (
+          <RecordPulseDot
+            key={`dot-${dot.zone}`}
+            size="lg"
+            left={dot.left}
+            top={dot.top}
+          />
+        ))}
       </View>
     </View>
   );

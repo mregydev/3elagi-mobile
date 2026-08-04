@@ -124,7 +124,7 @@ export default function TabsLayout() {
           name="reviews"
           options={{
             title: t.tabs.reviews,
-            href: null,
+            href: isDoctor ? undefined : null,
             tabBarIcon: ({ color, size }) => <Star color={color} size={size} />,
           }}
         />

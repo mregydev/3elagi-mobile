@@ -1,9 +1,8 @@
-import { router } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { WebAuthBackground } from "@/components/web/WebAuthBackground";
@@ -97,14 +96,11 @@ export function WebAuthFrame({
               { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
-            <Pressable
-              onPress={() => router.back()}
+            <AppBackButton
+              color={colors.foreground}
               style={styles.backBtn}
-              accessibilityRole="button"
               accessibilityLabel={t.auth.goBack}
-            >
-              <ArrowLeft size={22} color={colors.foreground} />
-            </Pressable>
+            />
             <View style={[styles.pageTopActions, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               <MobileAppLink variant="toolbar" />
               <AuthLanguageField />

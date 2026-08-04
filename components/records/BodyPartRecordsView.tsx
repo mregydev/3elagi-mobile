@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, ClipboardList, FileText } from "lucide-react-native";
+import { ClipboardList, FileText } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -140,17 +141,12 @@ export function BodyPartRecordsView({
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { flexDirection: dir, borderBottomColor: colors.border }]}>
-        <Pressable
-          onPress={() => router.back()}
+        <AppBackButton
+          color={colors.foreground}
+          size={20}
           style={[styles.backBtn, { flexDirection: dir }]}
           hitSlop={8}
-        >
-          {isRTL ? (
-            <ArrowRight size={20} color={colors.foreground} />
-          ) : (
-            <ArrowLeft size={20} color={colors.foreground} />
-          )}
-        </Pressable>
+        />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[styles.title, { color: colors.foreground, textAlign }]} numberOfLines={1}>
             {partLabel}

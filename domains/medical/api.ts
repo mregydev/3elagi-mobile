@@ -932,9 +932,14 @@ export async function analyzeMedicalRecordImage(
   token: string,
   lang: Locale,
   webFile?: File | Blob,
+  options?: { title?: string },
 ): Promise<AnalyzedMedicalRecordImage> {
   const formData = new FormData();
   await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
+  const title = options?.title?.trim();
+  if (title) {
+    formData.append("title", title);
+  }
   const res = await fetch(
     `${API_BASE}/patient/medical-documents/analyze-image?lang=${lang}`,
     {
@@ -960,10 +965,14 @@ export async function createMedicalRecordFromImage(
   token: string,
   lang: Locale,
   webFile?: File | Blob,
-  options?: { generateInsight?: boolean },
+  options?: { generateInsight?: boolean; title?: string },
 ): Promise<MedicalRecord> {
   const formData = new FormData();
   await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
+  const title = options?.title?.trim();
+  if (title) {
+    formData.append("title", title);
+  }
   const insightParam =
     options?.generateInsight === false ? "&generate_insight=false" : "";
   const res = await fetch(
@@ -1034,7 +1043,10 @@ export async function createMedicalRecordFromChatImage(
       token,
       lang,
       input.webFile,
-      { generateInsight: true },
+      {
+        generateInsight: true,
+        title: input.caption?.trim() || undefined,
+      },
     );
   }
 
@@ -1058,9 +1070,10 @@ export async function createMedicalRecordFromChatImage(
       token,
       lang,
       input.webFile,
+      input.caption?.trim() ? { title: input.caption.trim() } : undefined,
     );
     type = analyzed.type;
-    title = analyzed.title;
+    title = input.caption?.trim() || analyzed.title;
     notes = analyzed.notes;
     bodyPart = analyzed.body_part ?? null;
   } catch {

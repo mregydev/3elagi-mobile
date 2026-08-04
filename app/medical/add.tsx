@@ -1,7 +1,9 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, Camera, FileText, Image as ImageIcon, Plus, Sparkles, X, ZoomIn } from "lucide-react-native";
+import { Camera, FileText, Image as ImageIcon, Plus, Sparkles, X, ZoomIn } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { navigateBack } from "@/utils/appNavigation";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -188,6 +190,8 @@ export default function AddMedicalScreen() {
       attached.name,
       accessToken,
       getApiLang(),
+      undefined,
+      title.trim() ? { title: title.trim() } : undefined,
     )
       .then((analyzed) => {
         if (cancelled || analyzeRunRef.current !== runId) return;
@@ -195,7 +199,8 @@ export default function AddMedicalScreen() {
           !!requestIdParam?.trim() &&
           (categoryParam === "lab" || categoryParam === "xray");
         if (!locked) setCategory(analyzed.type);
-        setTitle(analyzed.title);
+        const patientTitle = title.trim();
+        setTitle(patientTitle || analyzed.title);
         setNotes(analyzed.notes);
         setDraftAiInsight(analyzed.ai_insight);
       })
@@ -384,7 +389,7 @@ export default function AddMedicalScreen() {
         );
         await refetchMedicalHistory(selectedPatientUserId);
         setUploading(false);
-        router.back();
+        navigateBack(router, "/(tabs)/records");
       } catch (e) {
         setUploading(false);
         Alert.alert("Save failed", (e as Error).message);
@@ -425,12 +430,14 @@ export default function AddMedicalScreen() {
             attached.name,
             accessToken,
             getApiLang(),
+            undefined,
+            resolvedTitle ? { title: resolvedTitle } : undefined,
           );
-          resolvedTitle = analyzed.title;
+          resolvedTitle = resolvedTitle || analyzed.title;
           resolvedNotes = analyzed.notes;
           resolvedInsight = analyzed.ai_insight;
           setDraftAiInsight(analyzed.ai_insight);
-          setTitle(analyzed.title);
+          setTitle(resolvedTitle);
           setNotes(analyzed.notes);
         }
 
@@ -482,7 +489,7 @@ export default function AddMedicalScreen() {
           isDoctor && selectedPatientUserId ? selectedPatientUserId : profile.id,
         );
         setUploading(false);
-        router.back();
+        navigateBack(router, "/(tabs)/records");
       } catch (e) {
         setUploading(false);
         Alert.alert("Save failed", (e as Error).message);
@@ -502,7 +509,7 @@ export default function AddMedicalScreen() {
       value: value.trim() || undefined,
       notes: notes.trim() || undefined,
     });
-    router.back();
+    navigateBack(router, "/(tabs)/records");
   };
 
   if (categoryParam === "prescription") return null;
@@ -521,13 +528,11 @@ export default function AddMedicalScreen() {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.foreground} />
-          ) : (
-            <ArrowLeft size={22} color={colors.foreground} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.foreground}
+          style={{ padding: 4 }}
+          fallback="/(tabs)/records"
+        />
         <Text style={[styles.headerTitle, { color: colors.foreground, textAlign }]}>
           {isDiagnosis
             ? isRTL

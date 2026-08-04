@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -86,9 +86,7 @@ export default function LoginScreen() {
             },
           ]}
         >
-          <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
-            <ArrowLeft size={22} color={colors.foreground} />
-          </Pressable>
+          <AppBackButton color={colors.foreground} style={{ padding: 6 }} />
           <AuthLanguageField />
         </View>
       ) : null}

@@ -47,6 +47,7 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
+import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import { fetchActiveConsultation } from "@/domains/consultations/api";
 import {
@@ -271,7 +272,13 @@ export function MedicalHistoryList({
     setFilters((prev) => ({ ...prev, bodyPart: part }));
   };
 
-  const effectiveViewMode: RecordsViewMode = isDesktop ? viewMode : "table";
+  const effectiveViewMode: RecordsViewMode = viewMode;
+
+  const openBodyPart = (part: BodyPart) => {
+    router.push(
+      buildBodyPartRecordsHref(part, { patientUserId }) as never,
+    );
+  };
 
   const recordsPanel = visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
     const label = isRTL ? labelAr : labelEn;
@@ -502,16 +509,17 @@ export function MedicalHistoryList({
         // Doctor patient page scrolls externally — avoid flex:1 locking height to the viewport.
         doctorView || isDesktop ? styles.desktopRoot : styles.mobileRoot,
         fillSkeletonViewport ? styles.desktopRootSkeletonFill : null,
+        effectiveViewMode === "skeleton" && !isDesktop
+          ? styles.mobileRootSkeleton
+          : null,
         !isDesktop && !doctorView && bottomChromePad > 0
           ? { paddingBottom: bottomChromePad }
           : null,
       ]}
     >
-      {isDesktop ? (
-        <View style={styles.viewToggleWrap}>
-          <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-        </View>
-      ) : null}
+      <View style={styles.viewToggleWrap}>
+        <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+      </View>
 
       {doctorView && accessToken && consultationOpen ? (
         <View style={[styles.requestPills, { flexDirection: dir }]}>
@@ -596,32 +604,43 @@ export function MedicalHistoryList({
         </View>
       )}
 
-      {effectiveViewMode === "skeleton" && isDesktop ? (
-        <View
-          style={[
-            styles.splitRow,
-            fillSkeletonViewport
-              ? styles.splitRowFill
-              : { height: splitHeight },
-            { flexDirection: dir },
-          ]}
-        >
-          <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+      {effectiveViewMode === "skeleton" ? (
+        isDesktop ? (
+          <View
+            style={[
+              styles.splitRow,
+              fillSkeletonViewport
+                ? styles.splitRowFill
+                : { height: splitHeight },
+              { flexDirection: dir },
+            ]}
+          >
+            <View style={[styles.splitPane, styles.splitSkeleton, { borderColor: colors.border }]}>
+              <BodySkeletonView
+                selectedPart={selectedBodyPart}
+                records={displayRecords}
+                onSelectPart={handleSelectPart}
+              />
+            </View>
+            <ScrollView
+              style={[styles.splitPane, styles.splitRecords]}
+              contentContainerStyle={styles.splitRecordsContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {recordsPanel}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={[styles.mobileSkeletonPane, { borderColor: colors.border }]}>
             <BodySkeletonView
               selectedPart={selectedBodyPart}
               records={displayRecords}
               onSelectPart={handleSelectPart}
+              onOpenPart={openBodyPart}
             />
           </View>
-          <ScrollView
-            style={[styles.splitPane, styles.splitRecords]}
-            contentContainerStyle={styles.splitRecordsContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {recordsPanel}
-          </ScrollView>
-        </View>
+        )
       ) : (
         recordsPanel
       )}
@@ -721,6 +740,19 @@ const styles = StyleSheet.create({
     minHeight: 0,
     width: "100%",
     position: "relative",
+  },
+  mobileRootSkeleton: {
+    flex: 1,
+    minHeight: 0,
+  },
+  mobileSkeletonPane: {
+    flex: 1,
+    minHeight: 280,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    overflow: "hidden",
   },
   desktopRoot: {
     width: "100%",

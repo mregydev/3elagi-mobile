@@ -8,6 +8,10 @@ export const WEB_SPEECH_LANG: Record<Locale, string> = {
   es: "es-ES",
 };
 
+/**
+ * Web Speech API needs one language tag (used for AI voice-mode continuous listen).
+ * Dictation / STT paths use backend auto-detect among ar | en | de | es instead.
+ */
 export function resolveWebSpeechLang(locale: Locale): string {
   return WEB_SPEECH_LANG[locale];
 }

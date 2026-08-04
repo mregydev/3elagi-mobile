@@ -1,6 +1,8 @@
 import * as DocumentPicker from "expo-document-picker";
 import { router } from "expo-router";
-import { ArrowLeft, Paperclip, Trash2, Mail } from "lucide-react-native";
+import { Paperclip, Trash2, Mail } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { navigateBack } from "@/utils/appNavigation";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -88,7 +90,7 @@ export default function ContactScreen() {
       showSuccessToast(t.contact.sent);
       setMessage("");
       setFiles([]);
-      router.back();
+      navigateBack(router, "/(tabs)");
     } catch (e) {
       showErrorToast(
         t.contact.sendFailed,
@@ -111,15 +113,12 @@ export default function ContactScreen() {
           },
         ]}
       >
-        <Pressable
-          onPress={() => router.back()}
+        <AppBackButton
+          color={colors.foreground}
           hitSlop={12}
           style={styles.backBtn}
-          accessibilityRole="button"
           accessibilityLabel={t.common.cancel}
-        >
-          <ArrowLeft size={22} color={colors.foreground} />
-        </Pressable>
+        />
         <Text style={[styles.title, { color: colors.foreground }]}>
           {t.contact.title}
         </Text>

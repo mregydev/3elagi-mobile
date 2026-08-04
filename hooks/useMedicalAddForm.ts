@@ -155,6 +155,7 @@ export function useMedicalAddForm() {
       accessToken,
       getApiLang(),
       attached.webFile,
+      title.trim() ? { title: title.trim() } : undefined,
     )
       .then((analyzed) => {
         if (cancelled || analyzeRunRef.current !== runId) return;
@@ -162,7 +163,8 @@ export function useMedicalAddForm() {
           !!requestIdParam?.trim() &&
           (categoryParam === "lab" || categoryParam === "xray");
         if (!locked) setCategory(analyzed.type);
-        setTitle(analyzed.title);
+        const patientTitle = title.trim();
+        setTitle(patientTitle || analyzed.title);
         setNotes(analyzed.notes);
         setDraftAiInsight(analyzed.ai_insight);
       })
@@ -410,12 +412,13 @@ export function useMedicalAddForm() {
             accessToken,
             getApiLang(),
             attached.webFile,
+            resolvedTitle ? { title: resolvedTitle } : undefined,
           );
-          resolvedTitle = analyzed.title;
+          resolvedTitle = resolvedTitle || analyzed.title;
           resolvedNotes = analyzed.notes;
           resolvedInsight = analyzed.ai_insight;
           setDraftAiInsight(analyzed.ai_insight);
-          setTitle(analyzed.title);
+          setTitle(resolvedTitle);
           setNotes(analyzed.notes);
         }
 

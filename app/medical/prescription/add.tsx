@@ -2,8 +2,6 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ArrowLeft,
-  ArrowRight,
   Camera,
   Image as ImageIcon,
   Plus,
@@ -23,6 +21,8 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { navigateBack } from "@/utils/appNavigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
@@ -267,7 +267,7 @@ export default function AddPrescriptionScreen() {
   };
 
   const handleCancel = () => {
-    router.back();
+    navigateBack(router, "/(tabs)/records");
   };
 
   const handleSave = async () => {
@@ -336,7 +336,7 @@ export default function AddPrescriptionScreen() {
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);
-      router.back();
+      navigateBack(router, "/(tabs)/records");
     } catch (e) {
       Alert.alert(
         isRTL ? "فشل الحفظ" : "Save failed",
@@ -362,13 +362,13 @@ export default function AddPrescriptionScreen() {
           },
         ]}
       >
-        <Pressable onPress={handleCancel} style={styles.headerBtn} hitSlop={8}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.foreground} />
-          ) : (
-            <ArrowLeft size={22} color={colors.foreground} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.foreground}
+          style={styles.headerBtn}
+          hitSlop={8}
+          fallback="/(tabs)/records"
+          onPress={handleCancel}
+        />
         <Text style={[styles.headerTitle, { color: colors.foreground, textAlign }]}>
           {isRTL ? "إضافة روشتة" : "Add prescription"}
         </Text>

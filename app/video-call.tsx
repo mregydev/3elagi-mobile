@@ -1,5 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ClipboardList, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
+import { ClipboardList, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { navigateBack } from "@/utils/appNavigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -193,7 +195,7 @@ export default function VideoCallScreen() {
     if (accessToken && session?.id && session.id !== "direct") {
       void endVideoCall(accessToken, session.id).catch(() => undefined);
     }
-    router.back();
+    navigateBack(router, "/(tabs)/history");
   };
 
   const handleAccept = async () => {
@@ -220,7 +222,7 @@ export default function VideoCallScreen() {
     setActing("reject");
     try {
       await declineVideoCall(accessToken, session.id);
-      router.back();
+      navigateBack(router, "/(tabs)/history");
     } catch (e) {
       setError(
         e instanceof Error
@@ -404,14 +406,13 @@ export default function VideoCallScreen() {
         ]}
       >
         <View style={[styles.headerTop, { flexDirection: rowDir }]}>
-          <Pressable
-            onPress={handleLeave}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "رجوع" : "Back"}
+          <AppBackButton
+            color={colors.foreground}
             style={styles.backBtn}
-          >
-            <ArrowLeft size={22} color={colors.foreground} />
-          </Pressable>
+            fallback="/(tabs)/history"
+            onPress={handleLeave}
+            accessibilityLabel={isRTL ? "رجوع" : "Back"}
+          />
 
           <View style={[styles.brandRow, { flexDirection: rowDir }]}>
             <Logo3elagi height={28} markOnly />

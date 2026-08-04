@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, Coins } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -27,6 +27,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
 import { formatMoney } from "@/utils/credits";
 import { showErrorToast } from "@/utils/toast";
 import { flexRow } from "@/utils/rtl";
@@ -40,6 +41,8 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
+  const router = useRouter();
+  usePathname();
   const accessToken = useAuthStore((s) => s.accessToken);
   const profileCountry = useAuthStore((s) => s.profile?.country);
   const [payingMethod, setPayingMethod] = useState<PaymentMethodId | null>(null);
@@ -47,6 +50,7 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
+  const showBack = canNavigateBack(router);
   const currency = marketCurrencyCode(profileCountry);
   const rate = pricePerPoint(profileCountry);
   const due = moneyForPoints(amount, profileCountry);
@@ -108,13 +112,15 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
             { maxWidth: useWideLayout ? WEB_MAX_WIDTH.content : 560 },
           ]}
         >
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.backRow, { flexDirection: dir }]}
-          >
-            <BackIcon size={18} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700" }}>{t.credits.back}</Text>
-          </Pressable>
+          {showBack ? (
+            <Pressable
+              onPress={() => navigateBack(router, "/(tabs)/points")}
+              style={[styles.backRow, { flexDirection: dir }]}
+            >
+              <BackIcon size={18} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: "700" }}>{t.credits.back}</Text>
+            </Pressable>
+          ) : null}
 
           <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.summaryHeader, { flexDirection: dir }]}>

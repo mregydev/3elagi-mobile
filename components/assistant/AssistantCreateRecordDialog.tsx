@@ -91,6 +91,7 @@ export function AssistantCreateRecordDialog({
     };
     setFile(attached);
     setAnalyzing(true);
+    const patientTitle = title.trim();
     try {
       const analyzed = await analyzeMedicalRecordImage(
         attached.uri,
@@ -99,9 +100,10 @@ export function AssistantCreateRecordDialog({
         token,
         apiLang,
         attached.webFile,
+        patientTitle ? { title: patientTitle } : undefined,
       );
       setType(analyzed.type);
-      setTitle(analyzed.title);
+      setTitle(patientTitle || analyzed.title);
       setNotes(analyzed.notes);
       setCachedInsight(analyzed.ai_insight);
     } catch (err) {
@@ -143,6 +145,7 @@ export function AssistantCreateRecordDialog({
             token,
             apiLang,
             file.webFile,
+            title.trim() ? { title: title.trim() } : undefined,
           );
           aiInsight = analyzed.ai_insight;
         } catch {
@@ -235,6 +238,25 @@ export function AssistantCreateRecordDialog({
             })}
           </View>
 
+          <AppTextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={
+              isEn
+                ? "Title (optional before photo — AI uses it)"
+                : "العنوان (اختياري قبل الصورة — يستخدمه الذكاء)"
+            }
+            placeholderTextColor={colors.mutedForeground}
+            style={[
+              styles.input,
+              {
+                color: colors.foreground,
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+              },
+            ]}
+          />
+
           <Pressable
             onPress={() => void pickImage()}
             style={[styles.attachBtn, { borderColor: colors.border }]}
@@ -253,20 +275,6 @@ export function AssistantCreateRecordDialog({
             </Text>
           </Pressable>
 
-          <AppTextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder={isEn ? "Title" : "العنوان"}
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.input,
-              {
-                color: colors.foreground,
-                borderColor: colors.border,
-                backgroundColor: colors.background,
-              },
-            ]}
-          />
           <AppTextInput
             value={notes}
             onChangeText={setNotes}

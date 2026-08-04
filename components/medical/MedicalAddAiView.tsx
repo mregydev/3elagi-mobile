@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams } from "expo-router";
-import { Camera, FileUp, Image as ImageIcon, Plus, Trash2 } from "lucide-react-native";
+import { Camera, FileUp, Image as ImageIcon, Mic, Plus, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { BodyPartAutocomplete } from "@/components/records/BodyPartAutocomplete";
 import { useAuthStore } from "@/domains/auth/store";
+import { useFieldDictation } from "@/hooks/useFieldDictation";
 import {
   analyzeMedicalRecordImage,
   createPatientMedicalDocument,
@@ -123,6 +124,10 @@ export function MedicalAddAiView() {
   const [extractingMeds, setExtractingMeds] = useState(false);
   const [medsLoaded, setMedsLoaded] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const titleDictation = useFieldDictation({
+    value: title,
+    onChangeText: setTitle,
+  });
 
   const extractMedications = async (attached: AttachedFile) => {
     if (!accessToken) return;
@@ -152,6 +157,7 @@ export function MedicalAddAiView() {
     if (!accessToken) return;
     setAnalyzing(true);
     setMedsLoaded(false);
+    const patientTitle = title.trim();
     try {
       const analyzed = await analyzeMedicalRecordImage(
         attached.uri,
@@ -160,6 +166,7 @@ export function MedicalAddAiView() {
         accessToken,
         apiLang,
         attached.webFile,
+        patientTitle ? { title: patientTitle } : undefined,
       );
       setType(
         requestIdParam?.trim() &&
@@ -167,7 +174,8 @@ export function MedicalAddAiView() {
           ? categoryParam
           : analyzed.type,
       );
-      setTitle(analyzed.title);
+      // Keep the patient's title when they provided one; otherwise use AI suggestion.
+      setTitle(patientTitle || analyzed.title);
       setNotes(analyzed.notes);
       setBodyPart(parseBodyPart(analyzed.body_part) ?? "general");
       setInsight(analyzed.ai_insight);
@@ -425,6 +433,79 @@ export function MedicalAddAiView() {
           {step === "upload" ? t.records.addAiUploadHint : t.records.addAiConfirmHint}
         </Text>
 
+        {step === "upload" && !analyzing ? (
+          <View style={styles.titleBlock}>
+            <Text style={[styles.label, { color: colors.mutedForeground, textAlign, marginTop: 0 }]}>
+              {t.records.addAiTitleLabel}
+            </Text>
+            <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+              {t.records.addAiTitleHint}
+            </Text>
+            <View
+              style={[
+                styles.titleInputRow,
+                {
+                  flexDirection: dir,
+                  borderColor: colors.border,
+                  backgroundColor: "#fff",
+                },
+              ]}
+            >
+              <AppTextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder={t.records.addAiTitlePlaceholder}
+                placeholderTextColor={colors.mutedForeground}
+                focusBorder={false}
+                style={[
+                  styles.titleInput,
+                  { color: colors.foreground, textAlign },
+                ]}
+              />
+              <Pressable
+                onPress={titleDictation.toggle}
+                disabled={titleDictation.busy}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  titleDictation.listening
+                    ? isRTL
+                      ? "إيقاف التسجيل"
+                      : "Stop listening"
+                    : isRTL
+                      ? "إدخال بالكلام"
+                      : "Dictate title"
+                }
+                hitSlop={8}
+                style={[
+                  styles.micBtn,
+                  {
+                    backgroundColor: titleDictation.listening
+                      ? colors.destructive
+                      : `${colors.primary}14`,
+                    opacity: titleDictation.busy ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {titleDictation.busy ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Mic
+                    size={18}
+                    color={titleDictation.listening ? "#fff" : colors.primary}
+                  />
+                )}
+              </Pressable>
+            </View>
+            {titleDictation.listening ? (
+              <Text style={[styles.hint, { color: colors.destructive, textAlign }]}>
+                {isRTL
+                  ? "جاري الاستماع… تكلم ثم اضغط الميكروفون للإيقاف"
+                  : "Listening… speak, then tap mic to stop"}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {step === "upload" || analyzing ? (
           <View style={styles.uploadBlock}>
             {analyzing ? (
@@ -546,14 +627,49 @@ export function MedicalAddAiView() {
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
                   {isRTL ? "العنوان" : "Title"}
                 </Text>
-                <AppTextInput
-                  value={title}
-                  onChangeText={setTitle}
+                <View
                   style={[
-                    styles.input,
-                    { color: colors.foreground, borderColor: colors.border, textAlign },
+                    styles.titleInputRow,
+                    {
+                      flexDirection: dir,
+                      borderColor: colors.border,
+                      backgroundColor: "#fff",
+                    },
                   ]}
-                />
+                >
+                  <AppTextInput
+                    value={title}
+                    onChangeText={setTitle}
+                    focusBorder={false}
+                    style={[
+                      styles.titleInput,
+                      { color: colors.foreground, textAlign },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={titleDictation.toggle}
+                    disabled={titleDictation.busy}
+                    hitSlop={8}
+                    style={[
+                      styles.micBtn,
+                      {
+                        backgroundColor: titleDictation.listening
+                          ? colors.destructive
+                          : `${colors.primary}14`,
+                        opacity: titleDictation.busy ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    {titleDictation.busy ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Mic
+                        size={18}
+                        color={titleDictation.listening ? "#fff" : colors.primary}
+                      />
+                    )}
+                  </Pressable>
+                </View>
 
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
                   {type === "prescription"
@@ -776,6 +892,7 @@ export function MedicalAddAiView() {
                 setMedications([emptyMedication()]);
                 setMedsLoaded(false);
                 setInsight(null);
+                // Keep title so the patient can reuse it with another file.
               }}
               style={styles.reupload}
             >
@@ -800,7 +917,35 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 8 },
   title: { fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
   subtitle: { fontSize: 14, lineHeight: 20, fontWeight: "500", marginBottom: 12 },
-  uploadBlock: { marginTop: 16 },
+  titleBlock: { gap: 6, marginBottom: 8 },
+  titleInputRow: {
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingLeft: 4,
+    paddingRight: 6,
+    minHeight: 48,
+    gap: 4,
+  },
+  titleInput: {
+    flex: 1,
+    borderWidth: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: "600",
+    backgroundColor: "transparent",
+    minWidth: 0,
+  },
+  micBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  uploadBlock: { marginTop: 8 },
   uploadRow: { gap: 10 },
   uploadBtn: {
     flex: 1,

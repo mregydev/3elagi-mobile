@@ -3,6 +3,9 @@ import type { Locale } from "@/domains/i18n/store";
 
 const STT_TIMEOUT_MS = 60_000;
 
+/** Auto-detect among Arabic, English, German, Spanish. */
+export type SttLanguageCode = Locale | "auto";
+
 async function parseError(res: Response): Promise<string> {
   const text = await res.text().catch(() => "");
   if (!text) return `STT request failed (${res.status})`;
@@ -19,7 +22,7 @@ export async function transcribeAssistantAudio(
   token: string,
   audioBase64: string,
   mimeType: string,
-  languageCode?: Locale,
+  languageCode: SttLanguageCode = "auto",
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);
@@ -34,7 +37,9 @@ export async function transcribeAssistantAudio(
       body: JSON.stringify({
         audio: audioBase64,
         mimeType,
-        languageCode,
+        // Omit / send auto so the server detects ar | en | de | es from speech.
+        languageCode:
+          !languageCode || languageCode === "auto" ? "auto" : languageCode,
       }),
     });
     if (!res.ok) {

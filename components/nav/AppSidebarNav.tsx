@@ -73,7 +73,8 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
 
   const go = (href: Href) => {
     onNavigate?.();
-    router.push(href);
+    // Tabs: navigate without stacking so Back leaves detail screens, not tabs.
+    router.navigate(href);
   };
 
   return (

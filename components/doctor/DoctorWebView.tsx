@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -36,6 +36,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
 
 function StarPicker({
   value,
@@ -93,8 +94,11 @@ export function DoctorWebView() {
   const colors = useColors();
   const { isRTL, t } = useI18n();
   const { isDesktop, isTablet } = useWebLayout();
+  const router = useRouter();
+  usePathname();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
+  const showBack = canNavigateBack(router);
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -149,7 +153,7 @@ export function DoctorWebView() {
     if (!isSignedIn(profile, accessToken)) {
       router.replace("/welcome");
     }
-  }, [profile, accessToken]);
+  }, [profile, accessToken, router]);
 
   const openChat = () => {
     const chatUserId = userId ?? doctor?.userId;
@@ -207,16 +211,21 @@ export function DoctorWebView() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
-          <Pressable onPress={() => router.back()} style={[styles.backBtn, { flexDirection: dir }]}>
-            {isRTL ? (
-              <ArrowRight size={18} color={colors.primary} />
-            ) : (
-              <ArrowLeft size={18} color={colors.primary} />
-            )}
-            <Text style={[styles.backText, { color: colors.primary }]}>
-              {isRTL ? "رجوع" : "Back"}
-            </Text>
-          </Pressable>
+          {showBack ? (
+            <Pressable
+              onPress={() => navigateBack(router)}
+              style={[styles.backBtn, { flexDirection: dir }]}
+            >
+              {isRTL ? (
+                <ArrowRight size={18} color={colors.primary} />
+              ) : (
+                <ArrowLeft size={18} color={colors.primary} />
+              )}
+              <Text style={[styles.backText, { color: colors.primary }]}>
+                {isRTL ? "رجوع" : "Back"}
+              </Text>
+            </Pressable>
+          ) : null}
 
           <View style={styles.pageHeader}>
             <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>

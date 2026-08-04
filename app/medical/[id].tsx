@@ -1,8 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Activity,
-  ArrowLeft,
-  ArrowRight,
   Beaker,
   Bone,
   Calendar,
@@ -26,6 +24,8 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { navigateBack } from "@/utils/appNavigation";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
@@ -421,13 +421,12 @@ export default function MedicalRecordDetail() {
   if (needsDoctorAccess && !accessChecked) {
     return (
       <View style={[styles.loadingRoot, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={styles.loadingBack} hitSlop={10}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          style={styles.loadingBack}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
         <View style={styles.loadingBody}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -438,13 +437,12 @@ export default function MedicalRecordDetail() {
   if (needsDoctorAccess && !hasDoctorAccess) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={[styles.loadingBack, { alignSelf: "flex-start", marginLeft: 12 }]} hitSlop={10}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          style={[styles.loadingBack, { alignSelf: "flex-start", marginLeft: 12 }]}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
         <DoctorPatientAccessDenied isRTL={isRTL} />
       </View>
     );
@@ -453,13 +451,12 @@ export default function MedicalRecordDetail() {
   if (!record && loadState === "loading") {
     return (
       <View style={[styles.loadingRoot, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={styles.loadingBack} hitSlop={10}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          style={styles.loadingBack}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
         <View style={styles.loadingBody}>
           <ActivityIndicator size="large" color={colors.primary} />
         <Text style={{ color: colors.mutedForeground, marginTop: 12, fontSize: 14, textAlign }}>
@@ -643,7 +640,7 @@ export default function MedicalRecordDetail() {
                 }
                 await refetchListsAfterChange();
                 remove(profile!.id, record.id);
-                router.back();
+                navigateBack(router, "/(tabs)/records");
               } catch (e) {
                 Alert.alert(
                   isRTL ? "فشل الحذف" : "Delete failed",
@@ -670,11 +667,12 @@ export default function MedicalRecordDetail() {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={styles.headerBtn} hitSlop={10}>
-          {isRTL
-            ? <ArrowRight size={22} color="#fff" />
-            : <ArrowLeft  size={22} color="#fff" />}
-        </Pressable>
+        <AppBackButton
+          color="#fff"
+          style={styles.headerBtn}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
 
         {/* Category chip */}
         <View style={[styles.categoryChip, { flexDirection: dir }]}>

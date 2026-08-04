@@ -42,6 +42,7 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
+import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -160,7 +161,11 @@ export function RecordsWebView() {
     setSelectedBodyPart(null);
   };
 
-  const isSkeleton = isDesktop && viewMode === "skeleton";
+  const isSkeleton = viewMode === "skeleton";
+
+  const openBodyPart = (part: BodyPart) => {
+    router.push(buildBodyPartRecordsHref(part) as never);
+  };
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
@@ -170,7 +175,7 @@ export function RecordsWebView() {
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
           isSkeleton && styles.scrollContentSkeleton,
-          isSkeleton && styles.scrollContentSkeletonDesktop,
+          isSkeleton && isDesktop && styles.scrollContentSkeletonDesktop,
           {
             paddingBottom: isSkeleton
               ? 12
@@ -186,7 +191,7 @@ export function RecordsWebView() {
           style={[
             styles.container,
             isSkeleton && styles.containerSkeleton,
-            isSkeleton && styles.containerSkeletonDesktop,
+            isSkeleton && isDesktop && styles.containerSkeletonDesktop,
             { maxWidth: WEB_MAX_WIDTH.content },
           ]}
         >
@@ -220,15 +225,13 @@ export function RecordsWebView() {
             </Text>
           </View>
 
-          {isDesktop ? (
-            <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
-              <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-            </View>
-          ) : null}
+          <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
+            <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+          </View>
 
           <View
             style={
-              isSkeleton
+              isSkeleton && isDesktop
                 ? [styles.splitRow, { flexDirection: dir }]
                 : undefined
             }
@@ -238,6 +241,7 @@ export function RecordsWebView() {
                 style={[
                   styles.splitPane,
                   styles.splitSkeleton,
+                  !isDesktop && styles.splitSkeletonMobile,
                   { borderColor: colors.border },
                 ]}
               >
@@ -245,6 +249,7 @@ export function RecordsWebView() {
                   selectedPart={selectedBodyPart}
                   records={displayRecords}
                   onSelectPart={setSelectedBodyPart}
+                  onOpenPart={isDesktop ? undefined : openBodyPart}
                 />
               </View>
             ) : null}
