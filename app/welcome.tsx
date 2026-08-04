@@ -14,7 +14,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
-const WELCOME_HERO_MOBILE = require("@/assets/images/welcome-hero-mobile.jpg");
+const WELCOME_HERO_MOBILE = require("@/assets/images/welcome-hero-mobile.png");
 
 type WelcomePanel = "home" | "login" | "signup";
 
