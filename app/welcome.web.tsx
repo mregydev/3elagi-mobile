@@ -68,7 +68,7 @@ export default function WelcomeScreenWeb() {
             source={WELCOME_HERO_LEFT}
             style={styles.heroImage}
             contentFit="cover"
-            contentPosition="left center"
+            contentPosition="center"
             accessibilityLabel=""
           />
         </View>
@@ -190,26 +190,34 @@ export default function WelcomeScreenWeb() {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    height: "100vh" as unknown as number,
     minHeight: "100vh" as unknown as number,
     width: "100%",
+    overflow: "hidden",
   },
   shellStacked: {
     flexDirection: "column",
   },
   heroPane: {
-    flex: 1,
+    flex: 1.25,
+    alignSelf: "stretch",
+    height: "100%" as unknown as number,
     minWidth: 0,
-    minHeight: 0,
+    minHeight: "100%" as unknown as number,
     backgroundColor: "#eef4fc",
     overflow: "hidden",
   },
   heroImage: {
+    ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
   },
   actionPane: {
-    flex: 1,
-    minWidth: 0,
+    flex: 0.85,
+    alignSelf: "stretch",
+    height: "100%" as unknown as number,
+    minWidth: 320,
+    maxWidth: 520,
     minHeight: 0,
   },
   actionPaneFull: {
