@@ -2,13 +2,17 @@ import { Image } from "expo-image";
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import {
+  clampDotAnchor,
+  ZONE_DOT_ANCHORS,
+} from "@/components/records/bodyDotAnchors";
+import {
   HIT_ORDER,
   ZONE_BBOXES,
   zoneAtViewPoint,
 } from "@/components/records/bodyPartHitTest";
 import { ANATOMY_VIEWBOX } from "@/components/records/bodyPartShapes";
 import { RecordPulseDot } from "@/components/records/RecordPulseDot";
-import type { BodyZone } from "@/domains/medical/bodyParts";
+import { zoneForBodyPart, type BodyPart, type BodyZone } from "@/domains/medical/bodyParts";
 
 /** Transparent anatomy PNG — skeleton + organs. */
 const BODY_SRC = require("@/assets/images/body-anatomy.png");
@@ -25,7 +29,9 @@ type Props = {
   onSelectZone: (zone: BodyZone, anchor: ZoneTapAnchor) => void;
   /** Mobile / mobile-web: fill the slot; still keeps anatomy aspect (letterbox). */
   compact?: boolean;
-  /** Zones that already have medical records — show indicator dots. */
+  /** Organs with records — rolled up to one dot per body area. */
+  partsWithRecords?: ReadonlySet<BodyPart>;
+  /** Zones that already have medical records — show one indicator per zone. */
   zonesWithRecords?: ReadonlySet<BodyZone>;
   /** Currently highlighted body area (legend sync). */
   highlightedZone?: BodyZone | null;
@@ -37,6 +43,7 @@ export function BodyAnatomyFigure({
   zoneLabels,
   onSelectZone,
   compact = false,
+  partsWithRecords,
   zonesWithRecords,
   highlightedZone = null,
 }: Props) {
@@ -51,18 +58,24 @@ export function BodyAnatomyFigure({
   const sy = drawH / ANATOMY_VIEWBOX.h;
 
   const recordDots = useMemo(() => {
-    if (!zonesWithRecords?.size) return [];
-    return HIT_ORDER.filter((zone) => zonesWithRecords.has(zone)).map((zone) => {
-      const box = ZONE_BBOXES[zone];
-      const cx = (box.minX + box.maxX) / 2;
-      const cy = (box.minY + box.maxY) / 2;
+    const zones = new Set<BodyZone>(zonesWithRecords ?? []);
+    if (partsWithRecords?.size) {
+      for (const part of partsWithRecords) {
+        const zone = zoneForBodyPart(part);
+        if (zone) zones.add(zone);
+      }
+    }
+    if (!zones.size) return [];
+
+    return HIT_ORDER.filter((zone) => zones.has(zone)).map((zone) => {
+      const anchor = clampDotAnchor(ZONE_DOT_ANCHORS[zone]);
       return {
-        zone,
-        left: Math.round(cx * sx),
-        top: Math.round(cy * sy),
+        key: zone,
+        left: Math.round(anchor.x * sx),
+        top: Math.round(anchor.y * sy),
       };
     });
-  }, [zonesWithRecords, sx, sy]);
+  }, [partsWithRecords, zonesWithRecords, sx, sy]);
 
   return (
     <View
@@ -132,7 +145,7 @@ export function BodyAnatomyFigure({
 
         {recordDots.map((dot) => (
           <RecordPulseDot
-            key={`dot-${dot.zone}`}
+            key={`dot-${dot.key}`}
             size="lg"
             left={dot.left}
             top={dot.top}

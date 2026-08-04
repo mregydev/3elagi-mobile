@@ -16,7 +16,10 @@ import {
   type ZoneTapAnchor,
 } from "@/components/records/BodyAnatomyFigure";
 import { BODY_PART_ICONS, BodyPartIcon } from "@/components/records/bodyPartIcons";
+import { ZONE_ACCENT } from "@/components/records/bodyZoneAccents";
 import { RecordPulseDot } from "@/components/records/RecordPulseDot";
+import { recordsBottomChromeHeight } from "@/components/records/RecordsBottomChrome";
+import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import {
   BODY_PARTS_BY_ZONE,
   BODY_ZONES,
@@ -25,8 +28,6 @@ import {
   type BodyZone,
 } from "@/domains/medical/bodyParts";
 import type { MedicalRecord } from "@/domains/medical/types";
-import { WEB_BREAKPOINTS } from "@/constants/webLayout";
-import { recordsBottomChromeHeight } from "@/components/records/RecordsBottomChrome";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -42,17 +43,6 @@ interface Props {
    */
   onOpenPart?: (part: BodyPart) => void;
 }
-
-const ZONE_ACCENT: Record<BodyZone, string> = {
-  head_neck: "#6366F1",
-  chest: "#0EA5E9",
-  abdomen: "#0D9488",
-  pelvis: "#A855F7",
-  left_arm: "#F59E0B",
-  right_arm: "#D97706",
-  left_leg: "#EA580C",
-  right_leg: "#C2410C",
-};
 
 const DESKTOP_FIGURE_HEIGHT_RATIO = 0.72;
 /** Fallback when parent hasn't laid out yet — leave room for header + add bar. */
@@ -114,8 +104,6 @@ export function BodySkeletonView({
   const [diagramW, setDiagramW] = useState(0);
   const [openZone, setOpenZone] = useState<BodyZone | null>(null);
   const [highlightedZone, setHighlightedZone] = useState<BodyZone | null>(null);
-  /** Only true when the zone was tapped on the skeleton (not the legend). */
-  const [highlightOnSkeleton, setHighlightOnSkeleton] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<ZoneTapAnchor | null>(null);
 
   const partsWithRecords = useMemo(() => {
@@ -189,20 +177,12 @@ export function BodySkeletonView({
     }
     const next = selectedPart === part ? null : part;
     onSelectPart(next);
-    if (!next) {
-      setHighlightedZone(null);
-      setHighlightOnSkeleton(false);
-    }
+    if (!next) setHighlightedZone(null);
     closePartPicker();
   };
 
-  const selectZone = (
-    zone: BodyZone,
-    anchor: ZoneTapAnchor,
-    opts?: { fromLegend?: boolean },
-  ) => {
+  const selectZone = (zone: BodyZone, anchor: ZoneTapAnchor) => {
     setHighlightedZone(zone);
-    setHighlightOnSkeleton(!opts?.fromLegend);
     const parts = BODY_PARTS_BY_ZONE[zone];
     // Single-organ zones (e.g. left foot) select immediately — no menu needed.
     if (parts.length === 1) {
@@ -221,14 +201,10 @@ export function BodySkeletonView({
   };
 
   const openZoneFromLegend = (zone: BodyZone) => {
-    selectZone(
-      zone,
-      {
-        x: width / 2,
-        y: Math.round(screenHeight * 0.35),
-      },
-      { fromLegend: true },
-    );
+    selectZone(zone, {
+      x: width / 2,
+      y: Math.round(screenHeight * 0.35),
+    });
   };
 
   const zoneParts = openZone ? BODY_PARTS_BY_ZONE[openZone] : [];
@@ -263,7 +239,6 @@ export function BodySkeletonView({
               onPress={() => {
                 onSelectPart(null);
                 setHighlightedZone(null);
-                setHighlightOnSkeleton(false);
                 closePartPicker();
               }}
               accessibilityRole="button"
@@ -303,8 +278,9 @@ export function BodySkeletonView({
             zoneLabels={t.records.bodyZones}
             onSelectZone={selectZone}
             compact={!isDesktop}
+            partsWithRecords={partsWithRecords}
             zonesWithRecords={zonesWithRecords}
-            highlightedZone={highlightOnSkeleton ? activeZone : null}
+            highlightedZone={null}
           />
         ) : null}
 

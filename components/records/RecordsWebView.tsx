@@ -161,6 +161,12 @@ export function RecordsWebView() {
     setSelectedBodyPart(null);
   };
 
+  /** Keep skeleton selection and filter body-part control in sync. */
+  const selectBodyPart = (bodyPart: BodyPart | null) => {
+    setSelectedBodyPart(bodyPart);
+    setFilters((prev) => ({ ...prev, bodyPart }));
+  };
+
   const isSkeleton = viewMode === "skeleton";
 
   const openBodyPart = (part: BodyPart) => {
@@ -248,7 +254,7 @@ export function RecordsWebView() {
                 <BodySkeletonView
                   selectedPart={selectedBodyPart}
                   records={displayRecords}
-                  onSelectPart={setSelectedBodyPart}
+                  onSelectPart={selectBodyPart}
                   onOpenPart={isDesktop ? undefined : openBodyPart}
                 />
               </View>
@@ -369,7 +375,7 @@ export function RecordsWebView() {
 
                         <BodyPartAutocomplete
                           value={filters.bodyPart}
-                          onChange={(bodyPart) => setFilters({ ...filters, bodyPart })}
+                          onChange={selectBodyPart}
                           label={t.records.bodyPart}
                           clearable
                         />
@@ -621,7 +627,7 @@ export function RecordsWebView() {
 
                       <BodyPartAutocomplete
                         value={filters.bodyPart}
-                        onChange={(bodyPart) => setFilters({ ...filters, bodyPart })}
+                        onChange={selectBodyPart}
                         label={t.records.bodyPart}
                         clearable
                       />
