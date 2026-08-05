@@ -25,6 +25,7 @@ import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { readRouteParam } from "@/utils/routeParams";
 
 export default function PatientRecordScreen() {
   const colors = useColors();
@@ -33,24 +34,28 @@ export default function PatientRecordScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const consumePendingRefresh = useMedicalStore((s) => s.consumePendingRefresh);
-  const { userId, name } = useLocalSearchParams<{ userId: string; name?: string }>();
+  const params = useLocalSearchParams<{ userId?: string | string[]; name?: string | string[] }>();
+  const userId = readRouteParam(params.userId);
+  const name = readRouteParam(params.name);
 
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
   /** Non-scrolling host so skeleton diagram gets a real flex height (web + native). */
   const skeletonView = recordsViewMode === "skeleton";
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const dir = isRTL ? "row-reverse" : "row";
-  const patientName = name?.trim() || (isRTL ? "المريض" : "Patient");
+  const patientName = name || (isRTL ? "المريض" : "Patient");
   const hasAccess = canDoctorViewPatientRecords(accessStatus);
 
   const loadScreen = useCallback(async () => {
     if (!accessToken || !userId || !isDoctor) return;
 
+    setLoadError(null);
     const status = await fetchDoctorPatientAccess(accessToken, userId);
     setAccessStatus(status);
 
@@ -70,9 +75,10 @@ export default function PatientRecordScreen() {
     }
     setLoading(true);
     loadScreen()
-      .catch(() => {
+      .catch((e) => {
         setAccessStatus(null);
         setRecords([]);
+        setLoadError(e instanceof Error ? e.message : "Failed to load patient");
       })
       .finally(() => setLoading(false));
   }, [isDoctor, userId, loadScreen]);
@@ -81,8 +87,9 @@ export default function PatientRecordScreen() {
     useCallback(() => {
       if (!isDoctor || !userId) return;
       consumePendingRefresh();
-      void loadScreen().catch(() => {
+      void loadScreen().catch((e) => {
         setRecords([]);
+        setLoadError(e instanceof Error ? e.message : "Failed to load patient");
       });
     }, [isDoctor, userId, consumePendingRefresh, loadScreen]),
   );
@@ -146,6 +153,12 @@ export default function PatientRecordScreen() {
 
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+      ) : loadError ? (
+        <View style={styles.center}>
+          <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
+            {loadError}
+          </Text>
+        </View>
       ) : !hasAccess ? (
         <DoctorPatientAccessDenied isRTL={isRTL} />
       ) : skeletonView ? (

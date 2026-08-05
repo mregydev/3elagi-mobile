@@ -429,21 +429,14 @@ export async function fetchPatientMedicalHistoryAsDoctor(
   patientUserId: string,
   token: string,
 ): Promise<MedicalRecord[]> {
+  // Match fetchAllMedicalHistory: one failing endpoint must not blank the whole page.
   const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
-    authJson<RawDocument[]>(`/medical-documents/patient/${patientUserId}`, token),
-    authJson<RawDiagnosis[]>(
-      `/diagnosis?patient_id=${encodeURIComponent(patientUserId)}`,
-      token,
-    ),
+    fetchDocumentsForPatientUser(patientUserId, token),
+    fetchDiagnosesForPatientUser(patientUserId, token).catch(() => [] as MedicalRecord[]),
     fetchPrescriptionsForPatientUser(patientUserId, token),
     fetchIntakeExamsForPatient(patientUserId, token).catch(() => [] as MedicalRecord[]),
   ]);
-  return [
-    ...(Array.isArray(diagnoses) ? diagnoses : []).map(mapDiagnosis),
-    ...(Array.isArray(prescriptions) ? prescriptions : []),
-    ...(Array.isArray(documents) ? documents : []).map(mapDocument),
-    ...intakeExams,
-  ];
+  return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
 }
 
 export async function fetchDoctorDiagnosisById(

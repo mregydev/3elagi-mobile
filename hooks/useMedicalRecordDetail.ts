@@ -42,20 +42,25 @@ import {
 } from "@/domains/medical/permissions";
 import { showAppAlert } from "@/utils/appAlert";
 import { openBlankPdfTab, openPdfInNewTab } from "@/utils/openPdfInNewTab";
+import { readRouteParam } from "@/utils/routeParams";
 import { showSuccessToast } from "@/utils/toast";
 
 export function useMedicalRecordDetail(isRTL: boolean) {
-  const { id, doctorView, patientUserId } = useLocalSearchParams<{
-    id: string;
-    doctorView?: string;
-    patientUserId?: string;
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    doctorView?: string | string[];
+    patientUserId?: string | string[];
   }>();
+  const id = readRouteParam(params.id);
+  const doctorView = readRouteParam(params.doctorView);
+  const patientUserId = readRouteParam(params.patientUserId) || undefined;
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
   const isDoctorView = doctorView === "1";
+  const isDoctorRole = role?.toLowerCase() === "doctor";
   const records = useMedicalStore((s) => s.records);
   const remove = useMedicalStore((s) => s.remove);
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
@@ -251,7 +256,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     // shared URL or one without patient context): the /patient/* endpoints are
     // patient-scoped and 404 for doctors, so use the doctor-scoped diagnosis
     // endpoint (server enforces doctor-patient access).
-    if (role === "doctor") {
+    if (isDoctorRole) {
       void (async () => {
         if (await loadIntakeInstance()) {
           finish();
@@ -338,6 +343,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     cached?.id,
     cached?.category,
     isDoctorView,
+    isDoctorRole,
     patientUserId,
     profile?.id,
     role,

@@ -42,6 +42,7 @@ import {
   fetchAllMedicalHistory,
   fetchDiagnosisById,
   fetchDoctorDiagnosisById,
+  findDoctorRecordById,
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
@@ -51,6 +52,7 @@ import {
   updateDiagnosis,
   updatePatientMedicalDocument,
 } from "@/domains/medical/api";
+import { readRouteParam } from "@/utils/routeParams";
 import {
   deleteIntakeExamInstance,
   fetchIntakeExamInstance,
@@ -97,17 +99,21 @@ export default function MedicalRecordDetail() {
   const { isRTL, t } = useI18n();
   const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
-  const { id, doctorView, patientUserId } = useLocalSearchParams<{
-    id: string;
-    doctorView?: string;
-    patientUserId?: string;
+  const routeParams = useLocalSearchParams<{
+    id?: string | string[];
+    doctorView?: string | string[];
+    patientUserId?: string | string[];
   }>();
+  const id = readRouteParam(routeParams.id);
+  const doctorView = readRouteParam(routeParams.doctorView);
+  const patientUserId = readRouteParam(routeParams.patientUserId) || undefined;
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
   const isDoctorView = doctorView === "1";
+  const isDoctorRole = role?.toLowerCase() === "doctor";
   const records = useMedicalStore((s) => s.records);
   const remove = useMedicalStore((s) => s.remove);
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
@@ -295,6 +301,35 @@ export default function MedicalRecordDetail() {
       };
     }
 
+    // Doctor opened a bare /medical/:id link (no doctorView) — don't use patient endpoints.
+    if (isDoctorRole) {
+      void (async () => {
+        if (await loadIntakeInstance()) {
+          finish();
+          return;
+        }
+        try {
+          const d = await fetchDoctorDiagnosisById(id, accessToken);
+          if (!cancelled) {
+            setDetail(d);
+            setEditDesc(d.title);
+            upsertDiagnosis(d);
+          }
+        } catch {
+          const found = await findDoctorRecordById(id, accessToken);
+          if (found && !cancelled) {
+            setDetail(found);
+            if (found.category === "prescription") upsertPrescription(found);
+          }
+        } finally {
+          finish();
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (cached?.category === "prescription" && profile?.id) {
       fetchPrescriptionById(id, profile.id, accessToken)
         .then((rx) => {
@@ -354,6 +389,7 @@ export default function MedicalRecordDetail() {
     cached?.id,
     cached?.category,
     isDoctorView,
+    isDoctorRole,
     patientUserId,
     profile?.id,
     upsertDiagnosis,
