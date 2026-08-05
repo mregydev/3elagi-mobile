@@ -280,7 +280,10 @@ export function BodySkeletonView({
             compact={!isDesktop}
             partsWithRecords={partsWithRecords}
             zonesWithRecords={zonesWithRecords}
-            highlightedZone={null}
+            highlightedZone={activeZone}
+            highlightedPart={
+              selectedPart && selectedPart !== "general" ? selectedPart : null
+            }
           />
         ) : null}
 

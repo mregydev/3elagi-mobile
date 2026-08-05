@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import {
   clampDotAnchor,
   ZONE_DOT_ANCHORS,
@@ -10,9 +11,18 @@ import {
   ZONE_BBOXES,
   zoneAtViewPoint,
 } from "@/components/records/bodyPartHitTest";
-import { ANATOMY_VIEWBOX } from "@/components/records/bodyPartShapes";
+import {
+  ANATOMY_VIEWBOX,
+  PART_PATHS,
+  ZONE_PATHS,
+} from "@/components/records/bodyPartShapes";
+import { ZONE_ACCENT } from "@/components/records/bodyZoneAccents";
 import { RecordPulseDot } from "@/components/records/RecordPulseDot";
-import { zoneForBodyPart, type BodyPart, type BodyZone } from "@/domains/medical/bodyParts";
+import {
+  zoneForBodyPart,
+  type BodyPart,
+  type BodyZone,
+} from "@/domains/medical/bodyParts";
 
 /** Transparent anatomy PNG — skeleton + organs. */
 const BODY_SRC = require("@/assets/images/body-anatomy.png");
@@ -21,6 +31,14 @@ export const ANATOMY_ASSET_W = ANATOMY_VIEWBOX.w;
 export const ANATOMY_ASSET_H = ANATOMY_VIEWBOX.h;
 
 export type ZoneTapAnchor = { x: number; y: number };
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = Number.parseInt(h.slice(0, 2), 16);
+  const g = Number.parseInt(h.slice(2, 4), 16);
+  const b = Number.parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 type Props = {
   width: number;
@@ -33,8 +51,10 @@ type Props = {
   partsWithRecords?: ReadonlySet<BodyPart>;
   /** Zones that already have medical records — show one indicator per zone. */
   zonesWithRecords?: ReadonlySet<BodyZone>;
-  /** Currently highlighted body area (legend sync). */
+  /** Body area to outline with a free-form path highlight. */
   highlightedZone?: BodyZone | null;
+  /** Specific organ highlight (preferred over zone when set). */
+  highlightedPart?: BodyPart | null;
 };
 
 export function BodyAnatomyFigure({
@@ -46,6 +66,7 @@ export function BodyAnatomyFigure({
   partsWithRecords,
   zonesWithRecords,
   highlightedZone = null,
+  highlightedPart = null,
 }: Props) {
   const slotW = Math.max(1, Math.round(width));
   const slotH = Math.max(1, Math.round(height));
@@ -77,6 +98,28 @@ export function BodyAnatomyFigure({
     });
   }, [partsWithRecords, zonesWithRecords, sx, sy]);
 
+  const highlight = useMemo(() => {
+    if (highlightedPart && highlightedPart !== "general") {
+      const partZone = zoneForBodyPart(highlightedPart);
+      const partPath = PART_PATHS[highlightedPart];
+      // Prefer organ shape only when it matches the active area (avoid stale organ).
+      if (
+        partPath &&
+        partZone &&
+        (!highlightedZone || partZone === highlightedZone)
+      ) {
+        return { d: partPath, accent: ZONE_ACCENT[partZone] };
+      }
+    }
+    if (highlightedZone) {
+      return {
+        d: ZONE_PATHS[highlightedZone],
+        accent: ZONE_ACCENT[highlightedZone],
+      };
+    }
+    return null;
+  }, [highlightedPart, highlightedZone]);
+
   return (
     <View
       style={[
@@ -93,19 +136,42 @@ export function BodyAnatomyFigure({
           pointerEvents="none"
         />
 
+        {highlight ? (
+          <Svg
+            width={drawW}
+            height={drawH}
+            viewBox={`0 0 ${ANATOMY_VIEWBOX.w} ${ANATOMY_VIEWBOX.h}`}
+            style={styles.highlightSvg}
+            pointerEvents="none"
+          >
+            <Path
+              d={highlight.d}
+              fill={hexToRgba(highlight.accent, 0.32)}
+              stroke={highlight.accent}
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </Svg>
+        ) : null}
+
         {HIT_ORDER.map((zone, index) => {
           const box = ZONE_BBOXES[zone];
           const left = Math.round(box.minX * sx);
           const top = Math.round(box.minY * sy);
           const w = Math.max(16, Math.round((box.maxX - box.minX) * sx));
           const h = Math.max(16, Math.round((box.maxY - box.minY) * sy));
-          const highlighted = highlightedZone === zone;
+          const selected =
+            highlightedZone === zone ||
+            (highlightedPart != null &&
+              highlightedPart !== "general" &&
+              zoneForBodyPart(highlightedPart) === zone);
           return (
             <Pressable
               key={`hit-${zone}`}
               accessibilityRole="button"
               accessibilityLabel={zoneLabels[zone]}
-              accessibilityState={{ selected: highlighted }}
+              accessibilityState={{ selected }}
               hitSlop={4}
               onPress={(e) => {
                 const { pageX, pageY, locationX, locationY } = e.nativeEvent;
@@ -132,12 +198,8 @@ export function BodyAnatomyFigure({
                 width: w,
                 height: h,
                 zIndex: 10 + index,
-                backgroundColor: highlighted
-                  ? "rgba(239, 68, 68, 0.12)"
-                  : "rgba(0,0,0,0.001)",
-                borderWidth: highlighted ? 2 : 0,
-                borderColor: highlighted ? "rgba(239, 68, 68, 0.55)" : "transparent",
-                borderRadius: 8,
+                // Invisible hit target only — visual highlight is the SVG path.
+                backgroundColor: "rgba(0,0,0,0.001)",
               }}
             />
           );
@@ -167,5 +229,9 @@ const styles = StyleSheet.create({
   },
   figureWrapCompact: {
     width: "100%",
+  },
+  highlightSvg: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
   },
 });

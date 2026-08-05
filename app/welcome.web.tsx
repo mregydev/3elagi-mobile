@@ -19,7 +19,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 import { on } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
 
-const WELCOME_HERO_LEFT = require("@/assets/images/welcome-hero-left.png");
+const WELCOME_HERO_LEFT = require("@/assets/images/welcome-hero-left.jpg");
 
 type WelcomePanel = "home" | "login" | "signup";
 
