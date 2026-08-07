@@ -220,7 +220,13 @@ export function DoctorWebView() {
           {showBack ? (
             <Pressable
               onPress={() => navigateBack(router)}
-              style={[styles.backBtn, { flexDirection: dir }]}
+              style={[
+                styles.backBtn,
+                {
+                  flexDirection: dir,
+                  alignSelf: isRTL ? "flex-end" : "flex-start",
+                },
+              ]}
             >
               {isRTL ? (
                 <ArrowRight size={18} color={colors.primary} />
