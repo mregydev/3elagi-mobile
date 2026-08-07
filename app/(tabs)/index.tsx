@@ -12,21 +12,19 @@ import {
   Text,
   View,
 } from "react-native";
-import { AdvertisementCarousel } from "@/components/AdvertisementCarousel";
 import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard";
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
+import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
 import { patientCountryLabel } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
-  fetchAdvertisements,
   fetchDoctorsBySpeciality,
   fetchSpecialities,
   mergeDoctorIntoRoster,
-  type Advertisement,
   type Speciality,
   type SpecialityDoctor,
   type SpecialityDoctorRow,
@@ -50,7 +48,6 @@ function ChatsHomeBrowse() {
   const profileCountry = useAuthStore((s) => s.profile?.country);
   const marketCountry = resolveBrowseMarketCountry(profileCountry);
   const domainMarket = getDomainMarketCountry();
-  const [ads, setAds] = useState<Advertisement[]>([]);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
     null,
@@ -64,12 +61,7 @@ function ChatsHomeBrowse() {
     setLoadingHome(true);
     setError(null);
     try {
-      const [adRows, specRows] = await Promise.all([
-        fetchAdvertisements(),
-        fetchSpecialities(),
-      ]);
-      setAds(adRows);
-      setSpecialities(specRows);
+      setSpecialities(await fetchSpecialities());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load home data");
     } finally {
@@ -205,7 +197,7 @@ function ChatsHomeBrowse() {
       }
     >
       {signedIn ? <AiAssistantHomeCard /> : null}
-      <AdvertisementCarousel items={ads} isRTL={isRTL} />
+      <HomeBannerVideo />
       {domainMarket ? (
         <View
           style={[
