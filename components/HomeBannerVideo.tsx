@@ -56,7 +56,7 @@ export function HomeBannerVideo() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingTop: 12, paddingBottom: 4 },
+  wrap: { paddingTop: 8, paddingBottom: 4 },
   hero: {
     borderRadius: 16,
     overflow: "hidden",

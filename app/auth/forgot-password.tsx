@@ -64,7 +64,7 @@ export default function ForgotPasswordScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 16 : insets.top + 8,
+              paddingTop: Platform.OS === "web" ? 8 : insets.top + 4,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
@@ -78,6 +78,8 @@ export default function ForgotPasswordScreen() {
         contentContainerStyle={[
           styles.body,
           Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
+          // Desktop web may vertically center; mobile keeps content at the top.
+          Platform.OS === "web" && !isMobile && styles.bodyDesktopWebCentered,
         ]}
         bottomOffset={32}
       >
@@ -163,12 +165,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 32 : 24,
-    ...(Platform.OS === "web" ? { flexGrow: 1, justifyContent: "center" as const } : null),
   },
-  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
+  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 8 },
+  bodyDesktopWebCentered: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   title: { fontSize: 28, fontWeight: "800", textAlign: "center" },
   sub: { fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },
   btn: {

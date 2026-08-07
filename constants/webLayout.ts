@@ -17,10 +17,10 @@ export const WEB_MAX_WIDTH = {
 export const WEB_MOBILE_TAB_BAR_HEIGHT = 60;
 
 /** Minimum top inset for tab page titles/logos on mobile web (below status bar). */
-export const WEB_MOBILE_PAGE_TITLE_TOP_PADDING = 36;
+export const WEB_MOBILE_PAGE_TITLE_TOP_PADDING = 8;
 
 /** Extra top inset for auth pages (login/signup) on mobile web. */
-export const WEB_MOBILE_AUTH_EXTRA_TOP_PADDING = 40;
+export const WEB_MOBILE_AUTH_EXTRA_TOP_PADDING = 8;
 
 /** Extra bottom inset for auth pages on mobile web. */
 export const WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING = 32;
@@ -29,7 +29,7 @@ export const WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING = 32;
 export const WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING = 48;
 
 /** Extra top margin for login language flags on mobile web. */
-export const WEB_MOBILE_AUTH_LOGIN_FLAGS_EXTRA_TOP_MARGIN = 52;
+export const WEB_MOBILE_AUTH_LOGIN_FLAGS_EXTRA_TOP_MARGIN = 8;
 
 export function mobileWebTabBarHeight(bottomInset: number): number {
   return WEB_MOBILE_TAB_BAR_HEIGHT + Math.max(bottomInset, 8);

@@ -83,7 +83,7 @@ export default function ChooseCountryScreen() {
         styles.screen,
         {
           backgroundColor: Platform.OS === "web" ? "transparent" : colors.background,
-          paddingTop: Platform.OS === "web" && isDesktop ? 0 : insets.top + 24,
+          paddingTop: Platform.OS === "web" && isDesktop ? 0 : insets.top + 8,
           paddingBottom: insets.bottom + 24,
         },
       ]}

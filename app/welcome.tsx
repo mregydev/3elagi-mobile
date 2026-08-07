@@ -58,7 +58,7 @@ export default function WelcomeScreen() {
         style={[
           styles.page,
           {
-            paddingTop: insets.top + 8,
+            paddingTop: insets.top + 4,
             paddingBottom: insets.bottom + 8,
           },
         ]}
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   footerContent: {
     gap: 12,
     paddingHorizontal: 20,
-    paddingTop: 22,
+    paddingTop: 14,
     paddingBottom: 20,
   },
   formTitle: {

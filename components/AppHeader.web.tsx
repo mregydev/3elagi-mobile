@@ -32,7 +32,8 @@ export function AppHeader({
           backgroundColor: surface === "card" ? colors.card : colors.background,
           borderBottomColor: colors.border,
           borderBottomWidth: borderless ? 0 : StyleSheet.hairlineWidth,
-          paddingTop: isDesktop ? 16 : 14 + mobileTitleTop,
+          // Mobile web: sit at the viewport top (safe-area only — no extra gap).
+          paddingTop: isDesktop ? 16 : mobileTitleTop,
         },
       ]}
     >
@@ -52,8 +53,8 @@ export function AppHeader({
 const styles = StyleSheet.create({
   root: {
     paddingHorizontal: 16,
-    paddingBottom: 10,
-    gap: 10,
+    paddingBottom: 8,
+    gap: 8,
   },
   brandRow: {
     position: "relative",

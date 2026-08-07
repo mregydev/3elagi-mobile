@@ -264,7 +264,7 @@ export default function SignupScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 16 : insets.top + 8,
+              paddingTop: Platform.OS === "web" ? 8 : insets.top + 4,
               flexDirection: dir,
             },
           ]}
@@ -722,13 +722,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 40 : 40,
   },
   bodyMobileWeb: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 40 + WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING,
   },
   title: { fontSize: 28, fontWeight: "800" },

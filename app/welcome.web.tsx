@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
@@ -28,6 +29,7 @@ type WelcomePanel = "home" | "login" | "signup";
 export default function WelcomeScreenWeb() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const insets = useSafeAreaInsets();
   const { isDesktop, isMobile, isTablet } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -83,7 +85,16 @@ export default function WelcomeScreenWeb() {
           stackVertical && styles.actionPaneFull,
         ]}
       >
-        <View style={[styles.actionTopBar, { flexDirection: dir, paddingHorizontal: isMobile ? 16 : 20 }]}>
+        <View
+          style={[
+            styles.actionTopBar,
+            {
+              flexDirection: dir,
+              paddingHorizontal: isMobile ? 16 : 20,
+              paddingTop: stackVertical ? Math.max(insets.top, 8) : 16,
+            },
+          ]}
+        >
           {showForm ? (
             <Pressable
               onPress={() => setPanel("home")}
@@ -112,7 +123,10 @@ export default function WelcomeScreenWeb() {
           contentContainerStyle={[
             styles.actionScrollContent,
             { paddingHorizontal: isMobile ? 16 : 24 },
-            !showForm && styles.actionScrollContentCentered,
+            // Login/signup start at the top; home CTAs stay vertically centered.
+            showForm
+              ? styles.actionScrollContentTop
+              : styles.actionScrollContentCentered,
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -248,8 +262,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionTopBar: {
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
     alignItems: "center",
     gap: 8,
   },
@@ -274,6 +287,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 32,
   },
+  actionScrollContentTop: {
+    justifyContent: "flex-start",
+    paddingTop: 4,
+  },
   actionScrollContentCentered: {
     justifyContent: "center",
     alignItems: "center",
@@ -290,7 +307,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     alignSelf: "center",
     gap: 20,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   formTitle: {
     fontSize: 22,

@@ -84,7 +84,7 @@ export default function LoginScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 16 : insets.top + 8,
+              paddingTop: Platform.OS === "web" ? 8 : insets.top + 4,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
@@ -245,8 +245,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
   },
-  body: { padding: 24, alignItems: "center", paddingBottom: Platform.OS === "web" ? 32 : 24 },
-  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
+  body: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    alignItems: "center",
+    paddingBottom: Platform.OS === "web" ? 32 : 24,
+  },
+  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 8 },
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
   btn: {

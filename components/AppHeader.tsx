@@ -30,7 +30,8 @@ export function AppHeader({ children, surface = "background" }: Props) {
       style={[
         styles.root,
         {
-          paddingTop: embedded ? 8 : insets.top + 10,
+          // Native: content starts at the status-bar edge (minimal breathing room).
+          paddingTop: embedded ? 8 : insets.top + 4,
           backgroundColor: surface === "card" ? colors.card : colors.background,
           borderBottomColor: colors.border,
         },
@@ -52,9 +53,9 @@ export function AppHeader({ children, surface = "background" }: Props) {
 const styles = StyleSheet.create({
   root: {
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 10,
+    gap: 8,
   },
   brandRow: {
     position: "relative",

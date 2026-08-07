@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Home } from "lucide-react-native";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import { MobileAppLink } from "@/components/web/MobileAppLink.web";
@@ -41,9 +42,12 @@ export function WebAuthFrame({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const insets = useSafeAreaInsets();
   const { isMobile, isTablet } = useWebLayout();
   const dir = flexRow(isRTL);
   const stackVertical = !isTablet;
+  // Mobile / stacked: pin content to the top. Desktop split pane may center.
+  const centerForm = !scrollForm && !stackVertical;
 
   return (
     <View
@@ -76,7 +80,11 @@ export function WebAuthFrame({
         <View
           style={[
             styles.actionTopBar,
-            { flexDirection: dir, paddingHorizontal: isMobile ? 16 : 20 },
+            {
+              flexDirection: dir,
+              paddingHorizontal: isMobile ? 16 : 20,
+              paddingTop: stackVertical ? Math.max(insets.top, 8) : 16,
+            },
           ]}
         >
           {showBack ? (
@@ -128,7 +136,8 @@ export function WebAuthFrame({
           contentContainerStyle={[
             styles.actionScrollContent,
             { paddingHorizontal: isMobile ? 16 : 24 },
-            !scrollForm && styles.actionScrollContentCentered,
+            stackVertical && styles.actionScrollContentTop,
+            centerForm && styles.actionScrollContentCentered,
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={scrollForm}
@@ -179,8 +188,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionTopBar: {
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
     alignItems: "center",
     gap: 8,
     zIndex: 25,
@@ -210,7 +218,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   actionScroll: {
@@ -220,6 +228,10 @@ const styles = StyleSheet.create({
   actionScrollContent: {
     flexGrow: 1,
     paddingBottom: 32,
+  },
+  actionScrollContentTop: {
+    justifyContent: "flex-start",
+    paddingTop: 4,
   },
   actionScrollContentCentered: {
     justifyContent: "center",
