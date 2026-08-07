@@ -16,7 +16,9 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
-const CIRCLE = 88;
+/** Sized for ≥3 tiles per row on narrow native phones. */
+const CIRCLE = 72;
+const COLUMNS = 3;
 
 function SpecialityTile({
   item,
@@ -77,7 +79,7 @@ function SpecialityTile({
               end={{ x: 1, y: 1 }}
               style={[styles.circle, styles.orbFallback, { borderColor: color }]}
             >
-              <Icon size={32} color="#fff" />
+              <Icon size={28} color="#fff" />
             </LinearGradient>
           )}
           <Text
@@ -197,7 +199,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "flex-start",
   },
-  tile: { width: "50%", paddingVertical: 10, paddingHorizontal: 6 },
+  tile: {
+    width: `${100 / COLUMNS}%`,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
   pressable: { alignItems: "center" },
   circle: {
     width: CIRCLE,
@@ -205,7 +211,7 @@ const styles = StyleSheet.create({
     borderRadius: CIRCLE / 2,
     overflow: "hidden",
     borderWidth: 2,
-    marginBottom: 10,
+    marginBottom: 8,
     backgroundColor: "transparent",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
