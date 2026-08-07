@@ -9,8 +9,8 @@ import {
 } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
 import { MarketDoctorsBrowse } from "@/components/MarketDoctorsBrowse";
+import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import {
-  countryFlagEmoji,
   patientCountryLabel,
   type MarketCountryCode,
 } from "@/constants/patientCountries";
@@ -42,7 +42,6 @@ export default function OurDoctorsTab() {
     () =>
       MARKETS.map((code) => ({
         code,
-        flag: countryFlagEmoji(code),
         name: patientCountryLabel(code, isRTL),
       })),
     [isRTL],
@@ -96,7 +95,7 @@ export default function OurDoctorsTab() {
           </Text>
 
           <View style={styles.cards}>
-            {marketCards.map(({ code, flag, name }) => (
+            {marketCards.map(({ code, name }) => (
               <Pressable
                 key={code}
                 onPress={() => openMarket(code)}
@@ -110,7 +109,7 @@ export default function OurDoctorsTab() {
                   },
                 ]}
               >
-                <Text style={styles.cardFlag}>{flag}</Text>
+                <CircledCountryFlag country={code} size={40} />
                 <View style={styles.cardCopy}>
                   <Text
                     style={[styles.cardTitle, { color: colors.foreground, textAlign }]}
@@ -171,9 +170,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 16,
     borderWidth: 1,
-  },
-  cardFlag: {
-    fontSize: 36,
   },
   cardCopy: {
     flex: 1,

@@ -15,12 +15,10 @@ import {
 import { AdvertisementCarousel } from "@/components/AdvertisementCarousel";
 import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard";
 import { AppHeader } from "@/components/AppHeader";
+import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
-import {
-  countryFlagEmoji,
-  patientCountryLabel,
-} from "@/constants/patientCountries";
+import { patientCountryLabel } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -219,7 +217,7 @@ function ChatsHomeBrowse() {
             },
           ]}
         >
-          <Text style={styles.marketFlag}>{countryFlagEmoji(domainMarket)}</Text>
+          <CircledCountryFlag country={domainMarket} size={28} />
           <Text style={[styles.marketBannerText, { color: colors.foreground }]}>
             {isRTL
               ? `أطباء ${patientCountryLabel(domainMarket, true)} فقط`
@@ -287,6 +285,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  marketFlag: { fontSize: 24 },
   marketBannerText: { fontSize: 14, fontWeight: "700", flex: 1 },
 });

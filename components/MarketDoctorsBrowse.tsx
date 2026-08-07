@@ -9,11 +9,11 @@ import {
   Text,
   View,
 } from "react-native";
+import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
 import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import {
-  countryFlagEmoji,
   patientCountryLabel,
   type MarketCountryCode,
 } from "@/constants/patientCountries";
@@ -158,7 +158,6 @@ export function MarketDoctorsBrowse({
   }
 
   const countryName = patientCountryLabel(marketCountry, isRTL);
-  const flag = countryFlagEmoji(marketCountry);
 
   return (
     <ScrollView
@@ -181,7 +180,7 @@ export function MarketDoctorsBrowse({
             },
           ]}
         >
-          <Text style={styles.flag}>{flag}</Text>
+          <CircledCountryFlag country={marketCountry} size={28} />
           <Text style={[styles.bannerText, { color: colors.foreground }]}>
             {isRTL ? `أطباؤنا في ${countryName}` : `Our doctors in ${countryName}`}
           </Text>
@@ -235,6 +234,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  flag: { fontSize: 28 },
   bannerText: { fontSize: 15, fontWeight: "700", flex: 1 },
 });
