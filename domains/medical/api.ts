@@ -519,7 +519,7 @@ export async function analyzePrescriptionImage(
   mimeType: string,
   fileName: string,
   token: string,
-  lang: Locale = "en",
+  lang: Locale = "ar",
   webFile?: File | Blob,
 ): Promise<PrescriptionMedication[]> {
   const formData = new FormData();

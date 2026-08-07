@@ -18,7 +18,7 @@ export function resolveWebSpeechLang(locale: Locale): string {
 
 /** Pick a supported locale when the browser reports a preferred language list. */
 export function pickSpeechLocaleFromBrowser(): Locale {
-  if (typeof navigator === "undefined") return "en";
+  if (typeof navigator === "undefined") return "ar";
   const langs = navigator.languages?.length
     ? navigator.languages
     : [navigator.language];
@@ -29,7 +29,7 @@ export function pickSpeechLocaleFromBrowser(): Locale {
     if (lower.startsWith("es")) return "es";
     if (lower.startsWith("en")) return "en";
   }
-  return "en";
+  return "ar";
 }
 
 export function speechLocaleLabel(locale: Locale, uiLocale: Locale): string {
