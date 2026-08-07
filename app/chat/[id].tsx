@@ -74,7 +74,7 @@ import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/type
 import { showChatMessageActions } from "@/utils/chatMessageActions";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
-import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
+import { chatFlexRow, chatLayoutDirection, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -971,6 +971,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }
 
   const rowDir = chatFlexRow();
+  // Header follows app locale (Arabic → back on the right); chat body stays LTR.
+  const headerDir = flexRow(isRTL);
   const canOpenDoctorProfile =
     ((isPatient || isDoctorDoctorChat) &&
       peer?.role === "doctor" &&
@@ -1003,7 +1005,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             paddingTop: headerPaddingTop,
             backgroundColor: desktopLayout ? colors.background : colors.card,
             borderBottomColor: colors.border,
-            flexDirection: rowDir,
+            flexDirection: headerDir,
           },
         ]}
       >
@@ -1011,13 +1013,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           color={colors.foreground}
           style={styles.backBtn}
           fallback="/(tabs)/history"
-          accessibilityLabel="Back"
+          accessibilityLabel={isRTL ? "رجوع" : "Back"}
         />
 
         <Pressable
           onPress={onPeerHeaderPress}
           disabled={!onPeerHeaderPress}
-          style={[styles.peerInfo, { flexDirection: rowDir }]}
+          style={[styles.peerInfo, { flexDirection: headerDir }]}
         >
           <Avatar
             uri={peer.photoUrl}
@@ -1033,7 +1035,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               isRTL={isRTL}
               nameStyle={[
                 styles.peerName,
-                { color: colors.foreground, textAlign: "left" },
+                {
+                  color: colors.foreground,
+                  textAlign: isRTL ? "right" : "left",
+                },
               ]}
             />
             <Text
@@ -1043,7 +1048,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   color: peerTyping
                     ? colors.primary
                     : presenceTextColor(peer.presence, colors),
-                  textAlign: "left",
+                  textAlign: isRTL ? "right" : "left",
                 },
               ]}
             >

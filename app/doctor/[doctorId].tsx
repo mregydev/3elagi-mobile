@@ -186,7 +186,12 @@ export default function DoctorProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border, flexDirection: dir }]}>
-        <AppBackButton color={colors.primary} hitSlop={8} />
+        <AppBackButton
+          color={colors.primary}
+          hitSlop={12}
+          fallback="/(tabs)"
+          accessibilityLabel={isRTL ? "رجوع" : "Back"}
+        />
         <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
           {doctor.name}
         </Text>

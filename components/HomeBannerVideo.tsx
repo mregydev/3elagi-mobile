@@ -4,20 +4,26 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
 const BANNER_VIDEO = require("../assets/banner_video.mp4");
-/** Design frame — video is stretched to this 1200×320 box (nothing cropped). */
+/** Design frame for stretch; height is floored at 30% of the viewport on native. */
 const BANNER_W = 1200;
 const BANNER_H = 320;
 const BANNER_RATIO = BANNER_H / BANNER_W;
+const MIN_VIEWPORT_FRACTION = 0.3;
 
 /** Home hero: local looping muted banner video (replaces ad image carousel). */
 export function HomeBannerVideo() {
   const colors = useColors();
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const videoRef = useRef<Video>(null);
 
   const horizontalPadding = 16;
   const bannerWidth = Math.max(280, windowWidth - horizontalPadding * 2);
-  const bannerHeight = Math.round(bannerWidth * BANNER_RATIO);
+  const ratioHeight = Math.round(bannerWidth * BANNER_RATIO);
+  // Native mobile: keep the banner tall enough to notice ( ≥ 30% of viewport ).
+  const bannerHeight = Math.max(
+    ratioHeight,
+    Math.round(windowHeight * MIN_VIEWPORT_FRACTION),
+  );
 
   return (
     <View style={[styles.wrap, { paddingHorizontal: horizontalPadding }]}>
@@ -27,7 +33,6 @@ export function HomeBannerVideo() {
           {
             width: "100%",
             height: bannerHeight,
-            aspectRatio: BANNER_W / BANNER_H,
             borderColor: colors.border,
             backgroundColor: colors.muted,
           },

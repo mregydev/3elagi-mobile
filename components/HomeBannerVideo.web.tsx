@@ -6,22 +6,25 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 // Metro resolves this to a public URL string on web.
 const BANNER_VIDEO = require("../assets/banner_video.mp4") as string | number;
 
-/** Design frame — video is stretched to this 1200×320 box (nothing cropped). */
+/** Design frame — video is stretched to fill; mobile web floors at 30% viewport. */
 const BANNER_W = 1200;
 const BANNER_H = 320;
 const BANNER_RATIO = BANNER_H / BANNER_W;
+const MIN_VIEWPORT_FRACTION = 0.3;
 
 /** Home hero (web): local looping muted banner video (replaces ad image carousel). */
 export function HomeBannerVideo() {
   const colors = useColors();
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const { isDesktop } = useWebLayout();
 
   const horizontalPadding = isDesktop ? 24 : 16;
   const bannerWidth = Math.max(280, width - horizontalPadding * 2);
+  const ratioHeight = Math.round(bannerWidth * BANNER_RATIO);
+  // Mobile web: match native — keep the banner ≥ 30% of the viewport.
   const bannerHeight = Math.max(
-    Math.round(bannerWidth * BANNER_RATIO),
-    isDesktop ? BANNER_H : 0,
+    ratioHeight,
+    isDesktop ? BANNER_H : Math.round(windowHeight * MIN_VIEWPORT_FRACTION),
   );
 
   const src = useMemo(() => {
@@ -37,7 +40,6 @@ export function HomeBannerVideo() {
           {
             width: "100%",
             height: bannerHeight,
-            aspectRatio: BANNER_W / BANNER_H,
             borderColor: colors.border,
             backgroundColor: colors.muted,
           },

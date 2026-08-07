@@ -117,6 +117,7 @@ export default function ContactScreen() {
           color={colors.foreground}
           hitSlop={12}
           style={styles.backBtn}
+          fallback="/(tabs)"
           accessibilityLabel={t.common.cancel}
         />
         <Text style={[styles.title, { color: colors.foreground }]}>

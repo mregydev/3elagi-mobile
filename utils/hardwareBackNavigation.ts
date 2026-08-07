@@ -47,9 +47,34 @@ export function getHardwareBackAction(
     };
   }
 
+  if (path.includes("/doctor/")) {
+    return () => {
+      navigateBack(router, "/(tabs)");
+    };
+  }
+
+  if (path.includes("/patients/")) {
+    return () => {
+      navigateBack(router, "/(tabs)/history");
+    };
+  }
+
+  if (path.includes("/contact")) {
+    return () => {
+      navigateBack(router, "/(tabs)");
+    };
+  }
+
   if (canNavigateBack(router)) {
     return () => {
       navigateBack(router);
+    };
+  }
+
+  // Native stack screens outside tabs: prefer home over exiting the app.
+  if (!path.includes("/(tabs)") && path !== "/" && !path.endsWith("/welcome")) {
+    return () => {
+      navigateBack(router, "/(tabs)");
     };
   }
 

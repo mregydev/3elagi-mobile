@@ -1,7 +1,12 @@
 import { Href, usePathname, useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
-import React from "react";
-import { Pressable, type StyleProp, type ViewStyle } from "react-native";
+import React, { useCallback } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { useI18n } from "@/hooks/useI18n";
 import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
 
@@ -28,7 +33,7 @@ export function AppBackButton({
   color,
   size = 22,
   style,
-  hitSlop = 10,
+  hitSlop = 12,
   fallback,
   onPress,
   accessibilityLabel = "Back",
@@ -43,21 +48,32 @@ export function AppBackButton({
 
   const Icon = isRTL ? ArrowRight : ArrowLeft;
 
+  const handlePress = useCallback(() => {
+    if (onPress) {
+      onPress();
+      return;
+    }
+    navigateBack(router, fallback);
+  }, [fallback, onPress, router]);
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      onPress={() => {
-        if (onPress) {
-          onPress();
-          return;
-        }
-        navigateBack(router, fallback);
-      }}
-      style={style}
+      onPress={handlePress}
+      style={[styles.hitTarget, style]}
       hitSlop={hitSlop}
     >
       <Icon size={size} color={color} />
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  hitTarget: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

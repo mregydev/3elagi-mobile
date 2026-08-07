@@ -143,7 +143,13 @@ export default function PatientRecordScreen() {
           },
         ]}
       >
-        <AppBackButton color={colors.primary} style={styles.backBtn} hitSlop={8} />
+        <AppBackButton
+          color={colors.primary}
+          style={styles.backBtn}
+          hitSlop={12}
+          fallback="/(tabs)/history"
+          accessibilityLabel={isRTL ? "رجوع" : "Back"}
+        />
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
             {isRTL ? `سجل ${patientName}` : `${patientName}'s record`}
