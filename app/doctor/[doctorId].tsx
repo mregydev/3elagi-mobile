@@ -16,8 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { chatRepository } from "@/domains/chat/repository";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
   fetchDoctorReviewStatus,
   fetchDoctorReviews,
@@ -72,7 +74,7 @@ function ReviewRow({ item, isRTL }: { item: DoctorReviewItem; isRTL: boolean }) 
 
 export default function DoctorProfileScreen() {
   const colors = useColors();
-  const { isRTL, t } = useI18n();
+  const { isRTL, t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
@@ -124,6 +126,10 @@ export default function DoctorProfileScreen() {
   }, [load]);
 
   const openChat = () => {
+    if (!isSignedIn(profile, accessToken)) {
+      promptAuthForConsultation(router, isRTL);
+      return;
+    }
     const chatUserId = userId ?? doctor?.userId;
     if (!chatUserId || !doctor) return;
     chatRepository.cacheUsers([
@@ -161,11 +167,6 @@ export default function DoctorProfileScreen() {
     }
   };
 
-  if (!isSignedIn(profile, accessToken)) {
-    router.replace("/welcome");
-    return null;
-  }
-
   if (loading || !doctor) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -174,7 +175,13 @@ export default function DoctorProfileScreen() {
     );
   }
 
-  const specialtyLabel = isRTL ? doctor.specialtyAr ?? doctor.specialty : doctor.specialty;
+  const specialtyLabelText = specialityLabel(
+    {
+      nameEn: doctor.specialty ?? doctor.professionalTitle ?? "",
+      nameAr: doctor.specialtyAr,
+    },
+    locale,
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -189,8 +196,10 @@ export default function DoctorProfileScreen() {
         <View style={styles.hero}>
           <Avatar uri={doctor.photoUrl} seed={doctor.userId} role="doctor" size={88} />
           <Text style={[styles.name, { color: colors.foreground }]}>{doctor.name}</Text>
-          {specialtyLabel ? (
-            <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>{specialtyLabel}</Text>
+          {specialtyLabelText ? (
+            <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
+              {specialtyLabelText}
+            </Text>
           ) : null}
           <View style={[styles.statsRow, { flexDirection: dir }]}>
             <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -225,7 +234,15 @@ export default function DoctorProfileScreen() {
           ]}
         >
           <MessageCircle size={20} color="#fff" />
-          <Text style={styles.chatBtnText}>{isRTL ? "مراسلة الطبيب" : "Message doctor"}</Text>
+          <Text style={styles.chatBtnText}>
+            {isSignedIn(profile, accessToken)
+              ? isRTL
+                ? "مراسلة الطبيب"
+                : "Message doctor"
+              : isRTL
+                ? "سجّل الدخول لبدء الاستشارة"
+                : "Sign in to start consultation"}
+          </Text>
         </Pressable>
 
         {isPatient && reviewStatus?.canReview ? (

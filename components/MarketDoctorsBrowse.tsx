@@ -17,6 +17,9 @@ import {
   patientCountryLabel,
   type MarketCountryCode,
 } from "@/constants/patientCountries";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
+import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
 import {
   fetchDoctorsBySpeciality,
   fetchSpecialities,
@@ -43,6 +46,9 @@ export function MarketDoctorsBrowse({
 }: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const signedIn = isSignedIn(profile, accessToken);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
     null,
@@ -112,6 +118,10 @@ export function MarketDoctorsBrowse({
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
       if (!doctorEntityId) {
+        if (!signedIn) {
+          promptAuthForConsultation(router, isRTL);
+          return;
+        }
         router.push(`/chat/${doctorUserId}`);
         return;
       }
@@ -120,7 +130,7 @@ export function MarketDoctorsBrowse({
         params: { doctorId: doctorEntityId, userId: doctorUserId },
       });
     },
-    [],
+    [isRTL, signedIn],
   );
 
   if (loadingHome && specialities.length === 0) {

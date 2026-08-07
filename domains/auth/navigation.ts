@@ -37,14 +37,30 @@ export function getPostLogoutRoute(): "/welcome" {
   return WELCOME_ROUTE;
 }
 
-/** Paths guests may stay on (welcome + auth flows like forgot/reset password). */
+/** Paths guests may stay on (browse + welcome + auth flows). */
 export function isPublicWebPath(pathname: string): boolean {
-  return (
+  if (
     pathname === "/" ||
     pathname === WELCOME_ROUTE ||
     pathname.startsWith(`${WELCOME_ROUTE}/`) ||
-    pathname.startsWith("/auth")
-  );
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/doctor/") ||
+    pathname === "/contact" ||
+    pathname.startsWith("/contact/")
+  ) {
+    return true;
+  }
+  // Guest browse tabs: home + our doctors.
+  if (
+    pathname === "/(tabs)" ||
+    pathname.startsWith("/(tabs)/our-doctors") ||
+    pathname === "/our-doctors" ||
+    pathname.startsWith("/our-doctors/")
+  ) {
+    return true;
+  }
+  // Expo Router may expose home as bare "/" under tabs already covered above.
+  return false;
 }
 
 /** Navigate to welcome after logout; retries on web when router.replace is dropped. */

@@ -38,7 +38,11 @@ module.exports = {
     ios: {
       ...app.expo.ios,
       infoPlist: {
+        ...(app.expo.ios?.infoPlist ?? {}),
         UIBackgroundModes: ["remote-notification"],
+        NSMicrophoneUsageDescription:
+          app.expo.ios?.infoPlist?.NSMicrophoneUsageDescription ??
+          "Allow 3elagi to record voice messages and dictate text.",
       },
       ...(ACTIVE_PUSH_PROVIDER === "onesignal"
         ? {

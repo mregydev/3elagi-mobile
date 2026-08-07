@@ -26,6 +26,7 @@ import {
   profileSaveDockBottomPad,
 } from "@/components/profile/profileSaveChrome";
 import { useAuthStore } from "@/domains/auth/store";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
 import { useI18n } from "@/hooks/useI18n";
@@ -52,7 +53,7 @@ export function ProfileEditor({
   showLogout?: boolean;
 }) {
   const logout = useAuthStore((s) => s.logout);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -256,7 +257,7 @@ export function ProfileEditor({
                   >
                     {specialities.map((spec) => {
                       const active = specialityId === spec.id;
-                      const label = isRTL ? spec.nameAr : spec.nameEn;
+                      const label = specialityLabel(spec, locale);
                       return (
                         <Pressable
                           key={spec.id}

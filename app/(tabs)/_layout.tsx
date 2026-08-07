@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from "expo-router";
+import { Tabs } from "expo-router";
 import {
   Bot,
   CalendarClock,
@@ -32,7 +32,9 @@ export default function TabsLayout() {
   const isDoctor = role?.toLowerCase() === "doctor";
 
   if (!hydrated) return null;
-  if (!signedIn) return <Redirect href="/welcome" />;
+
+  // Guests may browse home + our doctors; other tabs stay signed-in only.
+  const authOnlyHref = signedIn ? undefined : null;
 
   return (
     <AppSidebarProvider>
@@ -67,6 +69,7 @@ export default function TabsLayout() {
           name="assistant"
           options={{
             title: t.tabs.assistant,
+            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
           }}
         />
@@ -81,6 +84,7 @@ export default function TabsLayout() {
           name="appointments"
           options={{
             title: t.tabs.appointments,
+            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => (
               <CalendarClock color={color} size={size} />
             ),
@@ -90,6 +94,7 @@ export default function TabsLayout() {
           name="consultations"
           options={{
             title: t.tabs.consultations,
+            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => (
               <MessageSquare color={color} size={size} />
             ),
@@ -99,6 +104,7 @@ export default function TabsLayout() {
           name="history"
           options={{
             title: t.tabs.history,
+            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
           }}
         />
@@ -106,7 +112,7 @@ export default function TabsLayout() {
           name="records"
           options={{
             title: t.tabs.records,
-            href: isDoctor ? null : undefined,
+            href: !signedIn || isDoctor ? null : undefined,
             tabBarIcon: ({ color, size }) => (
               <ClipboardList color={color} size={size} />
             ),
@@ -116,7 +122,7 @@ export default function TabsLayout() {
           name="patients"
           options={{
             title: t.tabs.patients,
-            href: isDoctor ? undefined : null,
+            href: signedIn && isDoctor ? undefined : null,
             tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
           }}
         />
@@ -124,7 +130,7 @@ export default function TabsLayout() {
           name="reviews"
           options={{
             title: t.tabs.reviews,
-            href: isDoctor ? undefined : null,
+            href: signedIn && isDoctor ? undefined : null,
             tabBarIcon: ({ color, size }) => <Star color={color} size={size} />,
           }}
         />
@@ -140,7 +146,7 @@ export default function TabsLayout() {
           name="points"
           options={{
             title: t.tabs.points,
-            href: isDoctor ? null : undefined,
+            href: !signedIn || isDoctor ? null : undefined,
             tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
           }}
         />
@@ -148,6 +154,7 @@ export default function TabsLayout() {
           name="profile"
           options={{
             title: t.tabs.profile,
+            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
           }}
         />

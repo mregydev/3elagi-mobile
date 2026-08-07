@@ -1,8 +1,8 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
-import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,6 +30,7 @@ import {
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
@@ -57,7 +58,7 @@ function initialSignupCountry(): PatientCountryCode {
 export default function SignupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { t, isRTL } = useI18n();
+  const { t, isRTL, locale } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
@@ -101,8 +102,10 @@ export default function SignupScreen() {
       .catch(() => setSpecialities([]));
   }, [isDoctor]);
   const dir = isRTL ? "row-reverse" : "row";
-  const hideIntro = Platform.OS === "web" && isDesktop;
-  const hideWebTopBar = Platform.OS === "web";
+  const isWeb = Platform.OS === "web";
+  const showTitle = true;
+  const showSubtitle = !(isWeb && isDesktop);
+  const hideWebTopBar = isWeb;
 
   const pickPhoto = () => {
     Alert.alert(t.auth.profilePhoto, t.auth.chooseSource, [
@@ -266,7 +269,16 @@ export default function SignupScreen() {
             },
           ]}
         >
-          <AppBackButton color={colors.foreground} style={{ padding: 6 }} />
+          <Pressable
+            onPress={() => router.replace("/(tabs)")}
+            accessibilityRole="link"
+            accessibilityLabel={t.tabs.home}
+            style={{ paddingVertical: 6, paddingHorizontal: 4 }}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>
+              {t.tabs.home}
+            </Text>
+          </Pressable>
           <AuthLanguageField />
         </View>
       ) : null}
@@ -279,18 +291,28 @@ export default function SignupScreen() {
         ]}
         bottomOffset={32}
       >
-        {!hideIntro ? (
-          <>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              {t.auth.createAccountTitle}
-            </Text>
-            <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              {t.auth.createAccountSubtitle}
-            </Text>
-          </>
+        {showTitle ? (
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.foreground,
+                alignSelf: isRTL ? "flex-end" : "flex-start",
+                width: "100%",
+                textAlign: isRTL ? "right" : "left",
+              },
+            ]}
+          >
+            {t.auth.createAccountTitle}
+          </Text>
+        ) : null}
+        {showSubtitle ? (
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            {t.auth.createAccountSubtitle}
+          </Text>
         ) : null}
 
-        <View style={[styles.roleRow, { flexDirection: dir, marginTop: hideIntro ? 0 : 20 }]}>
+        <View style={[styles.roleRow, { flexDirection: dir, marginTop: showSubtitle ? 20 : 16 }]}>
           <RoleChip
             active={role === "patient"}
             onPress={() => {
@@ -443,7 +465,7 @@ export default function SignupScreen() {
               <View style={[styles.specialityRow, { flexDirection: dir }]}>
                 {specialities.map((spec) => {
                   const active = specialityId === spec.id;
-                  const label = isRTL ? spec.nameAr : spec.nameEn;
+                  const label = specialityLabel(spec, locale);
                   return (
                     <Pressable
                       key={spec.id}
@@ -563,16 +585,23 @@ export default function SignupScreen() {
           <Pressable
             onPress={submit}
             disabled={loading}
-            style={[
+            style={({ pressed }) => [
               styles.btn,
-              { backgroundColor: loading ? colors.mutedForeground : colors.primary, marginTop: 8 },
+              { opacity: loading ? 0.7 : pressed ? 0.92 : 1 },
             ]}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>{t.auth.signUp}</Text>
-            )}
+            <LinearGradient
+              colors={loading ? ["#94A3B8", "#94A3B8"] : ["#3057F2", "#1B9AAA"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.btnGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>{t.auth.signUp}</Text>
+              )}
+            </LinearGradient>
           </Pressable>
 
           <Pressable
@@ -581,6 +610,23 @@ export default function SignupScreen() {
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
               {t.auth.hasAccountLogIn}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.replace("/(tabs)")}
+            style={{ paddingVertical: 6, alignItems: "center" }}
+            accessibilityRole="link"
+            accessibilityLabel={t.tabs.home}
+          >
+            <Text
+              style={{
+                color: colors.foreground,
+                fontWeight: "700",
+                fontSize: 14,
+                textDecorationLine: "underline",
+              }}
+            >
+              {t.tabs.home}
             </Text>
           </Pressable>
         </View>
@@ -764,6 +810,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
-  btn: { paddingVertical: 14, borderRadius: 14, alignItems: "center" },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btn: {
+    marginTop: 8,
+    borderRadius: 14,
+    overflow: "hidden",
+    shadowColor: "#3057F2",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
 });

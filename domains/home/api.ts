@@ -66,11 +66,16 @@ export interface SpecialityDoctor {
 }
 
 function mapAdvertisement(row: AdvertisementRow): Advertisement {
+  const bannerUrl = resolveAssetUrl(row.banner_image_url);
+  // Bust cache when campaign art is replaced under the same filename.
+  const bannerImageUrl = bannerUrl
+    ? `${bannerUrl}${bannerUrl.includes("?") ? "&" : "?"}v=app-ar-1200x320`
+    : bannerUrl;
   return {
     id: row.id,
     title: row.title,
     description: row.description,
-    bannerImageUrl: row.banner_image_url,
+    bannerImageUrl,
     clinicId: row.clinic_id,
     clinicName: row.clinic_name,
   };

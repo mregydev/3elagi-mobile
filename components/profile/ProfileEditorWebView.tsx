@@ -21,6 +21,7 @@ import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
@@ -65,7 +66,7 @@ function spanStyle(columns: number, span: number): ViewStyle {
 }
 
 export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
   const { isWide, isDesktop, isTablet } = useWebLayout();
@@ -412,7 +413,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               <View style={[styles.specialityRow, { flexDirection: dir }]}>
                 {specialities.map((spec) => {
                   const active = specialityId === spec.id;
-                  const label = isRTL ? spec.nameAr : spec.nameEn;
+                  const label = specialityLabel(spec, locale);
                   return (
                     <Pressable
                       key={spec.id}

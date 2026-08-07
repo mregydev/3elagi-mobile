@@ -534,7 +534,7 @@ export function ChatComposer({
       interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
       shouldDuckAndroid: true,
       playThroughEarpieceAndroid: false,
-      staysActiveInBackground: false,
+      staysActiveInBackground: Platform.OS === "android",
     });
   };
 
@@ -611,6 +611,10 @@ export function ChatComposer({
       }
 
       await prepareAudioMode();
+      // After permission sheet, Android needs a beat before audio focus is ready.
+      if (Platform.OS !== "web") {
+        await new Promise((r) => setTimeout(r, 150));
+      }
 
       const { recording: rec } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY,

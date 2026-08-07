@@ -1,6 +1,7 @@
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
@@ -142,13 +143,19 @@ export default function WelcomeScreen() {
                   style={({ pressed }) => [
                     styles.btnPrimary,
                     {
-                      backgroundColor: colors.primary,
                       opacity: pressed ? 0.92 : 1,
-                      shadowColor: colors.primary,
+                      shadowColor: "#3057F2",
                     },
                   ]}
                 >
-                  <Text style={styles.btnPrimaryText}>{t.auth.logIn}</Text>
+                  <LinearGradient
+                    colors={["#3057F2", "#1B9AAA"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.btnPrimaryGradient}
+                  >
+                    <Text style={styles.btnPrimaryText}>{t.auth.logIn}</Text>
+                  </LinearGradient>
                 </Pressable>
 
                 <Pressable
@@ -156,15 +163,27 @@ export default function WelcomeScreen() {
                   style={({ pressed }) => [
                     styles.btnGhost,
                     {
-                      borderColor: colors.primary,
+                      borderColor: "#3057F2",
                       backgroundColor: pressed
-                        ? "rgba(255,255,255,0.45)"
-                        : "rgba(255,255,255,0.55)",
+                        ? "rgba(48,87,242,0.16)"
+                        : "rgba(48,87,242,0.08)",
                     },
                   ]}
                 >
-                  <Text style={[styles.btnGhostText, { color: colors.primary }]}>
+                  <Text style={[styles.btnGhostText, { color: "#1D4ED8" }]}>
                     {t.auth.register}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.replace("/(tabs)")}
+                  style={({ pressed }) => [
+                    styles.btnBrowse,
+                    { opacity: pressed ? 0.75 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.btnBrowseText, { color: colors.foreground }]}>
+                    {isRTL ? "تصفح التخصصات والأطباء" : "Browse specialties & doctors"}
                   </Text>
                 </Pressable>
               </View>
@@ -278,13 +297,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   btnPrimary: {
-    paddingVertical: 16,
     borderRadius: 16,
-    alignItems: "center",
+    overflow: "hidden",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  btnPrimaryGradient: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   btnPrimaryText: {
     color: "#fff",
@@ -301,5 +324,14 @@ const styles = StyleSheet.create({
   btnGhostText: {
     fontWeight: "800",
     fontSize: 16,
+  },
+  btnBrowse: {
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  btnBrowseText: {
+    fontWeight: "700",
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
 });

@@ -319,9 +319,23 @@ export function useAssistantVoiceChat({
     [accessToken, finishVoiceInput],
   );
 
+  const clearDictationState = useCallback(() => {
+    dictationRef.current = false;
+    dictationCallbackRef.current = null;
+    setIsDictating(false);
+  }, []);
+
   const transcribeNative = useCallback(async () => {
     const recorder = nativeRecorderRef.current;
-    if (!recorder?.active || !accessToken) return;
+    if (!recorder?.active || !accessToken) {
+      nativeRecorderRef.current = null;
+      clearDictationState();
+      setIsRecording(false);
+      if (!accessToken) {
+        setVoiceError("Sign in to use voice chat.");
+      }
+      return;
+    }
 
     setIsTranscribing(true);
     try {
@@ -335,12 +349,14 @@ export function useAssistantVoiceChat({
       );
       finishVoiceInput(text);
     } catch (err) {
+      nativeRecorderRef.current = null;
+      clearDictationState();
       setVoiceError((err as Error).message || "Could not transcribe audio.");
-      } finally {
+    } finally {
       setIsTranscribing(false);
       setIsRecording(false);
     }
-  }, [accessToken, finishVoiceInput]);
+  }, [accessToken, clearDictationState, finishVoiceInput]);
 
   const stopRecording = useCallback(
     async (fallbackText = "") => {
@@ -534,6 +550,12 @@ export function useAssistantVoiceChat({
         setVoiceError(
           friendlyAssistantVoiceError(err, "Could not start recording."),
         );
+        setIsRecording(false);
+        if (dictationRef.current) {
+          dictationRef.current = false;
+          dictationCallbackRef.current = null;
+          setIsDictating(false);
+        }
       }
     },
     [

@@ -1,5 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -24,6 +25,7 @@ import {
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
@@ -53,7 +55,7 @@ function initialSignupCountry(): PatientCountryCode {
 
 export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const colors = useColors();
-  const { t, isRTL } = useI18n();
+  const { t, isRTL, locale } = useI18n();
   const dir = flexRow(isRTL);
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
@@ -392,7 +394,7 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
           <View style={[styles.specialityRow, { flexDirection: dir }]}>
             {specialities.map((spec) => {
               const active = specialityId === spec.id;
-              const label = isRTL ? spec.nameAr : spec.nameEn;
+              const label = specialityLabel(spec, locale);
               return (
                 <Pressable
                   key={spec.id}
@@ -510,16 +512,23 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
       <Pressable
         onPress={submit}
         disabled={loading}
-        style={[
+        style={({ pressed }) => [
           styles.btn,
-          { backgroundColor: loading ? colors.mutedForeground : colors.primary },
+          { opacity: loading ? 0.7 : pressed ? 0.92 : 1 },
         ]}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.btnText}>{t.auth.signUp}</Text>
-        )}
+        <LinearGradient
+          colors={loading ? ["#94A3B8", "#94A3B8"] : ["#3057F2", "#1B9AAA"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.btnGradient}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>{t.auth.signUp}</Text>
+          )}
+        </LinearGradient>
       </Pressable>
 
       <Pressable onPress={onSwitchToLogin} style={styles.switchLink}>
@@ -677,11 +686,20 @@ const styles = StyleSheet.create({
   btn: {
     marginTop: 8,
     width: "100%",
-    paddingVertical: 14,
     borderRadius: 14,
-    alignItems: "center",
+    overflow: "hidden",
+    shadowColor: "#3057F2",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.32,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
   switchLink: {
     paddingVertical: 8,
     alignItems: "center",

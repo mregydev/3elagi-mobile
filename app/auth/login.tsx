@@ -1,5 +1,5 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -40,8 +40,11 @@ export default function LoginScreen() {
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const passwordRef = useRef<TextInput>(null);
-  const hideIntro = Platform.OS === "web" && isDesktop;
-  const hideWebTopBar = Platform.OS === "web";
+  const isWeb = Platform.OS === "web";
+  /** Desktop web: show title only (hero image carries branding). */
+  const showTitle = true;
+  const showSubtitle = !(isWeb && isDesktop);
+  const hideWebTopBar = isWeb;
 
   const submit = async () => {
     const errors = validateLoginFields(email, password, t.auth);
@@ -86,7 +89,16 @@ export default function LoginScreen() {
             },
           ]}
         >
-          <AppBackButton color={colors.foreground} style={{ padding: 6 }} />
+          <Pressable
+            onPress={() => router.replace("/(tabs)")}
+            accessibilityRole="link"
+            accessibilityLabel={t.tabs.home}
+            style={{ paddingVertical: 6, paddingHorizontal: 4 }}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>
+              {t.tabs.home}
+            </Text>
+          </Pressable>
           <AuthLanguageField />
         </View>
       ) : null}
@@ -98,18 +110,28 @@ export default function LoginScreen() {
         ]}
         bottomOffset={32}
       >
-        {!hideIntro ? (
-          <>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              {t.auth.welcomeBack}
-            </Text>
-            <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              {t.auth.signInSubtitle}
-            </Text>
-          </>
+        {showTitle ? (
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.foreground,
+                alignSelf: isRTL ? "flex-end" : "flex-start",
+                width: "100%",
+                textAlign: isRTL ? "right" : "left",
+              },
+            ]}
+          >
+            {isWeb ? t.auth.logIn : t.auth.welcomeBack}
+          </Text>
+        ) : null}
+        {showSubtitle ? (
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            {t.auth.signInSubtitle}
+          </Text>
         ) : null}
 
-        <View style={{ width: "100%", gap: 12, marginTop: hideIntro ? 0 : 28 }}>
+        <View style={{ width: "100%", gap: 12, marginTop: showSubtitle ? 28 : 20 }}>
           {formError ? <AuthFormError message={formError} colors={colors} /> : null}
           <AuthFormField
             label={t.auth.email}
@@ -159,21 +181,23 @@ export default function LoginScreen() {
           <Pressable
             onPress={submit}
             disabled={loading}
-            style={[
+            style={({ pressed }) => [
               styles.btn,
-              {
-                backgroundColor: loading
-                  ? colors.mutedForeground
-                  : colors.primary,
-                marginTop: 8,
-              },
+              { opacity: loading ? 0.7 : pressed ? 0.92 : 1 },
             ]}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>{t.auth.logIn}</Text>
-            )}
+            <LinearGradient
+              colors={loading ? ["#94A3B8", "#94A3B8"] : ["#3057F2", "#1B9AAA"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.btnGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>{t.auth.logIn}</Text>
+              )}
+            </LinearGradient>
           </Pressable>
           <Pressable
             onPress={() => router.replace("/auth/signup")}
@@ -181,6 +205,23 @@ export default function LoginScreen() {
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
               {t.auth.noAccountSignUp}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.replace("/(tabs)")}
+            style={{ paddingVertical: 6, alignItems: "center" }}
+            accessibilityRole="link"
+            accessibilityLabel={t.tabs.home}
+          >
+            <Text
+              style={{
+                color: colors.foreground,
+                fontWeight: "700",
+                fontSize: 14,
+                textDecorationLine: "underline",
+              }}
+            >
+              {t.tabs.home}
             </Text>
           </Pressable>
         </View>
@@ -209,9 +250,19 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
   btn: {
-    paddingVertical: 14,
+    marginTop: 8,
     borderRadius: 14,
-    alignItems: "center",
+    overflow: "hidden",
+    shadowColor: "#3057F2",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
 });

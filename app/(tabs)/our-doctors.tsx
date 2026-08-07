@@ -1,4 +1,3 @@
-import { Redirect } from "expo-router";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
@@ -15,8 +14,6 @@ import {
   patientCountryLabel,
   type MarketCountryCode,
 } from "@/constants/patientCountries";
-import { useAuthStore } from "@/domains/auth/store";
-import { isSignedIn } from "@/domains/auth/session";
 import {
   isOnMarketHost,
   navigateToMarketSite,
@@ -32,9 +29,6 @@ export default function OurDoctorsTab() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
-  const profile = useAuthStore((s) => s.profile);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const role = useAuthStore((s) => s.role);
   const showHeader = Platform.OS !== "web" || !isDesktop;
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -71,10 +65,6 @@ export default function OurDoctorsTab() {
     // Web: jump to egypt/jordan site URL and carry the session so login persists.
     navigateToMarketSite(code, "/");
   };
-
-  if (!isSignedIn(profile, accessToken) || !role) {
-    return <Redirect href="/welcome" />;
-  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

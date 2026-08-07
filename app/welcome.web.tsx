@@ -1,5 +1,7 @@
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -141,13 +143,19 @@ export default function WelcomeScreenWeb() {
                   style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
                     styles.btn,
                     styles.btnLogin,
-                    { backgroundColor: colors.primary },
                     pressed && styles.btnPressed,
                     hovered && styles.btnLoginHovered,
                   ]}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.btnLoginText}>{t.auth.logIn}</Text>
+                  <LinearGradient
+                    colors={["#3057F2", "#1B9AAA"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.btnLoginGradient}
+                  >
+                    <Text style={styles.btnLoginText}>{t.auth.logIn}</Text>
+                  </LinearGradient>
                 </Pressable>
 
                 <Pressable
@@ -156,15 +164,30 @@ export default function WelcomeScreenWeb() {
                     styles.btn,
                     styles.btnSignup,
                     {
-                      borderColor: colors.primary,
-                      backgroundColor: hovered ? `${colors.primary}08` : colors.card,
+                      borderColor: "#3057F2",
+                      backgroundColor: hovered
+                        ? "rgba(48,87,242,0.16)"
+                        : "rgba(48,87,242,0.08)",
                     },
                     pressed && styles.btnPressed,
                   ]}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.btnSignupText, { color: colors.primary }]}>
+                  <Text style={[styles.btnSignupText, { color: "#1D4ED8" }]}>
                     {t.auth.register}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.replace("/(tabs)")}
+                  style={({ pressed }) => [
+                    styles.btnBrowse,
+                    { opacity: pressed ? 0.75 : 1 },
+                  ]}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.btnBrowseText, { color: colors.foreground }]}>
+                    {isRTL ? "تصفح التخصصات والأطباء" : "Browse specialties & doctors"}
                   </Text>
                 </Pressable>
               </View>
@@ -298,19 +321,28 @@ const styles = StyleSheet.create({
   btn: {
     width: "100%",
     minHeight: 56,
-    borderRadius: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer" as "auto",
+    overflow: "hidden",
+  },
+  btnLogin: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    shadowColor: "#3057F2",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  btnLoginGradient: {
+    width: "100%",
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
     paddingVertical: 15,
-    cursor: "pointer" as "auto",
-  },
-  btnLogin: {
-    shadowColor: "#3057F2",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 6,
   },
   btnLoginHovered: {
     opacity: 0.95,
@@ -324,11 +356,24 @@ const styles = StyleSheet.create({
   },
   btnSignup: {
     borderWidth: 2.5,
+    paddingHorizontal: 24,
+    paddingVertical: 15,
   },
   btnSignupText: {
     fontSize: 17,
     fontWeight: "800",
     letterSpacing: 0.2,
+  },
+  btnBrowse: {
+    width: "100%",
+    alignItems: "center",
+    paddingVertical: 10,
+    cursor: "pointer" as "auto",
+  },
+  btnBrowseText: {
+    fontSize: 14,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   btnPressed: {
     opacity: 0.88,

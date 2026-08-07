@@ -1,5 +1,6 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { Href, usePathname, useRouter } from "expo-router";
-import { LogOut, Mail } from "lucide-react-native";
+import { LogIn, LogOut, Mail, UserPlus } from "lucide-react-native";
 import React from "react";
 import {
   Alert,
@@ -15,6 +16,7 @@ import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { filterAppNavItems } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -30,15 +32,20 @@ type Props = {
 
 export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Props) {
   const colors = useColors();
-  const { t, isRTL } = useI18n();
+  const { t, isRTL, locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const role = useAuthStore((s) => s.role);
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const logout = useAuthStore((s) => s.logout);
+  const signedIn = isSignedIn(profile, accessToken);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
+  const isArabic = locale === "ar";
+  const navFontSize = isArabic ? 17 : 14;
 
-  const items = filterAppNavItems(role).map((item) => ({
+  const items = filterAppNavItems(role, { signedIn }).map((item) => ({
     ...item,
     active: item.match(pathname),
   }));
@@ -121,6 +128,7 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
                   color: active ? colors.primary : colors.foreground,
                   textAlign,
                   writingDirection: isRTL ? "rtl" : "ltr",
+                  fontSize: navFontSize,
                 },
               ]}
             >
@@ -169,6 +177,7 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
                 color: colors.foreground,
                 textAlign,
                 writingDirection: isRTL ? "rtl" : "ltr",
+                fontSize: navFontSize,
               },
             ]}
           >
@@ -176,29 +185,104 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
           </Text>
         </Pressable>
 
-        <Pressable
-          onPress={handleLogout}
-          accessibilityRole="button"
-          accessibilityLabel={t.tabs.logout}
-          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-            styles.logoutBtn,
-            {
-              flexDirection: dir,
-              borderColor: colors.border,
-              backgroundColor: pressed || hovered ? "#fef2f2" : "transparent",
-            },
-          ]}
-        >
-          <LogOut size={18} color="#ef4444" />
-          <Text
-            style={[
-              styles.logoutText,
-              { textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
+        {signedIn ? (
+          <Pressable
+            onPress={handleLogout}
+            accessibilityRole="button"
+            accessibilityLabel={t.tabs.logout}
+            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+              styles.logoutBtn,
+              {
+                flexDirection: dir,
+                borderColor: colors.border,
+                backgroundColor: pressed || hovered ? "#fef2f2" : "transparent",
+              },
             ]}
           >
-            {t.tabs.logout}
-          </Text>
-        </Pressable>
+            <LogOut size={18} color="#ef4444" />
+            <Text
+              style={[
+                styles.logoutText,
+                {
+                  textAlign,
+                  writingDirection: isRTL ? "rtl" : "ltr",
+                  fontSize: navFontSize,
+                },
+              ]}
+            >
+              {t.tabs.logout}
+            </Text>
+          </Pressable>
+        ) : (
+          <>
+            <Pressable
+              onPress={() => go("/auth/login")}
+              accessibilityRole="button"
+              accessibilityLabel={t.auth.logIn}
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.authCta,
+                styles.authCtaLogin,
+                { opacity: pressed || hovered ? 0.92 : 1 },
+              ]}
+            >
+              <LinearGradient
+                colors={["#3057F2", "#1B9AAA"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.authCtaGradient, { flexDirection: dir }]}
+              >
+                <LogIn size={18} color="#FFFFFF" />
+                <Text
+                  style={[
+                    styles.navLabel,
+                    {
+                      color: "#FFFFFF",
+                      textAlign,
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                      fontWeight: "800",
+                      fontSize: navFontSize,
+                    },
+                  ]}
+                >
+                  {t.auth.logIn}
+                </Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable
+              onPress={() => go("/auth/signup")}
+              accessibilityRole="button"
+              accessibilityLabel={t.auth.register}
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.logoutBtn,
+                styles.authCtaSignup,
+                {
+                  flexDirection: dir,
+                  borderColor: "#3057F2",
+                  backgroundColor:
+                    pressed || hovered
+                      ? "rgba(48,87,242,0.16)"
+                      : "rgba(48,87,242,0.08)",
+                },
+              ]}
+            >
+              <UserPlus size={18} color="#1D4ED8" />
+              <Text
+                style={[
+                  styles.navLabel,
+                  {
+                    color: "#1D4ED8",
+                    textAlign,
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    fontWeight: "800",
+                    fontSize: navFontSize,
+                  },
+                ]}
+              >
+                {t.auth.register}
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -253,6 +337,26 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  authCta: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  authCtaLogin: {
+    shadowColor: "#3057F2",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  authCtaGradient: {
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  authCtaSignup: {
+    borderWidth: 2,
   },
   logoutText: { color: "#ef4444", fontWeight: "700", fontSize: 14, flex: 1 },
 });

@@ -20,10 +20,12 @@ import {
 } from "@/constants/patientCountries";
 import type { Speciality, SpecialityDoctor } from "@/domains/home/api";
 import { doctorsToConversations } from "@/domains/home/doctorConversations";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import { useAuthStore } from "@/domains/auth/store";
 import { resolveBrowseMarketCountry } from "@/domains/market/resolveMarketCountry";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
 
 function ConversationRow({
   item,
@@ -108,13 +110,21 @@ export function DoctorChatRoster({
   marketCountry: marketCountryProp,
 }: Props) {
   const colors = useColors();
+  const { locale } = useI18n();
   const onlineUsers = usePresenceStore((s) => s.users);
   const profileCountry = useAuthStore((s) => s.profile?.country);
   const marketCountry =
     marketCountryProp ?? resolveBrowseMarketCountry(profileCountry);
   const dir = isRTL ? "row-reverse" : "row";
-  const label = isRTL ? speciality.nameAr : speciality.nameEn;
-  const backLabel = isRTL ? "التخصصات" : "Specialities";
+  const label = specialityLabel(speciality, locale);
+  const backLabel =
+    locale === "ar"
+      ? "التخصصات"
+      : locale === "de"
+        ? "Fachgebiete"
+        : locale === "es"
+          ? "Especialidades"
+          : "Specialities";
 
   const conversations = useMemo(
     () => doctorsToConversations(doctors),

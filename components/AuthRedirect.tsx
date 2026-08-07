@@ -1,6 +1,7 @@
 import { useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
+import { isGuestAllowedRoot } from "@/domains/auth/guestBrowse";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -15,7 +16,7 @@ function isDoctorPendingApproval(
   );
 }
 
-/** Keeps unauthenticated users on welcome; sends signed-in users to the app. */
+/** Guests may browse home/doctors; signed-in users are routed into the app. */
 export function AuthRedirect() {
   const router = useRouter();
   const segments = useSegments();
@@ -29,20 +30,17 @@ export function AuthRedirect() {
   useEffect(() => {
     if (!hydrated) return;
 
-    const root = segments[0];
-    const authScreen = root === "auth" ? String(segments[1] ?? "") : "";
+    const root = segments[0] as string | undefined;
+    const second = segments[1] as string | undefined;
+    const authScreen = root === "auth" ? String(second ?? "") : "";
     // Password reset / forgot must stay reachable even when a session exists.
     const isAuthUtilityRoute =
       authScreen === "forgot-password" || authScreen === "reset-password";
-    const isPublic =
-      root === "welcome" ||
-      root === "auth" ||
-      root === undefined;
     const isAdminRoute = root === "admin";
     const isPendingRoute = root === "doctor-pending";
 
     if (!signedIn) {
-      if (!isPublic) {
+      if (!isGuestAllowedRoot(root, second)) {
         if (Platform.OS === "web") {
           navigateToWelcome(router);
         } else {

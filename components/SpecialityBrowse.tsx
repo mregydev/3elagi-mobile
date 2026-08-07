@@ -8,63 +8,94 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import type { Speciality } from "@/domains/home/api";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
   specialityGradient,
   specialityVisual,
 } from "@/domains/home/specialityVisuals";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+
+const CIRCLE = 88;
 
 function SpecialityTile({
   item,
-  isRTL,
   index,
   onPress,
 }: {
   item: Speciality;
-  isRTL: boolean;
   index: number;
   onPress: () => void;
 }) {
   const colors = useColors();
-  const label = isRTL ? item.nameAr : item.nameEn;
-  const { icon: Icon, color } = specialityVisual(item.nameEn);
+  const { locale, isRTL } = useI18n();
+  const label = specialityLabel(item, locale);
+  const { icon: Icon, color, image } = specialityVisual(item.nameEn);
+  const illustration = image ?? (item.imageUrl ? { uri: item.imageUrl } : null);
   const scale = useSharedValue(1);
-  const orbStyle = useAnimatedStyle(() => ({
+  const cardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+  const isArabic = locale === "ar";
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(index * 55).springify().damping(14)}
+      entering={FadeInDown.delay(index * 45).springify().damping(14)}
       style={styles.tile}
     >
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => {
-          scale.value = withSpring(0.86, { damping: 12 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, { damping: 10 });
-        }}
-        style={styles.pressable}
-      >
-        <Animated.View style={[styles.orbShadow, { shadowColor: color }, orbStyle]}>
-          <LinearGradient
-            colors={specialityGradient(color)}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.orb}
-          >
-            <Icon size={26} color="#fff" />
-          </LinearGradient>
-        </Animated.View>
-        <Text
-          style={[styles.tileLabel, { color: colors.foreground }]}
-          numberOfLines={2}
+      <Animated.View style={cardStyle}>
+        <Pressable
+          onPress={onPress}
+          onPressIn={() => {
+            scale.value = withSpring(0.96, { damping: 14 });
+          }}
+          onPressOut={() => {
+            scale.value = withSpring(1, { damping: 12 });
+          }}
+          style={styles.pressable}
         >
-          {label}
-        </Text>
-      </Pressable>
+          {illustration ? (
+            <View
+              style={[
+                styles.circle,
+                {
+                  borderColor: color,
+                  shadowColor: color,
+                },
+              ]}
+            >
+              <Image
+                source={illustration}
+                style={styles.illustration}
+                resizeMode="contain"
+              />
+            </View>
+          ) : (
+            <LinearGradient
+              colors={specialityGradient(color)}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.circle, styles.orbFallback, { borderColor: color }]}
+            >
+              <Icon size={32} color="#fff" />
+            </LinearGradient>
+          )}
+          <Text
+            style={[
+              styles.primaryLabel,
+              {
+                color: colors.foreground,
+                fontSize: isArabic ? 17 : 14,
+                lineHeight: isArabic ? 24 : 20,
+                writingDirection: isRTL ? "rtl" : "ltr",
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -80,29 +111,51 @@ export function SpecialityGrid({
   isRTL,
   onSelect,
 }: SpecialityGridProps) {
+  const { locale } = useI18n();
+  const heading =
+    locale === "ar"
+      ? "التخصصات الطبية"
+      : locale === "de"
+        ? "Medizinische Fachgebiete"
+        : locale === "es"
+          ? "Especialidades médicas"
+          : "Medical Specialities";
+
+  const isArabic = locale === "ar";
+
   return (
-    <View style={styles.wrap}>
-      <View
-        style={[
-          styles.headingRow,
-          { flexDirection: isRTL ? "row-reverse" : "row" },
-        ]}
-      >
+    <View
+      style={[styles.wrap, { direction: isRTL ? "rtl" : "ltr" } as object]}
+      // @ts-expect-error web writing direction
+      dir={isRTL ? "rtl" : "ltr"}
+    >
+      <View style={styles.headingRow}>
         <Image
           source={require("@/assets/images/splash-mark.png")}
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.heading}>
-          {isRTL ? "التخصصات الطبية" : "Medical Specialities"}
+        <Text
+          style={[
+            styles.heading,
+            {
+              fontSize: isArabic ? 24 : 20,
+              writingDirection: isRTL ? "rtl" : "ltr",
+            },
+          ]}
+        >
+          {heading}
         </Text>
       </View>
+      {/*
+        Use direction/dir for RTL — do NOT also use row-reverse
+        (that double-flips and leaves the empty gap on the right).
+      */}
       <View style={styles.grid}>
         {specialities.map((item, index) => (
           <SpecialityTile
             key={item.id}
             item={item}
-            isRTL={isRTL}
             index={index}
             onPress={() => onSelect(item)}
           />
@@ -116,46 +169,62 @@ const styles = StyleSheet.create({
   wrap: {
     marginHorizontal: 12,
     marginVertical: 8,
-    paddingHorizontal: 8,
-    paddingTop: 20,
-    paddingBottom: 20,
-    backgroundColor: "#F4F7FF",
+    paddingHorizontal: 6,
+    paddingTop: 18,
+    paddingBottom: 16,
+    backgroundColor: "#EEF3F8",
     borderRadius: 24,
   },
   headingRow: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    flexWrap: "nowrap",
     gap: 10,
-    marginBottom: 48,
+    marginBottom: 18,
   },
-  logo: { width: 30, height: 30 },
+  logo: { width: 28, height: 28, flexShrink: 0 },
   heading: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "800",
     textAlign: "center",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     color: "#1D4ED8",
+    flexShrink: 1,
   },
-  grid: { flexDirection: "row", flexWrap: "wrap" },
-  // 4 per row; row spacing comes from the tile's vertical padding.
-  tile: { width: "25%", paddingVertical: 12, paddingHorizontal: 4 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
+  tile: { width: "50%", paddingVertical: 10, paddingHorizontal: 6 },
   pressable: { alignItems: "center" },
-  // Colored glow — wrapper carries the shadow so the clipped orb keeps it.
-  orbShadow: {
-    borderRadius: 30,
-    marginBottom: 9,
-    shadowOffset: { width: 0, height: 7 },
-    shadowOpacity: 0.4,
-    shadowRadius: 9,
-    elevation: 7,
+  circle: {
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
+    overflow: "hidden",
+    borderWidth: 2,
+    marginBottom: 10,
+    backgroundColor: "transparent",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  orb: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  illustration: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "transparent",
+  },
+  orbFallback: {
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
   },
-  tileLabel: { fontSize: 12, fontWeight: "600", textAlign: "center" },
+  primaryLabel: {
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
+    lineHeight: 20,
+  },
 });

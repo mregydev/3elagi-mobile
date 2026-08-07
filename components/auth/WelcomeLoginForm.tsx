@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -111,16 +112,23 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
       <Pressable
         onPress={submit}
         disabled={loading}
-        style={[
+        style={({ pressed }) => [
           styles.btn,
-          { backgroundColor: loading ? colors.mutedForeground : colors.primary },
+          { opacity: loading ? 0.7 : pressed ? 0.92 : 1 },
         ]}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.btnText}>{t.auth.logIn}</Text>
-        )}
+        <LinearGradient
+          colors={loading ? ["#94A3B8", "#94A3B8"] : ["#3057F2", "#1B9AAA"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.btnGradient}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>{t.auth.logIn}</Text>
+          )}
+        </LinearGradient>
       </Pressable>
       <Pressable onPress={onSwitchToSignup} style={styles.switchLink}>
         <Text style={{ color: colors.primary, fontWeight: "600" }}>
@@ -135,11 +143,20 @@ const styles = StyleSheet.create({
   form: { width: "100%", gap: 12 },
   btn: {
     marginTop: 8,
-    paddingVertical: 14,
     borderRadius: 14,
-    alignItems: "center",
+    overflow: "hidden",
+    shadowColor: "#3057F2",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.32,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
   switchLink: {
     paddingVertical: 8,
     alignItems: "center",

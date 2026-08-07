@@ -22,8 +22,10 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { DoctorProfilePhoto } from "@/components/doctor/DoctorProfilePhoto";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { chatRepository } from "@/domains/chat/repository";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
   fetchDoctorReviewStatus,
   fetchDoctorReviews,
@@ -92,7 +94,7 @@ function gridStyle(columns: number): ViewStyle {
 
 export function DoctorWebView() {
   const colors = useColors();
-  const { isRTL, t } = useI18n();
+  const { isRTL, t, locale } = useI18n();
   const { isDesktop, isTablet } = useWebLayout();
   const router = useRouter();
   usePathname();
@@ -149,13 +151,11 @@ export function DoctorWebView() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (!isSignedIn(profile, accessToken)) {
-      router.replace("/welcome");
-    }
-  }, [profile, accessToken, router]);
-
   const openChat = () => {
+    if (!isSignedIn(profile, accessToken)) {
+      promptAuthForConsultation(router, isRTL);
+      return;
+    }
     const chatUserId = userId ?? doctor?.userId;
     if (!chatUserId || !doctor) return;
     chatRepository.cacheUsers([
@@ -201,7 +201,13 @@ export function DoctorWebView() {
     );
   }
 
-  const specialtyLabel = isRTL ? doctor.specialtyAr ?? doctor.specialty : doctor.specialty;
+  const specialtyLabelText = specialityLabel(
+    {
+      nameEn: doctor.specialty ?? doctor.professionalTitle ?? "",
+      nameAr: doctor.specialtyAr,
+    },
+    locale,
+  );
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
@@ -231,9 +237,9 @@ export function DoctorWebView() {
             <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>
               {doctor.name}
             </Text>
-            {specialtyLabel ? (
+            {specialtyLabelText ? (
               <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign }]}>
-                {specialtyLabel}
+                {specialtyLabelText}
               </Text>
             ) : null}
           </View>
@@ -309,7 +315,15 @@ export function DoctorWebView() {
                 ]}
               >
                 <MessageCircle size={20} color="#fff" />
-                <Text style={styles.chatBtnText}>{isRTL ? "مراسلة الطبيب" : "Message doctor"}</Text>
+                <Text style={styles.chatBtnText}>
+                  {isSignedIn(profile, accessToken)
+                    ? isRTL
+                      ? "مراسلة الطبيب"
+                      : "Message doctor"
+                    : isRTL
+                      ? "سجّل الدخول لبدء الاستشارة"
+                      : "Sign in to start consultation"}
+                </Text>
               </Pressable>
             </View>
           </View>

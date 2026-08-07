@@ -92,7 +92,7 @@ const en = {
     logIn: "Log in",
     register: "Create Account",
     signUp: "Sign up",
-    createAccountTitle: "Create your account",
+    createAccountTitle: "Create Account",
     createAccountSubtitle: "Choose your account type and complete your details",
     patient: "Patient",
     doctor: "Doctor",

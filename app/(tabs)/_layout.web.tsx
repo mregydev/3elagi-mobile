@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import {
   Bot,
   CalendarClock,
@@ -13,7 +13,7 @@ import {
   User,
   Users,
 } from "lucide-react-native";
-import React, { useEffect } from "react";
+import React from "react";
 import { StyleSheet, View } from "react-native";
 import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { WebContentColumn } from "@/components/web/WebContentColumn";
@@ -21,13 +21,11 @@ import { WebSidebar } from "@/components/web/WebSidebar";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
-import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
 export default function TabsLayoutWeb() {
   const colors = useColors();
-  const router = useRouter();
   const { t, isRTL } = useI18n();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -35,16 +33,9 @@ export default function TabsLayoutWeb() {
   const role = useAuthStore((s) => s.role);
   const signedIn = isSignedIn(profile, accessToken);
   const isDoctor = role?.toLowerCase() === "doctor";
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!signedIn) {
-      navigateToWelcome(router);
-    }
-  }, [hydrated, signedIn, router]);
+  const authOnlyHref = signedIn ? undefined : null;
 
   if (!hydrated) return null;
-  if (!signedIn) return null;
 
   return (
     <AppSidebarProvider>
@@ -88,6 +79,7 @@ export default function TabsLayoutWeb() {
               name="assistant"
               options={{
                 title: t.tabs.assistant,
+                href: authOnlyHref,
                 tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
               }}
             />
@@ -102,6 +94,7 @@ export default function TabsLayoutWeb() {
               name="appointments"
               options={{
                 title: t.tabs.appointments,
+                href: authOnlyHref,
                 tabBarIcon: ({ color, size }) => (
                   <CalendarClock color={color} size={size} />
                 ),
@@ -111,6 +104,7 @@ export default function TabsLayoutWeb() {
               name="consultations"
               options={{
                 title: t.tabs.consultations,
+                href: authOnlyHref,
                 tabBarIcon: ({ color, size }) => (
                   <MessageSquare color={color} size={size} />
                 ),
@@ -120,6 +114,7 @@ export default function TabsLayoutWeb() {
               name="history"
               options={{
                 title: t.tabs.history,
+                href: authOnlyHref,
                 tabBarIcon: ({ color, size }) => (
                   <History color={color} size={size} />
                 ),
@@ -129,7 +124,7 @@ export default function TabsLayoutWeb() {
               name="records"
               options={{
                 title: t.tabs.records,
-                href: isDoctor ? null : undefined,
+                href: !signedIn || isDoctor ? null : undefined,
                 tabBarIcon: ({ color, size }) => (
                   <ClipboardList color={color} size={size} />
                 ),
@@ -139,7 +134,7 @@ export default function TabsLayoutWeb() {
               name="patients"
               options={{
                 title: t.tabs.patients,
-                href: isDoctor ? undefined : null,
+                href: signedIn && isDoctor ? undefined : null,
                 tabBarIcon: ({ color, size }) => (
                   <Users color={color} size={size} />
                 ),
@@ -149,7 +144,7 @@ export default function TabsLayoutWeb() {
               name="reviews"
               options={{
                 title: t.tabs.reviews,
-                href: isDoctor ? undefined : null,
+                href: signedIn && isDoctor ? undefined : null,
                 tabBarIcon: ({ color, size }) => <Star color={color} size={size} />,
               }}
             />
@@ -167,7 +162,7 @@ export default function TabsLayoutWeb() {
               name="points"
               options={{
                 title: t.tabs.points,
-                href: isDoctor ? null : undefined,
+                href: !signedIn || isDoctor ? null : undefined,
                 tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
               }}
             />
@@ -175,6 +170,7 @@ export default function TabsLayoutWeb() {
               name="profile"
               options={{
                 title: t.tabs.profile,
+                href: authOnlyHref,
                 tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
               }}
             />

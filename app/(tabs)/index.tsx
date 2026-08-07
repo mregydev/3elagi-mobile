@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Redirect, router } from "expo-router";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
   ActivityIndicator,
   Platform,
@@ -45,6 +46,9 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 function ChatsHomeBrowse() {
   const colors = useColors();
   const { isRTL } = useI18n();
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const signedIn = isSignedIn(profile, accessToken);
   const profileCountry = useAuthStore((s) => s.profile?.country);
   const marketCountry = resolveBrowseMarketCountry(profileCountry);
   const domainMarket = getDomainMarketCountry();
@@ -135,6 +139,10 @@ function ChatsHomeBrowse() {
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
       if (!doctorEntityId) {
+        if (!signedIn) {
+          promptAuthForConsultation(router, isRTL);
+          return;
+        }
         router.push(`/chat/${doctorUserId}`);
         return;
       }
@@ -143,7 +151,7 @@ function ChatsHomeBrowse() {
         params: { doctorId: doctorEntityId, userId: doctorUserId },
       });
     },
-    [],
+    [isRTL, signedIn],
   );
 
   if (loadingHome && specialities.length === 0) {
@@ -198,7 +206,7 @@ function ChatsHomeBrowse() {
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }
     >
-      <AiAssistantHomeCard />
+      {signedIn ? <AiAssistantHomeCard /> : null}
       <AdvertisementCarousel items={ads} isRTL={isRTL} />
       {domainMarket ? (
         <View
@@ -254,14 +262,7 @@ function ChatsHomeBrowse() {
 export default function ChatsTab() {
   const colors = useColors();
   const { isDesktop } = useWebLayout();
-  const profile = useAuthStore((s) => s.profile);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const role = useAuthStore((s) => s.role);
   const showHeader = Platform.OS !== "web" || !isDesktop;
-
-  if (!isSignedIn(profile, accessToken) || !role) {
-    return <Redirect href="/welcome" />;
-  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

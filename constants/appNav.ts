@@ -22,6 +22,8 @@ export type AppNavItem = {
   Icon: LucideIcon;
   doctorOnly?: boolean;
   patientOnly?: boolean;
+  /** Visible without signing in (home / doctor browse). */
+  guestAllowed?: boolean;
   match: (path: string) => boolean;
 };
 
@@ -34,6 +36,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     href: "/(tabs)",
     labelKey: "home",
     Icon: Home,
+    guestAllowed: true,
     match: (path) =>
       path === "/" ||
       path === "/(tabs)" ||
@@ -56,6 +59,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     href: "/(tabs)/our-doctors",
     labelKey: "ourDoctors",
     Icon: Stethoscope,
+    guestAllowed: true,
     match: (path) => pathHas(path, "our-doctors"),
   },
   {
@@ -125,9 +129,14 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
   },
 ];
 
-export function filterAppNavItems(role: string | null | undefined): AppNavItem[] {
+export function filterAppNavItems(
+  role: string | null | undefined,
+  options?: { signedIn?: boolean },
+): AppNavItem[] {
+  const signedIn = options?.signedIn ?? !!role;
   const isDoctor = role?.toLowerCase() === "doctor";
   return APP_NAV_ITEMS.filter((item) => {
+    if (!signedIn) return !!item.guestAllowed;
     if (item.doctorOnly && !isDoctor) return false;
     if (item.patientOnly && isDoctor) return false;
     return true;

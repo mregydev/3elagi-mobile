@@ -1,5 +1,6 @@
 import { API_BASE } from "@/constants/api";
 import type { Locale } from "@/domains/i18n/store";
+import { normalizeSttMimeType } from "@/utils/sttMime";
 
 const STT_TIMEOUT_MS = 60_000;
 
@@ -36,7 +37,7 @@ export async function transcribeAssistantAudio(
       },
       body: JSON.stringify({
         audio: audioBase64,
-        mimeType,
+        mimeType: normalizeSttMimeType(mimeType),
         // Omit / send auto so the server detects ar | en | de | es from speech.
         languageCode:
           !languageCode || languageCode === "auto" ? "auto" : languageCode,
@@ -49,6 +50,11 @@ export async function transcribeAssistantAudio(
     const text = data.text?.trim();
     if (!text) throw new Error("No speech detected");
     return text;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Speech recognition timed out. Try a shorter recording.");
+    }
+    throw err;
   } finally {
     clearTimeout(timer);
   }

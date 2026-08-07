@@ -52,7 +52,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow 3elagi to record voice messages."
+          "microphonePermission": "Allow 3elagi to record voice messages and dictate text."
         }
       ],
       [
