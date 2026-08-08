@@ -81,7 +81,7 @@ const en = {
     welcomeCtaSubtitle: "Sign in or create your free account in seconds.",
     guestAuthRequiredTitle: "You're not logged in",
     guestAuthRequiredMessage:
-      "Log in or sign up as a new member to view doctors and start a consultation.",
+      "Log in or sign up as a new member to start a consultation.",
     newMemberSignUp: "New member — Sign up",
     signInSubtitle: "Sign in to continue to 3elagi",
     clinicTab: "Clinic",
@@ -705,7 +705,7 @@ const ar: typeof en = {
     welcomeCtaSubtitle: "سجّل الدخول أو أنشئ حسابك مجاناً في ثوانٍ.",
     guestAuthRequiredTitle: "أنت غير مسجّل الدخول",
     guestAuthRequiredMessage:
-      "سجّل الدخول أو أنشئ حساب عضو جديد لعرض الأطباء وبدء استشارة.",
+      "سجّل الدخول أو أنشئ حساب عضو جديد لبدء استشارة.",
     newMemberSignUp: "عضو جديد — إنشاء حساب",
     signInSubtitle: "سجّل الدخول للمتابعة إلى 3elagi",
     clinicTab: "عيادة",
@@ -1325,7 +1325,7 @@ const de: typeof en = {
     welcomeCtaSubtitle: "Melden Sie sich an oder erstellen Sie in Sekunden Ihr kostenloses Konto.",
     guestAuthRequiredTitle: "Sie sind nicht angemeldet",
     guestAuthRequiredMessage:
-      "Melden Sie sich an oder registrieren Sie sich als neues Mitglied, um Ärzte anzusehen und eine Beratung zu starten.",
+      "Melden Sie sich an oder registrieren Sie sich als neues Mitglied, um eine Beratung zu starten.",
     newMemberSignUp: "Neues Mitglied — Registrieren",
     signInSubtitle: "Melden Sie sich an, um mit 3elagi fortzufahren",
     clinicTab: "Klinik",
@@ -1948,7 +1948,7 @@ const es: typeof en = {
     welcomeCtaSubtitle: "Inicia sesión o crea tu cuenta gratuita en segundos.",
     guestAuthRequiredTitle: "No has iniciado sesión",
     guestAuthRequiredMessage:
-      "Inicia sesión o regístrate como nuevo miembro para ver médicos y comenzar una consulta.",
+      "Inicia sesión o regístrate como nuevo miembro para comenzar una consulta.",
     newMemberSignUp: "Nuevo miembro — Registrarse",
     signInSubtitle: "Inicia sesión para continuar en 3elagi",
     clinicTab: "Clínica",

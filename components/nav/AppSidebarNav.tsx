@@ -91,11 +91,14 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       bounces={false}
-      // @ts-expect-error web writing direction
-      dir={isRTL ? "rtl" : "ltr"}
     >
       {showBrand ? (
-        <View style={styles.brandRow}>
+        <View
+          style={[
+            styles.brandRow,
+            { alignItems: isRTL ? "flex-end" : "center" },
+          ]}
+        >
           <Logo3elagi height={LOGO_HEIGHT.sidebar} />
         </View>
       ) : null}

@@ -3,10 +3,12 @@ import { router } from "expo-router";
 import { LogIn, UserPlus, X } from "lucide-react-native";
 import React from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Logo3elagi } from "@/components/Logo3elagi";
+import { LOGO_HEIGHT } from "@/constants/brand";
 import { useGuestAuthDialogStore } from "@/domains/auth/guestAuthDialogStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { alignText, flexRow } from "@/utils/rtl";
+import { flexRow } from "@/utils/rtl";
 
 /** Design-system dialog prompting guests to log in or sign up (welcome CTA buttons). */
 export function GuestAuthRequiredDialog() {
@@ -14,7 +16,6 @@ export function GuestAuthRequiredDialog() {
   const { t, isRTL } = useI18n();
   const visible = useGuestAuthDialogStore((s) => s.visible);
   const close = useGuestAuthDialogStore((s) => s.close);
-  const textAlign = alignText(isRTL);
   const dir = flexRow(isRTL);
 
   const goLogin = () => {
@@ -45,10 +46,8 @@ export function GuestAuthRequiredDialog() {
             },
           ]}
         >
-          <View style={[styles.header, { flexDirection: dir }]}>
-            <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
-              {t.auth.guestAuthRequiredTitle}
-            </Text>
+          <View style={[styles.topBar, { flexDirection: dir }]}>
+            <View style={styles.topBarSpacer} />
             <Pressable
               onPress={close}
               style={styles.closeBtn}
@@ -60,7 +59,15 @@ export function GuestAuthRequiredDialog() {
             </Pressable>
           </View>
 
-          <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
+          <View style={styles.brand}>
+            <Logo3elagi height={LOGO_HEIGHT.header} />
+          </View>
+
+          <Text style={[styles.title, { color: colors.foreground, textAlign: "center" }]}>
+            {t.auth.guestAuthRequiredTitle}
+          </Text>
+
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             {t.auth.guestAuthRequiredMessage}
           </Text>
 
@@ -156,12 +163,20 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginHorizontal: 8,
   },
-  header: {
-    alignItems: "flex-start",
-    gap: 12,
+  topBar: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: -4,
+    marginBottom: -4,
+  },
+  topBarSpacer: { flex: 1 },
+  brand: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   title: {
-    flex: 1,
     fontSize: 20,
     fontWeight: "800",
     letterSpacing: -0.3,
@@ -174,6 +189,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     lineHeight: 21,
+    textAlign: "center",
     marginBottom: 4,
   },
   btnPrimary: {

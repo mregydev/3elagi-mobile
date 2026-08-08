@@ -17,6 +17,13 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
+import { MarketCountryRadioField } from "@/components/auth/MarketCountryRadioField";
+import {
+  DEFAULT_PATIENT_COUNTRY,
+  normalizeMarketCountry,
+  type MarketCountryCode,
+} from "@/constants/patientCountries";
+import { updateAccountProfile } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
 import { getPostLoginRoute } from "@/domains/auth/navigation";
 import {
@@ -35,8 +42,10 @@ export default function LoginScreen() {
   const { isDesktop, isMobile } = useWebLayout();
   const login = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
+  const setProfile = useAuthStore((s) => s.setProfile);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [country, setCountry] = useState<MarketCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -59,7 +68,31 @@ export default function LoginScreen() {
 
     try {
       await login({ email: email.trim(), password });
-      const { role, doctorApprovalStatus } = useAuthStore.getState();
+      const { role, doctorApprovalStatus, profile, accessToken } =
+        useAuthStore.getState();
+
+      // Native: persist selected market country onto the account when needed.
+      if (
+        !isWeb &&
+        accessToken &&
+        profile &&
+        (role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor") &&
+        normalizeMarketCountry(profile.country) !== country
+      ) {
+        try {
+          const updated = await updateAccountProfile(accessToken, role!, {
+            name: profile.name,
+            phone: profile.phone ?? "",
+            country,
+          });
+          setProfile({ ...profile, ...updated, country });
+        } catch {
+          setProfile({ ...profile, country });
+        }
+      } else if (!isWeb && profile) {
+        setProfile({ ...profile, country });
+      }
+
       router.replace(getPostLoginRoute(role, doctorApprovalStatus));
     } catch (e) {
       const message = (e as Error).message;
@@ -170,6 +203,15 @@ export default function LoginScreen() {
             colors={colors}
             isRTL={isRTL}
           />
+          {!isWeb ? (
+            <MarketCountryRadioField
+              label={t.auth.chooseCountryTitle}
+              value={country}
+              onChange={setCountry}
+              isRTL={isRTL}
+              disabled={loading}
+            />
+          ) : null}
           <Pressable
             onPress={() => router.push("/auth/forgot-password")}
             style={{ alignItems: isRTL ? "flex-start" : "flex-end", paddingVertical: 2 }}

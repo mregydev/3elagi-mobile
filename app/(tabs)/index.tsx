@@ -61,13 +61,13 @@ function ChatsHomeBrowse() {
     setLoadingHome(true);
     setError(null);
     try {
-      setSpecialities(await fetchSpecialities());
+      setSpecialities(await fetchSpecialities(marketCountry));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load home data");
     } finally {
       setLoadingHome(false);
     }
-  }, []);
+  }, [marketCountry]);
 
   useEffect(() => {
     void loadHome();

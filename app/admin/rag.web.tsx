@@ -1,4 +1,3 @@
-import { Redirect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,13 +6,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { AdminShell } from "@/components/admin/AdminShell.web";
 import { AppTextInput } from "@/components/AppTextInput";
 import { FileText, Trash2, Upload } from "lucide-react-native";
 import { useAuthStore } from "@/domains/auth/store";
-import { isSignedIn } from "@/domains/auth/session";
 import {
   createAdminRagText,
   deleteAdminRagSource,
@@ -21,7 +19,6 @@ import {
   trainAdminRagDocument,
   type AdminRagSourceRow,
 } from "@/domains/admin/api";
-import { getPostLogoutRoute } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
@@ -40,11 +37,7 @@ function formatFileSize(bytes: number): string {
 
 export default function AdminRagWeb() {
   const colors = useColors();
-  const router = useRouter();
-  const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const role = useAuthStore((s) => s.role);
-  const logout = useAuthStore((s) => s.logout);
 
   const [sources, setSources] = useState<AdminRagSourceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,14 +68,6 @@ export default function AdminRagWeb() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  if (!isSignedIn(profile, accessToken)) {
-    return <Redirect href="/auth/login" />;
-  }
-
-  if (role?.toLowerCase() !== "admin") {
-    return <Redirect href="/welcome" />;
-  }
 
   const handleTrainText = async () => {
     if (!accessToken) return;
@@ -157,33 +142,10 @@ export default function AdminRagWeb() {
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Admin — RAG Manager</Text>
-          <View style={styles.navRow}>
-            <Pressable
-              onPress={() => router.push("/admin")}
-              style={[styles.navBtn, { borderColor: colors.border }]}
-            >
-              <Text style={{ color: colors.foreground, fontWeight: "700" }}>Doctors</Text>
-            </Pressable>
-            <View style={[styles.navBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}14` }]}>
-              <Text style={{ color: colors.primary, fontWeight: "800" }}>RAG Sources</Text>
-            </View>
-          </View>
-        </View>
-        <Pressable
-          onPress={() => {
-            logout();
-            router.replace(getPostLogoutRoute());
-          }}
-          style={[styles.logoutBtn, { borderColor: colors.border }]}
-        >
-          <Text style={{ color: colors.foreground, fontWeight: "700" }}>Logout</Text>
-        </Pressable>
-      </View>
-
+    <AdminShell
+      title="RAG Sources"
+      subtitle="Train the AI with platform text and documents."
+    >
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Add text knowledge</Text>
@@ -359,37 +321,19 @@ export default function AdminRagWeb() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </AdminShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, minHeight: "100%" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
+  content: {
+    padding: 28,
     gap: 16,
+    maxWidth: 960,
+    width: "100%",
+    alignSelf: "center",
+    paddingBottom: 48,
   },
-  headerLeft: { gap: 10 },
-  title: { fontSize: 22, fontWeight: "800" },
-  navRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-  navBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  logoutBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  content: { padding: 24, gap: 16, maxWidth: 960, width: "100%", alignSelf: "center" },
   card: {
     borderWidth: 1,
     borderRadius: 14,

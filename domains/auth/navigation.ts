@@ -3,6 +3,7 @@ import type { Router } from "expo-router";
 import type { DoctorApprovalStatus } from "./types";
 
 const WELCOME_ROUTE = "/welcome" as const;
+const MAIN_ROUTE = "/(tabs)" as const;
 
 /** Route to open right after a successful login or signup. */
 export function getPostAuthRoute(
@@ -19,7 +20,7 @@ export function getPostAuthRoute(
   ) {
     return "/doctor-pending";
   }
-  return "/(tabs)";
+  return MAIN_ROUTE;
 }
 
 /**
@@ -32,9 +33,9 @@ export function getPostLoginRoute(
   return getPostAuthRoute(role, doctorApprovalStatus);
 }
 
-/** Landing page after logout (welcome home with login/signup actions). */
-export function getPostLogoutRoute(): "/welcome" {
-  return WELCOME_ROUTE;
+/** Landing page after logout — main home browse (not welcome). */
+export function getPostLogoutRoute(): "/(tabs)" {
+  return MAIN_ROUTE;
 }
 
 /** Paths guests may stay on (browse + welcome + auth flows). */
@@ -63,22 +64,23 @@ export function isPublicWebPath(pathname: string): boolean {
   return false;
 }
 
-/** Navigate to welcome after logout; retries on web when router.replace is dropped. */
+/** Navigate to main home after logout; retries on web when router.replace is dropped. */
 export function navigateToWelcome(router: Pick<Router, "replace">): void {
-  router.replace(WELCOME_ROUTE);
+  const dest = getPostLogoutRoute();
+  router.replace(dest);
 
   if (Platform.OS !== "web" || typeof window === "undefined") return;
 
-  const ensureWelcome = () => {
+  const ensureHome = () => {
     if (isPublicWebPath(window.location.pathname)) return;
-    router.replace(WELCOME_ROUTE);
+    router.replace(dest);
   };
 
-  queueMicrotask(ensureWelcome);
-  window.setTimeout(ensureWelcome, 0);
+  queueMicrotask(ensureHome);
+  window.setTimeout(ensureHome, 0);
   window.setTimeout(() => {
     if (!isPublicWebPath(window.location.pathname)) {
-      window.location.replace(WELCOME_ROUTE);
+      window.location.replace("/");
     }
   }, 100);
 }

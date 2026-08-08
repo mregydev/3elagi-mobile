@@ -1,4 +1,3 @@
-import { Redirect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,9 +7,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { AdminShell } from "@/components/admin/AdminShell.web";
 import { useAuthStore } from "@/domains/auth/store";
-import { isSignedIn } from "@/domains/auth/session";
-import { getPostLogoutRoute } from "@/domains/auth/navigation";
 import {
   fetchComplaintMessages,
   fetchComplaints,
@@ -38,11 +36,7 @@ function fmt(iso: string): string {
 
 export default function AdminComplaintsWeb() {
   const colors = useColors();
-  const router = useRouter();
-  const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const role = useAuthStore((s) => s.role);
-  const logout = useAuthStore((s) => s.logout);
 
   const [items, setItems] = useState<AdminComplaint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,44 +94,11 @@ export default function AdminComplaintsWeb() {
     }
   };
 
-  if (!isSignedIn(profile, accessToken) || role?.toLowerCase() !== "admin") {
-    return <Redirect href="/welcome" />;
-  }
-
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Admin — Complaints</Text>
-          <View style={styles.navRow}>
-            <Pressable
-              onPress={() => router.push("/admin")}
-              style={[styles.navBtn, { borderColor: colors.border }]}
-            >
-              <Text style={{ color: colors.foreground, fontWeight: "700" }}>Doctors</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/admin/rag")}
-              style={[styles.navBtn, { borderColor: colors.border }]}
-            >
-              <Text style={{ color: colors.foreground, fontWeight: "700" }}>RAG Sources</Text>
-            </Pressable>
-            <View style={[styles.navBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}14` }]}>
-              <Text style={{ color: colors.primary, fontWeight: "800" }}>Complaints</Text>
-            </View>
-          </View>
-        </View>
-        <Pressable
-          onPress={() => {
-            logout();
-            router.replace(getPostLogoutRoute());
-          }}
-          style={[styles.logoutBtn, { borderColor: colors.border }]}
-        >
-          <Text style={{ color: colors.foreground, fontWeight: "700" }}>Logout</Text>
-        </Pressable>
-      </View>
-
+    <AdminShell
+      title="Complaints"
+      subtitle="Review patient complaints and resolve refunds."
+    >
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
@@ -231,26 +192,19 @@ export default function AdminComplaintsWeb() {
           })
         )}
       </ScrollView>
-    </View>
+    </AdminShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
+  content: {
+    padding: 28,
+    gap: 14,
+    maxWidth: 900,
+    width: "100%",
+    alignSelf: "center",
+    paddingBottom: 48,
   },
-  headerLeft: { gap: 10 },
-  title: { fontSize: 22, fontWeight: "800" },
-  navRow: { flexDirection: "row", gap: 8 },
-  navBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  logoutBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, borderWidth: 1 },
-  content: { padding: 24, gap: 14, maxWidth: 900, width: "100%", alignSelf: "center" },
   card: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   cardTitle: { fontSize: 16, fontWeight: "800" },

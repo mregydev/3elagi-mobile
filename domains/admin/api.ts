@@ -225,3 +225,34 @@ export async function deleteAdminRagSource(
     method: "DELETE",
   });
 }
+
+export interface AdminSpecialityRow {
+  id: string;
+  name_en: string;
+  name_ar: string;
+  image_url: string;
+  visible_eg: boolean;
+  visible_jo: boolean;
+}
+
+export async function fetchAdminSpecialities(
+  token: string,
+): Promise<AdminSpecialityRow[]> {
+  const data = await authJson<AdminSpecialityRow[]>("/admin/specialities", token);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function updateSpecialityVisibility(
+  token: string,
+  specialityId: string,
+  patch: { visible_eg?: boolean; visible_jo?: boolean },
+): Promise<AdminSpecialityRow> {
+  return authJson<AdminSpecialityRow>(
+    `/admin/specialities/${specialityId}/visibility`,
+    token,
+    {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    },
+  );
+}

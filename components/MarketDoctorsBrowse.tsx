@@ -62,13 +62,17 @@ export function MarketDoctorsBrowse({
     setLoadingHome(true);
     setError(null);
     try {
-      setSpecialities(await fetchSpecialities());
+      const next = await fetchSpecialities(marketCountry);
+      setSpecialities(next);
+      setSelectedSpeciality((prev) =>
+        prev && next.some((s) => s.id === prev.id) ? prev : null,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load specialities");
     } finally {
       setLoadingHome(false);
     }
-  }, []);
+  }, [marketCountry]);
 
   useEffect(() => {
     void loadHome();
