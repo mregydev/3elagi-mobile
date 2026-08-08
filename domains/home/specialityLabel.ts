@@ -15,6 +15,7 @@ const SPECIALITY_I18N: Record<string, Partial<Record<"de" | "es", string>>> = {
   Emergency: { de: "Notfallmedizin", es: "Urgencias" },
   Gynaecology: { de: "Gynäkologie", es: "Ginecología" },
   Gynecology: { de: "Gynäkologie", es: "Ginecología" },
+  Nutritionist: { de: "Ernährungsberatung", es: "Nutrición" },
 };
 
 type SpecialityNames = {

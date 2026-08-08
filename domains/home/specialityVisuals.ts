@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from "react-native";
 import {
   Ambulance,
+  Apple,
   Baby,
   Bone,
   Brain,
@@ -33,6 +34,7 @@ const SPECIALITY_IMAGES: Record<string, ImageSourcePropType> = {
   Surgery: require("@/assets/images/specialities/surgery.png"),
   Emergency: require("@/assets/images/specialities/emergency.png"),
   Gynaecology: require("@/assets/images/specialities/gynaecology.png"),
+  Nutritionist: require("@/assets/images/specialities/nutritionist.png"),
 };
 
 /** Accent color + Lucide fallback + local illustration per speciality. */
@@ -91,6 +93,11 @@ const SPECIALITY_VISUALS: Record<string, SpecialityVisual> = {
     icon: Venus,
     color: "#db2777",
     image: SPECIALITY_IMAGES.Gynaecology,
+  },
+  Nutritionist: {
+    icon: Apple,
+    color: "#16a34a",
+    image: SPECIALITY_IMAGES.Nutritionist,
   },
 };
 
