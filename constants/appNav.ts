@@ -27,6 +27,9 @@ export type AppNavItem = {
   match: (path: string) => boolean;
 };
 
+/** Fired when Home is tapped in the nav; the home tab resets to the specialities grid. */
+export const HOME_NAV_RESET_EVENT = "home-nav:reset";
+
 function pathHas(path: string, segment: string) {
   return path.includes(`/${segment}`) || path.endsWith(segment);
 }

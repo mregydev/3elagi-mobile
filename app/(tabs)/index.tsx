@@ -18,6 +18,7 @@ import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
+import { HOME_NAV_RESET_EVENT } from "@/constants/appNav";
 import { patientCountryLabel } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -38,6 +39,7 @@ import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { on } from "@/utils/eventBus";
 
 function ChatsHomeBrowse() {
   const colors = useColors();
@@ -72,6 +74,16 @@ function ChatsHomeBrowse() {
   useEffect(() => {
     void loadHome();
   }, [loadHome]);
+
+  useEffect(
+    () =>
+      on(HOME_NAV_RESET_EVENT, () => {
+        setSelectedSpeciality(null);
+        setDoctors([]);
+        setError(null);
+      }),
+    [],
+  );
 
   useFocusEffect(
     useCallback(() => {

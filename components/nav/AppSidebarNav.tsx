@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
-import { filterAppNavItems } from "@/constants/appNav";
+import { filterAppNavItems, HOME_NAV_RESET_EVENT } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -21,6 +21,7 @@ import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useNotificationsStore } from "@/domains/notifications/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { emit } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
 
@@ -83,6 +84,9 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
 
   const go = (href: Href) => {
     onNavigate?.();
+    // Home lands on the specialities grid even when the tab is already open
+    // (router.navigate is a no-op there, so the drilled-in roster would stay).
+    if (String(href) === "/(tabs)") emit(HOME_NAV_RESET_EVENT);
     // Tabs: navigate without stacking so Back leaves detail screens, not tabs.
     router.navigate(href);
   };
