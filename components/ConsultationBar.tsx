@@ -56,6 +56,7 @@ import type { MedicalRecord } from "@/domains/medical/types";
 import type { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 import { formatEgp } from "@/utils/credits";
+import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { useI18n } from "@/hooks/useI18n";
 
 type SelectedRecord = { record: MedicalRecord; note?: string };
@@ -80,6 +81,14 @@ interface Props {
   onOpenChange?: (open: boolean) => void;
   /** Active open consultation (for diagnosis AI draft / linking). */
   onActiveChange?: (consultation: Consultation | null) => void;
+  /** Render the pills bare (no bar wrapper) so they can sit inside another row. */
+  compact?: boolean;
+  /**
+   * Hide inline pills and publish them as chat-menu actions instead
+   * (plus-button context window). Modals still render here.
+   */
+  menuOnly?: boolean;
+  onMenuActionsChange?: (actions: ChatAction[]) => void;
 }
 
 const CANCEL_REASONS: {
@@ -105,6 +114,9 @@ export function ConsultationBar({
   latestAction,
   onOpenChange,
   onActiveChange,
+  compact = false,
+  menuOnly = false,
+  onMenuActionsChange,
 }: Props) {
   const { t } = useI18n();
   const sendMessage = useChatStore((s) => s.sendMessage);
@@ -432,11 +444,69 @@ export function ConsultationBar({
           ? label("Complaint rejected", "تم رفض الشكوى")
           : null;
 
+  // Compact mode drops the standalone bar so the pills sit in the chat actions row.
+  const Bar = ({ children }: { children: React.ReactNode }) =>
+    compact ? (
+      <>{children}</>
+    ) : (
+      <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
+        {children}
+      </View>
+    );
+
+  useEffect(() => {
+    if (!onMenuActionsChange) return;
+
+    const next: ChatAction[] = [];
+    if (isPatient && !isOpen) {
+      next.push({
+        key: "consult-start",
+        label: label("Start consultation", "بدء استشارة"),
+        Icon: Stethoscope,
+        color: colors.primary,
+        onPress: () => setModal("start"),
+      });
+      if (endedConsultationId && !complaintLabel) {
+        next.push({
+          key: "consult-complaint",
+          label: label("File a complaint", "تقديم شكوى"),
+          Icon: CircleAlert,
+          color: "#dc2626",
+          onPress: () => setComplaintModal(true),
+        });
+      }
+    }
+    if (isDoctor && isOpen) {
+      next.push({
+        key: "consult-end",
+        label: label("End consultation", "إنهاء الاستشارة"),
+        Icon: CircleStop,
+        color: colors.primary,
+        onPress: () => setModal("end"),
+      });
+    }
+    onMenuActionsChange(next);
+  }, [
+    onMenuActionsChange,
+    isPatient,
+    isDoctor,
+    isOpen,
+    endedConsultationId,
+    complaintLabel,
+    colors.primary,
+    isRTL,
+  ]);
+
+  useEffect(() => {
+    if (!onMenuActionsChange) return;
+    return () => onMenuActionsChange([]);
+  }, [onMenuActionsChange]);
+
   return (
     <>
       {/* Patient: start (+ complaint after an ended consultation). Doctor: end. */}
-      {isPatient && !isOpen ? (
-        <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
+      {!menuOnly && isPatient && !isOpen ? (
+        <Bar>
           <Pill
             label={label("Start consultation", "بدء استشارة")}
             color={colors.primary}
@@ -467,11 +537,11 @@ export function ConsultationBar({
               />
             )
           ) : null}
-        </View>
+        </Bar>
       ) : null}
 
-      {isDoctor && isOpen ? (
-        <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
+      {!menuOnly && isDoctor && isOpen ? (
+        <Bar>
           <Pill
             label={label("End consultation", "إنهاء الاستشارة")}
             color={colors.primary}
@@ -479,7 +549,7 @@ export function ConsultationBar({
             onPress={() => setModal("end")}
             Icon={CircleStop}
           />
-        </View>
+        </Bar>
       ) : null}
 
       {/* Start modal */}

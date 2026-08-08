@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 
+import { ChatActionsMenu, type ChatAction } from "@/components/chat/ChatActionsMenu";
 import { ChatAttachMenu } from "@/components/chat/ChatAttachMenu";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
@@ -62,6 +63,10 @@ interface Props {
   onAddPending: (message: ChatMessage) => void;
   onFailPending: (tempId: string) => void;
   onPickMedical: () => void;
+  /** Extra chat actions listed in the plus menu (diagnosis, booking, Ask AI…). */
+  actions?: ChatAction[];
+  /** Rendered beside the plus button (start/end consultation pill). */
+  inlineAction?: React.ReactNode;
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
   onEdit?: (messageId: string, content: string) => Promise<void>;
@@ -138,6 +143,8 @@ export function ChatComposer({
   onAddPending,
   onFailPending,
   onPickMedical,
+  actions = [],
+  inlineAction,
   editingMessage = null,
   onCancelEdit,
   onEdit,
@@ -673,43 +680,48 @@ export function ChatComposer({
     ? MOBILE_WEB_COMPOSER_FOOTER_GAP + Math.max(bottomInset, 0)
     : Math.max(bottomInset, 0) + 8;
 
-  const attachButtons = !isEditing ? (
-    <>
-      <Pressable
-        onPress={openAttachMenu}
-        disabled={controlsDisabled}
-        accessibilityLabel={isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video"}
-        style={[
-          isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
-          {
-            backgroundColor: colors.muted,
-            opacity: controlsDisabled ? 0.45 : 1,
-          },
-        ]}
-        hitSlop={6}
-      >
-        <Paperclip size={18} color={colors.mutedForeground} />
-      </Pressable>
+  // Plus button sits beside the input; attach/medical + host actions open in its context window.
+  // While messaging is disabled only the non-attachment actions stay reachable (e.g. start consult).
+  const menuActions: ChatAction[] = disabled
+    ? actions
+    : [
+        {
+          key: "attach",
+          label: isRTL ? "إرفاق صورة أو فيديو" : "Attach photo or video",
+          Icon: Paperclip,
+          onPress: openAttachMenu,
+        },
+        ...(isPatient
+          ? [
+              {
+                key: "medical",
+                label: isRTL ? "مشاركة سجل طبي" : "Share medical record",
+                Icon: ClipboardList,
+                onPress: onPickMedical,
+              },
+            ]
+          : []),
+        ...actions,
+      ];
 
-      {isPatient ? (
-        <Pressable
-          onPress={onPickMedical}
-          disabled={controlsDisabled}
-          accessibilityLabel={isRTL ? "مشاركة سجل طبي" : "Share medical record"}
-          style={[
-            isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
-            {
-              backgroundColor: colors.muted,
-              opacity: controlsDisabled ? 0.45 : 1,
-            },
-          ]}
-          hitSlop={6}
-        >
-          <ClipboardList size={18} color={colors.mutedForeground} />
-        </Pressable>
-      ) : null}
-    </>
-  ) : null;
+  const plusButton =
+    !isEditing && menuActions.length > 0 ? (
+      <ChatActionsMenu
+        isRTL={isRTL}
+        actions={menuActions}
+        disabled={disabled ? false : controlsDisabled}
+        buttonStyle={isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn}
+      />
+    ) : null;
+
+  // Plus + start/end consultation sit together beside the input.
+  const leadingControls =
+    !isEditing && (plusButton || inlineAction) ? (
+      <View style={[styles.leadingControls, { flexDirection: rowDir }]}>
+        {plusButton}
+        {inlineAction}
+      </View>
+    ) : null;
 
   const messageInput = (
     <AppTextInput
@@ -808,26 +820,6 @@ export function ChatComposer({
     </Pressable>
   );
 
-  if (disabled && !isEditing) {
-    return (
-      <View
-        style={[
-          styles.footer,
-          styles.disabledBar,
-          {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            paddingBottom: bottomInset + 12,
-          },
-        ]}
-      >
-        <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 13 }}>
-          {disabledHint ?? (isRTL ? "المحادثة محظورة" : "Chat is blocked")}
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.footer}>
       <ChatAttachMenu
@@ -903,46 +895,68 @@ export function ChatComposer({
         onClose={() => setPreviewVideoUri(null)}
       />
 
-      <View
-        style={
-          isMobileWeb
-            ? [
-                mobileWebComposerStyles.shell,
-                {
-                  paddingBottom: composerPaddingBottom,
-                  backgroundColor: colors.card,
-                  borderTopColor: colors.border,
-                },
-              ]
-            : [
-                styles.composer,
-                {
-                  backgroundColor: colors.card,
-                  borderTopColor: colors.border,
-                  flexDirection: rowDir,
-                  paddingBottom: composerPaddingBottom,
-                },
-              ]
-        }
-      >
-        {isMobileWeb ? (
-          <View style={[mobileWebComposerStyles.row, { flexDirection: rowDir }]}>
-            {messageInput}
-            {attachButtons}
-            {sendOrMicButton}
-          </View>
-        ) : (
-          <>
-            {!isEditing ? (
-              <View style={[styles.composerActions, { flexDirection: rowDir }]}>
-                {attachButtons}
-              </View>
-            ) : null}
-            {messageInput}
-            {sendOrMicButton}
-          </>
-        )}
-      </View>
+      {disabled && !isEditing ? (
+        <View
+          style={[
+            styles.disabledBar,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              paddingBottom: bottomInset + 12,
+              flexDirection: rowDir,
+            },
+          ]}
+        >
+          {leadingControls}
+          <Text
+            style={{
+              flex: 1,
+              color: colors.mutedForeground,
+              textAlign: "center",
+              fontSize: 13,
+            }}
+          >
+            {disabledHint ?? (isRTL ? "المحادثة محظورة" : "Chat is blocked")}
+          </Text>
+        </View>
+      ) : (
+        <View
+          style={
+            isMobileWeb
+              ? [
+                  mobileWebComposerStyles.shell,
+                  {
+                    paddingBottom: composerPaddingBottom,
+                    backgroundColor: colors.card,
+                    borderTopColor: colors.border,
+                  },
+                ]
+              : [
+                  styles.composer,
+                  {
+                    backgroundColor: colors.card,
+                    borderTopColor: colors.border,
+                    flexDirection: rowDir,
+                    paddingBottom: composerPaddingBottom,
+                  },
+                ]
+          }
+        >
+          {isMobileWeb ? (
+            <View style={[mobileWebComposerStyles.row, { flexDirection: rowDir }]}>
+              {leadingControls}
+              {messageInput}
+              {sendOrMicButton}
+            </View>
+          ) : (
+            <>
+              {leadingControls}
+              {messageInput}
+              {sendOrMicButton}
+            </>
+          )}
+        </View>
+      )}
 
       {dictation.listening && !recording ? (
         <View style={[styles.recordingBar, { flexDirection: rowDir }]}>
@@ -1013,9 +1027,11 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  composerActions: {
+  leadingControls: {
     alignItems: "center",
-    gap: 4,
+    gap: 6,
+    flexShrink: 1,
+    maxWidth: "48%",
   },
   input: {
     flex: 1,
@@ -1034,9 +1050,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   disabledBar: {
-    borderTopWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    alignItems: "center",
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingTop: 10,
   },
   recordingBar: {
     alignItems: "center",

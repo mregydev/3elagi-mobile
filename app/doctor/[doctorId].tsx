@@ -127,7 +127,7 @@ export default function DoctorProfileScreen() {
 
   const openChat = () => {
     if (!isSignedIn(profile, accessToken)) {
-      promptAuthForConsultation(router, isRTL);
+      promptAuthForConsultation();
       return;
     }
     const chatUserId = userId ?? doctor?.userId;

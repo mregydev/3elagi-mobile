@@ -23,6 +23,7 @@ import { SystemNotificationSync } from "@/components/SystemNotificationSync";
 import { LocaleBootstrap } from "@/components/LocaleBootstrap";
 import { LocaleAuthSync } from "@/components/LocaleAuthSync";
 import { AuthRedirect } from "@/components/AuthRedirect";
+import { GuestAuthRequiredDialog } from "@/components/auth/GuestAuthRequiredDialog";
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
 import { PresenceSocket } from "@/components/PresenceSocket";
@@ -167,6 +168,7 @@ export default function RootLayout() {
                 <NavLoadingOverlay />
                 <AppToast />
                 <Ask3elagiAiWidget />
+                <GuestAuthRequiredDialog />
               </View>
             </KeyboardProvider>
           </SafeAreaProvider>

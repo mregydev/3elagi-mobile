@@ -24,6 +24,7 @@ import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { ArchivedMessagesToggle } from "@/components/chat/ArchivedMessagesToggle";
+import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
@@ -191,6 +192,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [messages]);
   const [consultationOpen, setConsultationOpen] = useState(false);
   const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
+
+  // Stable identity: ConsultationBar re-runs its sync effect on every callback change.
+  const handleConsultationActiveChange = useCallback(
+    (c: { id: string } | null) => setActiveConsultationId(c?.id),
+    [],
+  );
   /** Previous consultations' messages — collapsed by default under a toggle. */
   const [archiveExpanded, setArchiveExpanded] = useState(false);
   // Doctor↔patient can only message while a consultation is open.
@@ -995,6 +1002,90 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8 }
     : { padding: 14, gap: 6, paddingBottom: 12 };
 
+  // Quick actions — collapsed under the plus button context window beside the input.
+  // Start/end consultation stays as an inline pill beside the plus (not in this menu).
+  const chatActions: ChatAction[] = chatBlocked
+    ? []
+    : [
+        ...(isDoctor && canUseDiagnosisTemplates
+          ? [
+              {
+                key: "diagnosis",
+                label: isRTL ? "تشخيص جديد" : "Add diagnosis",
+                Icon: Stethoscope,
+                onPress: openDiagnosisModal,
+              },
+              {
+                key: "prescription",
+                label: isRTL ? "روشتة جديدة" : "Add prescription",
+                Icon: Pill,
+                onPress: openPrescriptionScreen,
+              },
+              {
+                key: "lab",
+                label: t.records.requestLab,
+                Icon: Beaker,
+                onPress: () => setDocumentRequestType("lab"),
+              },
+              {
+                key: "xray",
+                label: t.records.requestXray,
+                Icon: ScanLine,
+                onPress: () => setDocumentRequestType("xray"),
+              },
+              {
+                key: "intake",
+                label: isRTL ? "فحص متابعة" : "Follow-up exam",
+                Icon: ClipboardList,
+                onPress: () => setIntakeExamModalOpen(true),
+              },
+            ]
+          : []),
+        ...(isPatient && isDoctorPatientChat
+          ? [
+              ...(peer?.doctorEntityId
+                ? [
+                    {
+                      key: "book",
+                      label: isRTL ? "حجز موعد" : "Book appointment",
+                      Icon: Calendar,
+                      onPress: () => setBookAppointmentOpen(true),
+                    },
+                  ]
+                : []),
+              ...(accessLoading
+                ? []
+                : accessStatus?.records_allowed
+                  ? [
+                      {
+                        key: "revoke",
+                        label: isRTL ? "إلغاء صلاحية السجل" : "Revoke record access",
+                        Icon: ShieldOff,
+                        color: colors.mutedForeground,
+                        disabled: sending,
+                        onPress: () => void handleAccessAction("revoke_records"),
+                      },
+                    ]
+                  : [
+                      {
+                        key: "grant",
+                        label: isRTL ? "منح صلاحية السجل" : "Grant record access",
+                        Icon: ShieldCheck,
+                        disabled: sending,
+                        onPress: () => void handleAccessAction("grant_records"),
+                      },
+                    ]),
+            ]
+          : []),
+        {
+          key: "ask-ai",
+          label: t.records.ask3elagiAi,
+          Icon: Bot,
+          color: "#e11d48",
+          onPress: () => openAsk3elagiAi(undefined, isDoctor ? id : undefined),
+        },
+      ];
+
   const chatUi = (
     <>
       <View
@@ -1308,267 +1399,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       </View>
 
       <View style={[styles.chatFooter, desktopLayout && styles.chatFooterDesktop]}>
-      {isDoctorPatientChat && !chatBlocked ? (
-        <ConsultationBar
-          peerId={id}
-          isPatient={isPatient}
-          isDoctor={isDoctor}
-          enabled={isDoctorPatientChat}
-          token={accessToken}
-          isRTL={isRTL}
-          colors={colors}
-          selfId={profile!.id}
-          selfRole={role ?? "patient"}
-          latestAction={latestConsultationAction}
-          onOpenChange={setConsultationOpen}
-          onActiveChange={(c) => setActiveConsultationId(c?.id)}
-        />
-      ) : null}
-      {/* Doctor clinical actions during an open consultation */}
-      {isDoctor && canUseDiagnosisTemplates && !chatBlocked ? (
-        <View
-          style={[
-            styles.bookPillBar,
-            {
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-              flexDirection: chatFlexRow(),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={openDiagnosisModal}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Stethoscope size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "تشخيص جديد" : "Add diagnosis"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={openPrescriptionScreen}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إضافة روشتة" : "Add prescription"}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Pill size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "روشتة جديدة" : "Add prescription"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setDocumentRequestType("lab")}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.requestLab}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Beaker size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {t.records.requestLab}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setDocumentRequestType("xray")}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.requestXray}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <ScanLine size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {t.records.requestXray}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setIntakeExamModalOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "فحص متابعة" : "Follow-up exam"}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <ClipboardList size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "فحص متابعة" : "Follow-up exam"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => openAsk3elagiAi(undefined, id)}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
-                borderColor: "#e11d48",
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Bot size={15} color="#e11d48" />
-            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
-              {t.records.ask3elagiAi}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {/* Quick-action pill row — book, grant/revoke records, Ask AI. */}
-      {isPatient && isDoctorPatientChat && !chatBlocked ? (
-        <View style={[styles.bookPillBar, { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: chatFlexRow() }]}>
-          {peer?.doctorEntityId ? (
-            <Pressable
-              onPress={() => setBookAppointmentOpen(true)}
-              style={({ pressed }) => [
-                styles.bookPill,
-                {
-                  backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                  borderColor: colors.primary,
-                  flexDirection: chatFlexRow(),
-                },
-              ]}
-            >
-              <Calendar size={15} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-                {isRTL ? "حجز موعد" : "Book appointment"}
-              </Text>
-            </Pressable>
-          ) : null}
-          {!accessLoading && !accessStatus?.records_allowed ? (
-            <Pressable
-              onPress={() => void handleAccessAction("grant_records")}
-              disabled={sending}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "منح صلاحية السجل" : "Grant record access"}
-              style={({ pressed }) => [
-                styles.bookPill,
-                {
-                  backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                  borderColor: colors.primary,
-                  flexDirection: chatFlexRow(),
-                  opacity: sending ? 0.55 : 1,
-                },
-              ]}
-            >
-              <ShieldCheck size={15} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-                {isRTL ? "منح صلاحية السجل" : "Grant record access"}
-              </Text>
-            </Pressable>
-          ) : null}
-          {!accessLoading && accessStatus?.records_allowed ? (
-            <Pressable
-              onPress={() => void handleAccessAction("revoke_records")}
-              disabled={sending}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "إلغاء صلاحية السجل" : "Revoke record access"}
-              style={({ pressed }) => [
-                styles.bookPill,
-                {
-                  backgroundColor: pressed
-                    ? `${colors.mutedForeground}22`
-                    : `${colors.mutedForeground}12`,
-                  borderColor: colors.mutedForeground,
-                  flexDirection: chatFlexRow(),
-                  opacity: sending ? 0.55 : 1,
-                },
-              ]}
-            >
-              <ShieldOff size={15} color={colors.mutedForeground} />
-              <Text style={{ color: colors.mutedForeground, fontWeight: "700", fontSize: 13 }}>
-                {isRTL ? "إلغاء صلاحية السجل" : "Revoke access"}
-              </Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => openAsk3elagiAi()}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
-                borderColor: "#e11d48",
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Bot size={15} color="#e11d48" />
-            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
-              {t.records.ask3elagiAi}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {/* Ask AI when clinical / book rows are hidden (e.g. doctor before consultation). */}
-      {!chatBlocked &&
-      !(isDoctor && canUseDiagnosisTemplates) &&
-      !(isPatient && isDoctorPatientChat) ? (
-        <View
-          style={[
-            styles.bookPillBar,
-            {
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-              flexDirection: chatFlexRow(),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={() => openAsk3elagiAi(undefined, isDoctor ? id : undefined)}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
-                borderColor: "#e11d48",
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Bot size={15} color="#e11d48" />
-            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
-              {t.records.ask3elagiAi}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-
       <KeyboardStickyView
         enabled={Platform.OS !== "web"}
         offset={{ closed: 0, opened: 0 }}
@@ -1585,6 +1415,26 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         onAddPending={(msg) => addPendingMessage(id, msg)}
         onFailPending={(tempId) => failPendingMessage(id, tempId)}
         onPickMedical={() => void openMedicalPicker()}
+        actions={chatActions}
+        inlineAction={
+          isDoctorPatientChat && !chatBlocked ? (
+            <ConsultationBar
+              compact
+              peerId={id}
+              isPatient={isPatient}
+              isDoctor={isDoctor}
+              enabled={isDoctorPatientChat}
+              token={accessToken}
+              isRTL={isRTL}
+              colors={colors}
+              selfId={profile!.id}
+              selfRole={role ?? "patient"}
+              latestAction={latestConsultationAction}
+              onOpenChange={setConsultationOpen}
+              onActiveChange={handleConsultationActiveChange}
+            />
+          ) : null
+        }
         editingMessage={editingMessage}
         onCancelEdit={() => setEditingMessage(null)}
         onEdit={handleEditMessage}
@@ -1767,24 +1617,6 @@ const styles = StyleSheet.create({
   },
   chatBodyDesktop: { backgroundColor: "transparent" },
   chatFooter: { flexShrink: 0 },
-  bookPillBar: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 10,
-    paddingBottom: 6,
-    paddingHorizontal: 14,
-    gap: 8,
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-  bookPill: {
-    alignSelf: "flex-start",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
   messageColumn: {
     flexShrink: 1,
     maxWidth: "82%",

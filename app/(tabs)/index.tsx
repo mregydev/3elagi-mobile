@@ -128,11 +128,11 @@ function ChatsHomeBrowse() {
 
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
+      if (!signedIn) {
+        promptAuthForConsultation();
+        return;
+      }
       if (!doctorEntityId) {
-        if (!signedIn) {
-          promptAuthForConsultation(router, isRTL);
-          return;
-        }
         router.push(`/chat/${doctorUserId}`);
         return;
       }
@@ -141,7 +141,7 @@ function ChatsHomeBrowse() {
         params: { doctorId: doctorEntityId, userId: doctorUserId },
       });
     },
-    [isRTL, signedIn],
+    [signedIn],
   );
 
   if (loadingHome && specialities.length === 0) {

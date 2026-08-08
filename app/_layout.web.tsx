@@ -8,6 +8,7 @@ import { AppSplash } from "@/components/SplashScreen";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { AuthRedirect } from "@/components/AuthRedirect";
+import { GuestAuthRequiredDialog } from "@/components/auth/GuestAuthRequiredDialog";
 import { SessionTransferBootstrap } from "@/components/auth/SessionTransferBootstrap";
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
 import { GlobalWebStyles } from "@/components/web/GlobalWebStyles";
@@ -155,6 +156,7 @@ export default function RootLayout() {
           </Stack>
           <AppToast />
           <Ask3elagiAiWidget />
+          <GuestAuthRequiredDialog />
         </View>
       </KeyboardProvider>
     </SafeAreaProvider>

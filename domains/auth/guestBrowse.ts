@@ -1,5 +1,4 @@
-import type { Router } from "expo-router";
-import { Alert, Platform } from "react-native";
+import { useGuestAuthDialogStore } from "@/domains/auth/guestAuthDialogStore";
 
 /** Tab segments guests may open without signing in. */
 export const GUEST_ALLOWED_TABS = new Set(["index", "our-doctors"]);
@@ -28,34 +27,13 @@ export function isGuestAllowedRoot(
   return false;
 }
 
-/** Prompt guests to log in / sign up before starting a consultation. */
+/**
+ * Prompt guests to log in / sign up (design-system dialog).
+ * Used when tapping a doctor or starting a consultation while logged out.
+ */
 export function promptAuthForConsultation(
-  router: Pick<Router, "push">,
-  isRTL: boolean,
+  _router?: unknown,
+  _isRTL?: boolean,
 ): void {
-  const title = isRTL ? "تسجيل الدخول مطلوب" : "Sign in required";
-  const message = isRTL
-    ? "سجّل الدخول أو أنشئ حسابًا لبدء استشارة مع الطبيب."
-    : "Please log in or create an account to start a consultation with the doctor.";
-
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const goLogin = window.confirm(`${title}\n\n${message}\n\nOK = Log in`);
-    if (goLogin) {
-      router.push("/auth/login");
-      return;
-    }
-    return;
-  }
-
-  Alert.alert(title, message, [
-    { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-    {
-      text: isRTL ? "إنشاء حساب" : "Sign up",
-      onPress: () => router.push("/auth/signup"),
-    },
-    {
-      text: isRTL ? "تسجيل الدخول" : "Log in",
-      onPress: () => router.push("/auth/login"),
-    },
-  ]);
+  useGuestAuthDialogStore.getState().open();
 }
