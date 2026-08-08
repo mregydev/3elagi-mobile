@@ -18,6 +18,7 @@ import { LOGO_HEIGHT } from "@/constants/brand";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
+import { useNotificationsStore } from "@/domains/notifications/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -40,10 +41,12 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
   const accessToken = useAuthStore((s) => s.accessToken);
   const logout = useAuthStore((s) => s.logout);
   const signedIn = isSignedIn(profile, accessToken);
+  const unreadCount = useNotificationsStore((s) => s.unreadCount);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const isArabic = locale === "ar";
   const navFontSize = isArabic ? 17 : 14;
+  const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   const items = filterAppNavItems(role, { signedIn }).map((item) => ({
     ...item,
@@ -137,6 +140,11 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
             >
               {t.tabs[labelKey]}
             </Text>
+            {labelKey === "notifications" && unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{badgeLabel}</Text>
+              </View>
+            ) : null}
           </Pressable>
         ))}
       </View>
@@ -318,6 +326,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   navLabel: { fontSize: 14, fontWeight: "700", flex: 1 },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    backgroundColor: "#ef4444",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+  },
   footer: {
     gap: 12,
     // Push Android / language / contact / logout toward the sidebar bottom.

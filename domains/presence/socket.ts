@@ -83,6 +83,17 @@ let onSystemNotificationHandler:
       body: string;
     }) => void)
   | null = null;
+let onInboxNotificationHandler:
+  | ((payload: {
+      id: string;
+      type: string;
+      title: string;
+      body: string;
+      data: Record<string, string>;
+      read_at: string | null;
+      created_at: string;
+    }) => void)
+  | null = null;
 
 export function onChatMessageNew(handler: IncomingMessageHandler | null) {
   onMessageNew = handler;
@@ -199,6 +210,22 @@ export function onSystemNotification(
     | null,
 ) {
   onSystemNotificationHandler = handler;
+}
+
+export function onInboxNotification(
+  handler:
+    | ((payload: {
+        id: string;
+        type: string;
+        title: string;
+        body: string;
+        data: Record<string, string>;
+        read_at: string | null;
+        created_at: string;
+      }) => void)
+    | null,
+) {
+  onInboxNotificationHandler = handler;
 }
 
 export function emitChatTyping(recipientId: string, userId: string) {
@@ -377,6 +404,30 @@ function bindListeners(client: Socket) {
           body: payload.body,
         });
       }
+    },
+  );
+
+  client.on(
+    "notification:new",
+    (payload: {
+      id?: string;
+      type?: string;
+      title?: string;
+      body?: string;
+      data?: Record<string, string>;
+      read_at?: string | null;
+      created_at?: string;
+    }) => {
+      if (!payload?.id || !payload.type) return;
+      onInboxNotificationHandler?.({
+        id: payload.id,
+        type: payload.type,
+        title: payload.title ?? "",
+        body: payload.body ?? "",
+        data: payload.data ?? {},
+        read_at: payload.read_at ?? null,
+        created_at: payload.created_at ?? new Date().toISOString(),
+      });
     },
   );
 }

@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import {
+  Bell,
   Bot,
   CalendarClock,
   ClipboardList,
@@ -63,6 +64,14 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, size }) => (
               <Stethoscope color={color} size={size} />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            title: t.tabs.notifications,
+            href: authOnlyHref,
+            tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
           }}
         />
         <Tabs.Screen

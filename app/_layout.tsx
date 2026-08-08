@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { NotificationsInboxBootstrap } from "@/components/NotificationsInboxBootstrap";
 import { PushNotificationsBootstrap } from "@/components/PushNotificationsBootstrap";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
@@ -115,6 +116,7 @@ export default function RootLayout() {
       <PushNotificationsBootstrap />
       <WebChatNotificationsBootstrap />
       <PresenceSocket />
+      <NotificationsInboxBootstrap />
       <PresenceChatSync />
       <ChatMessageSync />
       <AppointmentSync />

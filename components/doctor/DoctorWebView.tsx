@@ -152,11 +152,11 @@ export function DoctorWebView() {
   }, [load]);
 
   const openChat = () => {
+    const chatUserId = userId ?? doctor?.userId;
     if (!isSignedIn(profile, accessToken)) {
-      promptAuthForConsultation();
+      promptAuthForConsultation(chatUserId ? `/chat/${chatUserId}` : null);
       return;
     }
-    const chatUserId = userId ?? doctor?.userId;
     if (!chatUserId || !doctor) return;
     chatRepository.cacheUsers([
       {

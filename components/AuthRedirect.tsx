@@ -2,7 +2,11 @@ import { useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { isGuestAllowedRoot } from "@/domains/auth/guestBrowse";
-import { navigateToWelcome } from "@/domains/auth/navigation";
+import {
+  navigatePostAuth,
+  navigateToWelcome,
+} from "@/domains/auth/navigation";
+import { hydratePendingAuthReturn } from "@/domains/auth/pendingAuthReturn";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 
@@ -28,14 +32,20 @@ export function AuthRedirect() {
   const signedIn = isSignedIn(profile, accessToken);
 
   useEffect(() => {
+    void hydratePendingAuthReturn();
+  }, []);
+
+  useEffect(() => {
     if (!hydrated) return;
 
     const root = segments[0] as string | undefined;
     const second = segments[1] as string | undefined;
     const authScreen = root === "auth" ? String(second ?? "") : "";
-    // Password reset / forgot must stay reachable even when a session exists.
+    // Password reset / forgot / verify must stay reachable even when a session exists.
     const isAuthUtilityRoute =
-      authScreen === "forgot-password" || authScreen === "reset-password";
+      authScreen === "forgot-password" ||
+      authScreen === "reset-password" ||
+      authScreen === "verify-email";
     const isAdminRoute = root === "admin";
     const isPendingRoute = root === "doctor-pending";
 
@@ -75,7 +85,8 @@ export function AuthRedirect() {
     }
 
     if (signedIn && (root === "welcome" || root === "auth")) {
-      router.replace("/(tabs)");
+      // Honors pending guest chat return (same helper as login/signup forms).
+      navigatePostAuth(router, role, doctorApprovalStatus);
       return;
     }
 

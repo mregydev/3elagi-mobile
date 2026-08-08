@@ -129,7 +129,7 @@ function ChatsHomeBrowse() {
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
       if (!signedIn) {
-        promptAuthForConsultation();
+        promptAuthForConsultation(`/chat/${doctorUserId}`);
         return;
       }
       if (!doctorEntityId) {

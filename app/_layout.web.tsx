@@ -26,6 +26,7 @@ import { SystemNotifications } from "@/components/SystemNotifications";
 import { SystemNotificationSync } from "@/components/SystemNotificationSync";
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
+import { NotificationsInboxBootstrap } from "@/components/NotificationsInboxBootstrap";
 import { PresenceSocket } from "@/components/PresenceSocket";
 import { useAuthStore } from "@/domains/auth/store";
 import { fetchAllMedicalHistory } from "@/domains/medical/api";
@@ -113,6 +114,7 @@ export default function RootLayout() {
           <NativeWebViewAuthBridge />
           <NativeWebViewPushNavigation />
           <PresenceSocket />
+          <NotificationsInboxBootstrap />
           <PresenceChatSync />
           <ChatMessageSync />
           <AppointmentSync />

@@ -328,6 +328,11 @@ const en = {
     ourDoctors: "Our doctors",
     ourDoctorsSubtitle: "Browse doctors by country — Egypt or Jordan.",
     ourDoctorsBrowseHint: "View specialities and doctors in this market",
+    notifications: "Notifications",
+  },
+  inbox: {
+    empty: "No notifications yet",
+    markAllRead: "Mark all read",
   },
   contact: {
     title: "Contact us",
@@ -949,6 +954,11 @@ const ar: typeof en = {
     ourDoctors: "أطباؤنا",
     ourDoctorsSubtitle: "تصفح الأطباء حسب البلد — مصر أو الأردن.",
     ourDoctorsBrowseHint: "عرض التخصصات والأطباء في هذا السوق",
+    notifications: "الإشعارات",
+  },
+  inbox: {
+    empty: "لا توجد إشعارات بعد",
+    markAllRead: "تعليميل الكل كمقروء",
   },
   contact: {
     title: "تواصل معنا",
@@ -1571,6 +1581,11 @@ const de: typeof en = {
     ourDoctors: "Unsere Ärzte",
     ourDoctorsSubtitle: "Ärzte nach Land durchsuchen — Ägypten oder Jordanien.",
     ourDoctorsBrowseHint: "Fachrichtungen und Ärzte in diesem Markt anzeigen",
+    notifications: "Benachrichtigungen",
+  },
+  inbox: {
+    empty: "Noch keine Benachrichtigungen",
+    markAllRead: "Alle gelesen",
   },
   contact: {
     title: "Kontakt",
@@ -2194,6 +2209,11 @@ const es: typeof en = {
     ourDoctors: "Nuestros médicos",
     ourDoctorsSubtitle: "Explora médicos por país — Egipto o Jordania.",
     ourDoctorsBrowseHint: "Ver especialidades y médicos en este mercado",
+    notifications: "Notificaciones",
+  },
+  inbox: {
+    empty: "Aún no hay notificaciones",
+    markAllRead: "Marcar todo leído",
   },
   contact: {
     title: "Contáctanos",

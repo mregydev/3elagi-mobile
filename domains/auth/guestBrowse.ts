@@ -29,11 +29,8 @@ export function isGuestAllowedRoot(
 
 /**
  * Prompt guests to log in / sign up (design-system dialog).
- * Used when tapping a doctor or starting a consultation while logged out.
+ * Pass `returnTo` (e.g. `/chat/:userId`) to resume that screen after auth.
  */
-export function promptAuthForConsultation(
-  _router?: unknown,
-  _isRTL?: boolean,
-): void {
-  useGuestAuthDialogStore.getState().open();
+export function promptAuthForConsultation(returnTo?: string | null): void {
+  useGuestAuthDialogStore.getState().open(returnTo ?? null);
 }

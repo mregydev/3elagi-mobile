@@ -6,6 +6,7 @@ import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useGuestAuthDialogStore } from "@/domains/auth/guestAuthDialogStore";
+import { clearPendingAuthReturn } from "@/domains/auth/pendingAuthReturn";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
@@ -18,7 +19,13 @@ export function GuestAuthRequiredDialog() {
   const close = useGuestAuthDialogStore((s) => s.close);
   const dir = flexRow(isRTL);
 
+  const dismiss = () => {
+    clearPendingAuthReturn();
+    close();
+  };
+
   const goLogin = () => {
+    // Keep pending return so login resumes the chat the guest tried to open.
     close();
     router.push("/auth/login");
   };
@@ -29,11 +36,11 @@ export function GuestAuthRequiredDialog() {
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={close}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={dismiss}>
       <View style={styles.overlay} accessibilityViewIsModal>
         <Pressable
           style={styles.backdrop}
-          onPress={close}
+          onPress={dismiss}
           accessibilityRole="button"
           accessibilityLabel={t.common.cancel}
         />
@@ -49,7 +56,7 @@ export function GuestAuthRequiredDialog() {
           <View style={[styles.topBar, { flexDirection: dir }]}>
             <View style={styles.topBarSpacer} />
             <Pressable
-              onPress={close}
+              onPress={dismiss}
               style={styles.closeBtn}
               accessibilityRole="button"
               accessibilityLabel={t.common.cancel}
@@ -113,7 +120,7 @@ export function GuestAuthRequiredDialog() {
           </Pressable>
 
           <Pressable
-            onPress={close}
+            onPress={dismiss}
             style={({ pressed }) => [styles.btnCancel, { opacity: pressed ? 0.7 : 1 }]}
             accessibilityRole="button"
             accessibilityLabel={t.common.cancel}
