@@ -17,7 +17,7 @@ export function getDoctorSignupMarketOverride(): MarketCountryCode | null {
   return doctorSignupMarketOverride;
 }
 
-/** URL market wins; otherwise the in-app override (native / local pick). */
+/** An explicit pick wins; otherwise the market implied by the URL. */
 export function getDoctorSignupMarket(): MarketCountryCode | null {
-  return getUrlMarketCountry() ?? doctorSignupMarketOverride;
+  return doctorSignupMarketOverride ?? getUrlMarketCountry();
 }

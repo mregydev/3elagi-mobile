@@ -6,7 +6,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AppBackButton } from "@/components/nav/AppBackButton";
-import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -111,7 +110,6 @@ export function WebAuthFrame({
           )}
           <View style={styles.actionTopSpacer} />
           <View style={[styles.topActions, { flexDirection: dir }]}>
-            <MobileAppLink variant="toolbar" />
             <AuthLanguageField />
           </View>
         </View>
