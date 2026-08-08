@@ -282,7 +282,13 @@ export function useAiAssistant() {
   );
 
   const loadHistory = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setConversations([]);
+      setActiveId(null);
+      setLoadingHistory(false);
+      setHistoryError(null);
+      return;
+    }
     setLoadingHistory(true);
     setHistoryError(null);
     try {
@@ -301,7 +307,10 @@ export function useAiAssistant() {
   // The AI chat has its own dedicated socket (separate from the presence/main
   // socket); connect while the assistant is mounted, tear down on leave.
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      disconnectAiSocket();
+      return;
+    }
     connectAiSocket(accessToken);
     return () => disconnectAiSocket();
   }, [accessToken]);

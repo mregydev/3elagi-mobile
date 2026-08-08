@@ -19,9 +19,19 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
+import { GuestAiLimitError, sendGuestAiChat } from "@/domains/ai/guestApi";
+import {
+  GUEST_AI_MAX_MESSAGES,
+  getGuestAiSentCount,
+  getGuestAiSessionId,
+  setGuestAiSentCount,
+} from "@/domains/ai/guestSession";
+import type { AiMessage } from "@/domains/ai/types";
 import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { getApiLang } from "@/domains/i18n/store";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -30,6 +40,10 @@ import { flexRow } from "@/utils/rtl";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
 import { viewportPortal } from "@/utils/viewportPortal";
+
+function makeLocalId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 /** FAB size — used by pages that need bottom padding clearance. */
 export const ASK_3ELAGI_AI_FAB_SIZE = 56;
@@ -114,6 +128,9 @@ function Ask3elagiAiPanel() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { isDesktop } = useWebLayout();
   const isNative = Platform.OS !== "web";
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const signedIn = isSignedIn(profile, accessToken);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
   const consumePendingQuestion = useAsk3elagiAiWidgetStore(
     (s) => s.consumePendingQuestion,
@@ -123,15 +140,30 @@ function Ask3elagiAiPanel() {
   const assistant = useAiAssistant();
   const listRef = useRef<FlatList>(null);
   const [text, setText] = useState("");
-  const messages = assistant.activeConversation?.messages ?? [];
+  const [guestMessages, setGuestMessages] = useState<AiMessage[]>([]);
+  const [guestSending, setGuestSending] = useState(false);
+  const [guestSentCount, setGuestSentCountState] = useState(0);
   const sentPendingRef = useRef(false);
   const patientUserId =
     scopedPatientUserId ?? patientUserIdFromPath(pathname);
+
+  const messages = signedIn
+    ? (assistant.activeConversation?.messages ?? [])
+    : guestMessages;
+  const busy = signedIn
+    ? assistant.sending || assistant.streaming
+    : guestSending;
+  const loadingHistory = signedIn ? assistant.loadingHistory : false;
 
   useEffect(() => {
     const fromPath = patientUserIdFromPath(pathname);
     if (fromPath) setPatientUserId(fromPath);
   }, [pathname, setPatientUserId]);
+
+  useEffect(() => {
+    if (signedIn) return;
+    void getGuestAiSentCount().then(setGuestSentCountState);
+  }, [signedIn]);
 
   const scrollToLatest = useCallback((animated = false) => {
     requestAnimationFrame(() => {
@@ -139,20 +171,104 @@ function Ask3elagiAiPanel() {
     });
   }, []);
 
+  const sendGuestMessage = useCallback(
+    async (value: string) => {
+      const question = value.trim();
+      if (!question || guestSending) return;
+
+      const alreadySent = await getGuestAiSentCount();
+      if (alreadySent >= GUEST_AI_MAX_MESSAGES) {
+        promptAuthForConsultation();
+        return;
+      }
+
+      const userMsg: AiMessage = {
+        id: makeLocalId("guest-user"),
+        role: "user",
+        content: question,
+        createdAt: new Date().toISOString(),
+      };
+      const assistantLocalId = makeLocalId("guest-ai");
+      const pendingAssistant: AiMessage = {
+        id: assistantLocalId,
+        role: "assistant",
+        content: "",
+        pending: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      setGuestSending(true);
+      setGuestMessages((prev) => [...prev, userMsg, pendingAssistant]);
+
+      try {
+        const guestId = await getGuestAiSessionId();
+        const history = guestMessages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .filter((m) => !m.pending && m.content.trim())
+          .map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          }));
+        const result = await sendGuestAiChat({
+          guestId,
+          message: question,
+          history,
+          locale: getApiLang(),
+        });
+        await setGuestAiSentCount(result.used);
+        setGuestSentCountState(result.used);
+        setGuestMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantLocalId
+              ? { ...m, pending: false, content: result.content }
+              : m,
+          ),
+        );
+      } catch (e) {
+        if (e instanceof GuestAiLimitError) {
+          setGuestMessages((prev) =>
+            prev.filter((m) => m.id !== userMsg.id && m.id !== assistantLocalId),
+          );
+          promptAuthForConsultation();
+          return;
+        }
+        const errText =
+          e instanceof Error ? e.message : t.auth.genericError;
+        setGuestMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantLocalId
+              ? { ...m, pending: false, content: errText }
+              : m,
+          ),
+        );
+      } finally {
+        setGuestSending(false);
+      }
+    },
+    [guestMessages, guestSending, t.auth.genericError],
+  );
+
   useEffect(() => {
     if (sentPendingRef.current) return;
     const pending = consumePendingQuestion();
     if (!pending?.trim()) return;
     sentPendingRef.current = true;
-    void assistant.sendMessage(
-      pending.trim(),
-      patientUserId ?? undefined,
-    );
-  }, [consumePendingQuestion, assistant, patientUserId]);
+    if (signedIn) {
+      void assistant.sendMessage(pending.trim(), patientUserId ?? undefined);
+    } else {
+      void sendGuestMessage(pending.trim());
+    }
+  }, [
+    consumePendingQuestion,
+    assistant,
+    patientUserId,
+    signedIn,
+    sendGuestMessage,
+  ]);
 
   // Scroll to last message when the panel opens / history finishes loading.
   useEffect(() => {
-    if (assistant.loadingHistory) return;
+    if (loadingHistory) return;
     scrollToLatest(false);
     const t1 = setTimeout(() => scrollToLatest(false), 80);
     const t2 = setTimeout(() => scrollToLatest(false), 250);
@@ -161,7 +277,7 @@ function Ask3elagiAiPanel() {
       clearTimeout(t2);
     };
   }, [
-    assistant.loadingHistory,
+    loadingHistory,
     assistant.activeId,
     messages.length,
     scrollToLatest,
@@ -170,19 +286,27 @@ function Ask3elagiAiPanel() {
   useEffect(() => {
     if (messages.length === 0) return;
     scrollToLatest(true);
-  }, [messages.length, assistant.streaming, scrollToLatest]);
+  }, [messages.length, assistant.streaming, guestSending, scrollToLatest]);
 
   const submit = () => {
     const value = text.trim();
-    if (!value || assistant.sending || assistant.streaming) return;
+    if (!value || busy) return;
     setText("");
-    void assistant.sendMessage(value, patientUserId ?? undefined);
+    if (signedIn) {
+      void assistant.sendMessage(value, patientUserId ?? undefined);
+      return;
+    }
+    void sendGuestMessage(value);
   };
 
   const onNewChat = () => {
     setText("");
     sentPendingRef.current = true; // don't auto-resend pending
-    assistant.startNewChat();
+    if (signedIn) {
+      assistant.startNewChat();
+      return;
+    }
+    setGuestMessages([]);
   };
 
   const panelStyle = isDesktop
@@ -311,7 +435,7 @@ function Ask3elagiAiPanel() {
         </View>
       </View>
 
-      {assistant.loadingHistory ? (
+      {loadingHistory ? (
         <View style={[styles.chatLoading, { backgroundColor: colors.background }]}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -319,7 +443,7 @@ function Ask3elagiAiPanel() {
         <FlatList
           ref={listRef}
           data={messages}
-          key={assistant.activeId ?? "new"}
+          key={signedIn ? (assistant.activeId ?? "new") : "guest"}
           keyExtractor={(item) => item.id}
           style={[styles.chatList, { backgroundColor: colors.background }]}
           contentContainerStyle={styles.chatListContent}
@@ -342,6 +466,17 @@ function Ask3elagiAiPanel() {
           }
         />
       )}
+
+      {!signedIn ? (
+        <Text
+          style={[
+            styles.guestQuota,
+            { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+          ]}
+        >
+          {`${Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount)} / ${GUEST_AI_MAX_MESSAGES}`}
+        </Text>
+      ) : null}
 
       <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
         <View
@@ -367,27 +502,24 @@ function Ask3elagiAiPanel() {
                 borderWidth: 1,
               },
             ]}
-            editable={!assistant.sending && !assistant.streaming}
+            editable={!busy}
             onSubmitEditing={submit}
             returnKeyType="send"
           />
           <Pressable
             onPress={submit}
-            disabled={assistant.sending || assistant.streaming || !text.trim()}
+            disabled={busy || !text.trim()}
             style={[
               styles.sendBtn,
               {
                 backgroundColor: colors.primary,
-                opacity:
-                  assistant.sending || assistant.streaming || !text.trim()
-                    ? 0.5
-                    : 1,
+                opacity: busy || !text.trim() ? 0.5 : 1,
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel={t.records.ask3elagiAi}
           >
-            {assistant.sending || assistant.streaming ? (
+            {busy ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <Send size={16} color="#fff" />
@@ -418,13 +550,15 @@ export function Ask3elagiAiWidget() {
   const signedIn = isSignedIn(profile, accessToken);
   const roleOk =
     role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
+  /** Guests + patient/doctor accounts; hide for admin / unsupported roles when signed in. */
+  const canUseWidget = !signedIn || roleOk;
   const hidden = shouldHideOnRoute(pathname, segments as string[]);
   // Circle icon-only on native + mobile web; labeled pill on desktop web.
   const iconOnlyFab = Platform.OS !== "web" || !isDesktop;
 
   useEffect(() => {
-    if (!signedIn || !roleOk || hidden) closeWidget();
-  }, [signedIn, roleOk, hidden, closeWidget]);
+    if (!canUseWidget || hidden) closeWidget();
+  }, [canUseWidget, hidden, closeWidget]);
 
   // Escape key closes the floating AI chat (web / mobile browser).
   useEffect(() => {
@@ -438,7 +572,7 @@ export function Ask3elagiAiWidget() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, closeWidget]);
 
-  if (!hydrated || !signedIn || !roleOk || hidden) return null;
+  if (!hydrated || !canUseWidget || hidden) return null;
 
   const edge = 16;
   const addBarLift = recordsAddBarFabOffset(
@@ -611,6 +745,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 24,
     paddingHorizontal: 16,
+  },
+  guestQuota: {
+    fontSize: 12,
+    fontWeight: "700",
+    paddingHorizontal: 14,
+    paddingTop: 6,
   },
   composer: {
     alignItems: "center",
