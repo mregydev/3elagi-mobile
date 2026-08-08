@@ -150,7 +150,6 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
       </View>
 
       <View style={styles.footer}>
-        {footerExtra}
         <View style={styles.prefBlock}>
           <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
             {t.settings.language}
@@ -294,6 +293,8 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
             </Pressable>
           </>
         )}
+
+        {footerExtra}
       </View>
     </ScrollView>
   );

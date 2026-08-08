@@ -79,6 +79,21 @@ textarea:focus-visible {
   overscroll-behavior: contain;
 }
 
+/*
+ * Arabic: the scrollbar belongs on the leading (left) edge. Only the scroll
+ * containers flip; children are reset to ltr so the hand-rolled RTL layout
+ * (explicit flexDirection / textAlign) renders exactly as before.
+ */
+html[lang="ar"] #auth-form-scroll,
+html[lang="ar"] #brand-scroll {
+  direction: rtl;
+}
+
+html[lang="ar"] #auth-form-scroll > *,
+html[lang="ar"] #brand-scroll > * {
+  direction: ltr;
+}
+
 @media (min-width: 1024px) {
   [data-testid="points-balance-card"]:hover,
   [data-testid="points-chart-card"]:hover,

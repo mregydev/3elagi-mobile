@@ -4,7 +4,7 @@ import { GLOBAL_WEB_CSS } from "@/components/web/globalWebStyles";
 
 export default function Root({ children }: PropsWithChildren) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="ltr">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />

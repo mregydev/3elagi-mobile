@@ -1,7 +1,7 @@
 import { useGuestAuthDialogStore } from "@/domains/auth/guestAuthDialogStore";
 
 /** Tab segments guests may open without signing in. */
-export const GUEST_ALLOWED_TABS = new Set(["index", "our-doctors"]);
+export const GUEST_ALLOWED_TABS = new Set(["index", "our-doctors", "assistant"]);
 
 /** Root segments guests may open (browse + auth + marketing). */
 export function isGuestAllowedRoot(

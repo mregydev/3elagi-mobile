@@ -1,4 +1,4 @@
-import { Smartphone } from "lucide-react-native";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { MobileAppDownloadModal } from "@/components/web/MobileAppDownloadModal.web";
@@ -57,6 +57,7 @@ export function MobileAppLink({ variant = "link" }: Props) {
           variant === "nav"
             ? {
                 flexDirection: dir,
+                borderColor: colors.border,
                 backgroundColor: pressed || hovered ? colors.muted : "transparent",
               }
             : variant === "button" || variant === "toolbar"
@@ -72,7 +73,18 @@ export function MobileAppLink({ variant = "link" }: Props) {
           pressed && styles.pressed,
         ]}
       >
-        <Smartphone size={iconSize} color={iconColor} />
+        {/* ponytail: fa-android's glyph is 576/512 em wide; without an explicit width it shrinks in the flex row and clips. */}
+        <FontAwesome5
+          name="android"
+          size={iconSize}
+          color={iconColor}
+          style={{
+            width: Math.ceil(iconSize * 1.2),
+            flexShrink: 0,
+            lineHeight: Math.round(iconSize * 1.4),
+            textAlign: "center",
+          }}
+        />
         <Text style={[labelStyle, { color: labelColor }]}>
           {t.mobileApp.linkLabel}
         </Text>
@@ -138,8 +150,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "transparent",
+    borderWidth: 1.5,
     cursor: "pointer" as "auto",
   },
   navLabel: {

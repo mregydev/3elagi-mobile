@@ -13,7 +13,10 @@ export function LocaleBootstrap() {
     }
     const root = document.documentElement;
     root.lang = locale;
-    root.dir = locale === "ar" ? "rtl" : "ltr";
+    // RTL is hand-rolled (flexDirection / textAlign per component), so the
+    // document must stay ltr — dir="rtl" would reverse those rows a second
+    // time. Arabic-only styling keys off [lang="ar"] (see GLOBAL_WEB_CSS).
+    root.dir = "ltr";
   }, [locale, hydrated]);
 
   return null;
