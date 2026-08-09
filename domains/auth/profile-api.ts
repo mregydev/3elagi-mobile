@@ -60,6 +60,7 @@ interface RawDoctor {
   consultation_price?: number | null;
   video_consultation_price?: number | null;
   video_consultation_minutes?: number | null;
+  immediate_call_enabled?: boolean | null;
   digital_signature_url?: string | null;
   iban?: string | null;
   account_holder_full_name?: string | null;
@@ -88,6 +89,7 @@ export interface AccountProfile {
   consultationPrice?: number;
   videoConsultationPrice?: number;
   videoConsultationMinutes?: number;
+  immediateCallEnabled?: boolean;
   digitalSignatureUrl?: string;
   iban?: string;
   accountHolderFullName?: string;
@@ -130,6 +132,7 @@ export async function fetchAccountProfile(
         Math.max(1, doctor.video_consultation_price ?? 1),
       ),
       videoConsultationMinutes: doctor.video_consultation_minutes ?? 30,
+      immediateCallEnabled: !!doctor.immediate_call_enabled,
       digitalSignatureUrl: doctor.digital_signature_url ?? undefined,
       iban: doctor.iban ?? undefined,
       accountHolderFullName: doctor.account_holder_full_name ?? undefined,
@@ -168,6 +171,7 @@ export async function updateAccountProfile(
     consultationPrice?: number;
     videoConsultationPrice?: number;
     videoConsultationMinutes?: number;
+    immediateCallEnabled?: boolean;
     digitalSignatureUrl?: string | null;
     iban?: string;
     accountHolderFullName?: string;
@@ -200,6 +204,7 @@ export async function updateAccountProfile(
         consultation_price: payload.consultationPrice ?? undefined,
         video_consultation_price: payload.videoConsultationPrice ?? undefined,
         video_consultation_minutes: payload.videoConsultationMinutes ?? undefined,
+        immediate_call_enabled: payload.immediateCallEnabled ?? undefined,
         digital_signature_url:
           payload.digitalSignatureUrl !== undefined
             ? payload.digitalSignatureUrl

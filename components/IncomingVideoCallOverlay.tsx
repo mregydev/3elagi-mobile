@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { useAuthStore } from "@/domains/auth/store";
-import { onIncomingVideoCall } from "@/domains/presence/socket";
+import { onIncomingVideoCall, onVideoCallStatus } from "@/domains/presence/socket";
 import { acceptVideoCall, declineVideoCall } from "@/domains/video-call/api";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -42,6 +42,16 @@ export function IncomingVideoCallOverlay() {
     });
     return () => onIncomingVideoCall(null);
   }, [isDoctor]);
+
+  // Caller hung up before we answered — stop ringing.
+  useEffect(() => {
+    onVideoCallStatus((payload) => {
+      setIncoming((current) =>
+        current && current.sessionId === payload.session_id ? null : current,
+      );
+    });
+    return () => onVideoCallStatus(null);
+  }, []);
 
   const dismiss = () => {
     setBusy(null);

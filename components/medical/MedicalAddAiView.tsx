@@ -1,7 +1,11 @@
 import * as DocumentPicker from "expo-document-picker";
+import {
+  isDocumentScannerAvailable,
+  scanDocumentPage,
+} from "@/utils/documentScanner";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams } from "expo-router";
-import { Camera, FileUp, Image as ImageIcon, Mic, Plus, Trash2 } from "lucide-react-native";
+import { Camera, FileUp, Image as ImageIcon, Mic, Plus, ScanLine, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -258,6 +262,21 @@ export function MedicalAddAiView() {
     };
     setFile(attached);
     await analyze(attached);
+  };
+
+  /** Native document scan → straight into the AI analysis step. */
+  const scanDocument = async () => {
+    try {
+      const page = await scanDocumentPage();
+      if (!page) return;
+      setFile(page);
+      await analyze(page);
+    } catch (e) {
+      showAppAlert(
+        isRTL ? "تعذر المسح" : "Scan failed",
+        e instanceof Error ? e.message : isRTL ? "حاول مرة أخرى." : "Please try again.",
+      );
+    }
   };
 
   const pickDocument = async () => {
@@ -535,6 +554,17 @@ export function MedicalAddAiView() {
                     {isRTL ? "معرض" : "Gallery"}
                   </Text>
                 </Pressable>
+                {isDocumentScannerAvailable ? (
+                  <Pressable
+                    onPress={scanDocument}
+                    style={[styles.uploadBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+                  >
+                    <ScanLine size={22} color={colors.primary} />
+                    <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 13 }}>
+                      {isRTL ? "مسح" : "Scan"}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <Pressable
                   onPress={pickDocument}
                   style={[styles.uploadBtn, { borderColor: colors.border, backgroundColor: colors.card }]}

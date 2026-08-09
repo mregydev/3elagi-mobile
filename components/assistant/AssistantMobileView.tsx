@@ -463,6 +463,9 @@ export function AssistantMobileView({
               : null
           }
           onAttachAiFile={() => void aiFile.pickFile()}
+          onScanAiFile={
+            aiFile.canScan ? () => void aiFile.scanFile() : undefined
+          }
           aiAttachLoading={aiFile.loading}
           onRemoveAiAttachment={aiFile.clear}
           dictatedText={dictatedText}

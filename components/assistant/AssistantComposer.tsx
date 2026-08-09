@@ -1,4 +1,4 @@
-import { FileText, Mic, Paperclip, Send, X } from "lucide-react-native";
+import { FileText, Mic, Paperclip, ScanLine, Send, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -36,6 +36,8 @@ interface Props {
   /** General AI attachment (image or PDF) sent to the model with the caption. */
   aiAttachment?: { previewUri?: string; name: string; isPdf: boolean } | null;
   onAttachAiFile?: () => void;
+  /** Native only: attach via the document scanner. */
+  onScanAiFile?: () => void;
   aiAttachLoading?: boolean;
   onRemoveAiAttachment?: () => void;
 }
@@ -54,6 +56,7 @@ export function AssistantComposer({
   isRTL = false,
   aiAttachment = null,
   onAttachAiFile,
+  onScanAiFile,
   aiAttachLoading = false,
   onRemoveAiAttachment,
 }: Props) {  const colors = useColors();
@@ -185,9 +188,29 @@ export function AssistantComposer({
     </Pressable>
   ) : null;
 
+  const scanButton = onScanAiFile ? (
+    <Pressable
+      onPress={onScanAiFile}
+      disabled={disabled || sending || aiAttachLoading}
+      accessibilityRole="button"
+      accessibilityLabel="Scan document"
+      style={[
+        iconBtnStyle,
+        iconBtnMobile,
+        {
+          backgroundColor: colors.muted,
+          opacity: disabled || sending || aiAttachLoading ? 0.45 : 1,
+        },
+      ]}
+    >
+      <ScanLine color={colors.primary} size={glyphSize} />
+    </Pressable>
+  ) : null;
+
   const trailingActions = (
     <View style={styles.actionsRow}>
       {aiAttachButton}
+      {scanButton}
       {micButton}      <Pressable
         onPress={submit}
         disabled={sendDisabled}

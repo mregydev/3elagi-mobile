@@ -23,6 +23,7 @@ export interface ChatContactRow {
   doctor_id?: string | null;
   consultation_price?: number | null;
   video_consultation_price?: number | null;
+  immediate_call_enabled?: boolean | null;
   rating_average?: number | null;
   rating_total?: number | null;
   /** ISO 3166-1 alpha-2 residence country. */
@@ -70,6 +71,7 @@ function mapContact(row: ChatContactRow): ChatUser {
     ratingTotal: row.rating_total ?? undefined,
     consultationPrice: row.consultation_price ?? undefined,
     videoConsultationPrice: row.video_consultation_price ?? undefined,
+    immediateCallEnabled: !!row.immediate_call_enabled,
     doctorEntityId: row.doctor_id ?? undefined,
   };
 }

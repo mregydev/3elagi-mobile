@@ -21,6 +21,7 @@ import type { MedicalLinkMeta } from "@/domains/chat/types";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { createDiagnosis } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
+import { onVideoCallStatus } from "@/domains/presence/socket";
 import {
   acceptVideoCall,
   declineVideoCall,
@@ -171,6 +172,18 @@ export default function VideoCallScreen() {
       clearMeetingTimer();
     };
   }, [loadSession, clearMeetingTimer, clearPoll]);
+
+  // Socket first (instant, like Messenger); the poll below is the fallback.
+  useEffect(() => {
+    onVideoCallStatus((payload) => {
+      setSession((current) =>
+        current && current.id === payload.session_id
+          ? { ...current, status: payload.status }
+          : current,
+      );
+    });
+    return () => onVideoCallStatus(null);
+  }, []);
 
   useEffect(() => {
     clearPoll();

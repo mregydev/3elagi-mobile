@@ -100,6 +100,8 @@ export interface ChatUser {
   ratingTotal?: number;
   consultationPrice?: number;
   videoConsultationPrice?: number;
+  /** Doctor takes immediate calls from the chat. */
+  immediateCallEnabled?: boolean;
   doctorEntityId?: string;
 }
 

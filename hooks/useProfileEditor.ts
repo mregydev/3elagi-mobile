@@ -44,6 +44,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [videoConsultationPrice, setVideoConsultationPrice] = useState(1);
   const [videoConsultationMinutes, setVideoConsultationMinutes] = useState(30);
+  const [immediateCallEnabled, setImmediateCallEnabled] = useState(false);
   const [digitalSignatureUrl, setDigitalSignatureUrl] = useState<string | null>(null);
   const [digitalSignatureLocalUri, setDigitalSignatureLocalUri] = useState<string | null>(
     null,
@@ -74,6 +75,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setConsultationPrice(data.consultationPrice ?? 1);
       setVideoConsultationPrice(data.videoConsultationPrice ?? 1);
       setVideoConsultationMinutes(data.videoConsultationMinutes ?? 30);
+      setImmediateCallEnabled(!!data.immediateCallEnabled);
       setDigitalSignatureUrl(data.digitalSignatureUrl ?? null);
       setDigitalSignatureLocalUri(null);
       setDigitalSignatureDirty(false);
@@ -227,6 +229,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         consultationPrice: isDoctor ? consultationPrice : undefined,
         videoConsultationPrice: isDoctor ? videoConsultationPrice : undefined,
         videoConsultationMinutes: isDoctor ? videoConsultationMinutes : undefined,
+        immediateCallEnabled: isDoctor ? immediateCallEnabled : undefined,
         digitalSignatureUrl: isDoctor
           ? digitalSignatureDirty
             ? digitalSignatureUrl
@@ -291,6 +294,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    immediateCallEnabled,
+    setImmediateCallEnabled,
     digitalSignatureUrl,
     digitalSignaturePreview: digitalSignatureLocalUri ?? digitalSignatureUrl,
     signatureUploading,

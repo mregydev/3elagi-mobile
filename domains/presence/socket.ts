@@ -77,6 +77,16 @@ let onIncomingVideoCallHandler:
       caller_name?: string;
     }) => void)
   | null = null;
+export type VideoCallStatusPayload = {
+  session_id: string;
+  status: "accepted" | "declined" | "ended" | "missed";
+  room_url?: string;
+  doctor_name?: string;
+  duration_minutes?: number;
+};
+let onVideoCallStatusHandler:
+  | ((payload: VideoCallStatusPayload) => void)
+  | null = null;
 let onSystemNotificationHandler:
   | ((payload: {
       title?: string;
@@ -199,6 +209,13 @@ export function onIncomingVideoCall(
     | null,
 ) {
   onIncomingVideoCallHandler = handler;
+}
+
+/** Caller side of a call: the doctor answered, declined, or hung up. */
+export function onVideoCallStatus(
+  handler: ((payload: VideoCallStatusPayload) => void) | null,
+) {
+  onVideoCallStatusHandler = handler;
 }
 
 export function onSystemNotification(
@@ -391,6 +408,12 @@ function bindListeners(client: Socket) {
       }
     },
   );
+
+  client.on("video-call:status", (payload: Partial<VideoCallStatusPayload>) => {
+    if (payload?.session_id && payload.status) {
+      onVideoCallStatusHandler?.(payload as VideoCallStatusPayload);
+    }
+  });
 
   client.on(
     "system:notification",

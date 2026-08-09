@@ -18,6 +18,7 @@ import {
 } from "react-native-keyboard-controller";
 import { ChatReactionOverlay, type ReactionAnchor } from "@/components/ChatReactionOverlay";
 import { Avatar } from "@/components/Avatar";
+import { CallDoctorButton } from "@/components/call/CallDoctorButton";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
@@ -181,6 +182,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const isDoctorPatientChat =
     (isDoctor && peer?.role === "patient") || (isPatient && peer?.role === "doctor");
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
+  // Patients can ring a doctor who has immediate calls switched on.
+  const canCallDoctor =
+    isPatient && peer?.role === "doctor" && !!peer?.immediateCallEnabled;
   const latestConsultationAction = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i];
@@ -1157,6 +1161,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             </Text>
           </View>
         </Pressable>
+
+        {canCallDoctor && peer ? (
+          <CallDoctorButton
+            doctorUserId={peer.id}
+            price={peer.videoConsultationPrice}
+          />
+        ) : null}
 
         {canOpenPatientRecord ? (
           <Pressable

@@ -1,4 +1,4 @@
-import { Camera, Image as ImageIcon, Video, X } from "lucide-react-native";
+import { Camera, Image as ImageIcon, ScanLine, Video, X } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
 import {
   InteractionManager,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { isDocumentScannerAvailable } from "@/utils/documentScanner";
 import { flexRow } from "@/utils/rtl";
 
 export type ChatAttachMode = "photo" | "video" | "all";
@@ -22,6 +23,8 @@ interface Props {
   onClose: () => void;
   onPhotoGallery: () => void;
   onPhotoCamera: () => void;
+  /** Native only: camera in document-scan mode (edge detect + crop). */
+  onScanDocument?: () => void;
   onVideoGallery: () => void;
   onVideoCamera: () => void;
 }
@@ -33,6 +36,7 @@ export function ChatAttachMenu({
   onClose,
   onPhotoGallery,
   onPhotoCamera,
+  onScanDocument,
   onVideoGallery,
   onVideoCamera,
 }: Props) {
@@ -129,6 +133,15 @@ export function ChatAttachMenu({
                   icon={<Camera size={20} color={colors.primary} />}
                   label={isRTL ? "التقاط صورة" : "Photo from camera"}
                   onPress={() => run(onPhotoCamera)}
+                  colors={colors}
+                  dir={dir}
+                />
+              ) : null}
+              {onScanDocument && isDocumentScannerAvailable ? (
+                <MenuRow
+                  icon={<ScanLine size={20} color={colors.primary} />}
+                  label={isRTL ? "مسح مستند بالكاميرا" : "Scan document"}
+                  onPress={() => run(onScanDocument)}
                   colors={colors}
                   dir={dir}
                 />

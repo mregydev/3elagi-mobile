@@ -9,6 +9,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -90,6 +91,8 @@ export function ProfileEditor({
     videoConsultationPrice,
     setVideoConsultationPrice,
     videoConsultationMinutes,
+    immediateCallEnabled,
+    setImmediateCallEnabled,
     setVideoConsultationMinutes,
     digitalSignaturePreview,
     signatureUploading,
@@ -516,6 +519,37 @@ export function ProfileEditor({
                   label={t.auth.videoConsultationPrice}
                   compact
                 />
+
+                <View style={[styles.immediateCallRow, { flexDirection: dir }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: colors.foreground,
+                        fontWeight: "700",
+                        fontSize: 14,
+                        textAlign,
+                      }}
+                    >
+                      {t.auth.immediateCalls}
+                    </Text>
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: 12,
+                        lineHeight: 17,
+                        textAlign,
+                      }}
+                    >
+                      {t.auth.immediateCallsHint}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={immediateCallEnabled}
+                    onValueChange={setImmediateCallEnabled}
+                    trackColor={{ false: colors.border, true: `${colors.primary}88` }}
+                    thumbColor={immediateCallEnabled ? colors.primary : undefined}
+                  />
+                </View>
               </SectionCard>
             ) : null}
 
@@ -801,6 +835,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  immediateCallRow: {
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
   },
   certCard: {
     gap: 10,

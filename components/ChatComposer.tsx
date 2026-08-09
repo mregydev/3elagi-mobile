@@ -48,6 +48,7 @@ import {
   CHAT_VIDEO_PICKER_OPTIONS,
   getChatVideoLimitViolation,
 } from "@/utils/chatVideoLimits";
+import { scanDocumentPage } from "@/utils/documentScanner";
 import { chatFlexRow } from "@/utils/rtl";
 import { showSuccessToast } from "@/utils/toast";
 
@@ -323,6 +324,27 @@ export function ChatComposer({
         addToMedicalRecords: true,
         generateAiInsight: true,
       });
+    }
+  };
+
+  /** Native document scan → queued exactly like a camera photo. */
+  const scanDocument = async () => {
+    try {
+      const page = await scanDocumentPage();
+      if (!page) return;
+      queueAttachment(
+        {
+          uri: page.uri,
+          mimeType: page.mimeType,
+          fileName: page.name,
+        } as ImagePicker.ImagePickerAsset,
+        "image",
+      );
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "تعذر المسح" : "Scan failed",
+        e instanceof Error ? e.message : isRTL ? "حاول مرة أخرى." : "Please try again.",
+      );
     }
   };
 
@@ -828,6 +850,7 @@ export function ChatComposer({
         onClose={() => setAttachMenuVisible(false)}
         onPhotoGallery={() => void pickGallery("image")}
         onPhotoCamera={() => void pickCamera("image")}
+        onScanDocument={() => void scanDocument()}
         onVideoGallery={() => void pickGallery("video")}
         onVideoCamera={() => void pickCamera("video")}
       />

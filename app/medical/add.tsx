@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { Camera, FileText, Image as ImageIcon, Plus, Sparkles, X, ZoomIn } from "lucide-react-native";
+import { Camera, FileText, Image as ImageIcon, Plus, ScanLine, Sparkles, X, ZoomIn } from "lucide-react-native";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import { navigateBack } from "@/utils/appNavigation";
 import React, { useEffect, useRef, useState } from "react";
@@ -33,6 +33,10 @@ import {
   fulfillMedicalDocumentRequest,
   uploadFile,
 } from "@/domains/medical/api";
+import {
+  isDocumentScannerAvailable,
+  scanDocumentPage,
+} from "@/utils/documentScanner";
 import { MEDICAL_EVENTS } from "@/domains/medical/events";
 import { useMedicalStore } from "@/domains/medical/store";
 import type {
@@ -284,6 +288,19 @@ export default function AddMedicalScreen() {
         name: asset.fileName ?? `photo-${Date.now()}.jpg`,
         mimeType: asset.mimeType ?? "image/jpeg",
       });
+    }
+  };
+
+  /** Native document scan — deskewed page instead of a raw camera photo. */
+  const scanWithCamera = async () => {
+    try {
+      const page = await scanDocumentPage();
+      if (page) setAttached(page);
+    } catch (e) {
+      Alert.alert(
+        "Scan failed",
+        e instanceof Error ? e.message : "Please try again.",
+      );
     }
   };
 
@@ -870,6 +887,15 @@ export default function AddMedicalScreen() {
                   <ImageIcon size={18} color={colors.primary} />
                   <Text style={[styles.pickBtnText, { color: colors.foreground }]}>Gallery</Text>
                 </Pressable>
+                {isDocumentScannerAvailable ? (
+                  <Pressable
+                    onPress={scanWithCamera}
+                    style={[styles.pickBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <ScanLine size={18} color={colors.primary} />
+                    <Text style={[styles.pickBtnText, { color: colors.foreground }]}>Scan</Text>
+                  </Pressable>
+                ) : null}
               </View>
             )}
             {!attached && (

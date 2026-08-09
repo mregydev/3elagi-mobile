@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -111,6 +112,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     videoConsultationPrice,
     setVideoConsultationPrice,
     videoConsultationMinutes,
+    immediateCallEnabled,
+    setImmediateCallEnabled,
     setVideoConsultationMinutes,
     digitalSignaturePreview,
     signatureUploading,
@@ -660,6 +663,43 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                   value={videoConsultationPrice}
                   onChange={setVideoConsultationPrice}
                   label={t.auth.videoConsultationPrice}
+                />
+              </View>
+              <View
+                style={{
+                  flexDirection: dir,
+                  alignItems: "center",
+                  gap: 12,
+                  marginTop: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontWeight: "700",
+                      fontSize: 14,
+                      textAlign,
+                    }}
+                  >
+                    {t.auth.immediateCalls}
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.mutedForeground,
+                      fontSize: 12,
+                      lineHeight: 17,
+                      textAlign,
+                    }}
+                  >
+                    {t.auth.immediateCallsHint}
+                  </Text>
+                </View>
+                <Switch
+                  value={immediateCallEnabled}
+                  onValueChange={setImmediateCallEnabled}
+                  trackColor={{ false: colors.border, true: `${colors.primary}88` }}
+                  thumbColor={immediateCallEnabled ? colors.primary : undefined}
                 />
               </View>
             </View>

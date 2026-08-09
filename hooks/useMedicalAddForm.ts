@@ -33,6 +33,10 @@ import type {
 import { useI18n } from "@/hooks/useI18n";
 import { getAddMedicalCategories } from "@/components/records/medicalRecordCategories";
 import { isDoctorAddingForPatient, resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
+import {
+  isDocumentScannerAvailable,
+  scanDocumentPage,
+} from "@/utils/documentScanner";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
 
@@ -247,6 +251,19 @@ export function useMedicalAddForm() {
         name: asset.fileName ?? `photo-${Date.now()}.jpg`,
         mimeType: asset.mimeType ?? "image/jpeg",
       });
+    }
+  };
+
+  /** Native document scan — deskewed, cropped page instead of a raw photo. */
+  const scanWithCamera = async () => {
+    try {
+      const page = await scanDocumentPage();
+      if (page) setAttached(page);
+    } catch (e) {
+      showAppAlert(
+        "Scan failed",
+        e instanceof Error ? e.message : "Please try again.",
+      );
     }
   };
 
@@ -559,6 +576,8 @@ export function useMedicalAddForm() {
     pickFromCamera,
     pickFromGallery,
     pickFromFiles,
+    scanWithCamera,
+    canScanDocuments: isDocumentScannerAvailable,
     completeWithAi,
     completingAi,
     submit,
