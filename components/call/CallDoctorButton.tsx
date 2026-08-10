@@ -13,13 +13,15 @@ type Props = {
   doctorUserId: string;
   /** Credits held for the call — the doctor's video consultation price. */
   price?: number;
+  /** Offline doctors cannot pick up, so the button is dead. */
+  offline?: boolean;
 };
 
 /**
  * Patient-side "call now" button. The doctor must have immediate calls on;
  * the server holds the credits and rejects a second caller.
  */
-export function CallDoctorButton({ doctorUserId, price }: Props) {
+export function CallDoctorButton({ doctorUserId, price, offline = false }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const router = useRouter();
@@ -27,7 +29,7 @@ export function CallDoctorButton({ doctorUserId, price }: Props) {
   const [calling, setCalling] = useState(false);
 
   const start = async () => {
-    if (!accessToken || calling) return;
+    if (!accessToken || calling || offline) return;
     const body = t.auth.callConfirmBody.replace("{price}", String(price ?? 1));
 
     const confirmed =
@@ -59,16 +61,17 @@ export function CallDoctorButton({ doctorUserId, price }: Props) {
   return (
     <Pressable
       onPress={() => void start()}
-      disabled={calling}
+      disabled={calling || offline}
       accessibilityRole="button"
-      accessibilityLabel={t.auth.callDoctor}
+      accessibilityLabel={offline ? t.auth.callDoctorOffline : t.auth.callDoctor}
       hitSlop={8}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
         styles.btn,
         {
-          borderColor: colors.primary,
-          backgroundColor: pressed || hovered ? `${colors.primary}14` : colors.card,
-          opacity: calling ? 0.6 : 1,
+          borderColor: offline ? colors.border : colors.primary,
+          backgroundColor:
+            !offline && (pressed || hovered) ? `${colors.primary}14` : colors.card,
+          opacity: calling || offline ? 0.45 : 1,
           marginStart: isRTL ? 0 : 6,
           marginEnd: isRTL ? 6 : 0,
         },
@@ -77,7 +80,7 @@ export function CallDoctorButton({ doctorUserId, price }: Props) {
       {calling ? (
         <ActivityIndicator size="small" color={colors.primary} />
       ) : (
-        <Phone size={18} color={colors.primary} />
+        <Phone size={18} color={offline ? colors.mutedForeground : colors.primary} />
       )}
     </Pressable>
   );

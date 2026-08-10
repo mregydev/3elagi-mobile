@@ -105,7 +105,8 @@ function ConversationRow({
             ]}
           />
           <DoctorSubtitle specialty={item.user.specialty} isRTL={isRTL} />
-          {item.user.immediateCallEnabled ? (
+          {/* Offline doctors can't be rung at all, so no availability flag. */}
+          {item.user.immediateCallEnabled && isOnline ? (
             <CallStateFlag onCall={onCall} isRTL={isRTL} colors={colors} />
           ) : null}
         </View>

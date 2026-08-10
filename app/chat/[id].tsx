@@ -1180,6 +1180,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           <CallDoctorButton
             doctorUserId={peer.id}
             price={peer.videoConsultationPrice}
+            offline={!peerOnline}
           />
         ) : null}
 

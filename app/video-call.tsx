@@ -1,5 +1,13 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ClipboardList, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
+import {
+  Beaker,
+  ClipboardList,
+  Pill,
+  Phone,
+  PhoneOff,
+  ScanLine,
+  Stethoscope,
+} from "lucide-react-native";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import { navigateBack } from "@/utils/appNavigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +23,9 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import { WherebyMeetingEmbed } from "@/components/video-call/WherebyMeetingEmbed";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
+import { ChatActionsMenu, type ChatAction } from "@/components/chat/ChatActionsMenu";
+import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
+import type { MedicalDocumentRequestType } from "@/domains/medical/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { useChatStore } from "@/domains/chat/store";
 import type { MedicalLinkMeta } from "@/domains/chat/types";
@@ -60,7 +71,7 @@ function formatRemainingTime(totalSeconds: number): string {
 
 export default function VideoCallScreen() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const profile = useAuthStore((s) => s.profile);
@@ -73,6 +84,8 @@ export default function VideoCallScreen() {
   const [diagnosisOpen, setDiagnosisOpen] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [intakeExamOpen, setIntakeExamOpen] = useState(false);
+  const [documentRequestType, setDocumentRequestType] =
+    useState<MedicalDocumentRequestType | null>(null);
   const [assigningIntakeExam, setAssigningIntakeExam] = useState(false);
   const params = useLocalSearchParams<{
     sessionId?: string | string[];
@@ -338,6 +351,50 @@ export default function VideoCallScreen() {
   const diagPatientId = session?.patientUserId?.trim() || patientUserIdParam || null;
   const canAddClinicalNotes =
     isDoctor && canJoin && !!diagPatientId && !!accessToken;
+
+  // Everything the doctor may file during the call, collapsed under the plus.
+  const clinicalActions: ChatAction[] = [
+    {
+      key: "diagnosis",
+      label: isRTL ? "تشخيص جديد" : "Add diagnosis",
+      Icon: Stethoscope,
+      onPress: () => setDiagnosisOpen(true),
+    },
+    {
+      key: "prescription",
+      label: isRTL ? "روشتة جديدة" : "Add prescription",
+      Icon: Pill,
+      onPress: () =>
+        router.push({
+          pathname: "/medical/prescription/add",
+          // Come back to the call instead of the records list.
+          params: {
+            patientUserId: diagPatientId!,
+            ...(sessionId
+              ? { returnTo: `/video-call?sessionId=${sessionId}` }
+              : {}),
+          },
+        }),
+    },
+    {
+      key: "intake",
+      label: isRTL ? "فحص متابعة" : "Follow-up exam",
+      Icon: ClipboardList,
+      onPress: () => setIntakeExamOpen(true),
+    },
+    {
+      key: "lab",
+      label: t.records.requestLab,
+      Icon: Beaker,
+      onPress: () => setDocumentRequestType("lab"),
+    },
+    {
+      key: "xray",
+      label: t.records.requestXray,
+      Icon: ScanLine,
+      onPress: () => setDocumentRequestType("xray"),
+    },
+  ];
   const waitingForDoctor =
     !!session && isPatient && session.status === "ringing";
   const incomingForDoctor =
@@ -473,69 +530,13 @@ export default function VideoCallScreen() {
 
         {canAddClinicalNotes ? (
           <View style={[styles.clinicalActions, { flexDirection: rowDir }]}>
-            <Pressable
-              onPress={() => setDiagnosisOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-              style={[
-                styles.diagnosisBtn,
-                { backgroundColor: colors.primary, flex: 1 },
-              ]}
+            <ChatActionsMenu isRTL={isRTL} actions={clinicalActions} />
+            <Text
+              style={[styles.clinicalHint, { color: colors.mutedForeground }]}
+              numberOfLines={1}
             >
-              <Stethoscope size={16} color="#fff" />
-              <Text style={styles.diagnosisBtnText} numberOfLines={1}>
-                {isRTL ? "تشخيص" : "Diagnosis"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setIntakeExamOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "فحص متابعة" : "Follow-up exam"}
-              style={[
-                styles.diagnosisBtn,
-                {
-                  flex: 1,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.primary,
-                },
-              ]}
-            >
-              <ClipboardList size={16} color={colors.primary} />
-              <Text
-                style={[styles.diagnosisBtnText, { color: colors.primary }]}
-                numberOfLines={1}
-              >
-                {isRTL ? "فحص متابعة" : "Follow-up"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/medical/prescription/add",
-                  params: { patientUserId: diagPatientId! },
-                })
-              }
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "إضافة روشتة" : "Add prescription"}
-              style={[
-                styles.diagnosisBtn,
-                {
-                  flex: 1,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.primary,
-                },
-              ]}
-            >
-              <Pill size={16} color={colors.primary} />
-              <Text
-                style={[styles.diagnosisBtnText, { color: colors.primary }]}
-                numberOfLines={1}
-              >
-                {isRTL ? "روشتة" : "Prescription"}
-              </Text>
-            </Pressable>
+              {isRTL ? "إجراءات المريض" : "Patient actions"}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -679,6 +680,16 @@ export default function VideoCallScreen() {
           }}
         />
       ) : null}
+
+      {canAddClinicalNotes && diagPatientId && accessToken && documentRequestType ? (
+        <DoctorMedicalRequestDialog
+          visible
+          patientUserId={diagPatientId}
+          accessToken={accessToken}
+          initialType={documentRequestType}
+          onClose={() => setDocumentRequestType(null)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -753,20 +764,9 @@ const styles = StyleSheet.create({
     gap: 8,
     width: "100%",
   },
-  diagnosisBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    minWidth: 0,
-  },
-  diagnosisBtnText: {
-    color: "#fff",
-    fontWeight: "800",
+  clinicalHint: {
     fontSize: 13,
+    fontWeight: "600",
     flexShrink: 1,
   },
   center: {
