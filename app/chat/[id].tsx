@@ -717,7 +717,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     if (!id || !canUseDiagnosisTemplates) return;
     router.push({
       pathname: "/medical/prescription/add",
-      params: { patientUserId: id },
+      // Saving or cancelling returns here, not to the records list.
+      params: { patientUserId: id, returnTo: `/chat/${id}` },
     });
   };
 

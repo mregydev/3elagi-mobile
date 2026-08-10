@@ -157,9 +157,14 @@ export function PrescriptionAddWebView() {
   const { isRTL, t, locale } = useI18n();
   const apiLang = useApiLang();
   const { isDesktop, isTablet } = useWebLayout();
-  const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
+  const {
+    patientUserId: patientUserIdParam,
+    bodyPart: bodyPartParam,
+    returnTo: returnToParam,
+  } = useLocalSearchParams<{
     patientUserId?: string;
     bodyPart?: string;
+    returnTo?: string;
   }>();
 
   const profile = useAuthStore((s) => s.profile);
@@ -172,12 +177,14 @@ export function PrescriptionAddWebView() {
 
   const patientUserId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
 
+  const returnTo = Array.isArray(returnToParam) ? returnToParam[0] : returnToParam;
+
   const exitAfterSave = () => {
     const fallback =
       role?.toLowerCase() === "doctor" && patientUserIdParam?.trim()
         ? (`/patients/${patientUserIdParam.trim()}` as `/patients/${string}`)
         : "/(tabs)/records";
-    leaveMedicalForm(fallback);
+    leaveMedicalForm(fallback, returnTo);
   };
 
   const [title, setTitle] = useState("");

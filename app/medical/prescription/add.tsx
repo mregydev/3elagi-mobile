@@ -1,6 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import {
   Camera,
   Image as ImageIcon,
@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AppBackButton } from "@/components/nav/AppBackButton";
-import { navigateBack } from "@/utils/appNavigation";
+import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
@@ -62,10 +62,17 @@ export default function AddPrescriptionScreen() {
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
-  const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
+  const {
+    patientUserId: patientUserIdParam,
+    bodyPart: bodyPartParam,
+    returnTo: returnToParam,
+  } = useLocalSearchParams<{
     patientUserId?: string;
     bodyPart?: string;
+    returnTo?: string;
   }>();
+  // Set when the form was opened from a chat — land back in that thread.
+  const returnTo = Array.isArray(returnToParam) ? returnToParam[0] : returnToParam;
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -268,7 +275,7 @@ export default function AddPrescriptionScreen() {
   };
 
   const handleCancel = () => {
-    navigateBack(router, "/(tabs)/records");
+    leaveMedicalForm("/(tabs)/records", returnTo);
   };
 
   const handleSave = async () => {
@@ -347,7 +354,7 @@ export default function AddPrescriptionScreen() {
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);
-      navigateBack(router, "/(tabs)/records");
+      leaveMedicalForm("/(tabs)/records", returnTo);
     } catch (e) {
       Alert.alert(
         isRTL ? "فشل الحفظ" : "Save failed",
