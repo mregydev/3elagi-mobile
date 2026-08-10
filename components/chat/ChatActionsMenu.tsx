@@ -101,10 +101,14 @@ export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props
           hitSlop={6}
           style={[
             buttonStyle ?? styles.button,
-            { backgroundColor: colors.muted, opacity: disabled ? 0.45 : 1 },
+            {
+              backgroundColor: colors.muted,
+              borderColor: colors.border,
+              opacity: disabled ? 0.45 : 1,
+            },
           ]}
         >
-          <Plus size={20} color={colors.mutedForeground} />
+          <Plus size={20} color={colors.foreground} />
         </Pressable>
       </View>
 

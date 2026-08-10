@@ -775,6 +775,7 @@ export function ChatComposer({
         isMobileWeb ? mobileWebComposerStyles.input : styles.input,
         {
           backgroundColor: colors.muted,
+          borderColor: colors.border,
           color: colors.foreground,
           textAlign: isRTL ? "right" : "left",
         },
@@ -793,7 +794,11 @@ export function ChatComposer({
       disabled={busy}
       style={[
         isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
-        { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 },
+        {
+          backgroundColor: colors.primary,
+          borderColor: colors.primary,
+          opacity: busy ? 0.6 : 1,
+        },
       ]}
     >
       <Send size={18} color="#fff" />
@@ -818,7 +823,8 @@ export function ChatComposer({
       style={[
         isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
         {
-          backgroundColor: micActive ? "#ef4444" : colors.muted,
+          backgroundColor: micActive ? "#ef4444" : `${colors.primary}14`,
+          borderColor: micActive ? "#ef4444" : `${colors.primary}3D`,
           opacity:
             uploading || sending || isEditing || pendingAttachment || dictation.busy
               ? 0.45
@@ -843,7 +849,7 @@ export function ChatComposer({
       {dictation.busy ? (
         <ActivityIndicator size="small" color="#fff" />
       ) : (
-        <Mic size={18} color={micActive ? "#fff" : colors.mutedForeground} />
+        <Mic size={18} color={micActive ? "#fff" : colors.primary} />
       )}
     </Pressable>
   );
@@ -1086,10 +1092,10 @@ const styles = StyleSheet.create({
   },
   composer: {
     alignItems: "flex-end",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: 8,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   leadingControls: {
@@ -1100,19 +1106,22 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 42,
     maxHeight: 120,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 21,
+    borderWidth: 1,
+    fontSize: 15,
+    lineHeight: 20,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
   disabledBar: {
     alignItems: "center",
