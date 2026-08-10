@@ -31,8 +31,19 @@ Notifications.setNotificationHandler({
         shouldShowList: false,
       };
     }
+    if (data?.type === "incoming_video_call") {
+      // The call push always fires now, so in the foreground it would ring on
+      // top of the in-app call overlay. Show it, let the overlay's ringtone be
+      // the only sound.
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      };
+    }
     if (
-      data?.type === "incoming_video_call" ||
       data?.type === "system_notification" ||
       data?.type === "appointment_reminder" ||
       data?.type === "appointment_status"

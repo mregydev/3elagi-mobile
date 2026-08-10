@@ -1019,6 +1019,22 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     ? consultationMenuActions.find((a) => a.key === "consult-start")
     : undefined;
 
+  const bookAppointmentAction: ChatAction | undefined =
+    isPatient && isDoctorPatientChat && peer?.doctorEntityId
+      ? {
+          key: "book",
+          label: isRTL ? "حجز موعد" : "Book appointment",
+          Icon: Calendar,
+          onPress: () => setBookAppointmentOpen(true),
+        }
+      : undefined;
+
+  // The plus button is hidden while the CTAs show, so booking rides along with
+  // "Start consultation" instead of being unreachable in the menu.
+  const disabledActions = [startConsultationAction, bookAppointmentAction].filter(
+    (a): a is ChatAction => !!a,
+  );
+
   // Quick actions — collapsed under the plus button context window beside the input.
   // Start/end consultation is published into this menu by ConsultationBar.
   const chatActions: ChatAction[] = chatBlocked
@@ -1061,16 +1077,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           : []),
         ...(isPatient && isDoctorPatientChat
           ? [
-              ...(peer?.doctorEntityId
-                ? [
-                    {
-                      key: "book",
-                      label: isRTL ? "حجز موعد" : "Book appointment",
-                      Icon: Calendar,
-                      onPress: () => setBookAppointmentOpen(true),
-                    },
-                  ]
-                : []),
+              ...(bookAppointmentAction ? [bookAppointmentAction] : []),
               ...(accessLoading
                 ? []
                 : accessStatus?.records_allowed
@@ -1236,10 +1243,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             countLabel={t.consultations.archivedCount}
           />
         ) : null}
-        {/* No onContentSizeChange / onLayout re-scroll: the list is inverted
-            whenever it has data, so it stays pinned to the newest message by
-            itself. Re-scrolling on every resize (an image finishing loading,
-            text reflowing) is what made the thread jump around. */}
+        {/* Web deliberately has no resize re-scroll: writing scrollTop while the
+            browser is settling is what made the thread flicker. Native has no
+            such fight, and needs the nudge — a bubble that grows after layout
+            (image, long text) would otherwise leave the newest message
+            off-screen. See onContentSizeChange below. */}
         <FlatList
           ref={listRef}
           data={listData}
@@ -1263,6 +1271,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           onScrollEndDrag={(event) => {
             stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
           }}
+          onContentSizeChange={
+            Platform.OS === "web"
+              ? undefined
+              : () => {
+                  if (stickToBottomRef.current) scrollToLatest(false);
+                }
+          }
           onScrollToIndexFailed={(info) => {
             setTimeout(() => {
               try {
@@ -1425,8 +1440,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       </View>
 
       <View style={[styles.chatFooter, desktopLayout && styles.chatFooterDesktop]}>
+      {/* iOS only. AndroidManifest declares adjustResize, so the window already
+          shrinks for the keyboard — translating the composer again on top of
+          that lifted it a whole keyboard-height off the footer. */}
       <KeyboardStickyView
-        enabled={Platform.OS !== "web"}
+        enabled={Platform.OS === "ios"}
         offset={{ closed: 0, opened: 0 }}
       >
       <ChatComposer
@@ -1467,7 +1485,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         onCancelEdit={() => setEditingMessage(null)}
         onEdit={handleEditMessage}
         disabled={chatBlocked || needsConsultation}
-        disabledAction={chatBlocked ? undefined : startConsultationAction}
+        disabledActions={chatBlocked ? undefined : disabledActions}
         disabledHint={
           needsConsultation && !chatBlocked
             ? isPatient

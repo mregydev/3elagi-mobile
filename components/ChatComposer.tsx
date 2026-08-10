@@ -74,8 +74,8 @@ interface Props {
   onComposerFocus?: () => void;
   disabled?: boolean;
   disabledHint?: string;
-  /** Replaces the disabled hint with a centered call-to-action button. */
-  disabledAction?: ChatAction;
+  /** Replaces the disabled hint with centered call-to-action buttons. */
+  disabledActions?: ChatAction[];
   /** Patient-only: show medical record + AI insight options on image attach. */
   canStoreImageInMedicalRecord?: boolean;
   medicalRecordPatientUserId?: string;
@@ -154,7 +154,7 @@ export function ChatComposer({
   onComposerFocus,
   disabled = false,
   disabledHint,
-  disabledAction,
+  disabledActions,
   canStoreImageInMedicalRecord = false,
   medicalRecordPatientUserId,
   onMedicalRecordCreated,
@@ -181,6 +181,7 @@ export function ChatComposer({
   const sendInFlightRef = useRef(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const rowDir = chatFlexRow();
+  const hasDisabledActions = !!disabledActions?.length;
 
   useEffect(() => {
     if (pendingAttachment?.type !== "image" || !canStoreImageInMedicalRecord) return;
@@ -608,7 +609,9 @@ export function ChatComposer({
         if (durationMs < 800) {
           Alert.alert(
             isRTL ? "تسجيل قصير" : "Recording too short",
-            isRTL ? "اضغط الميكروفون لفترة أطول" : "Hold the mic longer to record.",
+            isRTL
+              ? "سجّل لفترة أطول قبل الإيقاف."
+              : "Record a bit longer before stopping.",
           );
           return;
         }
@@ -746,7 +749,7 @@ export function ChatComposer({
         {/* The start-consultation CTA is the only thing to do here, so the plus
             would just be clutter. inlineAction stays mounted either way — it
             owns the dialog the CTA opens. */}
-        {disabledAction ? null : plusButton}
+        {hasDisabledActions ? null : plusButton}
         {inlineAction}
       </View>
     ) : null;
@@ -806,17 +809,17 @@ export function ChatComposer({
   ) : isEditing ? null : (
     <Pressable
       onPress={() => {
-        if (recording) {
-          void toggleRecording();
+        // Tap: record a voice message; tap again to stop and send it.
+        if (dictation.listening) {
+          dictation.toggle();
           return;
         }
-        // Tap: multilingual speech-to-text into the input (ar/en/de/es auto).
-        dictation.toggle();
+        void toggleRecording();
       }}
       onLongPress={() => {
-        if (dictation.listening || dictation.busy || recording) return;
-        // Long-press: send a voice message (audio attachment).
-        void toggleRecording();
+        // Long-press: multilingual speech-to-text into the input (ar/en/de/es).
+        if (recording || dictation.busy) return;
+        dictation.toggle();
       }}
       delayLongPress={350}
       disabled={uploading || sending || isEditing || !!pendingAttachment || dictation.busy}
@@ -842,8 +845,8 @@ export function ChatComposer({
               ? "إيقاف الإملاء"
               : "Stop dictation"
             : isRTL
-              ? "إملاء نص — اضغط مطولاً لرسالة صوتية"
-              : "Dictate text — long-press for voice message"
+              ? "تسجيل رسالة صوتية — اضغط مطولاً للإملاء"
+              : "Record voice message — long-press to dictate"
       }
     >
       {dictation.busy ? (
@@ -937,45 +940,55 @@ export function ChatComposer({
             {
               // With the CTA showing, the bar reads as a floating button over
               // the thread rather than a solid footer.
-              backgroundColor: disabledAction ? `${colors.card}B3` : colors.card,
+              backgroundColor: hasDisabledActions ? `${colors.card}B3` : colors.card,
               borderTopColor: colors.border,
-              borderTopWidth: disabledAction ? 0 : StyleSheet.hairlineWidth,
+              borderTopWidth: hasDisabledActions ? 0 : StyleSheet.hairlineWidth,
               paddingBottom: bottomInset + 12,
               flexDirection: rowDir,
             },
           ]}
         >
           {leadingControls}
-          {disabledAction ? (
-            <View style={styles.disabledActionWrap}>
-              <Pressable
-                onPress={disabledAction.onPress}
-                accessibilityRole="button"
-                accessibilityLabel={disabledAction.label}
-                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                  styles.disabledActionBtn,
-                  {
-                    flexDirection: rowDir,
-                    backgroundColor: `${disabledAction.color ?? colors.primary}${
-                      pressed || hovered ? "2E" : "1F"
-                    }`,
-                    borderColor: `${disabledAction.color ?? colors.primary}55`,
-                  },
-                ]}
-              >
-                <disabledAction.Icon
-                  size={18}
-                  color={disabledAction.color ?? colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.disabledActionLabel,
-                    { color: disabledAction.color ?? colors.primary },
-                  ]}
-                >
-                  {disabledAction.label}
-                </Text>
-              </Pressable>
+          {hasDisabledActions ? (
+            <View style={[styles.disabledActionWrap, { flexDirection: rowDir }]}>
+              {disabledActions!.map((action) => {
+                // Lead action keeps the accent; the rest sit quieter beside it.
+                const tint = action.color ?? colors.primary;
+                const isLead = action.key === disabledActions![0].key;
+                return (
+                  <Pressable
+                    key={action.key}
+                    onPress={action.onPress}
+                    accessibilityRole="button"
+                    accessibilityLabel={action.label}
+                    style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                      styles.disabledActionBtn,
+                      {
+                        flexDirection: rowDir,
+                        backgroundColor: isLead
+                          ? `${tint}${pressed || hovered ? "2E" : "1F"}`
+                          : pressed || hovered
+                            ? colors.muted
+                            : colors.card,
+                        borderColor: isLead ? `${tint}55` : colors.border,
+                      },
+                    ]}
+                  >
+                    <action.Icon
+                      size={18}
+                      color={isLead ? tint : colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.disabledActionLabel,
+                        { color: isLead ? tint : colors.foreground },
+                      ]}
+                    >
+                      {action.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           ) : (
             <Text
@@ -1134,12 +1147,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: 10,
+    flexWrap: "wrap",
   },
   disabledActionBtn: {
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingHorizontal: 22,
+    paddingHorizontal: 18,
     paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1,

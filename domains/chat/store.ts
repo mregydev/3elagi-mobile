@@ -773,6 +773,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
+    if (msg.type === "document_request" && msg.documentRequest) {
+      emit(CHAT_EVENTS.DOCUMENT_REQUEST_RECEIVED, {
+        peerId,
+        requestId: msg.documentRequest.request_id,
+        requestType: msg.documentRequest.request_type,
+        title: msg.documentRequest.title,
+        doctorName: peer?.name ?? peerNameHint ?? "",
+      });
+    }
+
     if (isViewing) {
       appendMessage();
       if (token) void get().markRead(peerId, token);

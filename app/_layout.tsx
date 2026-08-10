@@ -15,6 +15,7 @@ import { AppointmentSync } from "@/components/AppointmentSync";
 import { IntakeExamNotifications } from "@/components/IntakeExamNotifications";
 import { IntakeExamSync } from "@/components/IntakeExamSync";
 import { ChatNotifications } from "@/components/ChatNotifications";
+import { DocumentRequestAlert } from "@/components/medical/DocumentRequestAlert";
 import { HardwareBackHandler } from "@/components/HardwareBackHandler";
 import { IncomingVideoCallOverlay } from "@/components/IncomingVideoCallOverlay";
 import { AppSplash } from "@/components/SplashScreen";
@@ -123,6 +124,7 @@ export default function RootLayout() {
       <IntakeExamSync />
       <SystemNotificationSync />
       <ChatNotifications />
+      <DocumentRequestAlert />
       <AppointmentNotifications />
       <IntakeExamNotifications />
       <SystemNotifications />
