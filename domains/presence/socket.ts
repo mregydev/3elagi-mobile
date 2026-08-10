@@ -370,6 +370,17 @@ function bindListeners(client: Socket) {
     },
   );
 
+  client.on(
+    "doctor:call-state",
+    (payload: { doctor_user_id?: string; busy?: boolean }) => {
+      if (payload?.doctor_user_id) {
+        usePresenceStore
+          .getState()
+          .setDoctorBusy(payload.doctor_user_id, !!payload.busy);
+      }
+    },
+  );
+
   client.on("doctor:registered", (payload: import("@/domains/home/api").SpecialityDoctorRow) => {
     if (payload?.id && payload?.doctor_id && payload?.speciality_id) {
       onDoctorRegisteredHandler?.(payload);

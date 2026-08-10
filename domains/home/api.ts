@@ -30,6 +30,8 @@ export interface SpecialityDoctorRow {
   rating_average?: number | null;
   rating_total?: number | null;
   consultation_price?: number | null;
+  immediate_call_enabled?: boolean | null;
+  on_call?: boolean | null;
   role: "doctor";
 }
 
@@ -63,6 +65,8 @@ export interface SpecialityDoctor {
   ratingAverage?: number | null;
   ratingTotal?: number | null;
   consultationPrice?: number | null;
+  immediateCallEnabled?: boolean;
+  onCall?: boolean;
 }
 
 function mapAdvertisement(row: AdvertisementRow): Advertisement {
@@ -112,6 +116,8 @@ function mapDoctor(row: SpecialityDoctorRow): SpecialityDoctor {
     ratingAverage: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
     consultationPrice: row.consultation_price ?? 1,
+    immediateCallEnabled: !!row.immediate_call_enabled,
+    onCall: !!row.on_call,
   };
 }
 

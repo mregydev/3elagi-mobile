@@ -102,6 +102,8 @@ export interface ChatUser {
   videoConsultationPrice?: number;
   /** Doctor takes immediate calls from the chat. */
   immediateCallEnabled?: boolean;
+  /** Doctor's call line was busy when this was fetched (live updates via presence). */
+  onCall?: boolean;
   doctorEntityId?: string;
 }
 

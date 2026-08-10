@@ -27,6 +27,37 @@ import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
+/** Red = line busy, green = free to ring right now. Doctors with immediate calls on. */
+function CallStateFlag({
+  onCall,
+  isRTL,
+  colors,
+}: {
+  onCall: boolean;
+  isRTL: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const { t } = useI18n();
+  const tint = onCall ? "#ef4444" : colors.success;
+  return (
+    <View
+      style={[
+        styles.flag,
+        {
+          flexDirection: isRTL ? "row-reverse" : "row",
+          alignSelf: isRTL ? "flex-end" : "flex-start",
+          backgroundColor: `${tint}1A`,
+        },
+      ]}
+    >
+      <View style={[styles.flagDot, { backgroundColor: tint }]} />
+      <Text style={[styles.flagText, { color: tint }]}>
+        {onCall ? t.auth.doctorOnCall : t.auth.doctorAvailableNow}
+      </Text>
+    </View>
+  );
+}
+
 function ConversationRow({
   item,
   colors,
@@ -41,6 +72,9 @@ function ConversationRow({
   const isOnline = usePresenceStore((s) => s.isOnline(item.user.id));
   const presence = isOnline ? "online" : "offline";
   const dir = isRTL ? "row-reverse" : "row";
+  // Socket wins when it has spoken about this doctor; otherwise the fetched flag.
+  const liveBusy = usePresenceStore((s) => s.busyDoctors[item.user.id]);
+  const onCall = liveBusy ?? !!item.user.onCall;
 
   return (
     <Pressable
@@ -71,6 +105,9 @@ function ConversationRow({
             ]}
           />
           <DoctorSubtitle specialty={item.user.specialty} isRTL={isRTL} />
+          {item.user.immediateCallEnabled ? (
+            <CallStateFlag onCall={onCall} isRTL={isRTL} colors={colors} />
+          ) : null}
         </View>
 
         <View style={[styles.trailingCol, { alignItems: isRTL ? "flex-start" : "flex-end" }]}>
@@ -286,6 +323,16 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   name: { fontSize: 16, fontWeight: "600" },
+  flag: {
+    marginTop: 4,
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  flagDot: { width: 7, height: 7, borderRadius: 3.5 },
+  flagText: { fontSize: 11, fontWeight: "700" },
   divider: { height: StyleSheet.hairlineWidth },
   empty: { alignItems: "center", paddingVertical: 60 },
 });

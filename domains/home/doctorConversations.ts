@@ -17,6 +17,8 @@ export function doctorsToConversations(
       rating: d.ratingAverage ?? undefined,
       ratingTotal: d.ratingTotal ?? undefined,
       consultationPrice: d.consultationPrice ?? 1,
+      immediateCallEnabled: !!d.immediateCallEnabled,
+      onCall: !!d.onCall,
       doctorEntityId: d.doctorId,
     }),
   );
