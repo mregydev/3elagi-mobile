@@ -32,6 +32,7 @@ import {
 } from "@/domains/video-call/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useRinger } from "@/hooks/useRinger";
 import { chatFlexRow } from "@/utils/rtl";
 import { showInfoToast, showSuccessToast, showErrorToast } from "@/utils/toast";
 
@@ -341,6 +342,9 @@ export default function VideoCallScreen() {
     !!session && isPatient && session.status === "ringing";
   const incomingForDoctor =
     !!session && isDoctor && session.status === "ringing";
+  // Patient hears the ringback while dialing; the doctor hears the ringtone.
+  useRinger("ringback", waitingForDoctor);
+  useRinger("ringtone", incomingForDoctor && !acting);
   const countdownLabel = formatRemainingTime(remainingSeconds);
 
   const endMeetingForTimeout = useCallback(() => {

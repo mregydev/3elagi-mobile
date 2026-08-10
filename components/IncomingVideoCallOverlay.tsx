@@ -14,6 +14,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { onIncomingVideoCall, onVideoCallStatus } from "@/domains/presence/socket";
 import { acceptVideoCall, declineVideoCall } from "@/domains/video-call/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useRinger } from "@/hooks/useRinger";
 
 type IncomingCall = {
   sessionId: string;
@@ -30,6 +31,7 @@ export function IncomingVideoCallOverlay() {
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
 
   const isDoctor = role?.toLowerCase() === "doctor";
+  useRinger("ringtone", !!incoming && isDoctor && !busy);
 
   useEffect(() => {
     onIncomingVideoCall((payload) => {
