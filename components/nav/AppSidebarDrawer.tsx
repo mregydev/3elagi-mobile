@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppSidebarNav } from "@/components/nav/AppSidebarNav";
+import { MobileAppLink } from "@/components/web/MobileAppLink";
 import { useAppSidebar } from "@/contexts/AppSidebarContext";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -75,7 +76,11 @@ export function AppSidebarDrawer() {
             </Pressable>
           </View>
           <View style={styles.navHost}>
-            <AppSidebarNav onNavigate={closeSidebar} />
+            {/* Web-only: renders null on native, where the app is already installed. */}
+            <AppSidebarNav
+              onNavigate={closeSidebar}
+              footerExtra={<MobileAppLink variant="nav" />}
+            />
           </View>
         </View>
         <Pressable

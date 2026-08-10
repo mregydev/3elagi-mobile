@@ -54,43 +54,42 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   prepend: (item) => {
     const exists = get().items.some((n) => n.id === item.id);
     if (exists) return;
-    const wasUnread = !item.read_at;
+    // Already handled elsewhere (another device) — nothing to show here.
+    if (item.read_at) return;
     set((s) => ({
       items: [item, ...s.items],
-      unreadCount: wasUnread ? s.unreadCount + 1 : s.unreadCount,
+      unreadCount: s.unreadCount + 1,
     }));
   },
 
+  // The inbox holds unhandled notifications only, so reading one drops it.
   markRead: async (token, id) => {
     const prev = get().items.find((n) => n.id === id);
-    if (prev && !prev.read_at) {
-      set((s) => ({
-        items: s.items.map((n) =>
-          n.id === id ? { ...n, read_at: new Date().toISOString() } : n,
-        ),
-        unreadCount: Math.max(0, s.unreadCount - 1),
-      }));
-    }
+    if (!prev) return;
+    set((s) => ({
+      items: s.items.filter((n) => n.id !== id),
+      unreadCount: prev.read_at ? s.unreadCount : Math.max(0, s.unreadCount - 1),
+    }));
     try {
-      const saved = await markNotificationRead(token, id);
-      set((s) => ({
-        items: s.items.map((n) => (n.id === saved.id ? saved : n)),
-      }));
+      await markNotificationRead(token, id);
     } catch {
+      // Put it back so a failed write doesn't silently lose the notification.
+      set((s) => ({
+        items: [prev, ...s.items].sort((a, b) =>
+          b.created_at.localeCompare(a.created_at),
+        ),
+      }));
       await get().refreshUnread(token);
     }
   },
 
   markAllRead: async (token) => {
-    set((s) => ({
-      items: s.items.map((n) =>
-        n.read_at ? n : { ...n, read_at: new Date().toISOString() },
-      ),
-      unreadCount: 0,
-    }));
+    const prev = get().items;
+    set({ items: [], unreadCount: 0 });
     try {
       await markAllNotificationsRead(token);
     } catch {
+      set({ items: prev });
       await get().load(token);
     }
   },

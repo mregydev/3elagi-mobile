@@ -343,7 +343,7 @@ const en = {
     notifications: "Notifications",
   },
   inbox: {
-    empty: "No notifications yet",
+    empty: "You're all caught up",
     markAllRead: "Mark all read",
   },
   contact: {
@@ -981,7 +981,7 @@ const ar: typeof en = {
     notifications: "الإشعارات",
   },
   inbox: {
-    empty: "لا توجد إشعارات بعد",
+    empty: "لا توجد إشعارات معلقة",
     markAllRead: "تعليميل الكل كمقروء",
   },
   contact: {
@@ -1620,7 +1620,7 @@ const de: typeof en = {
     notifications: "Benachrichtigungen",
   },
   inbox: {
-    empty: "Noch keine Benachrichtigungen",
+    empty: "Alles erledigt",
     markAllRead: "Alle gelesen",
   },
   contact: {
@@ -2260,7 +2260,7 @@ const es: typeof en = {
     notifications: "Notificaciones",
   },
   inbox: {
-    empty: "Aún no hay notificaciones",
+    empty: "No tienes nada pendiente",
     markAllRead: "Marcar todo leído",
   },
   contact: {

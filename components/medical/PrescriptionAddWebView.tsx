@@ -25,6 +25,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { useAuthStore } from "@/domains/auth/store";
 import { sharePrescriptionToChat } from "@/domains/medical/sharePrescriptionToChat";
 import {
@@ -843,6 +844,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
+    // Pinned height so the Ask AI FAB knows exactly how far to lift.
+    minHeight: MEDICAL_FORM_SAVE_BAR_HEIGHT,
   },
   cancelBtn: {
     paddingHorizontal: 16,

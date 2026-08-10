@@ -32,12 +32,14 @@ async function authJson<T>(
   return data;
 }
 
+/** The inbox only lists what the user has not handled yet. */
 export async function fetchNotifications(
   token: string,
   limit = 50,
+  unreadOnly = true,
 ): Promise<AppNotification[]> {
   const data = await authJson<AppNotification[]>(
-    `/notifications?limit=${limit}`,
+    `/notifications?limit=${limit}${unreadOnly ? "&unread=1" : ""}`,
     token,
   );
   return Array.isArray(data) ? data : [];

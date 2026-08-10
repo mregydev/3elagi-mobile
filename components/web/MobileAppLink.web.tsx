@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Linking, Pressable, StyleSheet, Text } from "react-native";
 import Svg, {
   Circle,
   Defs,
@@ -9,6 +9,7 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import { MobileAppDownloadModal } from "@/components/web/MobileAppDownloadModal.web";
+import { ANDROID_APP_URL } from "@/constants/mobileApp";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -67,7 +68,16 @@ export function MobileAppLink({ variant = "link" }: Props) {
   const dir = flexRow(isRTL);
   const [open, setOpen] = useState(false);
 
-  if (!isDesktop) return null;
+  // Desktop shows a QR to scan with the phone; on a phone that is useless, so
+  // the link opens the download directly.
+  const openDownload = () => {
+    if (isDesktop) {
+      setOpen(true);
+      return;
+    }
+    void Linking.openURL(ANDROID_APP_URL);
+  };
+
   const iconSize =
     variant === "nav" ? 18 : variant === "button" ? 20 : variant === "toolbar" ? 16 : 16;
   const labelStyle =
@@ -92,7 +102,7 @@ export function MobileAppLink({ variant = "link" }: Props) {
   return (
     <>
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={openDownload}
         accessibilityRole="button"
         accessibilityLabel={t.mobileApp.linkLabel}
         style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [

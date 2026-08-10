@@ -23,6 +23,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
@@ -861,6 +862,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
+    // Pinned height so the Ask AI FAB knows exactly how far to lift.
+    minHeight: MEDICAL_FORM_SAVE_BAR_HEIGHT,
   },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 11 },
   zoomBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)" },

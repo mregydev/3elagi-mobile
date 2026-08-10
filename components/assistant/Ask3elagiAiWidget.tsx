@@ -38,6 +38,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
+import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
 import { viewportPortal } from "@/utils/viewportPortal";
 
@@ -67,6 +68,13 @@ function recordsAddBarFabOffset(
   const onBodyPartRecords = Boolean(pathname?.includes("/medical/body"));
   if (!onRecordsTab && !onPatientRecords && !onBodyPartRecords) return 0;
   return MEDICAL_RECORD_ADD_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_CHROME_GAP;
+}
+
+/** The medical add / prescription forms dock a Save + Cancel bar — clear it. */
+function medicalFormSaveBarFabOffset(pathname: string | null): number {
+  if (!pathname) return 0;
+  if (!/\/medical\/(add|prescription\/add)/.test(pathname)) return 0;
+  return MEDICAL_FORM_SAVE_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_CHROME_GAP;
 }
 
 /** Profile pages dock a Save bar — lift the FAB above it. */
@@ -586,10 +594,12 @@ export function Ask3elagiAiWidget() {
     isDesktop,
   );
   const hideFab = hideFabOnChatRoute(pathname, segments as string[]);
+  const medicalFormLift = medicalFormSaveBarFabOffset(pathname);
   const bottom =
     Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) +
     addBarLift +
-    profileLift;
+    profileLift +
+    medicalFormLift;
   // Bottom-right in English (LTR), bottom-left in Arabic (RTL).
   const sideStyle = isRTL
     ? { left: edge, right: undefined as number | undefined }

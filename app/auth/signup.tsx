@@ -20,6 +20,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
+import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
@@ -251,11 +252,11 @@ export default function SignupScreen() {
     }
   };
 
-  return (
+  const screen = (
     <View
       style={[
         styles.screen,
-        { backgroundColor: Platform.OS === "web" ? "transparent" : colors.background },
+        { backgroundColor: "transparent" },
         Platform.OS === "web" && styles.screenWeb,
       ]}
     >
@@ -633,6 +634,12 @@ export default function SignupScreen() {
       </KeyboardSafeScrollView>
     </View>
   );
+
+  if (Platform.OS === "web") {
+    return screen;
+  }
+
+  return <AuthLoginBackground>{screen}</AuthLoginBackground>;
 }
 
 function RoleChip({
