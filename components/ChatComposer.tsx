@@ -74,6 +74,8 @@ interface Props {
   onComposerFocus?: () => void;
   disabled?: boolean;
   disabledHint?: string;
+  /** Replaces the disabled hint with a centered call-to-action button. */
+  disabledAction?: ChatAction;
   /** Patient-only: show medical record + AI insight options on image attach. */
   canStoreImageInMedicalRecord?: boolean;
   medicalRecordPatientUserId?: string;
@@ -152,6 +154,7 @@ export function ChatComposer({
   onComposerFocus,
   disabled = false,
   disabledHint,
+  disabledAction,
   canStoreImageInMedicalRecord = false,
   medicalRecordPatientUserId,
   onMedicalRecordCreated,
@@ -740,7 +743,10 @@ export function ChatComposer({
   const leadingControls =
     !isEditing && (plusButton || inlineAction) ? (
       <View style={[styles.leadingControls, { flexDirection: rowDir }]}>
-        {plusButton}
+        {/* The start-consultation CTA is the only thing to do here, so the plus
+            would just be clutter. inlineAction stays mounted either way — it
+            owns the dialog the CTA opens. */}
+        {disabledAction ? null : plusButton}
         {inlineAction}
       </View>
     ) : null;
@@ -923,24 +929,60 @@ export function ChatComposer({
           style={[
             styles.disabledBar,
             {
-              backgroundColor: colors.card,
+              // With the CTA showing, the bar reads as a floating button over
+              // the thread rather than a solid footer.
+              backgroundColor: disabledAction ? `${colors.card}B3` : colors.card,
               borderTopColor: colors.border,
+              borderTopWidth: disabledAction ? 0 : StyleSheet.hairlineWidth,
               paddingBottom: bottomInset + 12,
               flexDirection: rowDir,
             },
           ]}
         >
           {leadingControls}
-          <Text
-            style={{
-              flex: 1,
-              color: colors.mutedForeground,
-              textAlign: "center",
-              fontSize: 13,
-            }}
-          >
-            {disabledHint ?? (isRTL ? "المحادثة محظورة" : "Chat is blocked")}
-          </Text>
+          {disabledAction ? (
+            <View style={styles.disabledActionWrap}>
+              <Pressable
+                onPress={disabledAction.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={disabledAction.label}
+                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                  styles.disabledActionBtn,
+                  {
+                    flexDirection: rowDir,
+                    backgroundColor: `${disabledAction.color ?? colors.primary}${
+                      pressed || hovered ? "2E" : "1F"
+                    }`,
+                    borderColor: `${disabledAction.color ?? colors.primary}55`,
+                  },
+                ]}
+              >
+                <disabledAction.Icon
+                  size={18}
+                  color={disabledAction.color ?? colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.disabledActionLabel,
+                    { color: disabledAction.color ?? colors.primary },
+                  ]}
+                >
+                  {disabledAction.label}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text
+              style={{
+                flex: 1,
+                color: colors.mutedForeground,
+                textAlign: "center",
+                fontSize: 13,
+              }}
+            >
+              {disabledHint ?? (isRTL ? "المحادثة محظورة" : "Chat is blocked")}
+            </Text>
+          )}
         </View>
       ) : (
         <View
@@ -1078,6 +1120,25 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     paddingTop: 10,
+  },
+  disabledActionWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  disabledActionBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    cursor: "pointer" as "auto",
+  },
+  disabledActionLabel: {
+    fontSize: 15,
+    fontWeight: "700",
   },
   recordingBar: {
     alignItems: "center",

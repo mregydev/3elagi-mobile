@@ -47,6 +47,18 @@ export function scrollChatToLatest<T>(
 
   const scroll = () => {
     if (!shouldContinue()) return;
+
+    // Already parked at the latest edge — writing the offset again only makes
+    // the list jump, which is what the chat flicker looked like.
+    if (Platform.OS === "web") {
+      const node = getWebScrollNode(list);
+      if (node) {
+        const target = inverted ? 0 : node.scrollHeight;
+        if (Math.abs(node.scrollTop - target) > 1) node.scrollTop = target;
+        return;
+      }
+    }
+
     try {
       if (inverted) {
         list.scrollToOffset({ offset: 0, animated });
@@ -56,21 +68,17 @@ export function scrollChatToLatest<T>(
     } catch {
       // List may not be laid out yet.
     }
-
-    if (Platform.OS === "web") {
-      const node = getWebScrollNode(list);
-      if (!node) return;
-      if (inverted) {
-        node.scrollTop = 0;
-      } else {
-        node.scrollTop = node.scrollHeight;
-      }
-    }
   };
 
+  // One retry, late enough to cover a not-yet-laid-out list. Bursts of calls
+  // (images finishing, text reflowing) collapse into a single pending retry
+  // instead of each queueing its own storm of jumps.
   requestAnimationFrame(scroll);
-  // Short retries only — long delayed jumps fight the user while they scroll up.
-  setTimeout(scroll, 16);
-  setTimeout(scroll, 80);
-  setTimeout(scroll, 200);
+  if (pendingRetry !== null) clearTimeout(pendingRetry);
+  pendingRetry = setTimeout(() => {
+    pendingRetry = null;
+    scroll();
+  }, 200);
 }
+
+let pendingRetry: ReturnType<typeof setTimeout> | null = null;

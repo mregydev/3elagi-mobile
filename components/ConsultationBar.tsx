@@ -121,6 +121,7 @@ export function ConsultationBar({
   const { t } = useI18n();
   const sendMessage = useChatStore((s) => s.sendMessage);
   const [active, setActive] = useState<Consultation | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [modal, setModal] = useState<null | "start" | "end" | "cancel">(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -155,6 +156,8 @@ export function ConsultationBar({
       setActive(c);
     } catch {
       setActive(null);
+    } finally {
+      setLoaded(true);
     }
   }, [enabled, peerId, token]);
 
@@ -180,10 +183,15 @@ export function ConsultationBar({
     }
   }, [latestAction]);
 
+  // Never report "no consultation" before the first load has answered. The
+  // composer swaps layout on that flag, which remounts this bar and resets
+  // `active` — reporting the reset state back flipped it straight again and
+  // the chat flickered between the two composer layouts forever.
   useEffect(() => {
+    if (!loaded) return;
     onOpenChange?.(active?.status === "open");
     onActiveChange?.(active?.status === "open" ? active : null);
-  }, [active, onOpenChange, onActiveChange]);
+  }, [active, loaded, onOpenChange, onActiveChange]);
 
   // A patient may complain about the most recently ended consultation.
   const endedConsultationId =
@@ -333,7 +341,7 @@ export function ConsultationBar({
             type: "medical_link",
             content: recNote?.trim() || record.title,
             medicalLink: {
-              record_type: record.category as "lab" | "xray" | "diagnosis" | "intake",
+              record_type: record.category,
               record_id: record.id,
               title: record.title,
               ...(recNote?.trim() ? { note: recNote.trim() } : {}),

@@ -26,6 +26,7 @@ import { navigateBack } from "@/utils/appNavigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
+import { sharePrescriptionToChat } from "@/domains/medical/sharePrescriptionToChat";
 import {
   createPrescriptionForPatientUser,
   draftAiPrescriptionForDiagnosis,
@@ -333,6 +334,16 @@ export default function AddPrescriptionScreen() {
       );
       upsertPrescription(saved);
       scheduleReminder(saved);
+      if (isDoctor && patientUserIdParam && profile?.id) {
+        await sharePrescriptionToChat({
+          patientUserId,
+          prescriptionId: saved.id,
+          title: trimmedTitle,
+          token: accessToken,
+          selfId: profile.id,
+          selfRole: role,
+        });
+      }
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);

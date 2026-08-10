@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Beaker, Check, CheckCheck, ChevronRight, ClipboardList, ImageIcon, ScanLine, Stethoscope } from "lucide-react-native";
+import { Beaker, Check, CheckCheck, ChevronRight, ClipboardList, ImageIcon, Pill, ScanLine, Stethoscope } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -328,9 +328,13 @@ export function ChatMessageBubble({
             ? isRTL
               ? "فحص متابعة"
               : "Follow-up exam"
-            : isRTL
-              ? "تشخيص"
-              : "Diagnosis";
+            : link.record_type === "prescription"
+              ? isRTL
+                ? "روشتة"
+                : "Prescription"
+              : isRTL
+                ? "تشخيص"
+                : "Diagnosis";
     const RecordIcon =
       link.record_type === "lab"
         ? Beaker
@@ -338,7 +342,9 @@ export function ChatMessageBubble({
           ? ScanLine
           : link.record_type === "intake"
             ? ClipboardList
-            : Stethoscope;
+            : link.record_type === "prescription"
+              ? Pill
+              : Stethoscope;
     const title = link.title?.trim() || (isRTL ? "سجل طبي" : "Medical record");
     const legacyNote =
       item.text?.trim() && item.text.trim() !== title ? item.text.trim() : "";

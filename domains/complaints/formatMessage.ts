@@ -86,7 +86,9 @@ export function formatComplaintMessageText(m: ComplaintMessage): string {
               ? "Diagnosis record"
               : link?.record_type === "intake"
                 ? "Intake exam"
-                : "Medical record";
+                : link?.record_type === "prescription"
+                  ? "Prescription"
+                  : "Medical record";
       const base = title ? `${typeLabel}: ${title}` : typeLabel;
       const linkNote = link?.note?.trim();
       return linkNote ? `${base} — ${linkNote}` : base;

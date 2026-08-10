@@ -159,14 +159,18 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const messageAnchorsRef = useRef<Map<string, View>>(new Map());
   const stickToBottomRef = useRef(true);
   const lastMessageTokenRef = useRef("");
-  const onlineUsers = usePresenceStore((s) => s.users);
+  // Only this peer's presence matters here. Subscribing to the whole users map
+  // re-rendered the entire chat every time *any* user in the app logged in/out.
+  const peerOnline = usePresenceStore((s) => !!s.users[id ?? ""]);
 
   const peerCacheTick = useChatStore((s) => s.peerCacheTick);
+  // `messages` is deliberately not a dep — resolvePeer never reads it, and it
+  // rebuilt `peer` (a fresh object) on every single incoming message.
   const peer = useMemo(() => {
     if (!id) return undefined;
     const resolved = resolvePeer(id);
     return resolved ? applyLivePresence(resolved) : undefined;
-  }, [id, resolvePeer, conversations, contactsReady, onlineUsers, messages, peerCacheTick]);
+  }, [id, resolvePeer, conversations, contactsReady, peerOnline, peerCacheTick]);
 
   useEffect(() => {
     if (!id || !accessToken || peer?.photoUrl) return;
@@ -195,6 +199,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return null;
   }, [messages]);
   const [consultationOpen, setConsultationOpen] = useState(false);
+  // Start / end consultation live in the plus menu, published by ConsultationBar.
+  const [consultationMenuActions, setConsultationMenuActions] = useState<ChatAction[]>([]);
   const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
 
   // Stable identity: ConsultationBar re-runs its sync effect on every callback change.
@@ -1006,11 +1012,18 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8 }
     : { padding: 14, gap: 6, paddingBottom: 12 };
 
+  // With no consultation open the composer is disabled anyway, so "start" is
+  // promoted to a centered button in its place rather than hidden in the menu.
+  const startConsultationAction = needsConsultation
+    ? consultationMenuActions.find((a) => a.key === "consult-start")
+    : undefined;
+
   // Quick actions — collapsed under the plus button context window beside the input.
-  // Start/end consultation stays as an inline pill beside the plus (not in this menu).
+  // Start/end consultation is published into this menu by ConsultationBar.
   const chatActions: ChatAction[] = chatBlocked
     ? []
     : [
+        ...consultationMenuActions.filter((a) => a.key !== startConsultationAction?.key),
         ...(isDoctor && canUseDiagnosisTemplates
           ? [
               {
@@ -1203,7 +1216,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
       <View style={[styles.chatBody, desktopLayout && styles.chatBodyDesktop]}>
       <View ref={chatBodyRef} style={styles.chatBodyInner} collapsable={false}>
-      {messagesLoading ? (
+      {/* Only blank the thread on a cold load — a refresh must not unmount the
+          list, that flashed a spinner over messages we already had. */}
+      {messagesLoading && messages.length === 0 ? (
         <View style={styles.loadingMessages}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -1219,6 +1234,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             countLabel={t.consultations.archivedCount}
           />
         ) : null}
+        {/* No onContentSizeChange / onLayout re-scroll: the list is inverted
+            whenever it has data, so it stays pinned to the newest message by
+            itself. Re-scrolling on every resize (an image finishing loading,
+            text reflowing) is what made the thread jump around. */}
         <FlatList
           ref={listRef}
           data={listData}
@@ -1254,12 +1273,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                 // give up silently
               }
             }, 300);
-          }}
-          onContentSizeChange={() => {
-            if (stickToBottomRef.current) scrollToLatest(false);
-          }}
-          onLayout={() => {
-            if (stickToBottomRef.current && messages.length > 0) scrollToLatest(false);
           }}
           maintainVisibleContentPosition={
             listInverted
@@ -1431,6 +1444,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           isDoctorPatientChat && !chatBlocked ? (
             <ConsultationBar
               compact
+              menuOnly
+              onMenuActionsChange={setConsultationMenuActions}
               peerId={id}
               isPatient={isPatient}
               isDoctor={isDoctor}
@@ -1450,6 +1465,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         onCancelEdit={() => setEditingMessage(null)}
         onEdit={handleEditMessage}
         disabled={chatBlocked || needsConsultation}
+        disabledAction={chatBlocked ? undefined : startConsultationAction}
         disabledHint={
           needsConsultation && !chatBlocked
             ? isPatient

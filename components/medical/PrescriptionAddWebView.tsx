@@ -26,6 +26,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useAuthStore } from "@/domains/auth/store";
+import { sharePrescriptionToChat } from "@/domains/medical/sharePrescriptionToChat";
 import {
   createPrescriptionForPatientUser,
   draftAiPrescriptionForDiagnosis,
@@ -389,6 +390,16 @@ export function PrescriptionAddWebView() {
       );
       upsertPrescription(saved);
       scheduleReminder(saved);
+      if (isDoctor && patientUserIdParam && profile?.id) {
+        await sharePrescriptionToChat({
+          patientUserId,
+          prescriptionId: saved.id,
+          title: trimmedTitle,
+          token: accessToken,
+          selfId: profile.id,
+          selfRole: role,
+        });
+      }
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);

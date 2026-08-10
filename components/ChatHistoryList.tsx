@@ -133,7 +133,6 @@ export function ChatHistoryList({
   emptyLabel,
 }: Props) {
   const colors = useColors();
-  const onlineUsers = usePresenceStore((s) => s.users);
 
   if (loading && conversations.length === 0) {
     return <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />;
@@ -149,11 +148,12 @@ export function ChatHistoryList({
     );
   }
 
+  // No presence extraData / users subscription here: each row watches its own
+  // peer, so the whole list no longer repaints when any user logs in or out.
   return (
     <FlatList
       data={conversations}
       keyExtractor={(c) => c.id}
-      extraData={onlineUsers}
       contentContainerStyle={
         conversations.length === 0 ? styles.emptyContainer : { paddingBottom: 24 }
       }
