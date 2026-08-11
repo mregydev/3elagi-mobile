@@ -1,5 +1,6 @@
 import { ResizeMode, Video } from "expo-av";
-import React, { useRef } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
@@ -15,6 +16,18 @@ export function HomeBannerVideo() {
   const colors = useColors();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const videoRef = useRef<Video>(null);
+
+  // Navigating away pauses the player, and `shouldPlay` alone does not restart
+  // it on the way back — the banner came back as a frozen/blank frame.
+  useFocusEffect(
+    useCallback(() => {
+      const video = videoRef.current;
+      void video?.playAsync().catch(() => undefined);
+      return () => {
+        void videoRef.current?.pauseAsync().catch(() => undefined);
+      };
+    }, []),
+  );
 
   const horizontalPadding = 16;
   const bannerWidth = Math.max(280, windowWidth - horizontalPadding * 2);

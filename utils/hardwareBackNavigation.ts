@@ -19,13 +19,24 @@ export function isAiChatPath(pathname: string): boolean {
 
 /**
  * Resolve the action for hardware / mobile back on the current route.
- * Returns null when the default OS behavior should run (e.g. exit app).
+ * Returns null when the default OS behavior should run (i.e. exit the app).
+ *
+ * Order matters: real navigation history wins, so back retraces the pages the
+ * user actually visited. The per-route destinations below are only fallbacks
+ * for when there is no history to pop — a chat opened straight from a push
+ * notification, for instance.
  */
 export function getHardwareBackAction(
   pathname: string,
   router: Pick<Router, "back" | "replace" | "canGoBack">,
 ): (() => void) | null {
   const path = normalizePathname(pathname);
+
+  if (canNavigateBack(router)) {
+    return () => {
+      navigateBack(router);
+    };
+  }
 
   if (isNormalChatPath(path)) {
     return leaveChatToHistory;
@@ -65,18 +76,7 @@ export function getHardwareBackAction(
     };
   }
 
-  if (canNavigateBack(router)) {
-    return () => {
-      navigateBack(router);
-    };
-  }
-
-  // Native stack screens outside tabs: prefer home over exiting the app.
-  if (!path.includes("/(tabs)") && path !== "/" && !path.endsWith("/welcome")) {
-    return () => {
-      navigateBack(router, "/(tabs)");
-    };
-  }
-
+  // Nothing left in history and no route-specific home to fall back to:
+  // hand back to the OS, which closes the app.
   return null;
 }

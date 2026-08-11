@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import {
+  dismissAllNotifications,
+  dismissChatNotifications,
+} from "@/domains/push/dismiss";
+import {
   fetchNotifications,
   fetchUnreadNotificationCount,
   markAllNotificationsRead,
@@ -70,6 +74,8 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       items: s.items.filter((n) => n.id !== id),
       unreadCount: prev.read_at ? s.unreadCount : Math.max(0, s.unreadCount - 1),
     }));
+    const chatId = prev.data?.chatId;
+    if (chatId) void dismissChatNotifications(chatId);
     try {
       await markNotificationRead(token, id);
     } catch {
@@ -86,6 +92,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   markAllRead: async (token) => {
     const prev = get().items;
     set({ items: [], unreadCount: 0 });
+    void dismissAllNotifications();
     try {
       await markAllNotificationsRead(token);
     } catch {

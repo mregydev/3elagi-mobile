@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -17,6 +18,21 @@ export function HomeBannerVideo() {
   const colors = useColors();
   const { width, height: windowHeight } = useWindowDimensions();
   const { isDesktop } = useWebLayout();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Back navigation restores the page with the element paused (and autoplay
+  // only ever fires once), which left an empty banner box.
+  useFocusEffect(
+    useCallback(() => {
+      const play = () => {
+        const el = videoRef.current;
+        if (el?.paused) void el.play().catch(() => undefined);
+      };
+      play();
+      document.addEventListener("visibilitychange", play);
+      return () => document.removeEventListener("visibilitychange", play);
+    }, []),
+  );
 
   const horizontalPadding = isDesktop ? 24 : 16;
   const bannerWidth = Math.max(280, width - horizontalPadding * 2);
@@ -46,6 +62,7 @@ export function HomeBannerVideo() {
         ]}
       >
         {React.createElement("video", {
+          ref: videoRef,
           src,
           autoPlay: true,
           muted: true,

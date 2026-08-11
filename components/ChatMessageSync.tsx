@@ -8,6 +8,7 @@ import {
   onChatMessageDeleted,
   onChatMessageNew,
   onChatMessageUpdated,
+  onChatMessagesRead,
   onChatStopTyping,
   onChatTyping,
   onMessageEmotionUpdated,
@@ -23,6 +24,7 @@ export function ChatMessageSync() {
   const handleIncomingMessageUpdate = useChatStore((s) => s.handleIncomingMessageUpdate);
   const updateMessageEmotions = useChatStore((s) => s.updateMessageEmotions);
   const setPeerTyping = useChatStore((s) => s.setPeerTyping);
+  const markThreadReadByPeer = useChatStore((s) => s.markThreadReadByPeer);
 
   useEffect(() => {
     if (!accessToken || !selfId || !canUseChat(role)) return;
@@ -49,6 +51,14 @@ export function ChatMessageSync() {
       socket?.off("connect", onConnect);
     };
   }, [accessToken, selfId, role, handleIncomingMessage, handleIncomingMessageDelete, handleIncomingMessageUpdate]);
+
+  // Peer opened our thread — flip our sent messages to read straight away.
+  useEffect(() => {
+    onChatMessagesRead((payload) => {
+      markThreadReadByPeer(payload.peer_id, payload.read_at);
+    });
+    return () => onChatMessagesRead(null);
+  }, [markThreadReadByPeer]);
 
   useEffect(() => {
     onMessageEmotionUpdated((payload) => {

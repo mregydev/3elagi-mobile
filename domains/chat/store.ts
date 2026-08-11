@@ -19,6 +19,7 @@ import { emit, on } from "@/utils/eventBus";
 import { CHAT_EVENTS, type ChatMessageReceivedPayload } from "./events";
 import { chatMessagePreview, chatNotificationTitle } from "@/utils/chatNotifications";
 import { AUTH_EVENTS } from "@/domains/auth/events";
+import { dismissChatNotifications } from "@/domains/push/dismiss";
 import { chatRepository } from "./repository";
 import type { MessageEmotionItem } from "@/domains/emotions";
 import type {
@@ -118,6 +119,8 @@ interface ChatState {
   getPeer: (conversationId: string) => ChatUser | undefined;
   updateMessageEmotions: (messageId: string, emotions: MessageEmotionItem[]) => void;
   patchMessage: (messageId: string, patch: Partial<ChatMessage>) => void;
+  /** Peer read the thread: stamp every message we sent them as read. */
+  markThreadReadByPeer: (peerId: string, readAt: string) => void;
   clear: () => void;
 }
 
@@ -539,6 +542,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // ignore
       }
     }
+    // Handled: the user is looking at the thread, so drop its tray entries.
+    void dismissChatNotifications(peerId);
     const idx = baseConversations.findIndex((c) => c.id === peerId);
     if (idx >= 0) {
       baseConversations[idx] = { ...baseConversations[idx], unreadCount: 0 };
@@ -873,6 +878,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return { messages: nextMessages, conversations };
     });
   },
+
+  markThreadReadByPeer: (peerId, readAt) =>
+    set((s) => {
+      const thread = s.messages[peerId];
+      if (!thread?.length) return s;
+      let changed = false;
+      const next = thread.map((m) => {
+        if (m.senderId !== "me" || m.readAt) return m;
+        changed = true;
+        return { ...m, readAt };
+      });
+      return changed ? { messages: { ...s.messages, [peerId]: next } } : s;
+    }),
 
   clear: () => {
     baseConversations = [];

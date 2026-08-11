@@ -36,6 +36,9 @@ let onMessageEmotionUpdatedHandler:
       emotions: Array<{ user_id: string; emotion: import("@/domains/emotions/types").MessageEmotionType }>;
     }) => void)
   | null = null;
+let onMessagesReadHandler:
+  | ((payload: { peer_id: string; read_at: string }) => void)
+  | null = null;
 let onDoctorRegisteredHandler:
   | ((payload: import("@/domains/home/api").SpecialityDoctorRow) => void)
   | null = null;
@@ -119,6 +122,13 @@ export function onChatMessageUpdated(
   handler: ((payload: { message: MessageRow; peer_id: string }) => void) | null,
 ) {
   onMessageUpdatedHandler = handler;
+}
+
+/** Peer opened the thread and read everything we sent them. */
+export function onChatMessagesRead(
+  handler: ((payload: { peer_id: string; read_at: string }) => void) | null,
+) {
+  onMessagesReadHandler = handler;
 }
 
 export function onChatTyping(handler: ((payload: { peer_id: string }) => void) | null) {
@@ -336,6 +346,17 @@ function bindListeners(client: Socket) {
   client.on("message:deleted", (payload: { message_id: string; peer_id: string }) => {
     if (payload?.message_id && payload?.peer_id) onMessageDeletedHandler?.(payload);
   });
+
+  client.on(
+    "messages:read",
+    (payload: { peer_id?: string; read_at?: string }) => {
+      if (!payload?.peer_id) return;
+      onMessagesReadHandler?.({
+        peer_id: payload.peer_id,
+        read_at: payload.read_at ?? new Date().toISOString(),
+      });
+    },
+  );
 
   client.on("message:updated", (payload: { message: MessageRow; peer_id: string }) => {
     if (payload?.message?.id && payload?.peer_id) onMessageUpdatedHandler?.(payload);

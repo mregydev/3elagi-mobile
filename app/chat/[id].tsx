@@ -97,6 +97,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const { isRTL, t } = useI18n();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
+  const keyboardHeight = useKeyboardState((s) => s.height);
   const role = useAuthStore((s) => s.role);
   const { id: rawPeerId, consultationId: rawConsultationId } =
     useLocalSearchParams<{ id: string; consultationId?: string }>();
@@ -417,6 +418,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     scrollToLatest(!isInitialBatch);
   }, [id, messages, messagesLoading, scrollToLatest]);
 
+  // Opening the keyboard means the user is about to type — put them on the
+  // newest message, whatever they had scrolled to.
+  useEffect(() => {
+    if (!keyboardVisible || Platform.OS === "web") return;
+    stickToBottomRef.current = true;
+    scrollToLatest(false);
+  }, [keyboardVisible, scrollToLatest]);
+
   // Deep-link from the doctor's consultation list: scroll to and highlight it.
   useEffect(() => {
     if (!consultationId || messagesLoading) return;
@@ -616,8 +625,15 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
     sendingRef.current = true;
     setSending(true);
+    // Sending always lands you on your own message. Pinned here rather than
+    // left to the message effect alone: clearing a multi-line composer resizes
+    // the footer mid-scroll, and that transient can clear the stick flag and
+    // cancel the pending retry.
+    stickToBottomRef.current = true;
     try {
       await sendMessage(id, input, accessToken, profile!.id, role, replaceTempId);
+      stickToBottomRef.current = true;
+      scrollToLatest(false);
     } catch (e) {
       if (replaceTempId) failPendingMessage(id, replaceTempId);
       if ((e as Error).message !== "SEND_ABORTED") {
@@ -1011,7 +1027,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       : Math.max(insets.bottom, 0);
   const listPadding = desktopLayout
     ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8 }
-    : { padding: 14, gap: 6, paddingBottom: 12 };
+    : {
+        padding: 14,
+        gap: 6,
+        paddingBottom: 12,
+        // Inverted list: paddingTop is the visual gap *below* the newest
+        // message. The composer is translated over the list by
+        // KeyboardStickyView rather than shrinking it, so with the keyboard up
+        // the list has to reserve that height itself — otherwise the message
+        // just sent sits underneath the input and the keys.
+        paddingTop: keyboardVisible ? keyboardHeight + 14 : 14,
+      };
 
   // With no consultation open the composer is disabled anyway, so "start" is
   // promoted to a centered button in its place rather than hidden in the menu.
@@ -1440,11 +1466,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       </View>
 
       <View style={[styles.chatFooter, desktopLayout && styles.chatFooterDesktop]}>
-      {/* iOS only. AndroidManifest declares adjustResize, so the window already
-          shrinks for the keyboard — translating the composer again on top of
-          that lifted it a whole keyboard-height off the footer. */}
+      {/* Both native platforms. KeyboardProvider runs edge-to-edge
+          (statusBarTranslucent/navigationBarTranslucent), so the window does not
+          resize for the keyboard on Android either — this view is the only thing
+          lifting the composer, and without it the input hides behind the keys. */}
       <KeyboardStickyView
-        enabled={Platform.OS === "ios"}
+        enabled={Platform.OS !== "web"}
         offset={{ closed: 0, opened: 0 }}
       >
       <ChatComposer
