@@ -746,10 +746,7 @@ export function ChatComposer({
   const leadingControls =
     !isEditing && (plusButton || inlineAction) ? (
       <View style={[styles.leadingControls, { flexDirection: rowDir }]}>
-        {/* The start-consultation CTA is the only thing to do here, so the plus
-            would just be clutter. inlineAction stays mounted either way — it
-            owns the dialog the CTA opens. */}
-        {hasDisabledActions ? null : plusButton}
+        {plusButton}
         {inlineAction}
       </View>
     ) : null;

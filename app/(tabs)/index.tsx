@@ -33,7 +33,6 @@ import {
 } from "@/domains/home/api";
 import {
   getDomainMarketCountry,
-  resolveBrowseMarketCountry,
 } from "@/domains/market/resolveMarketCountry";
 import { onDoctorRegistered } from "@/domains/presence/socket";
 import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
@@ -48,8 +47,6 @@ function ChatsHomeBrowse() {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const signedIn = isSignedIn(profile, accessToken);
-  const profileCountry = useAuthStore((s) => s.profile?.country);
-  const marketCountry = resolveBrowseMarketCountry(profileCountry);
   const domainMarket = getDomainMarketCountry();
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
@@ -64,13 +61,13 @@ function ChatsHomeBrowse() {
     setLoadingHome(true);
     setError(null);
     try {
-      setSpecialities(await fetchSpecialities(marketCountry));
+      setSpecialities(await fetchSpecialities());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load home data");
     } finally {
       setLoadingHome(false);
     }
-  }, [marketCountry]);
+  }, []);
 
   useEffect(() => {
     void loadHome();
@@ -103,10 +100,7 @@ function ChatsHomeBrowse() {
       setDoctors([]);
       setError(null);
       try {
-        const rows = await fetchDoctorsBySpeciality(
-          selectedSpeciality.id,
-          marketCountry,
-        );
+        const rows = await fetchDoctorsBySpeciality(selectedSpeciality.id);
         if (!cancelled) setDoctors(rows);
       } catch (e) {
         if (!cancelled) {
@@ -119,25 +113,20 @@ function ChatsHomeBrowse() {
     return () => {
       cancelled = true;
     };
-  }, [selectedSpeciality?.id, marketCountry]);
+  }, [selectedSpeciality?.id]);
 
   useEffect(() => {
     if (!selectedSpeciality) return;
 
     onDoctorRegistered((payload: SpecialityDoctorRow) => {
       setDoctors((current) =>
-        mergeDoctorIntoRoster(
-          current,
-          payload,
-          selectedSpeciality.id,
-          marketCountry,
-        ),
+        mergeDoctorIntoRoster(current, payload, selectedSpeciality.id),
       );
       setLoadingDoctors(false);
     });
 
     return () => onDoctorRegistered(null);
-  }, [selectedSpeciality?.id, marketCountry]);
+  }, [selectedSpeciality?.id]);
 
   // The doctor roster is in-page state, not a route, so hardware back has
   // nothing to pop — without this it fell through to the global handler and
@@ -207,7 +196,6 @@ function ChatsHomeBrowse() {
         doctors={doctors}
         loading={loadingDoctors}
         isRTL={isRTL}
-        marketCountry={marketCountry}
         onBack={clearSpeciality}
         onSelectDoctor={openDoctorProfile}
       />

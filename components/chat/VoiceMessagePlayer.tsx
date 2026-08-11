@@ -91,7 +91,13 @@ export function VoiceMessagePlayer({
     if (status.didJustFinish) {
       setPlaying(false);
       setPositionMs(0);
-      void soundRef.current?.setPositionAsync(0);
+      // Rewinding alone restarted the clip: playAsync left the player in
+      // shouldPlay state, so seeking back to 0 immediately played it again.
+      // Clear shouldPlay and rewind in one status update.
+      void soundRef.current?.setStatusAsync({
+        shouldPlay: false,
+        positionMillis: 0,
+      });
     } else {
       setPlaying(status.isPlaying);
     }

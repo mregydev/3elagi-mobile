@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
-import { countryFlagEmoji } from "@/constants/patientCountries";
+import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 
 type Props = {
   name: string;
@@ -10,9 +10,11 @@ type Props = {
   numberOfLines?: number;
   /** LTR: flag then name. RTL: name then flag (still reads naturally). */
   isRTL?: boolean;
+  /** Flag diameter. */
+  flagSize?: number;
 };
 
-/** Peer/doctor name with optional residence country flag. */
+/** Peer/doctor name with a circular residence-country flag badge. */
 export function NameWithCountryFlag({
   name,
   country,
@@ -20,9 +22,12 @@ export function NameWithCountryFlag({
   style,
   numberOfLines = 1,
   isRTL = false,
+  flagSize = 18,
 }: Props) {
-  const flag = countryFlagEmoji(country);
-  if (!flag) {
+  const code = country?.trim().toUpperCase() ?? "";
+  const hasFlag = /^[A-Z]{2}$/.test(code);
+
+  if (!hasFlag) {
     return (
       <Text style={nameStyle} numberOfLines={numberOfLines}>
         {name}
@@ -38,9 +43,7 @@ export function NameWithCountryFlag({
         style,
       ]}
     >
-      <Text style={styles.flag} accessibilityLabel={country?.toUpperCase()}>
-        {flag}
-      </Text>
+      <CircledCountryFlag country={code} size={flagSize} />
       <Text style={[styles.name, nameStyle]} numberOfLines={numberOfLines}>
         {name}
       </Text>
@@ -54,10 +57,6 @@ const styles = StyleSheet.create({
     gap: 6,
     minWidth: 0,
     flexShrink: 1,
-  },
-  flag: {
-    fontSize: 16,
-    lineHeight: 20,
   },
   name: {
     flexShrink: 1,

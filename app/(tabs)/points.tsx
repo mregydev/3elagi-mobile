@@ -1,5 +1,5 @@
 import { Plus, Wallet } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { PointsPieChart } from "@/components/PointsPieChart";
 import { useAuthStore } from "@/domains/auth/store";
+import { fetchPointPricing, type PointPricing } from "@/domains/points/api";
 import { isSignedIn } from "@/domains/auth/session";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Redirect } from "expo-router";
@@ -44,8 +45,21 @@ export default function PointsTab() {
   const tabBarHeight = useBottomTabBarHeight();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
-  const rate = pricePerPoint(profile?.country);
-  const currency = marketCurrencyCode(profile?.country);
+  // Price follows the caller's IP (Egypt EGP / Jordan JOD / elsewhere USD).
+  // Profile country is the fallback until the lookup answers, or if it fails.
+  const [pricing, setPricing] = useState<PointPricing | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPointPricing().then((next) => {
+      if (!cancelled && next) setPricing(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rate = pricing?.pricePerPoint ?? pricePerPoint(profile?.country);
+  const currency = pricing?.currency ?? marketCurrencyCode(profile?.country);
 
   const {
     loading,
@@ -116,6 +130,22 @@ export default function PointsTab() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
           {t.credits.mobileSubtitle}
         </Text>
+
+        {/* Rate is region-dependent, so state it plainly rather than only in
+            the top-up dialog. */}
+        <View
+          style={[
+            styles.rateBadge,
+            {
+              backgroundColor: `${colors.primary}12`,
+              borderColor: `${colors.primary}33`,
+            },
+          ]}
+        >
+          <Text style={[styles.rateText, { color: colors.primary }]}>
+            {t.credits.pricePerPointLabel(rate, currency)}
+          </Text>
+        </View>
 
         {loading && !summary ? (
           <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
@@ -241,6 +271,15 @@ export default function PointsTab() {
 }
 
 const styles = StyleSheet.create({
+  rateBadge: {
+    alignSelf: "center",
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  rateText: { fontSize: 13, fontWeight: "800" },
   root: { flex: 1 },
   content: { padding: 20, gap: 16 },
   heading: { alignItems: "center", gap: 10, marginTop: 8 },

@@ -74,24 +74,45 @@ export function normalizePatientCountry(
 }
 
 /** Display currency for the patient's selected market. */
+/** Egypt, Jordan, or everywhere else — mirrors the API's point markets. */
+export type PointMarket = "EG" | "JO" | "INTL";
+
+export function resolvePointMarket(
+  country: string | null | undefined,
+): PointMarket {
+  const code = country?.trim().toUpperCase();
+  if (code === "EG" || code === "JO") return code;
+  return code ? "INTL" : "EG";
+}
+
 export function marketCurrencyLabel(
   country: string | null | undefined,
   preferArabic: boolean,
 ): string {
-  const code = normalizeMarketCountry(country);
-  if (code === "JO") return preferArabic ? "دينار" : "JOD";
+  const market = resolvePointMarket(country);
+  if (market === "JO") return preferArabic ? "دينار" : "JOD";
+  if (market === "INTL") return preferArabic ? "دولار" : "USD";
   return preferArabic ? "جنيه" : "EGP";
 }
 
 export function marketCurrencyCode(
   country: string | null | undefined,
-): "EGP" | "JOD" {
-  return normalizeMarketCountry(country) === "JO" ? "JOD" : "EGP";
+): "EGP" | "JOD" | "USD" {
+  const market = resolvePointMarket(country);
+  if (market === "JO") return "JOD";
+  if (market === "INTL") return "USD";
+  return "EGP";
 }
 
-/** Cash charged per 1 credit/point in the live market. */
+/**
+ * Cash charged per 1 credit/point: Egypt 100 EGP, Jordan 10 JOD, rest of the
+ * world 5 USD. Keep in step with MARKET_POINT_PRICING on the API.
+ */
 export function pricePerPoint(country: string | null | undefined): number {
-  return normalizeMarketCountry(country) === "JO" ? 5 : 100;
+  const market = resolvePointMarket(country);
+  if (market === "JO") return 10;
+  if (market === "INTL") return 5;
+  return 100;
 }
 
 /** Total cash to charge for buying `points` in the given market. */

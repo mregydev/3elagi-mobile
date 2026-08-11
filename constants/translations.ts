@@ -339,9 +339,36 @@ const en = {
     country: "Country",
     contactUs: "Contact us",
     ourDoctors: "Our doctors",
+    aboutUs: "About us",
+    pricing: "Pricing",
     ourDoctorsSubtitle: "Browse doctors by country — Egypt or Jordan.",
     ourDoctorsBrowseHint: "View specialities and doctors in this market",
     notifications: "Notifications",
+  },
+  pricing: {
+    title: "Pricing",
+    subtitle:
+      "3elagi runs on credits. Buy them once, then spend them on consultations, messages and video calls.",
+    locationHint: "Priced for your location, detected automatically.",
+    setByDoctor:
+      "How many credits a consultation costs is set by each doctor, and shown on their profile before you start.",
+    payAsYouGo:
+      "No subscription — credits are only spent when you actually consult a doctor.",
+  },
+  about: {
+    headline: "Healthcare that reaches you, wherever you are.",
+    intro:
+      "3elagi connects patients in Egypt, Jordan and beyond with licensed doctors — without the travel, the waiting room, or the guesswork. Start a consultation in minutes, keep every prescription and scan in one place, and pick up with the same doctor whenever you need to.",
+    pointDoctors:
+      "Verified doctors across every speciality, with ratings from real patients.",
+    pointChat:
+      "Message your doctor with photos, voice notes and documents attached.",
+    pointCalls:
+      "Video consultations on demand — call a doctor who is available right now.",
+    pointRecords:
+      "Your prescriptions, lab results and scans stay private and always with you.",
+    closing:
+      "Every consultation is paid with credits, so you always know the cost before you start.",
   },
   inbox: {
     empty: "You're all caught up",
@@ -984,9 +1011,30 @@ const ar: typeof en = {
     country: "الدولة",
     contactUs: "تواصل معنا",
     ourDoctors: "أطباؤنا",
+    aboutUs: "من نحن",
+    pricing: "الأسعار",
     ourDoctorsSubtitle: "تصفح الأطباء حسب البلد — مصر أو الأردن.",
     ourDoctorsBrowseHint: "عرض التخصصات والأطباء في هذا السوق",
     notifications: "الإشعارات",
+  },
+  pricing: {
+    title: "الأسعار",
+    subtitle:
+      "يعمل 3elagi بالنقاط. اشترِ النقاط مرة واحدة ثم استخدمها في الاستشارات والرسائل ومكالمات الفيديو.",
+    locationHint: "السعر محدد حسب موقعك، ويتم اكتشافه تلقائياً.",
+    setByDoctor:
+      "عدد النقاط لكل استشارة يحدده كل طبيب، ويظهر في ملفه قبل أن تبدأ.",
+    payAsYouGo: "بدون اشتراك — لا تُخصم النقاط إلا عند استشارة طبيب فعلياً.",
+  },
+  about: {
+    headline: "رعاية صحية تصل إليك أينما كنت.",
+    intro:
+      "يربط 3elagi المرضى في مصر والأردن وخارجهما بأطباء معتمدين — دون سفر أو انتظار. ابدأ استشارتك خلال دقائق، واحتفظ بكل روشتة وأشعة في مكان واحد، وتابع مع الطبيب نفسه وقتما تحتاج.",
+    pointDoctors: "أطباء موثوقون في كل التخصصات مع تقييمات من مرضى حقيقيين.",
+    pointChat: "راسل طبيبك مع إرفاق الصور والرسائل الصوتية والمستندات.",
+    pointCalls: "استشارات فيديو فورية — اتصل بطبيب متاح الآن.",
+    pointRecords: "روشتاتك وتحاليلك وأشعتك محفوظة بخصوصية ومتاحة لك دائماً.",
+    closing: "كل استشارة تُدفع بالنقاط، لتعرف التكلفة قبل أن تبدأ.",
   },
   inbox: {
     empty: "لا توجد إشعارات معلقة",
@@ -1630,9 +1678,31 @@ const de: typeof en = {
     country: "Land",
     contactUs: "Kontakt",
     ourDoctors: "Unsere Ärzte",
+    aboutUs: "Über uns",
+    pricing: "Preise",
     ourDoctorsSubtitle: "Ärzte nach Land durchsuchen — Ägypten oder Jordanien.",
     ourDoctorsBrowseHint: "Fachrichtungen und Ärzte in diesem Markt anzeigen",
     notifications: "Benachrichtigungen",
+  },
+  pricing: {
+    title: "Preise",
+    subtitle:
+      "3elagi läuft mit Guthaben. Einmal kaufen und für Beratungen, Nachrichten und Videoanrufe nutzen.",
+    locationHint: "Preis für Ihren Standort, automatisch erkannt.",
+    setByDoctor:
+      "Wie viele Credits eine Beratung kostet, legt jede Ärztin und jeder Arzt selbst fest — sichtbar im Profil.",
+    payAsYouGo: "Kein Abo — Guthaben wird nur bei einer echten Beratung verbraucht.",
+  },
+  about: {
+    headline: "Gesundheitsversorgung, die Sie überall erreicht.",
+    intro:
+      "3elagi verbindet Patientinnen und Patienten in Ägypten, Jordanien und darüber hinaus mit zugelassenen Ärzten — ohne Anfahrt und Wartezimmer. Starten Sie eine Beratung in Minuten und behalten Sie alle Rezepte und Befunde an einem Ort.",
+    pointDoctors: "Geprüfte Ärzte aller Fachgebiete mit echten Patientenbewertungen.",
+    pointChat: "Schreiben Sie Ihrem Arzt mit Fotos, Sprachnachrichten und Dokumenten.",
+    pointCalls: "Videosprechstunden auf Abruf — mit einem Arzt, der jetzt verfügbar ist.",
+    pointRecords: "Rezepte, Laborwerte und Aufnahmen bleiben privat und stets bei Ihnen.",
+    closing:
+      "Jede Beratung wird mit Guthaben bezahlt — Sie kennen die Kosten immer vorab.",
   },
   inbox: {
     empty: "Alles erledigt",
@@ -2277,9 +2347,30 @@ const es: typeof en = {
     country: "País",
     contactUs: "Contáctanos",
     ourDoctors: "Nuestros médicos",
+    aboutUs: "Sobre nosotros",
+    pricing: "Precios",
     ourDoctorsSubtitle: "Explora médicos por país — Egipto o Jordania.",
     ourDoctorsBrowseHint: "Ver especialidades y médicos en este mercado",
     notifications: "Notificaciones",
+  },
+  pricing: {
+    title: "Precios",
+    subtitle:
+      "3elagi funciona con créditos. Cómpralos una vez y úsalos en consultas, mensajes y videollamadas.",
+    locationHint: "Precio según tu ubicación, detectada automáticamente.",
+    setByDoctor:
+      "Cada médico fija cuántos créditos cuesta su consulta, y se muestra en su perfil antes de empezar.",
+    payAsYouGo: "Sin suscripción: los créditos solo se gastan al consultar de verdad.",
+  },
+  about: {
+    headline: "Atención médica que te llega estés donde estés.",
+    intro:
+      "3elagi conecta a pacientes de Egipto, Jordania y otros países con médicos colegiados, sin desplazamientos ni salas de espera. Empieza una consulta en minutos y guarda cada receta y prueba en un solo lugar.",
+    pointDoctors: "Médicos verificados de todas las especialidades, con valoraciones reales.",
+    pointChat: "Escribe a tu médico adjuntando fotos, notas de voz y documentos.",
+    pointCalls: "Videoconsultas al momento: llama a un médico disponible ahora.",
+    pointRecords: "Tus recetas, análisis y pruebas siguen siendo privados y siempre contigo.",
+    closing: "Cada consulta se paga con créditos, así siempre sabes el coste de antemano.",
   },
   inbox: {
     empty: "No tienes nada pendiente",

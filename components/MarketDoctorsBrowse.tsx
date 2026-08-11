@@ -63,7 +63,7 @@ export function MarketDoctorsBrowse({
     setLoadingHome(true);
     setError(null);
     try {
-      const next = await fetchSpecialities(marketCountry);
+      const next = await fetchSpecialities();
       setSpecialities(next);
       setSelectedSpeciality((prev) =>
         prev && next.some((s) => s.id === prev.id) ? prev : null,
@@ -87,10 +87,7 @@ export function MarketDoctorsBrowse({
       setDoctors([]);
       setError(null);
       try {
-        const rows = await fetchDoctorsBySpeciality(
-          selectedSpeciality.id,
-          marketCountry,
-        );
+        const rows = await fetchDoctorsBySpeciality(selectedSpeciality.id);
         if (!cancelled) setDoctors(rows);
       } catch (e) {
         if (!cancelled) {
@@ -109,12 +106,7 @@ export function MarketDoctorsBrowse({
     if (!selectedSpeciality) return;
     onDoctorRegistered((payload: SpecialityDoctorRow) => {
       setDoctors((current) =>
-        mergeDoctorIntoRoster(
-          current,
-          payload,
-          selectedSpeciality.id,
-          marketCountry,
-        ),
+        mergeDoctorIntoRoster(current, payload, selectedSpeciality.id),
       );
     });
     return () => onDoctorRegistered(null);
@@ -169,7 +161,6 @@ export function MarketDoctorsBrowse({
         doctors={doctors}
         loading={loadingDoctors}
         isRTL={isRTL}
-        marketCountry={marketCountry}
         onBack={clearSpeciality}
         onSelectDoctor={openDoctorProfile}
       />

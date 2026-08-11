@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,15 +14,14 @@ import {
 import { Avatar } from "@/components/Avatar";
 import type { Conversation } from "@/domains/chat/types";
 import {
-  countryFlagEmoji,
+  MARKET_COUNTRY_CODES,
   patientCountryLabel,
   type MarketCountryCode,
 } from "@/constants/patientCountries";
+import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import type { Speciality, SpecialityDoctor } from "@/domains/home/api";
 import { doctorsToConversations } from "@/domains/home/doctorConversations";
 import { specialityLabel } from "@/domains/home/specialityLabel";
-import { useAuthStore } from "@/domains/auth/store";
-import { resolveBrowseMarketCountry } from "@/domains/market/resolveMarketCountry";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -55,6 +54,49 @@ function CallStateFlag({
         {onCall ? t.auth.doctorOnCall : t.auth.doctorAvailableNow}
       </Text>
     </View>
+  );
+}
+
+/** Country filter pill — doctors are listed from every market now. */
+function CountryChip({
+  active,
+  label,
+  country,
+  colors,
+  isRTL = false,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  country?: MarketCountryCode;
+  colors: ReturnType<typeof useColors>;
+  isRTL?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={[
+        styles.chip,
+        {
+          flexDirection: isRTL ? "row-reverse" : "row",
+          backgroundColor: active ? `${colors.primary}14` : colors.card,
+          borderColor: active ? colors.primary : colors.border,
+        },
+      ]}
+    >
+      {country ? <CircledCountryFlag country={country} size={16} /> : null}
+      <Text
+        style={[
+          styles.chipText,
+          { color: active ? colors.primary : colors.mutedForeground },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -133,8 +175,6 @@ interface Props {
   onBack: () => void;
   onSelectDoctor: (doctorUserId: string, doctorEntityId?: string) => void;
   hideHeaderBorder?: boolean;
-  /** Override browse market (Our Doctors / domain lock). */
-  marketCountry?: MarketCountryCode;
 }
 
 export function DoctorChatRoster({
@@ -145,14 +185,14 @@ export function DoctorChatRoster({
   onBack,
   onSelectDoctor,
   hideHeaderBorder = false,
-  marketCountry: marketCountryProp,
 }: Props) {
   const colors = useColors();
   const { locale } = useI18n();
   const onlineUsers = usePresenceStore((s) => s.users);
-  const profileCountry = useAuthStore((s) => s.profile?.country);
-  const marketCountry =
-    marketCountryProp ?? resolveBrowseMarketCountry(profileCountry);
+  // Every market is listed by default; country is a filter the user opts into.
+  const [countryFilter, setCountryFilter] = useState<MarketCountryCode | "all">(
+    "all",
+  );
   const dir = isRTL ? "row-reverse" : "row";
   const label = specialityLabel(speciality, locale);
   const backLabel =
@@ -171,11 +211,13 @@ export function DoctorChatRoster({
 
   const filtered = useMemo(
     () =>
-      conversations.filter(
-        (c) =>
-          (c.user.country?.trim().toUpperCase() || "EG") === marketCountry,
-      ),
-    [conversations, marketCountry],
+      countryFilter === "all"
+        ? conversations
+        : conversations.filter(
+            (c) =>
+              (c.user.country?.trim().toUpperCase() || "EG") === countryFilter,
+          ),
+    [conversations, countryFilter],
   );
 
   return (
@@ -217,15 +259,30 @@ export function DoctorChatRoster({
         </View>
 
         {!loading ? (
-          <Text
+          <View
             style={[
-              styles.marketHint,
-              { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+              styles.filterRow,
+              { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
-            {countryFlagEmoji(marketCountry)}{" "}
-            {patientCountryLabel(marketCountry, isRTL)}
-          </Text>
+            <CountryChip
+              active={countryFilter === "all"}
+              label={isRTL ? "كل الدول" : "All countries"}
+              colors={colors}
+              onPress={() => setCountryFilter("all")}
+            />
+            {MARKET_COUNTRY_CODES.map((code) => (
+              <CountryChip
+                key={code}
+                active={countryFilter === code}
+                label={patientCountryLabel(code, isRTL)}
+                country={code}
+                colors={colors}
+                isRTL={isRTL}
+                onPress={() => setCountryFilter(code)}
+              />
+            ))}
+          </View>
         ) : null}
       </View>
 
@@ -234,9 +291,13 @@ export function DoctorChatRoster({
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
-            {isRTL
-              ? "لا يوجد أطباء في هذه الدولة لهذا التخصص"
-              : "No doctors in this country for this speciality"}
+            {countryFilter === "all"
+              ? isRTL
+                ? "لا يوجد أطباء لهذا التخصص"
+                : "No doctors for this speciality"
+              : isRTL
+                ? "لا يوجد أطباء في هذه الدولة لهذا التخصص"
+                : "No doctors in this country for this speciality"}
           </Text>
         </View>
       ) : (
@@ -299,11 +360,21 @@ const styles = StyleSheet.create({
     color: "#1D4ED8",
     flexShrink: 1,
   },
-  marketHint: {
-    marginTop: 10,
-    fontSize: 13,
-    fontWeight: "600",
+  filterRow: {
+    marginTop: 12,
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
   },
+  chip: {
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  chipText: { fontSize: 13, fontWeight: "700" },
   row: {
     alignItems: "center",
     gap: 12,

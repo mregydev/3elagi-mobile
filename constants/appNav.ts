@@ -1,11 +1,13 @@
 import type { Href } from "expo-router";
 import {
   Bell,
+  Bot,
   CalendarClock,
   ClipboardList,
   Coins,
   History,
   Home,
+  Info,
   ListChecks,
   MessageSquare,
   Star,
@@ -57,14 +59,29 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
         !pathHas(path, "patients") &&
         !pathHas(path, "activity") &&
         !pathHas(path, "notifications") &&
-        !pathHas(path, "our-doctors")),
+        !pathHas(path, "about-us") &&
+        !pathHas(path, "pricing")),
   },
   {
-    href: "/(tabs)/our-doctors",
-    labelKey: "ourDoctors",
-    Icon: Stethoscope,
+    href: "/(tabs)/about-us",
+    labelKey: "aboutUs",
+    Icon: Info,
     guestAllowed: true,
-    match: (path) => pathHas(path, "our-doctors"),
+    match: (path) => pathHas(path, "about-us"),
+  },
+  {
+    href: "/(tabs)/assistant",
+    labelKey: "assistant",
+    Icon: Bot,
+    guestAllowed: true,
+    match: (path) => pathHas(path, "assistant"),
+  },
+  {
+    href: "/(tabs)/pricing",
+    labelKey: "pricing",
+    Icon: Coins,
+    guestAllowed: true,
+    match: (path) => pathHas(path, "pricing"),
   },
   {
     href: "/(tabs)/notifications",

@@ -133,16 +133,9 @@ export async function fetchAdvertisements(): Promise<Advertisement[]> {
   return data.map(mapAdvertisement);
 }
 
-export async function fetchSpecialities(
-  country?: string | null,
-): Promise<Speciality[]> {
-  const params = new URLSearchParams();
-  const market = country?.trim().toUpperCase();
-  if (market === "EG" || market === "JO") {
-    params.set("country", market);
-  }
-  const qs = params.toString();
-  const res = await fetch(`${API_BASE}/specialities${qs ? `?${qs}` : ""}`);
+/** Every speciality, all markets — country is a UI filter now, not a URL one. */
+export async function fetchSpecialities(): Promise<Speciality[]> {
+  const res = await fetch(`${API_BASE}/specialities`);
   const data = (await res.json().catch(() => [])) as SpecialityRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -153,19 +146,11 @@ export async function fetchSpecialities(
   return data.map(mapSpeciality);
 }
 
+/** Doctors from every market; the roster filters by country in the UI. */
 export async function fetchDoctorsBySpeciality(
   specialityId: string,
-  country?: string | null,
 ): Promise<SpecialityDoctor[]> {
-  const params = new URLSearchParams();
-  const market = country?.trim().toUpperCase();
-  if (market === "EG" || market === "JO") {
-    params.set("country", market);
-  }
-  const qs = params.toString();
-  const res = await fetch(
-    `${API_BASE}/specialities/${specialityId}/doctors${qs ? `?${qs}` : ""}`,
-  );
+  const res = await fetch(`${API_BASE}/specialities/${specialityId}/doctors`);
   const data = (await res.json().catch(() => [])) as SpecialityDoctorRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -181,15 +166,9 @@ export function mergeDoctorIntoRoster(
   doctors: SpecialityDoctor[],
   row: SpecialityDoctorRow,
   specialityId: string,
-  country?: string | null,
 ): SpecialityDoctor[] {
   const doctorSpecialityId = row.speciality_id?.trim();
   if (doctorSpecialityId && doctorSpecialityId !== specialityId) return doctors;
-  const market = country?.trim().toUpperCase();
-  if (market === "EG" || market === "JO") {
-    const rowCountry = row.country?.trim().toUpperCase() || "EG";
-    if (rowCountry !== market) return doctors;
-  }
   const mapped = mapDoctor(row);
   if (doctors.some((d) => d.id === mapped.id)) return doctors;
   return [...doctors, mapped].sort((a, b) => a.name.localeCompare(b.name));

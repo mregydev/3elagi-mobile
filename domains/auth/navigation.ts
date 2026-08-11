@@ -94,9 +94,9 @@ export function isPublicWebPath(pathname: string): boolean {
   // Guest browse tabs: home + our doctors.
   if (
     pathname === "/(tabs)" ||
-    pathname.startsWith("/(tabs)/our-doctors") ||
-    pathname === "/our-doctors" ||
-    pathname.startsWith("/our-doctors/")
+    pathname.startsWith("/(tabs)/about-us") ||
+    pathname === "/about-us" ||
+    pathname.startsWith("/about-us/")
   ) {
     return true;
   }

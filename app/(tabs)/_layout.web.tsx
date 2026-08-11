@@ -68,11 +68,18 @@ export default function TabsLayoutWeb() {
               }}
             />
             <Tabs.Screen
-              name="our-doctors"
+              name="about-us"
               options={{
-                title: t.tabs.ourDoctors,
+                title: t.tabs.aboutUs,
                 tabBarIcon: ({ color, size }) => (
                   <Stethoscope color={color} size={size} />
+            <Tabs.Screen
+              name="pricing"
+              options={{
+                title: t.tabs.pricing,
+                tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
+              }}
+            />
                 ),
               }}
             />
@@ -90,7 +97,6 @@ export default function TabsLayoutWeb() {
               name="assistant"
               options={{
                 title: t.tabs.assistant,
-                href: authOnlyHref,
                 tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
               }}
             />

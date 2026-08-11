@@ -74,3 +74,35 @@ export async function addMessagePoints(
   }
   return data;
 }
+
+export interface PointPricing {
+  market: "EG" | "JO" | "INTL";
+  currency: "EGP" | "JOD" | "USD";
+  pricePerPoint: number;
+  /** Country the server read from the caller's IP, null when undetectable. */
+  detectedCountry: string | null;
+}
+
+/** Live per-point price for wherever the caller is (public — no token). */
+export async function fetchPointPricing(): Promise<PointPricing | null> {
+  try {
+    const res = await fetch(`${API_BASE}/points/pricing`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      market?: PointPricing["market"];
+      currency?: PointPricing["currency"];
+      price_per_point?: number;
+      detected_country?: string | null;
+    };
+    if (!data?.currency || typeof data.price_per_point !== "number") return null;
+    return {
+      market: data.market ?? "EG",
+      currency: data.currency,
+      pricePerPoint: data.price_per_point,
+      detectedCountry: data.detected_country ?? null,
+    };
+  } catch {
+    // Fall back to the profile-country price the screen already computes.
+    return null;
+  }
+}
