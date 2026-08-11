@@ -9,8 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
+import { AuthFormBody } from "@/components/auth/AuthFormBody";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
@@ -22,7 +21,6 @@ import { showSuccessToast } from "@/utils/toast";
 
 export default function ForgotPasswordScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const [email, setEmail] = useState("");
@@ -64,7 +62,8 @@ export default function ForgotPasswordScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 8 : insets.top + 4,
+              // Native sits inside the auth card, which already clears the notch.
+              paddingTop: Platform.OS === "web" ? 8 : 10,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
@@ -73,7 +72,7 @@ export default function ForgotPasswordScreen() {
           <AuthLanguageField />
         </View>
       ) : null}
-      <KeyboardSafeScrollView
+      <AuthFormBody
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
@@ -147,7 +146,7 @@ export default function ForgotPasswordScreen() {
             </Text>
           </Pressable>
         </View>
-      </KeyboardSafeScrollView>
+      </AuthFormBody>
     </View>
   );
 
@@ -156,7 +155,8 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  // Content-sized on native: the auth card hugs the form, the shell scrolls.
+  screen: { flexShrink: 1 },
   flex: { flex: 1 },
   screenWeb: { flex: 0, width: "100%", height: "auto" },
   topBar: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: {
-    paddingHorizontal: 24,
+    paddingHorizontal: Platform.OS === "web" ? 24 : 16,
     paddingTop: 12,
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 32 : 24,

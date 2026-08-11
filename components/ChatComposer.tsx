@@ -1,6 +1,6 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
-import { ClipboardList, Mic, Paperclip, Send, X } from "lucide-react-native";
+import { ClipboardList, Mic, Paperclip, Send, Trash2, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 
 import { ChatActionsMenu, type ChatAction } from "@/components/chat/ChatActionsMenu";
+import { VoiceMessagePlayer } from "@/components/chat/VoiceMessagePlayer";
 import { ChatAttachMenu } from "@/components/chat/ChatAttachMenu";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
@@ -81,6 +82,14 @@ interface Props {
   medicalRecordPatientUserId?: string;
   onMedicalRecordCreated?: () => void;
 }
+
+/** A finished recording awaiting the user's review. */
+type PendingVoice = {
+  uri: string;
+  mimeType: string;
+  fileName: string;
+  webFile?: File | Blob;
+};
 
 type PendingAttachment = {
   uri: string;
@@ -174,6 +183,7 @@ export function ChatComposer({
       addToMedicalRecords: true,
       generateAiInsight: true,
     });
+  const [pendingVoice, setPendingVoice] = useState<PendingVoice | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -588,6 +598,24 @@ export function ChatComposer({
     }
   };
 
+  const sendPendingVoice = async () => {
+    if (!pendingVoice || uploading || sending) return;
+    const clip = pendingVoice;
+    setPendingVoice(null);
+    await uploadAndSend(
+      clip.uri,
+      clip.mimeType,
+      clip.fileName,
+      "voice",
+      clip.webFile,
+    );
+  };
+
+  const discardPendingVoice = () => {
+    if (uploading) return;
+    setPendingVoice(null);
+  };
+
   const toggleRecording = async () => {
     if (recording) {
       try {
@@ -616,16 +644,18 @@ export function ChatComposer({
           return;
         }
 
+        // Held for review rather than sent immediately: the user gets to hear
+        // it back and discard it before it goes out.
         if (Platform.OS === "web") {
           const { webFile, mimeType, fileName } = await resolveWebVoiceFile(
             uri,
             "audio/webm",
           );
-          await uploadAndSend(uri, mimeType, fileName, "voice", webFile);
+          setPendingVoice({ uri, mimeType, fileName, webFile });
         } else {
           const mime = mimeFromUri(uri, Platform.OS === "ios" ? "audio/m4a" : "audio/mp4");
           const ext = uri.split(".").pop() ?? "m4a";
-          await uploadAndSend(uri, mime, `voice-${Date.now()}.${ext}`, "voice");
+          setPendingVoice({ uri, mimeType: mime, fileName: `voice-${Date.now()}.${ext}` });
         }
       } catch (e) {
         setRecording(null);
@@ -819,14 +849,26 @@ export function ChatComposer({
         dictation.toggle();
       }}
       delayLongPress={350}
-      disabled={uploading || sending || isEditing || !!pendingAttachment || dictation.busy}
+      disabled={
+        uploading ||
+        sending ||
+        isEditing ||
+        !!pendingAttachment ||
+        !!pendingVoice ||
+        dictation.busy
+      }
       style={[
         isMobileWeb ? mobileWebComposerStyles.iconBtn : styles.iconBtn,
         {
           backgroundColor: micActive ? "#ef4444" : `${colors.primary}14`,
           borderColor: micActive ? "#ef4444" : `${colors.primary}3D`,
           opacity:
-            uploading || sending || isEditing || pendingAttachment || dictation.busy
+            uploading ||
+            sending ||
+            isEditing ||
+            pendingAttachment ||
+            pendingVoice ||
+            dictation.busy
               ? 0.45
               : 1,
         },
@@ -835,8 +877,8 @@ export function ChatComposer({
       accessibilityLabel={
         recording
           ? isRTL
-            ? "إيقاف وإرسال الرسالة الصوتية"
-            : "Stop and send voice message"
+            ? "إيقاف التسجيل"
+            : "Stop recording"
           : dictation.listening
             ? isRTL
               ? "إيقاف الإملاء"
@@ -1049,6 +1091,60 @@ export function ChatComposer({
         </View>
       ) : null}
 
+      {pendingVoice ? (
+        <View
+          style={[
+            styles.voicePreview,
+            {
+              flexDirection: rowDir,
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={discardPendingVoice}
+            disabled={uploading}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "حذف التسجيل" : "Delete recording"}
+            style={[styles.voiceDiscard, { borderColor: "#ef4444" }]}
+          >
+            <Trash2 size={18} color="#ef4444" />
+          </Pressable>
+
+          <View style={styles.voicePlayer}>
+            <VoiceMessagePlayer
+              uri={pendingVoice.uri}
+              color={colors.foreground}
+              trackColor={colors.border}
+              fillColor={colors.primary}
+              isRTL={isRTL}
+            />
+          </View>
+
+          <Pressable
+            onPress={() => void sendPendingVoice()}
+            disabled={uploading || sending}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "إرسال" : "Send"}
+            style={[
+              styles.voiceSend,
+              {
+                backgroundColor: colors.primary,
+                opacity: uploading || sending ? 0.6 : 1,
+              },
+            ]}
+          >
+            {uploading || sending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Send size={18} color="#fff" />
+            )}
+          </Pressable>
+        </View>
+      ) : null}
+
       {recording ? (
         <View
           style={[
@@ -1069,8 +1165,8 @@ export function ChatComposer({
           </Pressable>
           <Text style={styles.recordingHint}>
             {isRTL
-              ? "جاري التسجيل… اضغط الميكروفون للإرسال"
-              : "Recording… tap mic to send"}
+              ? "جاري التسجيل… اضغط الميكروفون للإيقاف"
+              : "Recording… tap mic to stop"}
           </Text>
         </View>
       ) : uploading ? (
@@ -1160,6 +1256,29 @@ const styles = StyleSheet.create({
   disabledActionLabel: {
     fontSize: 15,
     fontWeight: "700",
+  },
+  voicePreview: {
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  voicePlayer: { flex: 1, minWidth: 0 },
+  voiceDiscard: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceSend: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   recordingBar: {
     alignItems: "center",

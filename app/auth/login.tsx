@@ -12,8 +12,8 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
+import { AuthFormBody } from "@/components/auth/AuthFormBody";
+import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
@@ -30,7 +30,6 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function LoginScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const login = useAuthStore((s) => s.login);
@@ -85,25 +84,17 @@ export default function LoginScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 8 : insets.top + 4,
+              // Native sits inside the auth card, which already clears the notch.
+              paddingTop: Platform.OS === "web" ? 8 : 10,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
-          <Pressable
-            onPress={() => router.replace("/(tabs)")}
-            accessibilityRole="link"
-            accessibilityLabel={t.tabs.home}
-            style={{ paddingVertical: 6, paddingHorizontal: 4 }}
-          >
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>
-              {t.tabs.home}
-            </Text>
-          </Pressable>
+          <AuthHomeLink compact />
           <AuthLanguageField />
         </View>
       ) : null}
-      <KeyboardSafeScrollView
+      <AuthFormBody
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
@@ -208,25 +199,11 @@ export default function LoginScreen() {
               {t.auth.noAccountSignUp}
             </Text>
           </Pressable>
-          <Pressable
-            onPress={() => router.replace("/(tabs)")}
-            style={{ paddingVertical: 6, alignItems: "center" }}
-            accessibilityRole="link"
-            accessibilityLabel={t.tabs.home}
-          >
-            <Text
-              style={{
-                color: colors.foreground,
-                fontWeight: "700",
-                fontSize: 14,
-                textDecorationLine: "underline",
-              }}
-            >
-              {t.tabs.home}
-            </Text>
-          </Pressable>
+          <View style={{ alignItems: "center" }}>
+            <AuthHomeLink />
+          </View>
         </View>
-      </KeyboardSafeScrollView>
+      </AuthFormBody>
     </View>
   );
 
@@ -238,7 +215,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  // Content-sized on native: the auth card hugs the form, the shell scrolls.
+  screen: { flexShrink: 1 },
   flex: { flex: 1 },
   screenWeb: { flex: 0, width: "100%", height: "auto" },
   topBar: {
@@ -247,7 +225,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: {
-    paddingHorizontal: 24,
+    paddingHorizontal: Platform.OS === "web" ? 24 : 16,
     paddingTop: 12,
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 32 : 24,

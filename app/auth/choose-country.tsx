@@ -141,7 +141,8 @@ export default function ChooseCountryScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  // Content-sized on native: the auth card hugs the form, the shell scrolls.
+  screen: { flexShrink: 1 },
   body: {
     width: "100%",
     maxWidth: 420,

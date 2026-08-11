@@ -103,7 +103,6 @@ export function BodySkeletonView({
   const [diagramH, setDiagramH] = useState(0);
   const [diagramW, setDiagramW] = useState(0);
   const [openZone, setOpenZone] = useState<BodyZone | null>(null);
-  const [highlightedZone, setHighlightedZone] = useState<BodyZone | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<ZoneTapAnchor | null>(null);
 
   const partsWithRecords = useMemo(() => {
@@ -123,12 +122,9 @@ export function BodySkeletonView({
     return set;
   }, [partsWithRecords]);
 
-  const activeZone =
-    openZone ??
-    highlightedZone ??
-    (selectedPart && selectedPart !== "general"
-      ? zoneForBodyPart(selectedPart)
-      : null);
+  // Nothing on the figure is ever highlighted. This only marks which zone's
+  // picker is open in the side legend.
+  const activeZone = openZone;
 
   const onPaneLayout = (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
@@ -167,8 +163,6 @@ export function BodySkeletonView({
   };
 
   const selectPart = (part: BodyPart) => {
-    const zone = zoneForBodyPart(part);
-    if (zone) setHighlightedZone(zone);
     if (onOpenPart) {
       onSelectPart(part);
       onOpenPart(part);
@@ -177,12 +171,10 @@ export function BodySkeletonView({
     }
     const next = selectedPart === part ? null : part;
     onSelectPart(next);
-    if (!next) setHighlightedZone(null);
     closePartPicker();
   };
 
   const selectZone = (zone: BodyZone, anchor: ZoneTapAnchor) => {
-    setHighlightedZone(zone);
     const parts = BODY_PARTS_BY_ZONE[zone];
     // Single-organ zones (e.g. left foot) select immediately — no menu needed.
     if (parts.length === 1) {
@@ -234,11 +226,10 @@ export function BodySkeletonView({
               ? `${t.records.bodyPart}: ${t.records.bodyParts[selectedPart]}`
               : t.records.bodyZoneHint}
           </Text>
-          {selectedPart || highlightedZone ? (
+          {selectedPart ? (
             <Pressable
               onPress={() => {
                 onSelectPart(null);
-                setHighlightedZone(null);
                 closePartPicker();
               }}
               accessibilityRole="button"
@@ -280,10 +271,10 @@ export function BodySkeletonView({
             compact={!isDesktop}
             partsWithRecords={partsWithRecords}
             zonesWithRecords={zonesWithRecords}
-            highlightedZone={activeZone}
-            highlightedPart={
-              selectedPart && selectedPart !== "general" ? selectedPart : null
-            }
+            // The figure is never painted: tapping a zone opens its picker and
+            // nothing on the body lights up, selected or not.
+            highlightedZone={null}
+            highlightedPart={null}
           />
         ) : null}
 

@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
-import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta";
+import { DoctorTrailingMeta } from "@/components/DoctorListMeta";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import React, { useMemo, useState } from "react";
 import {
@@ -146,7 +146,6 @@ function ConversationRow({
               { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
             ]}
           />
-          <DoctorSubtitle specialty={item.user.specialty} isRTL={isRTL} />
           {/* Offline doctors can't be rung at all, so no availability flag. */}
           {item.user.immediateCallEnabled && isOnline ? (
             <CallStateFlag onCall={onCall} isRTL={isRTL} colors={colors} />
@@ -383,16 +382,18 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignItems: "flex-start",
+    // Centred against the avatar: with the speciality line gone the name is a
+    // single row, and top-aligning left it floating above the picture.
+    alignItems: "center",
     gap: 10,
   },
   mainCol: {
     flex: 1,
     minWidth: 0,
+    justifyContent: "center",
   },
   trailingCol: {
     gap: 4,
-    paddingTop: 2,
   },
   name: { fontSize: 16, fontWeight: "600" },
   flag: {

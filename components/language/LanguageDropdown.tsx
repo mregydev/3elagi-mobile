@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -28,13 +29,16 @@ type MenuPos = {
   top: number;
   left: number;
   width: number;
+  /** Cap so a menu pinned below the trigger still fits on screen. */
+  maxHeight: number;
 };
 
 const MENU_MIN_WIDTH = 220;
 const MENU_ITEM_HEIGHT = 56;
 const IS_WEB = Platform.OS === "web";
 const VIEWPORT_PADDING = 8;
-const GAP = 6;
+/** Space between the trigger and the menu — roomier on touch. */
+const GAP = IS_WEB ? 6 : 12;
 
 function estimatedMenuHeight(): number {
   return LANGUAGE_OPTIONS.length * MENU_ITEM_HEIGHT + 2;
@@ -80,10 +84,12 @@ function computeMenuPos(
   opts: { fullWidth: boolean; isRTL: boolean; opensUp: boolean },
 ): MenuPos {
   const menuWidth = opts.fullWidth ? width : Math.max(MENU_MIN_WIDTH, width);
-  const viewportWidth =
-    typeof window !== "undefined" ? window.innerWidth : menuWidth + 32;
-  const viewportHeight =
-    typeof window !== "undefined" ? window.innerHeight : 800;
+  // Dimensions works on both platforms; window.innerWidth is web-only and its
+  // fallback pinned the viewport at a made-up 800px, so anchoring on native
+  // clamped to the wrong bounds.
+  const viewport = Dimensions.get("window");
+  const viewportWidth = viewport.width;
+  const viewportHeight = viewport.height;
   const menuHeight = estimatedMenuHeight();
 
   let left = opts.fullWidth
@@ -96,23 +102,34 @@ function computeMenuPos(
     Math.min(left, viewportWidth - menuWidth - VIEWPORT_PADDING),
   );
 
-  let top = opts.opensUp ? y - menuHeight - GAP : y + height + GAP;
+  const below = y + height + GAP;
 
-  // Keep the menu on-screen; prefer staying above the trigger when possible.
   if (opts.opensUp) {
+    // Sidebar/footer usage: above the trigger, dropping below only if it fits.
+    let top = y - menuHeight - GAP;
     if (top < VIEWPORT_PADDING) {
-      const below = y + height + GAP;
       top =
         below + menuHeight <= viewportHeight - VIEWPORT_PADDING
           ? below
           : VIEWPORT_PADDING;
     }
-  } else if (top + menuHeight > viewportHeight - VIEWPORT_PADDING) {
-    const above = y - menuHeight - GAP;
-    top = above >= VIEWPORT_PADDING ? above : VIEWPORT_PADDING;
+    return {
+      top,
+      left,
+      width: menuWidth,
+      maxHeight: viewportHeight - top - VIEWPORT_PADDING,
+    };
   }
 
-  return { top, left, width: menuWidth };
+  // Always directly under the trigger. Previously this could flip above or
+  // clamp to the top of the screen when the menu did not fit, which drew it
+  // over the very control that opened it. Now it stays put and scrolls.
+  return {
+    top: below,
+    left,
+    width: menuWidth,
+    maxHeight: Math.max(120, viewportHeight - below - VIEWPORT_PADDING),
+  };
 }
 
 export function LanguageDropdown({
@@ -196,8 +213,10 @@ export function LanguageDropdown({
 
   const menu = (
     <View
+      // Fills the positioned wrapper so its maxHeight applies to the list.
       style={[
         styles.menu,
+        styles.menuFill,
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
@@ -275,6 +294,10 @@ export function LanguageDropdown({
           <View
             style={[
               styles.triggerLeading,
+              // flex:1 only when the trigger has a definite width; in the
+              // compact pill the parent sizes to content, and a flexed child
+              // there collapses to zero — an empty-looking selector.
+              fullWidth && styles.triggerLeadingFullWidth,
               { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
@@ -300,6 +323,11 @@ export function LanguageDropdown({
         transparent
         animationType={IS_WEB ? "none" : "fade"}
         onRequestClose={closeMenu}
+        // Without this the modal's content starts below the status bar on
+        // Android, while measureInWindow includes it — the menu then renders a
+        // status-bar-height too high and covers the trigger.
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <View style={styles.modalRoot}>
           <Pressable
@@ -317,6 +345,7 @@ export function LanguageDropdown({
                   top: menuPos.top,
                   left: menuPos.left,
                   width: menuPos.width,
+                  maxHeight: menuPos.maxHeight,
                 },
               ]}
             >
@@ -370,8 +399,10 @@ const styles = StyleSheet.create({
   triggerLeading: {
     alignItems: "center",
     gap: 10,
-    flex: 1,
     minWidth: 0,
+  },
+  triggerLeadingFullWidth: {
+    flex: 1,
   },
   triggerLabel: {
     fontSize: 14,
@@ -392,8 +423,14 @@ const styles = StyleSheet.create({
   modalCenter: {
     flex: 1,
     justifyContent: "center",
+    // Centred horizontally too — this is the native popup, not an anchored menu.
+    alignItems: "center",
     padding: 24,
     zIndex: 2,
+  },
+  menuFill: {
+    flexShrink: 1,
+    minHeight: 0,
   },
   menu: {
     borderWidth: 1,
@@ -428,5 +465,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     overflow: "hidden",
+    width: "100%",
+    maxWidth: 320,
   },
 });
