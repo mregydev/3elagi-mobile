@@ -5,7 +5,10 @@ import { getHardwareBackAction } from "./hardwareBackNavigation";
 vi.mock("expo-router", () => ({
   router: { back: vi.fn(), replace: vi.fn(), canGoBack: () => false },
 }));
-vi.mock("@/utils/chatNavigation", () => ({ leaveChatToHistory: vi.fn() }));
+const leaveChatToHistory = vi.fn();
+vi.mock("@/utils/chatNavigation", () => ({
+  leaveChatToHistory: (origin?: string | null) => leaveChatToHistory(origin),
+}));
 vi.mock("@/utils/medicalFormNavigation", () => ({ leaveMedicalForm: vi.fn() }));
 
 function router(canGoBack: boolean) {
@@ -30,6 +33,14 @@ describe("getHardwareBackAction", () => {
     const r = router(false);
     getHardwareBackAction("/doctor/abc", r)?.();
     expect(r.replace).toHaveBeenCalledWith("/(tabs)");
+  });
+
+  it("passes the chat's origin through when there is no history", () => {
+    getHardwareBackAction("/chat/abc?from=doctors", router(false))?.();
+    expect(leaveChatToHistory).toHaveBeenCalledWith("doctors");
+
+    getHardwareBackAction("/chat/abc", router(false))?.();
+    expect(leaveChatToHistory).toHaveBeenCalledWith(null);
   });
 
   it("hands back to the OS (closes the app) with empty history and no fallback", () => {

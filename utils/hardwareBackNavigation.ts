@@ -39,7 +39,8 @@ export function getHardwareBackAction(
   }
 
   if (isNormalChatPath(path)) {
-    return leaveChatToHistory;
+    const origin = /[?&]from=([^&]+)/.exec(pathname)?.[1];
+    return () => leaveChatToHistory(origin ? decodeURIComponent(origin) : null);
   }
 
   if (isAiChatPath(path)) {

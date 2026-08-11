@@ -29,6 +29,7 @@ import {
   type SpecialityDoctorRow,
 } from "@/domains/home/api";
 import { onDoctorRegistered } from "@/domains/presence/socket";
+import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -119,6 +120,20 @@ export function MarketDoctorsBrowse({
     return () => onDoctorRegistered(null);
   }, [selectedSpeciality?.id, marketCountry]);
 
+  // Same as the home tab: the roster is state, so hardware back needs handling
+  // here or it falls through to the global handler and leaves the screen.
+  const clearSpeciality = useCallback(() => {
+    setSelectedSpeciality(null);
+    setDoctors([]);
+    setError(null);
+  }, []);
+
+  useHardwareBackHandler(() => {
+    if (!selectedSpeciality) return false;
+    clearSpeciality();
+    return true;
+  }, !!selectedSpeciality);
+
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
       if (!signedIn) {
@@ -126,7 +141,11 @@ export function MarketDoctorsBrowse({
         return;
       }
       if (!doctorEntityId) {
-        router.push(`/chat/${doctorUserId}`);
+        router.push({
+          pathname: "/chat/[id]",
+          // Remembered for the no-history case: back returns to the doctor list.
+          params: { id: doctorUserId, from: "doctors" },
+        });
         return;
       }
       router.push({
@@ -151,11 +170,7 @@ export function MarketDoctorsBrowse({
         loading={loadingDoctors}
         isRTL={isRTL}
         marketCountry={marketCountry}
-        onBack={() => {
-          setSelectedSpeciality(null);
-          setDoctors([]);
-          setError(null);
-        }}
+        onBack={clearSpeciality}
         onSelectDoctor={openDoctorProfile}
       />
     );

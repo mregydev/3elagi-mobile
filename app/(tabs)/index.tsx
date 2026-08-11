@@ -16,6 +16,7 @@ import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard"
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
+import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
 import { HOME_NAV_RESET_EVENT } from "@/constants/appNav";
@@ -138,6 +139,21 @@ function ChatsHomeBrowse() {
     return () => onDoctorRegistered(null);
   }, [selectedSpeciality?.id, marketCountry]);
 
+  // The doctor roster is in-page state, not a route, so hardware back has
+  // nothing to pop — without this it fell through to the global handler and
+  // closed the app instead of returning to the speciality list.
+  const clearSpeciality = useCallback(() => {
+    setSelectedSpeciality(null);
+    setDoctors([]);
+    setError(null);
+  }, []);
+
+  useHardwareBackHandler(() => {
+    if (!selectedSpeciality) return false;
+    clearSpeciality();
+    return true;
+  }, !!selectedSpeciality);
+
   const openDoctorProfile = useCallback(
     (doctorUserId: string, doctorEntityId?: string) => {
       if (!signedIn) {
@@ -145,7 +161,11 @@ function ChatsHomeBrowse() {
         return;
       }
       if (!doctorEntityId) {
-        router.push(`/chat/${doctorUserId}`);
+        router.push({
+          pathname: "/chat/[id]",
+          // Remembered for the no-history case: back returns to the doctor list.
+          params: { id: doctorUserId, from: "doctors" },
+        });
         return;
       }
       router.push({
@@ -188,11 +208,7 @@ function ChatsHomeBrowse() {
         loading={loadingDoctors}
         isRTL={isRTL}
         marketCountry={marketCountry}
-        onBack={() => {
-          setSelectedSpeciality(null);
-          setDoctors([]);
-          setError(null);
-        }}
+        onBack={clearSpeciality}
         onSelectDoctor={openDoctorProfile}
       />
     );

@@ -99,8 +99,16 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const keyboardHeight = useKeyboardState((s) => s.height);
   const role = useAuthStore((s) => s.role);
-  const { id: rawPeerId, consultationId: rawConsultationId } =
-    useLocalSearchParams<{ id: string; consultationId?: string }>();
+  const {
+    id: rawPeerId,
+    consultationId: rawConsultationId,
+    from: rawFrom,
+  } = useLocalSearchParams<{
+    id: string;
+    consultationId?: string;
+    from?: string;
+  }>();
+  const openedFrom = Array.isArray(rawFrom) ? rawFrom[0] : rawFrom;
   const id = Array.isArray(rawPeerId) ? rawPeerId[0] : rawPeerId;
   const consultationId = Array.isArray(rawConsultationId)
     ? rawConsultationId[0]
@@ -1154,7 +1162,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         <AppBackButton
           color={colors.foreground}
           style={styles.backBtn}
-          fallback="/(tabs)/history"
+          fallback={openedFrom === "doctors" ? "/(tabs)" : "/(tabs)/history"}
           accessibilityLabel={isRTL ? "رجوع" : "Back"}
         />
 

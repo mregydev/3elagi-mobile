@@ -1,6 +1,6 @@
 import { ResizeMode, Video } from "expo-av";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
@@ -15,17 +15,21 @@ const MIN_VIEWPORT_FRACTION = 0.3;
 export function HomeBannerVideo() {
   const colors = useColors();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const videoRef = useRef<Video>(null);
+  const [playerKey, setPlayerKey] = useState(0);
+  const firstFocus = useRef(true);
 
-  // Navigating away pauses the player, and `shouldPlay` alone does not restart
-  // it on the way back — the banner came back as a frozen/blank frame.
+  // Returning to the tab left the player loaded-but-not-playing, showing the
+  // grey backdrop. Rather than poke it with playAsync (which rejects in some
+  // states and silently leaves it blank), remount it: a fresh <Video shouldPlay>
+  // is exactly the path that works on first render. The initial focus is
+  // skipped so startup still mounts the player only once.
   useFocusEffect(
     useCallback(() => {
-      const video = videoRef.current;
-      void video?.playAsync().catch(() => undefined);
-      return () => {
-        void videoRef.current?.pauseAsync().catch(() => undefined);
-      };
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      setPlayerKey((key) => key + 1);
     }, []),
   );
 
@@ -52,7 +56,7 @@ export function HomeBannerVideo() {
         ]}
       >
         <Video
-          ref={videoRef}
+          key={playerKey}
           source={BANNER_VIDEO}
           style={styles.video}
           // Stretch to banner width + height so no edges are cropped.
