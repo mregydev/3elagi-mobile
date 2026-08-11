@@ -35,6 +35,8 @@ export default function TabsLayoutWeb() {
   const signedIn = isSignedIn(profile, accessToken);
   const isDoctor = role?.toLowerCase() === "doctor";
   const authOnlyHref = signedIn ? undefined : null;
+  // About us is a marketing page — drop it from the tabs once signed in.
+  const guestOnlyHref = signedIn ? null : undefined;
 
   if (!hydrated) return null;
 
@@ -71,6 +73,7 @@ export default function TabsLayoutWeb() {
               name="about-us"
               options={{
                 title: t.tabs.aboutUs,
+                href: guestOnlyHref,
                 tabBarIcon: ({ color, size }) => (
                   <Info color={color} size={size} />
                 ),

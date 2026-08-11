@@ -26,6 +26,8 @@ export type AppNavItem = {
   patientOnly?: boolean;
   /** Visible without signing in (home / doctor browse). */
   guestAllowed?: boolean;
+  /** Marketing pages that only make sense before signing in. */
+  guestOnly?: boolean;
   match: (path: string) => boolean;
 };
 
@@ -67,6 +69,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "aboutUs",
     Icon: Info,
     guestAllowed: true,
+    guestOnly: true,
     match: (path) => pathHas(path, "about-us"),
   },
   {
@@ -158,6 +161,7 @@ export function filterAppNavItems(
   const isDoctor = role?.toLowerCase() === "doctor";
   return APP_NAV_ITEMS.filter((item) => {
     if (!signedIn) return !!item.guestAllowed;
+    if (item.guestOnly) return false;
     if (item.doctorOnly && !isDoctor) return false;
     if (item.patientOnly && isDoctor) return false;
     return true;

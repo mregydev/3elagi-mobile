@@ -1,9 +1,11 @@
-import { Coins, Stethoscope, Wallet } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Globe2, Stethoscope, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { useAuthStore } from "@/domains/auth/store";
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
 import {
   fetchPointPricing,
   type MarketPrice,
@@ -28,12 +30,21 @@ export default function PricingTab() {
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
   const [pricing, setPricing] = useState<PointPricing | null>(null);
+  const [ipCountry, setIpCountry] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchPointPricing().then((next) => {
-      if (!cancelled && next) setPricing(next);
-    });
+    void (async () => {
+      const next = await fetchPointPricing();
+      if (cancelled) return;
+      if (next) setPricing(next);
+      // Hosts without a geo header (plain Cloud Run) leave detected_country
+      // null; ask from here, where the request carries the user's own IP.
+      if (!next?.detectedCountry) {
+        const code = await detectCountryFromIp();
+        if (!cancelled) setIpCountry(code);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -47,9 +58,18 @@ export default function PricingTab() {
     pricePerPoint: pricePerPoint(market === "INTL" ? "XX" : market),
   }));
   const rows = pricing?.markets?.length ? pricing.markets : fallback;
-  const activeMarket =
-    pricing?.market ??
-    (profile?.country?.trim().toUpperCase() === "JO" ? "JO" : "EG");
+  // Highlight only what we actually know. `market` alone is not enough: the
+  // server resolves an undetected caller to the default market, which would
+  // label Egypt as "your region" for everyone.
+  const detected = pricing?.detectedCountry ?? ipCountry;
+  const profileMarket = profile?.country?.trim().toUpperCase();
+  const activeMarket: PointMarket | null = detected
+    ? detected === "EG" || detected === "JO"
+      ? detected
+      : "INTL"
+    : profileMarket === "JO" || profileMarket === "EG"
+      ? profileMarket
+      : null;
 
   const marketName = (market: PointMarket) =>
     market === "EG"
@@ -101,17 +121,23 @@ export default function PricingTab() {
                 key={row.market}
                 style={[
                   styles.row,
-                  {
-                    flexDirection: dir,
-                    borderTopColor: colors.border,
-                    backgroundColor: isYours ? `${colors.primary}0F` : "transparent",
-                  },
+                  { flexDirection: dir, borderTopColor: colors.border },
                 ]}
               >
+                {/* Grey wash marks the visitor's own region. */}
+                {isYours ? (
+                  <LinearGradient
+                    colors={["#e9edf3", "#d6dce6"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                    pointerEvents="none"
+                  />
+                ) : null}
                 <View style={[styles.regionCell, { flexDirection: dir }]}>
                   {row.market === "INTL" ? (
                     <View style={[styles.globe, { backgroundColor: `${colors.primary}14` }]}>
-                      <Coins size={14} color={colors.primary} />
+                      <Globe2 size={15} color={colors.primary} />
                     </View>
                   ) : (
                     <CircledCountryFlag country={row.market} size={22} />
@@ -121,7 +147,9 @@ export default function PricingTab() {
                       {marketName(row.market)}
                     </Text>
                     {isYours ? (
-                      <Text style={[styles.yours, { color: colors.primary, textAlign }]}>
+                      <Text
+                        style={[styles.yours, { color: colors.foreground, textAlign }]}
+                      >
                         {t.pricing.yourRegion}
                       </Text>
                     ) : null}

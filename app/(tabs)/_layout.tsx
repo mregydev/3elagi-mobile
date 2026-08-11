@@ -36,6 +36,8 @@ export default function TabsLayout() {
 
   // Guests may browse home + our doctors; other tabs stay signed-in only.
   const authOnlyHref = signedIn ? undefined : null;
+  // About us is a marketing page — drop it from the tabs once signed in.
+  const guestOnlyHref = signedIn ? null : undefined;
 
   return (
     <AppSidebarProvider>
@@ -61,6 +63,7 @@ export default function TabsLayout() {
           name="about-us"
           options={{
             title: t.tabs.aboutUs,
+            href: guestOnlyHref,
             tabBarIcon: ({ color, size }) => (
               <Info color={color} size={size} />
             ),
