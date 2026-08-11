@@ -1,6 +1,7 @@
 import { Redirect, usePathname, useRouter } from "expo-router";
 import {
   BookOpen,
+  Coins,
   FileWarning,
   LayoutDashboard,
   LogOut,
@@ -15,7 +16,7 @@ import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 
-type AdminNavKey = "doctors" | "specialities" | "rag" | "complaints";
+type AdminNavKey = "doctors" | "specialities" | "pricing" | "rag" | "complaints";
 
 const NAV: {
   key: AdminNavKey;
@@ -30,6 +31,12 @@ const NAV: {
     href: "/admin/specialities",
     Icon: LayoutDashboard,
   },
+  {
+    key: "pricing",
+    label: "Credit pricing",
+    href: "/admin/pricing",
+    Icon: Coins,
+  },
   { key: "rag", label: "RAG Sources", href: "/admin/rag", Icon: BookOpen },
   {
     key: "complaints",
@@ -41,6 +48,7 @@ const NAV: {
 
 function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/specialities")) return "specialities";
+  if (pathname.includes("/admin/pricing")) return "pricing";
   if (pathname.includes("/admin/rag")) return "rag";
   if (pathname.includes("/admin/complaints")) return "complaints";
   return "doctors";

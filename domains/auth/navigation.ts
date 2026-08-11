@@ -91,12 +91,18 @@ export function isPublicWebPath(pathname: string): boolean {
   ) {
     return true;
   }
-  // Guest browse tabs: home + our doctors.
+  // Guest browse tabs. Keep in step with GUEST_ALLOWED_TABS — this is the
+  // path-based twin used on web, and a tab missing here bounces guests back to
+  // the welcome page, which looks like the nav link doing nothing.
+  const guestTabs = ["about-us", "assistant", "pricing"];
+  if (pathname === "/(tabs)") return true;
   if (
-    pathname === "/(tabs)" ||
-    pathname.startsWith("/(tabs)/about-us") ||
-    pathname === "/about-us" ||
-    pathname.startsWith("/about-us/")
+    guestTabs.some(
+      (tab) =>
+        pathname === `/${tab}` ||
+        pathname.startsWith(`/${tab}/`) ||
+        pathname.startsWith(`/(tabs)/${tab}`),
+    )
   ) {
     return true;
   }

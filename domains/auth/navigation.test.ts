@@ -1,0 +1,35 @@
+import { describe, expect, it, vi } from "vitest";
+import { isPublicWebPath } from "./navigation";
+import { GUEST_ALLOWED_TABS } from "./guestBrowse";
+
+vi.mock("react-native", () => ({ Platform: { OS: "web" } }));
+vi.mock("expo-router", () => ({ router: {} }));
+// The guest-tab list pulls in a zustand store that reaches react-native, which
+// vitest cannot parse (Flow types).
+vi.mock("@/domains/auth/guestAuthDialogStore", () => ({
+  useGuestAuthDialogStore: { getState: () => ({ open: () => undefined }) },
+}));
+
+describe("isPublicWebPath", () => {
+  it("lets guests onto every tab the segment allowlist permits", () => {
+    // The two lists are separate guards for the same rule; when they disagree
+    // the nav link silently bounces the guest back to welcome.
+    for (const tab of GUEST_ALLOWED_TABS) {
+      if (tab === "index") continue;
+      expect(isPublicWebPath(`/${tab}`), tab).toBe(true);
+      expect(isPublicWebPath(`/(tabs)/${tab}`), tab).toBe(true);
+    }
+  });
+
+  it("still keeps guests out of signed-in tabs", () => {
+    expect(isPublicWebPath("/records")).toBe(false);
+    expect(isPublicWebPath("/(tabs)/points")).toBe(false);
+    expect(isPublicWebPath("/(tabs)/appointments")).toBe(false);
+  });
+
+  it("allows home, welcome and the auth flows", () => {
+    expect(isPublicWebPath("/")).toBe(true);
+    expect(isPublicWebPath("/(tabs)")).toBe(true);
+    expect(isPublicWebPath("/auth/login")).toBe(true);
+  });
+});

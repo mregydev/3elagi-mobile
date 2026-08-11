@@ -2,8 +2,14 @@ import { Coins, Stethoscope, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
+import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { useAuthStore } from "@/domains/auth/store";
-import { fetchPointPricing, type PointPricing } from "@/domains/points/api";
+import {
+  fetchPointPricing,
+  type MarketPrice,
+  type PointMarket,
+  type PointPricing,
+} from "@/domains/points/api";
 import {
   marketCurrencyCode,
   pricePerPoint,
@@ -12,7 +18,9 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
 
-/** Public pricing page — the per-credit rate for wherever the visitor is. */
+const MARKET_ORDER: PointMarket[] = ["EG", "JO", "INTL"];
+
+/** Public pricing page — the per-credit rate in every market we serve. */
 export default function PricingTab() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
@@ -31,8 +39,24 @@ export default function PricingTab() {
     };
   }, []);
 
-  const rate = pricing?.pricePerPoint ?? pricePerPoint(profile?.country);
-  const currency = pricing?.currency ?? marketCurrencyCode(profile?.country);
+  // Until the lookup answers (or if it fails) fall back to the profile market,
+  // so the page never renders an empty table.
+  const fallback: MarketPrice[] = MARKET_ORDER.map((market) => ({
+    market,
+    currency: marketCurrencyCode(market === "INTL" ? "XX" : market),
+    pricePerPoint: pricePerPoint(market === "INTL" ? "XX" : market),
+  }));
+  const rows = pricing?.markets?.length ? pricing.markets : fallback;
+  const activeMarket =
+    pricing?.market ??
+    (profile?.country?.trim().toUpperCase() === "JO" ? "JO" : "EG");
+
+  const marketName = (market: PointMarket) =>
+    market === "EG"
+      ? t.pricing.marketEgypt
+      : market === "JO"
+        ? t.pricing.marketJordan
+        : t.pricing.marketIntl;
 
   const notes = [
     { Icon: Stethoscope, text: t.pricing.setByDoctor },
@@ -52,18 +76,69 @@ export default function PricingTab() {
 
         <View
           style={[
-            styles.rateCard,
-            { backgroundColor: colors.card, borderColor: colors.primary },
+            styles.table,
+            { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Coins size={26} color={colors.primary} />
-          <Text style={[styles.rateValue, { color: colors.primary }]}>
-            {t.credits.pricePerPointLabel(rate, currency)}
-          </Text>
-          <Text style={[styles.rateHint, { color: colors.mutedForeground }]}>
-            {t.pricing.locationHint}
-          </Text>
+          <View
+            style={[
+              styles.headRow,
+              { flexDirection: dir, borderBottomColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.headText, { color: colors.mutedForeground, textAlign }]}>
+              {t.pricing.columnRegion}
+            </Text>
+            <Text style={[styles.headPrice, { color: colors.mutedForeground }]}>
+              {t.pricing.columnPrice}
+            </Text>
+          </View>
+
+          {rows.map((row) => {
+            const isYours = row.market === activeMarket;
+            return (
+              <View
+                key={row.market}
+                style={[
+                  styles.row,
+                  {
+                    flexDirection: dir,
+                    borderTopColor: colors.border,
+                    backgroundColor: isYours ? `${colors.primary}0F` : "transparent",
+                  },
+                ]}
+              >
+                <View style={[styles.regionCell, { flexDirection: dir }]}>
+                  {row.market === "INTL" ? (
+                    <View style={[styles.globe, { backgroundColor: `${colors.primary}14` }]}>
+                      <Coins size={14} color={colors.primary} />
+                    </View>
+                  ) : (
+                    <CircledCountryFlag country={row.market} size={22} />
+                  )}
+                  <View style={styles.regionText}>
+                    <Text style={[styles.region, { color: colors.foreground, textAlign }]}>
+                      {marketName(row.market)}
+                    </Text>
+                    {isYours ? (
+                      <Text style={[styles.yours, { color: colors.primary, textAlign }]}>
+                        {t.pricing.yourRegion}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                <Text style={[styles.price, { color: colors.foreground }]}>
+                  {row.pricePerPoint} {row.currency}
+                </Text>
+              </View>
+            );
+          })}
         </View>
+
+        <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+          {t.pricing.locationHint}
+        </Text>
 
         <View
           style={[
@@ -92,15 +167,35 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: 14 },
   title: { fontSize: 22, fontWeight: "800" },
   subtitle: { fontSize: 15, lineHeight: 22 },
-  rateCard: {
-    borderRadius: 18,
-    borderWidth: 1.5,
-    padding: 20,
+  table: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
+  headRow: {
     alignItems: "center",
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  rateValue: { fontSize: 22, fontWeight: "800", textAlign: "center" },
-  rateHint: { fontSize: 13, textAlign: "center", lineHeight: 19 },
+  headText: { flex: 1, fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  headPrice: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  row: {
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  regionCell: { flex: 1, alignItems: "center", gap: 10, minWidth: 0 },
+  regionText: { flex: 1, minWidth: 0 },
+  region: { fontSize: 15, fontWeight: "700" },
+  yours: { fontSize: 11, fontWeight: "700", marginTop: 2 },
+  price: { fontSize: 16, fontWeight: "800" },
+  globe: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hint: { fontSize: 13, lineHeight: 19 },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
   noteRow: { alignItems: "center", gap: 12 },
   iconWrap: {

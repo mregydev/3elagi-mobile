@@ -75,12 +75,20 @@ export async function addMessagePoints(
   return data;
 }
 
-export interface PointPricing {
-  market: "EG" | "JO" | "INTL";
-  currency: "EGP" | "JOD" | "USD";
+export type PointMarket = "EG" | "JO" | "INTL";
+export type PointCurrency = "EGP" | "JOD" | "USD";
+
+export interface MarketPrice {
+  market: PointMarket;
+  currency: PointCurrency;
   pricePerPoint: number;
+}
+
+export interface PointPricing extends MarketPrice {
   /** Country the server read from the caller's IP, null when undetectable. */
   detectedCountry: string | null;
+  /** Every market, for the public pricing table. */
+  markets: MarketPrice[];
 }
 
 /** Live per-point price for wherever the caller is (public — no token). */
@@ -88,18 +96,32 @@ export async function fetchPointPricing(): Promise<PointPricing | null> {
   try {
     const res = await fetch(`${API_BASE}/points/pricing`);
     if (!res.ok) return null;
-    const data = (await res.json()) as {
-      market?: PointPricing["market"];
-      currency?: PointPricing["currency"];
+    type Row = {
+      market?: PointMarket;
+      currency?: PointCurrency;
       price_per_point?: number;
+    };
+    const data = (await res.json()) as Row & {
       detected_country?: string | null;
+      markets?: Row[];
     };
     if (!data?.currency || typeof data.price_per_point !== "number") return null;
+    const markets = (data.markets ?? [])
+      .filter(
+        (row): row is Required<Row> =>
+          !!row?.market && !!row.currency && typeof row.price_per_point === "number",
+      )
+      .map((row) => ({
+        market: row.market,
+        currency: row.currency,
+        pricePerPoint: row.price_per_point,
+      }));
     return {
       market: data.market ?? "EG",
       currency: data.currency,
       pricePerPoint: data.price_per_point,
       detectedCountry: data.detected_country ?? null,
+      markets,
     };
   } catch {
     // Fall back to the profile-country price the screen already computes.

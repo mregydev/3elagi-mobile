@@ -256,3 +256,29 @@ export async function updateSpecialityVisibility(
     },
   );
 }
+
+export type AdminPointMarket = "EG" | "JO" | "INTL";
+
+export interface AdminPointPricingRow {
+  market: AdminPointMarket;
+  currency: "EGP" | "JOD" | "USD";
+  pricePerPoint: number;
+}
+
+export async function fetchAdminPointPricing(
+  token: string,
+): Promise<AdminPointPricingRow[]> {
+  const data = await authJson<AdminPointPricingRow[]>("/admin/point-pricing", token);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function updatePointPrice(
+  token: string,
+  market: AdminPointMarket,
+  pricePerPoint: number,
+): Promise<AdminPointPricingRow> {
+  return authJson<AdminPointPricingRow>(`/admin/point-pricing/${market}`, token, {
+    method: "PATCH",
+    body: JSON.stringify({ price_per_point: pricePerPoint }),
+  });
+}

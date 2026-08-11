@@ -349,7 +349,14 @@ const en = {
     title: "Pricing",
     subtitle:
       "3elagi runs on credits. Buy them once, then spend them on consultations, messages and video calls.",
-    locationHint: "Priced for your location, detected automatically.",
+    locationHint:
+      "Your region is detected automatically; the matching row is highlighted.",
+    columnRegion: "REGION",
+    columnPrice: "1 CREDIT",
+    marketEgypt: "Egypt",
+    marketJordan: "Jordan",
+    marketIntl: "Rest of the world",
+    yourRegion: "Your region",
     setByDoctor:
       "How many credits a consultation costs is set by each doctor, and shown on their profile before you start.",
     payAsYouGo:
@@ -1021,7 +1028,13 @@ const ar: typeof en = {
     title: "الأسعار",
     subtitle:
       "يعمل 3elagi بالنقاط. اشترِ النقاط مرة واحدة ثم استخدمها في الاستشارات والرسائل ومكالمات الفيديو.",
-    locationHint: "السعر محدد حسب موقعك، ويتم اكتشافه تلقائياً.",
+    locationHint: "يتم تحديد منطقتك تلقائياً، ويُميَّز الصف المطابق.",
+    columnRegion: "المنطقة",
+    columnPrice: "نقطة واحدة",
+    marketEgypt: "مصر",
+    marketJordan: "الأردن",
+    marketIntl: "باقي دول العالم",
+    yourRegion: "منطقتك",
     setByDoctor:
       "عدد النقاط لكل استشارة يحدده كل طبيب، ويظهر في ملفه قبل أن تبدأ.",
     payAsYouGo: "بدون اشتراك — لا تُخصم النقاط إلا عند استشارة طبيب فعلياً.",
@@ -1688,7 +1701,14 @@ const de: typeof en = {
     title: "Preise",
     subtitle:
       "3elagi läuft mit Guthaben. Einmal kaufen und für Beratungen, Nachrichten und Videoanrufe nutzen.",
-    locationHint: "Preis für Ihren Standort, automatisch erkannt.",
+    locationHint:
+      "Ihre Region wird automatisch erkannt; die passende Zeile ist hervorgehoben.",
+    columnRegion: "REGION",
+    columnPrice: "1 CREDIT",
+    marketEgypt: "Ägypten",
+    marketJordan: "Jordanien",
+    marketIntl: "Übrige Welt",
+    yourRegion: "Ihre Region",
     setByDoctor:
       "Wie viele Credits eine Beratung kostet, legt jede Ärztin und jeder Arzt selbst fest — sichtbar im Profil.",
     payAsYouGo: "Kein Abo — Guthaben wird nur bei einer echten Beratung verbraucht.",
@@ -2357,7 +2377,14 @@ const es: typeof en = {
     title: "Precios",
     subtitle:
       "3elagi funciona con créditos. Cómpralos una vez y úsalos en consultas, mensajes y videollamadas.",
-    locationHint: "Precio según tu ubicación, detectada automáticamente.",
+    locationHint:
+      "Tu región se detecta automáticamente; la fila correspondiente se resalta.",
+    columnRegion: "REGIÓN",
+    columnPrice: "1 CRÉDITO",
+    marketEgypt: "Egipto",
+    marketJordan: "Jordania",
+    marketIntl: "Resto del mundo",
+    yourRegion: "Tu región",
     setByDoctor:
       "Cada médico fija cuántos créditos cuesta su consulta, y se muestra en su perfil antes de empezar.",
     payAsYouGo: "Sin suscripción: los créditos solo se gastan al consultar de verdad.",

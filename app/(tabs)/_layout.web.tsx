@@ -7,10 +7,10 @@ import {
   Coins,
   History,
   Home,
+  Info,
   ListChecks,
   MessageSquare,
   Star,
-  Stethoscope,
   User,
   Users,
 } from "lucide-react-native";
@@ -72,15 +72,15 @@ export default function TabsLayoutWeb() {
               options={{
                 title: t.tabs.aboutUs,
                 tabBarIcon: ({ color, size }) => (
-                  <Stethoscope color={color} size={size} />
+                  <Info color={color} size={size} />
+                ),
+              }}
+            />
             <Tabs.Screen
               name="pricing"
               options={{
                 title: t.tabs.pricing,
                 tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
-              }}
-            />
-                ),
               }}
             />
             <Tabs.Screen
