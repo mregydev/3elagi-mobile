@@ -972,6 +972,96 @@ export function ChatComposer({
         onClose={() => setPreviewVideoUri(null)}
       />
 
+      {recording ? (
+        <View
+          style={[
+            styles.recordingBar,
+            { flexDirection: rowDir },
+          ]}
+        >
+          <Pressable
+            onPress={() => void cancelRecording()}
+            hitSlop={8}
+            accessibilityLabel={isRTL ? "إلغاء التسجيل" : "Cancel recording"}
+            style={[styles.recordingCancelBtn, { borderColor: "#ef4444" }]}
+          >
+            <X size={16} color="#ef4444" />
+            <Text style={styles.recordingCancelText}>
+              {isRTL ? "إلغاء" : "Cancel"}
+            </Text>
+          </Pressable>
+          <Text style={styles.recordingHint}>
+            {isRTL
+              ? "جاري التسجيل… اضغط الميكروفون للإيقاف"
+              : "Recording… tap mic to stop"}
+          </Text>
+        </View>
+      ) : uploading ? (
+        <Text
+          style={{
+            textAlign: "center",
+            color: colors.mutedForeground,
+            paddingBottom: 8,
+            fontSize: 12,
+          }}
+        >
+          {isRTL ? "جاري رفع الملف…" : "Uploading attachment…"}
+        </Text>
+      ) : null}
+      {pendingVoice ? (
+        <View
+          style={[
+            styles.voicePreview,
+            {
+              flexDirection: rowDir,
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={discardPendingVoice}
+            disabled={uploading}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "حذف التسجيل" : "Delete recording"}
+            style={[styles.voiceDiscard, { borderColor: "#ef4444" }]}
+          >
+            <Trash2 size={18} color="#ef4444" />
+          </Pressable>
+
+          <View style={styles.voicePlayer}>
+            <VoiceMessagePlayer
+              uri={pendingVoice.uri}
+              color={colors.foreground}
+              trackColor={colors.border}
+              fillColor={colors.primary}
+              isRTL={isRTL}
+            />
+          </View>
+
+          <Pressable
+            onPress={() => void sendPendingVoice()}
+            disabled={uploading || sending}
+            accessibilityRole="button"
+            accessibilityLabel={isRTL ? "إرسال" : "Send"}
+            style={[
+              styles.voiceSend,
+              {
+                backgroundColor: colors.primary,
+                opacity: uploading || sending ? 0.6 : 1,
+              },
+            ]}
+          >
+            {uploading || sending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Send size={18} color="#fff" />
+            )}
+          </Pressable>
+        </View>
+      ) : null}
+
       {disabled && !isEditing ? (
         <View
           style={[
@@ -1091,96 +1181,6 @@ export function ChatComposer({
         </View>
       ) : null}
 
-      {pendingVoice ? (
-        <View
-          style={[
-            styles.voicePreview,
-            {
-              flexDirection: rowDir,
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-            },
-          ]}
-        >
-          <Pressable
-            onPress={discardPendingVoice}
-            disabled={uploading}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "حذف التسجيل" : "Delete recording"}
-            style={[styles.voiceDiscard, { borderColor: "#ef4444" }]}
-          >
-            <Trash2 size={18} color="#ef4444" />
-          </Pressable>
-
-          <View style={styles.voicePlayer}>
-            <VoiceMessagePlayer
-              uri={pendingVoice.uri}
-              color={colors.foreground}
-              trackColor={colors.border}
-              fillColor={colors.primary}
-              isRTL={isRTL}
-            />
-          </View>
-
-          <Pressable
-            onPress={() => void sendPendingVoice()}
-            disabled={uploading || sending}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إرسال" : "Send"}
-            style={[
-              styles.voiceSend,
-              {
-                backgroundColor: colors.primary,
-                opacity: uploading || sending ? 0.6 : 1,
-              },
-            ]}
-          >
-            {uploading || sending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Send size={18} color="#fff" />
-            )}
-          </Pressable>
-        </View>
-      ) : null}
-
-      {recording ? (
-        <View
-          style={[
-            styles.recordingBar,
-            { flexDirection: rowDir },
-          ]}
-        >
-          <Pressable
-            onPress={() => void cancelRecording()}
-            hitSlop={8}
-            accessibilityLabel={isRTL ? "إلغاء التسجيل" : "Cancel recording"}
-            style={[styles.recordingCancelBtn, { borderColor: "#ef4444" }]}
-          >
-            <X size={16} color="#ef4444" />
-            <Text style={styles.recordingCancelText}>
-              {isRTL ? "إلغاء" : "Cancel"}
-            </Text>
-          </Pressable>
-          <Text style={styles.recordingHint}>
-            {isRTL
-              ? "جاري التسجيل… اضغط الميكروفون للإيقاف"
-              : "Recording… tap mic to stop"}
-          </Text>
-        </View>
-      ) : uploading ? (
-        <Text
-          style={{
-            textAlign: "center",
-            color: colors.mutedForeground,
-            paddingBottom: 8,
-            fontSize: 12,
-          }}
-        >
-          {isRTL ? "جاري رفع الملف…" : "Uploading attachment…"}
-        </Text>
-      ) : null}
     </View>
   );
 }

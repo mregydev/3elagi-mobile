@@ -567,16 +567,29 @@ export function ChatMessageBubble({
     const meta = item.consultationAction;
     const title =
       meta.action === "start"
-        ? isRTL
-          ? "بدأت الاستشارة"
-          : "Consultation started"
-        : meta.action === "end"
+        ? // A request now waits for the doctor rather than starting outright.
+          meta.status === "pending"
           ? isRTL
-            ? "انتهت الاستشارة"
-            : "Consultation ended"
+            ? "طلب استشارة — بانتظار رد الطبيب"
+            : "Consultation request — waiting for the doctor"
           : isRTL
-            ? "أُلغيت الاستشارة"
-            : "Consultation cancelled";
+            ? "بدأت الاستشارة"
+            : "Consultation started"
+        : meta.action === "accept"
+          ? isRTL
+            ? "قبل الطبيب الاستشارة"
+            : "Doctor accepted the consultation"
+          : meta.action === "reject"
+            ? isRTL
+              ? "رفض الطبيب طلب الاستشارة"
+              : "Doctor declined the consultation request"
+            : meta.action === "end"
+              ? isRTL
+                ? "انتهت الاستشارة"
+                : "Consultation ended"
+              : isRTL
+                ? "أُلغيت الاستشارة"
+                : "Consultation cancelled";
     const reasonType = meta.cancel_reason_type;
     const reasonLabel =
       reasonType === "video_consultation"
@@ -593,11 +606,13 @@ export function ChatMessageBubble({
               : "Other reason"
             : null;
     const accent =
-      meta.action === "cancel"
+      meta.action === "cancel" || meta.action === "reject"
         ? "#dc2626"
-        : meta.action === "end"
-          ? "#0d9488"
-          : colors.primary;
+        : meta.action === "accept"
+          ? "#10b981"
+          : meta.action === "end"
+            ? "#0d9488"
+            : colors.primary;
     const detail =
       meta.action === "start" && meta.reserved_points
         ? t.consultations.reservedInThread(formatEgp(meta.reserved_points, t))

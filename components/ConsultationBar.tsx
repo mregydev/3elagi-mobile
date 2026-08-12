@@ -1,6 +1,7 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import {
+  Check,
   CircleAlert,
   CircleStop,
   FileText,
@@ -40,8 +41,10 @@ import {
 } from "@/domains/complaints/api";
 import { mimeFromUri, resolveWebVoiceFile } from "@/utils/chatMedia";
 import {
+  acceptConsultation,
   cancelConsultation,
   endConsultation,
+  rejectConsultation,
   fetchActiveConsultation,
   startConsultation,
   type Consultation,
@@ -168,13 +171,14 @@ export function ConsultationBar({
   // Sync with realtime consultation_action messages arriving in the thread.
   useEffect(() => {
     if (!latestAction) return;
-    if (latestAction.action === "start") {
+    if (latestAction.action === "start" || latestAction.action === "accept") {
+      const status = latestAction.action === "accept" ? "open" : "pending";
       setActive((prev) =>
-        prev?.id === latestAction.consultation_id
+        prev?.id === latestAction.consultation_id && prev.status === status
           ? prev
           : ({
               id: latestAction.consultation_id,
-              status: "open",
+              status,
               reserved_points: latestAction.reserved_points ?? 0,
             } as Consultation),
       );
@@ -441,8 +445,37 @@ export function ConsultationBar({
     }
   };
 
+  /** Doctor answers a pending request; the patient is told either way. */
+  const answerRequest = async (answer: "accept" | "reject") => {
+    if (!active || submitting) return;
+    setSubmitting(true);
+    try {
+      const res =
+        answer === "accept"
+          ? await acceptConsultation(active.id, token)
+          : await rejectConsultation(active.id, token);
+      setActive(answer === "accept" ? res.consultation : null);
+      showSuccessToast(
+        answer === "accept"
+          ? label("Consultation accepted", "تم قبول الاستشارة")
+          : label("Request declined", "تم رفض الطلب"),
+      );
+    } catch (e) {
+      showErrorToast(
+        e instanceof Error
+          ? e.message
+          : label("Could not answer the request", "تعذر الرد على الطلب"),
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const dir = isRTL ? "row-reverse" : "row";
   const isOpen = active?.status === "open";
+  // Waiting on the doctor: the patient cannot start another, and the doctor
+  // gets accept / decline instead of "end".
+  const isPending = active?.status === "pending";
   const complaintLabel =
     complaintStatus === "pending"
       ? label("Complaint under review", "الشكوى قيد المراجعة")
@@ -466,7 +499,7 @@ export function ConsultationBar({
     if (!onMenuActionsChange) return;
 
     const next: ChatAction[] = [];
-    if (isPatient && !isOpen) {
+    if (isPatient && !isOpen && !isPending) {
       next.push({
         key: "consult-start",
         label: label("Start consultation", "بدء استشارة"),
@@ -484,6 +517,22 @@ export function ConsultationBar({
         });
       }
     }
+    if (isDoctor && isPending) {
+      next.push({
+        key: "consult-accept",
+        label: label("Accept request", "قبول الطلب"),
+        Icon: Check,
+        color: "#10b981",
+        onPress: () => void answerRequest("accept"),
+      });
+      next.push({
+        key: "consult-reject",
+        label: label("Decline request", "رفض الطلب"),
+        Icon: X,
+        color: "#dc2626",
+        onPress: () => void answerRequest("reject"),
+      });
+    }
     if (isDoctor && isOpen) {
       next.push({
         key: "consult-end",
@@ -499,6 +548,7 @@ export function ConsultationBar({
     isPatient,
     isDoctor,
     isOpen,
+    isPending,
     endedConsultationId,
     complaintLabel,
     colors.primary,

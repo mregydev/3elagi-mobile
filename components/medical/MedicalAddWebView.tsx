@@ -268,10 +268,10 @@ export function MedicalAddWebView() {
     >
       <View style={styles.symptomList}>
         {symptomLines.map((line, index) => (
-          <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
+          <View key={line.id} style={[styles.symptomRow, { flexDirection: dir }]}>
             <AppTextInput
-              value={line}
-              onChangeText={(t) => updateSymptomLine(index, t)}
+              value={line.text}
+              onChangeText={(t) => updateSymptomLine(line.id, t)}
               placeholder={isRTL ? `عرض ${index + 1}` : `Symptom ${index + 1}`}
               placeholderTextColor={colors.mutedForeground}
               style={[
@@ -286,7 +286,7 @@ export function MedicalAddWebView() {
               ]}
             />
             <Pressable
-              onPress={() => removeSymptomLine(index)}
+              onPress={() => removeSymptomLine(line.id)}
               style={[styles.symptomRemove, { backgroundColor: colors.muted }]}
             >
               <X size={16} color={colors.mutedForeground} />

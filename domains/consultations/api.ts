@@ -5,7 +5,7 @@ export interface Consultation {
   id: string;
   patient_id: string;
   doctor_id: string;
-  status: "open" | "ended" | "cancelled";
+  status: "pending" | "open" | "ended" | "cancelled" | "rejected";
   description: string;
   reserved_points: number;
   doctor_note: string | null;
@@ -94,6 +94,27 @@ export async function startConsultation(
   return authJson(`/consultations/start`, token, {
     method: "POST",
     body: JSON.stringify({ doctor_id: doctorId, description }),
+  });
+}
+
+/** Doctor answers a pending request. */
+export async function acceptConsultation(
+  consultationId: string,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/accept`, token, {
+    method: "POST",
+  });
+}
+
+export async function rejectConsultation(
+  consultationId: string,
+  token: string,
+  reason?: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/reject`, token, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
   });
 }
 

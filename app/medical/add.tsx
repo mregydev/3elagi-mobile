@@ -56,6 +56,12 @@ import {
   type BodyPart,
 } from "@/domains/medical/bodyParts";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
+import {
+  newSymptomLine,
+  symptomLinesFrom,
+  symptomTexts,
+  type SymptomLine,
+} from "@/utils/symptomLines";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
 
@@ -109,7 +115,9 @@ export default function AddMedicalScreen() {
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
-  const [symptomLines, setSymptomLines] = useState<string[]>([""]);
+  const [symptomLines, setSymptomLines] = useState<SymptomLine[]>(() => [
+    newSymptomLine(),
+  ]);
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [completingAi, setCompletingAi] = useState(false);
@@ -243,11 +251,16 @@ export default function AddMedicalScreen() {
     if (!ATTACHMENT_CATEGORIES.includes(key)) setAttached(null);
   };
 
-  const addSymptomLine = () => setSymptomLines((prev) => [...prev, ""]);
-  const updateSymptomLine = (index: number, text: string) =>
-    setSymptomLines((prev) => prev.map((s, i) => (i === index ? text : s)));
-  const removeSymptomLine = (index: number) =>
-    setSymptomLines((prev) => (prev.length <= 1 ? [""] : prev.filter((_, i) => i !== index)));
+  const addSymptomLine = () =>
+    setSymptomLines((prev) => [...prev, newSymptomLine()]);
+  const updateSymptomLine = (id: string, text: string) =>
+    setSymptomLines((prev) =>
+      prev.map((line) => (line.id === id ? { ...line, text } : line)),
+    );
+  const removeSymptomLine = (id: string) =>
+    setSymptomLines((prev) =>
+      prev.length <= 1 ? [newSymptomLine()] : prev.filter((line) => line.id !== id),
+    );
 
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -344,7 +357,7 @@ export default function AddMedicalScreen() {
         accessToken,
       );
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
-      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
+      setSymptomLines(symptomLinesFrom(symptoms));
       setSelectedDocumentIds(result.document_ids ?? []);
       const linkedTitles = linkableDocs
         .filter((d) => (result.document_ids ?? []).includes(d.id))
@@ -388,7 +401,7 @@ export default function AddMedicalScreen() {
         Alert.alert("Description required", "Enter a diagnosis description.");
         return;
       }
-      const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
+      const symptoms = symptomTexts(symptomLines);
       const documentIds =
         selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined;
       setUploading(true);
@@ -649,10 +662,10 @@ export default function AddMedicalScreen() {
               </Text>
             </Text>
             {symptomLines.map((line, index) => (
-              <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
+              <View key={line.id} style={[styles.symptomRow, { flexDirection: dir }]}>
                 <AppTextInput
-                  value={line}
-                  onChangeText={(t) => updateSymptomLine(index, t)}
+                  value={line.text}
+                  onChangeText={(t) => updateSymptomLine(line.id, t)}
                   placeholder={isRTL ? `عرض ${index + 1}` : `Symptom ${index + 1}`}
                   placeholderTextColor={colors.mutedForeground}
                   style={[
@@ -667,7 +680,7 @@ export default function AddMedicalScreen() {
                   ]}
                 />
                 <Pressable
-                  onPress={() => removeSymptomLine(index)}
+                  onPress={() => removeSymptomLine(line.id)}
                   style={[styles.symptomRemove, { backgroundColor: colors.muted }]}
                 >
                   <X size={16} color={colors.mutedForeground} />

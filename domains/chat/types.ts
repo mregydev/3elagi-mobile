@@ -13,8 +13,19 @@ export type ChatMessageType =
   | "appointment_action"
   | "consultation_action";
 
-export type ConsultationStatus = "open" | "ended" | "cancelled";
-export type ConsultationActionType = "start" | "end" | "cancel";
+/** `pending` = the doctor has not accepted or rejected the request yet. */
+export type ConsultationStatus =
+  | "pending"
+  | "open"
+  | "ended"
+  | "cancelled"
+  | "rejected";
+export type ConsultationActionType =
+  | "start"
+  | "accept"
+  | "reject"
+  | "end"
+  | "cancel";
 export type ConsultationCancelReasonType =
   | "video_consultation"
   | "onsite_visit"

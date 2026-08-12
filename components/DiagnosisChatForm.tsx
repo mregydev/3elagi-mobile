@@ -35,6 +35,12 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { showAppAlert } from "@/utils/appAlert";
 import { flexRow } from "@/utils/rtl";
+import {
+  newSymptomLine,
+  symptomLinesFrom,
+  symptomTexts,
+  type SymptomLine,
+} from "@/utils/symptomLines";
 
 export type DiagnosisSubmitPayload = {
   description: string;
@@ -100,7 +106,9 @@ export function DiagnosisChatForm({
   const textAlign = isRTL ? "right" : "left";
 
   const [description, setDescription] = useState("");
-  const [symptomLines, setSymptomLines] = useState<string[]>([""]);
+  const [symptomLines, setSymptomLines] = useState<SymptomLine[]>(() => [
+    newSymptomLine(),
+  ]);
   const [note, setNote] = useState("");
   const [bodyPart, setBodyPart] = useState<BodyPart>("general");
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
@@ -125,7 +133,7 @@ export function DiagnosisChatForm({
   useEffect(() => {
     if (!visible) {
       setDescription("");
-      setSymptomLines([""]);
+      setSymptomLines([newSymptomLine()]);
       setNote("");
       setBodyPart("general");
       setSelectedDocumentIds([]);
@@ -198,7 +206,7 @@ export function DiagnosisChatForm({
         accessToken,
       );
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
-      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
+      setSymptomLines(symptomLinesFrom(symptoms));
       setSelectedDocumentIds(result.document_ids ?? []);
       const linkedTitles = linkableDocs
         .filter((d) => (result.document_ids ?? []).includes(d.id))
@@ -230,7 +238,7 @@ export function DiagnosisChatForm({
           patient_user_id: patientUserId,
           diagnosis_title: desc,
           consultation_id: consultationId,
-          symptoms: symptomLines.map((s) => s.trim()).filter(Boolean),
+          symptoms: symptomTexts(symptomLines),
           lang: apiLang,
         },
         accessToken,
@@ -294,7 +302,7 @@ export function DiagnosisChatForm({
     if (saving) return;
     if (requireDescription && !desc) return;
     if (!requireDescription && !desc && !trimmedNote) return;
-    const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
+    const symptoms = symptomTexts(symptomLines);
 
     let prescription_id: string | undefined;
     let prescription: DiagnosisPrescriptionAttach | undefined;
@@ -456,15 +464,17 @@ export function DiagnosisChatForm({
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
         {isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)"}
       </Text>
-      {symptomLines.map((line, index) => (
-        <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
+      {symptomLines.map((line) => (
+        <View key={line.id} style={[styles.symptomRow, { flexDirection: dir }]}>
           <AppTextInput
-            value={line}
-            onChangeText={(value) => {
-              const next = [...symptomLines];
-              next[index] = value;
-              setSymptomLines(next);
-            }}
+            value={line.text}
+            onChangeText={(value) =>
+              setSymptomLines((prev) =>
+                prev.map((row) =>
+                  row.id === line.id ? { ...row, text: value } : row,
+                ),
+              )
+            }
             placeholder={isRTL ? "عرض" : "Symptom"}
             placeholderTextColor={colors.mutedForeground}
             style={[
@@ -475,7 +485,9 @@ export function DiagnosisChatForm({
           />
           {symptomLines.length > 1 ? (
             <Pressable
-              onPress={() => setSymptomLines(symptomLines.filter((_, i) => i !== index))}
+              onPress={() =>
+                setSymptomLines((prev) => prev.filter((row) => row.id !== line.id))
+              }
               hitSlop={8}
               disabled={saving}
             >
@@ -485,7 +497,7 @@ export function DiagnosisChatForm({
         </View>
       ))}
       <Pressable
-        onPress={() => setSymptomLines([...symptomLines, ""])}
+        onPress={() => setSymptomLines((prev) => [...prev, newSymptomLine()])}
         style={[styles.addSymptom, { flexDirection: dir }]}
         disabled={saving}
       >

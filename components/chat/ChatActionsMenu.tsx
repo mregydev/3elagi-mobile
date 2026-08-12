@@ -2,6 +2,7 @@ import { Plus, X } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,9 +63,27 @@ export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props
     requestAnimationFrame(() => onPress());
   };
 
+  // Native gets a bottom sheet: an anchored popup next to a composer button
+  // sits awkwardly over the keyboard and the system navigation bar.
+  const isSheet = Platform.OS !== "web";
+
   const menuWidth = Math.min(MENU_MAX_WIDTH, windowWidth - 24);
   let menuStyle: object | undefined;
-  if (anchor) {
+  if (isSheet) {
+    menuStyle = {
+      position: "absolute" as const,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: "100%" as const,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingBottom: insets.bottom + 8,
+      maxHeight: windowHeight * 0.7,
+    };
+  } else if (anchor) {
     const preferredTop = anchor.y - MENU_GAP;
     const openAbove = preferredTop > 140;
     const left = Math.min(
@@ -112,7 +131,14 @@ export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props
         </Pressable>
       </View>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={closeMenu}>
+      <Modal
+        visible={open}
+        transparent
+        animationType={isSheet ? "slide" : "fade"}
+        onRequestClose={closeMenu}
+        statusBarTranslucent
+        navigationBarTranslucent
+      >
         <View style={styles.overlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
           <View
