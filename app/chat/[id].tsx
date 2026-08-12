@@ -908,6 +908,16 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [consultationActionBusy, setConsultationActionBusy] = useState(false);
 
   /** Doctor answers a pending consultation request from the thread. */
+  /**
+   * Land on the newest message. Consultation actions are taken from a bubble
+   * further up the thread, which clears the stick-to-bottom flag, so the
+   * resulting message would otherwise arrive off-screen.
+   */
+  const jumpToLatest = useCallback(() => {
+    stickToBottomRef.current = true;
+    scrollToLatest(true);
+  }, [scrollToLatest]);
+
   const handleConsultationAction = async (
     consultationId: string,
     action: "accept" | "reject",
@@ -921,6 +931,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         await rejectConsultation(consultationId, accessToken);
       }
       // The API posts the answer into the thread; the socket brings it back.
+      jumpToLatest();
     } catch (e) {
       Alert.alert(
         isRTL ? "تعذر الرد" : "Could not answer",
@@ -1566,6 +1577,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               latestAction={latestConsultationAction}
               onOpenChange={setConsultationOpen}
               onActiveChange={handleConsultationActiveChange}
+              onThreadUpdated={jumpToLatest}
             />
           ) : null
         }

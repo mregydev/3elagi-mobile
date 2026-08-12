@@ -37,7 +37,14 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         fetchNotifications(token),
         fetchUnreadNotificationCount(token),
       ]);
-      set({ items, unreadCount, loading: false });
+      // The request already asks for unread only, but an API that predates that
+      // filter returns everything — drop handled rows here so the inbox is
+      // never wrong, whichever build is deployed.
+      set({
+        items: items.filter((n) => !n.read_at),
+        unreadCount,
+        loading: false,
+      });
     } catch (e) {
       set({
         loading: false,

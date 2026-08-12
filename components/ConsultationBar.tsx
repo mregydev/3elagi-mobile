@@ -82,6 +82,8 @@ interface Props {
   latestAction?: ConsultationActionMeta | null;
   /** Reports whether a consultation is currently open between the pair. */
   onOpenChange?: (open: boolean) => void;
+  /** Fired after a request is sent or answered, so the thread can scroll. */
+  onThreadUpdated?: () => void;
   /** Active open consultation (for diagnosis AI draft / linking). */
   onActiveChange?: (consultation: Consultation | null) => void;
   /** Render the pills bare (no bar wrapper) so they can sit inside another row. */
@@ -117,6 +119,7 @@ export function ConsultationBar({
   latestAction,
   onOpenChange,
   onActiveChange,
+  onThreadUpdated,
   compact = false,
   menuOnly = false,
   onMenuActionsChange,
@@ -364,6 +367,8 @@ export function ConsultationBar({
         t.consultations.consultationStarted,
         t.consultations.reservedToast(formatEgp(res.consultation.reserved_points, t)),
       );
+      // The request lands in the thread — put the patient on it.
+      onThreadUpdated?.();
     } catch (e) {
       showErrorToast(t.consultations.couldNotStart, (e as Error).message);
     } finally {
@@ -455,6 +460,7 @@ export function ConsultationBar({
           ? await acceptConsultation(active.id, token)
           : await rejectConsultation(active.id, token);
       setActive(answer === "accept" ? res.consultation : null);
+      onThreadUpdated?.();
       showSuccessToast(
         answer === "accept"
           ? label("Consultation accepted", "تم قبول الاستشارة")
