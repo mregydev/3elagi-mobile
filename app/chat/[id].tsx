@@ -62,6 +62,10 @@ import {
   markChatMessageUnread,
 } from "@/domains/chat/api";
 import { sendAppointmentAction } from "@/domains/appointments/api";
+import {
+  acceptConsultation,
+  rejectConsultation,
+} from "@/domains/consultations/api";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
@@ -377,6 +381,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
     return map;
   }, [messages]);
+  // A request stops being answerable once any later action lands on it.
+  const answeredConsultations = useMemo(() => {
+    const set = new Set<string>();
+    for (const message of messages) {
+      const meta = message.consultationAction;
+      if (!meta || meta.action === "start") continue;
+      set.add(meta.consultation_id);
+    }
+    return set;
+  }, [messages]);
+
   const listInverted = listData.length > 0;
 
   const scrollToLatest = useCallback(
@@ -887,6 +902,36 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       );
     } finally {
       setAppointmentActionBusy(false);
+    }
+  };
+
+  const [consultationActionBusy, setConsultationActionBusy] = useState(false);
+
+  /** Doctor answers a pending consultation request from the thread. */
+  const handleConsultationAction = async (
+    consultationId: string,
+    action: "accept" | "reject",
+  ) => {
+    if (!accessToken || consultationActionBusy) return;
+    setConsultationActionBusy(true);
+    try {
+      if (action === "accept") {
+        await acceptConsultation(consultationId, accessToken);
+      } else {
+        await rejectConsultation(consultationId, accessToken);
+      }
+      // The API posts the answer into the thread; the socket brings it back.
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "تعذر الرد" : "Could not answer",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "حاول مرة أخرى."
+            : "Please try again.",
+      );
+    } finally {
+      setConsultationActionBusy(false);
     }
   };
 
@@ -1416,6 +1461,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   onLongPress={
                     canReactToMessage(item) ? () => showReactionPicker(item) : undefined
                   }
+                  isDoctor={isDoctor}
+                  onConsultationAction={
+                    item.consultationAction &&
+                    !answeredConsultations.has(item.consultationAction.consultation_id)
+                      ? (id, action) => void handleConsultationAction(id, action)
+                      : undefined
+                  }
+                  consultationActionBusy={consultationActionBusy}
                   onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
                   highlighted={
                     editingMessage?.id === item.id ||

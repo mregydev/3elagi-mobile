@@ -36,6 +36,12 @@ interface Props {
   ) => void;
   appointmentActionBusy?: boolean;
   showAppointmentControls?: boolean;
+  /** Doctor answering a pending consultation request from the thread. */
+  onConsultationAction?: (
+    consultationId: string,
+    action: "accept" | "reject",
+  ) => void;
+  consultationActionBusy?: boolean;
   onImagePress?: (uri: string) => void;
   onVideoPress?: (uri: string) => void;
   onLongPress?: () => void;
@@ -56,6 +62,8 @@ export function ChatMessageBubble({
   onAppointmentAction,
   appointmentActionBusy = false,
   showAppointmentControls = false,
+  onConsultationAction,
+  consultationActionBusy = false,
   onImagePress,
   onVideoPress,
   onLongPress,
@@ -619,6 +627,12 @@ export function ChatMessageBubble({
         : reasonLabel;
     const canOpenDiagnosis =
       meta.action === "end" && !!meta.diagnosis_id?.trim();
+    // The doctor answers the request right here in the thread.
+    const canAnswerRequest =
+      isDoctor &&
+      meta.action === "start" &&
+      meta.status === "pending" &&
+      !!onConsultationAction;
     const card = (
       <>
         <View style={[styles.medicalIconWrap, { backgroundColor: `${accent}22` }]}>
@@ -771,6 +785,45 @@ export function ChatMessageBubble({
             {card}
           </View>
         )}
+
+        {canAnswerRequest ? (
+          <View style={[styles.apptActions, { flexDirection: rowDir }]}>
+            <Pressable
+              disabled={consultationActionBusy}
+              onPress={() =>
+                onConsultationAction?.(meta.consultation_id, "accept")
+              }
+              style={[
+                styles.apptBtn,
+                {
+                  backgroundColor: "#10b981",
+                  opacity: consultationActionBusy ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Text style={styles.apptBtnText}>{isRTL ? "قبول" : "Accept"}</Text>
+            </Pressable>
+            <Pressable
+              disabled={consultationActionBusy}
+              onPress={() =>
+                onConsultationAction?.(meta.consultation_id, "reject")
+              }
+              style={[
+                styles.apptBtn,
+                {
+                  backgroundColor: "transparent",
+                  borderWidth: 1,
+                  borderColor: "#dc2626",
+                  opacity: consultationActionBusy ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Text style={[styles.apptBtnText, { color: "#dc2626" }]}>
+                {isRTL ? "رفض" : "Decline"}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     );
   }
