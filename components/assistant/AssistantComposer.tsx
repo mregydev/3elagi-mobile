@@ -211,7 +211,8 @@ export function AssistantComposer({
     <View style={styles.actionsRow}>
       {aiAttachButton}
       {scanButton}
-      {micButton}      <Pressable
+      {micButton}
+      <Pressable
         onPress={submit}
         disabled={sendDisabled}
         style={[
