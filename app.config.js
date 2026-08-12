@@ -1,6 +1,6 @@
 const app = require("./app.json");
 
-const EAS_PROJECT_ID = "c4d6c5d2-8664-4a92-b30a-2205f11532b5";
+const EAS_PROJECT_ID = "0bb1b8ef-f01a-415a-9639-7788882cd311";
 const ONESIGNAL_APP_ID = "cdb484c9-84b2-4239-bbf8-cefe299e554c";
 const BUNDLE_ID = app.expo.ios?.bundleIdentifier ?? "com.threelagi.mobile";
 /** Must match `constants/push.ts` */

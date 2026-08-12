@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "3elagi",
-    "slug": "3elagi-mobile",
+    "slug": "3elagi1",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -85,7 +85,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c4d6c5d2-8664-4a92-b30a-2205f11532b5"
+        "projectId": "0bb1b8ef-f01a-415a-9639-7788882cd311"
       }
     }
   }

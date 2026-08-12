@@ -54,9 +54,14 @@ function consultationActionText(m: ComplaintMessage): string {
             : null);
     if (reason) parts.push(reason);
     else if (note && note !== "Consultation cancelled") parts.push(note);
+  } else if (meta.action === "accept") {
+    parts.push("Consultation accepted");
+  } else if (meta.action === "reject") {
+    parts.push("Consultation request declined");
+    if (note && note !== "Consultation rejected") parts.push(note);
   }
 
-  return parts.join(" · ");
+  return parts.join(" · ") || note || "Consultation update";
 }
 
 /** Human-readable line for admin complaint thread review. */
