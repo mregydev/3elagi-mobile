@@ -5,6 +5,7 @@ import { shouldSuppressAiPush } from "@/domains/ai/push-suppression";
 import { extractPushNotificationData } from "@/domains/push/types";
 import {
   clearPushTokenRegistrationCache,
+  getCachedPushToken,
   registerPushToken,
 } from "@/domains/push/registerPushToken";
 import { unregisterPushToken } from "@/domains/push/api";
@@ -84,9 +85,14 @@ export class ExpoPushProvider implements PushProvider {
   }
 
   onLogout(accessToken?: string | null, token?: string | null): void {
+    // The caller's ref only holds a token when this session did the registering
+    // — after an app restart on a persisted login it is null. Fall back to the
+    // install's cached token, or the device stays bound to the account that
+    // just logged out and keeps receiving its notifications.
+    const deviceToken = token ?? getCachedPushToken();
     clearPushTokenRegistrationCache();
-    if (!token || !accessToken) return;
-    void unregisterPushToken(token, accessToken).catch(() => {});
+    if (!deviceToken || !accessToken) return;
+    void unregisterPushToken(deviceToken, accessToken).catch(() => {});
   }
 
   subscribe(

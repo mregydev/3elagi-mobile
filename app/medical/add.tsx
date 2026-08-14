@@ -128,7 +128,8 @@ export default function AddMedicalScreen() {
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [generateAiInsight, setGenerateAiInsight] = useState(false);
+  // The manual form never generates insights — the AI add flow does that.
+  const generateAiInsight = false;
   const [draftAiInsight, setDraftAiInsight] = useState<MedicalAiInsight | null>(null);
   const analyzeRunRef = useRef(0);
 
@@ -817,45 +818,6 @@ export default function AddMedicalScreen() {
             <Text style={[styles.label, { color: colors.foreground }]}>
               Image <Text style={{ color: "#ef4444" }}>*</Text>
             </Text>
-
-            <Pressable
-              onPress={() => setGenerateAiInsight((value) => !value)}
-              style={[
-                styles.insightCard,
-                {
-                  borderColor: generateAiInsight ? colors.primary : colors.border,
-                  backgroundColor: colors.card,
-                  flexDirection: dir,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.insightCheckbox,
-                  {
-                    borderColor: generateAiInsight ? colors.primary : colors.border,
-                    backgroundColor: generateAiInsight ? colors.primary : "transparent",
-                  },
-                ]}
-              >
-                {generateAiInsight ? <Text style={styles.insightCheck}>✓</Text> : null}
-              </View>
-              <View style={styles.insightContent}>
-                <Text style={[styles.insightTitle, { color: colors.foreground, textAlign }]}>
-                  {isRTL ? "إنشاء تحليل ذكي" : "Generate AI insight"}
-                </Text>
-                <Text
-                  style={[
-                    styles.insightDescription,
-                    { color: colors.mutedForeground, textAlign },
-                  ]}
-                >
-                  {isRTL
-                    ? "حلل الصورة لاستخراج العنوان والوصف، ثم أنشئ ملخصًا ذكيًا ومؤشرات محتملة لهذا السجل."
-                    : "Analyze the image to extract the title and description, then create an AI summary and possible findings."}
-                </Text>
-              </View>
-            </Pressable>
 
             {attached ? (
               <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -120,58 +120,6 @@ function FormField({
   );
 }
 
-function InsightOptionCard({
-  checked,
-  onToggle,
-  isRTL,
-  colors,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  isRTL: boolean;
-  colors: ReturnType<typeof useColors>;
-}) {
-  const dir = isRTL ? "row-reverse" : "row";
-  const textAlign = isRTL ? "right" : "left";
-  return (
-    <Pressable
-      onPress={onToggle}
-      style={[
-        styles.insightCard,
-        {
-          flexDirection: dir,
-          backgroundColor: colors.background,
-          borderColor: checked ? colors.primary : colors.border,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.insightCheckbox,
-          {
-            borderColor: checked ? colors.primary : colors.border,
-            backgroundColor: checked ? colors.primary : "transparent",
-          },
-        ]}
-      >
-        {checked ? <Text style={styles.insightCheck}>✓</Text> : null}
-      </View>
-      <View style={styles.insightContent}>
-        <Text style={[styles.insightTitle, { color: colors.foreground, textAlign }]}>
-          {isRTL ? "إنشاء تحليل ذكي" : "Generate AI insight"}
-        </Text>
-        <Text
-          style={[styles.insightDescription, { color: colors.mutedForeground, textAlign }]}
-        >
-          {isRTL
-            ? "حلل الصورة لاستخراج العنوان والوصف، ثم أنشئ ملخصًا ذكيًا ومؤشرات محتملة لهذا السجل."
-            : "Analyze the image to extract the title and description, then create an AI summary and possible findings."}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 export function MedicalAddWebView() {
   const colors = useColors();
   const aiEnabled = useAiEnabled();
@@ -210,7 +158,6 @@ export function MedicalAddWebView() {
     isLabOrXray,
     isImage,
     generateAiInsight,
-    setGenerateAiInsight,
     completeWithAi,
     completingAi,
     submit,
@@ -394,12 +341,6 @@ export function MedicalAddWebView() {
       colors={colors}
       textAlign={textAlign}
     >
-      <InsightOptionCard
-        checked={generateAiInsight}
-        onToggle={() => setGenerateAiInsight(!generateAiInsight)}
-        isRTL={isRTL}
-        colors={colors}
-      />
       {attached ? (
         <View style={[styles.previewCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
           {isImage ? (

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  KeyboardController,
   KeyboardStickyView,
   useKeyboardState,
 } from "react-native-keyboard-controller";
@@ -103,6 +104,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const keyboardHeight = useKeyboardState((s) => s.height);
   const role = useAuthStore((s) => s.role);
+
+  // Opening this screen from a push notification can land on a keyboard state
+  // left over from wherever the app was before — KeyboardStickyView then lifts
+  // the composer by a keyboard height that is not on screen, parking the input
+  // mid-screen. Dismissing on mount resets that to zero.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    if (KeyboardController.isVisible()) {
+      void KeyboardController.dismiss().catch(() => undefined);
+    }
+  }, []);
   const {
     id: rawPeerId,
     consultationId: rawConsultationId,
@@ -1763,7 +1775,9 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   chatBodyDesktop: { backgroundColor: "transparent" },
-  chatFooter: { flexShrink: 0 },
+  // marginTop pins the composer to the bottom of the column even if the message
+  // list above it has not laid out yet (empty / still loading conversation).
+  chatFooter: { flexShrink: 0, marginTop: "auto" },
   messageColumn: {
     flexShrink: 1,
     maxWidth: "82%",

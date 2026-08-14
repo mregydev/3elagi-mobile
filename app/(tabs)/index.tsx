@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
@@ -47,6 +48,7 @@ function ChatsHomeBrowse() {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const signedIn = isSignedIn(profile, accessToken);
+  const aiEnabled = useAiEnabled();
   const domainMarket = getDomainMarketCountry();
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
@@ -212,7 +214,7 @@ function ChatsHomeBrowse() {
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }
     >
-      {signedIn ? <AiAssistantHomeCard /> : null}
+      {signedIn && aiEnabled ? <AiAssistantHomeCard /> : null}
       <HomeBannerVideo />
       {domainMarket ? (
         <View

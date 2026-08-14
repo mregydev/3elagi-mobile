@@ -12,13 +12,13 @@ import {
   Image,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
+import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { BodyPartAutocomplete } from "@/components/records/BodyPartAutocomplete";
 import { useAuthStore } from "@/domains/auth/store";
@@ -438,12 +438,13 @@ export function MedicalAddAiView() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <ScrollView
+      <KeyboardSafeScrollView
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 },
         ]}
         keyboardShouldPersistTaps="handled"
+        bottomOffset={32}
       >
         <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
           {step === "upload" ? t.records.addAiUploadTitle : t.records.addAiConfirmTitle}
@@ -932,7 +933,7 @@ export function MedicalAddAiView() {
             </Pressable>
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardSafeScrollView>
 
       <FullscreenImageViewer
         uri={zoomImageUri}

@@ -28,6 +28,8 @@ export type AppNavItem = {
   guestAllowed?: boolean;
   /** Marketing pages that only make sense before signing in. */
   guestOnly?: boolean;
+  /** Hidden when AI is switched off in the profile. */
+  aiOnly?: boolean;
   match: (path: string) => boolean;
 };
 
@@ -77,6 +79,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "assistant",
     Icon: Bot,
     guestAllowed: true,
+    aiOnly: true,
     match: (path) => pathHas(path, "assistant"),
   },
   {
@@ -155,11 +158,13 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
 
 export function filterAppNavItems(
   role: string | null | undefined,
-  options?: { signedIn?: boolean },
+  options?: { signedIn?: boolean; aiEnabled?: boolean },
 ): AppNavItem[] {
   const signedIn = options?.signedIn ?? !!role;
+  const aiEnabled = options?.aiEnabled ?? true;
   const isDoctor = role?.toLowerCase() === "doctor";
   return APP_NAV_ITEMS.filter((item) => {
+    if (item.aiOnly && !aiEnabled) return false;
     if (!signedIn) return !!item.guestAllowed;
     if (item.guestOnly) return false;
     if (item.doctorOnly && !isDoctor) return false;

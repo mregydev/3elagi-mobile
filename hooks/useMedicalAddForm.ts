@@ -105,7 +105,8 @@ export function useMedicalAddForm() {
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [generateAiInsight, setGenerateAiInsight] = useState(false);
+  // The manual form never generates insights — the AI add flow does that.
+  const generateAiInsight = false;
   const [draftAiInsight, setDraftAiInsight] = useState<MedicalAiInsight | null>(null);
 
   const isDiagnosis = category === "diagnosis";
@@ -585,7 +586,6 @@ export function useMedicalAddForm() {
     isLabOrXray,
     isImage,
     generateAiInsight,
-    setGenerateAiInsight,
     pickFromCamera,
     pickFromGallery,
     pickFromFiles,

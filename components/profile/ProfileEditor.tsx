@@ -23,12 +23,12 @@ import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor"
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
+import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
 import {
   profileSaveChromeHeight,
   profileSaveDockBottomPad,
 } from "@/components/profile/profileSaveChrome";
 import { useAuthStore } from "@/domains/auth/store";
-import { specialityLabel } from "@/domains/home/specialityLabel";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
 import { useI18n } from "@/hooks/useI18n";
@@ -255,40 +255,14 @@ export function ProfileEditor({
                   >
                     {isRTL ? "التخصصات" : "Specialities"}
                   </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={[styles.specialityRow, { flexDirection: dir }]}
-                  >
-                    {specialities.map((spec) => {
-                      const active = specialityIds.includes(spec.id);
-                      const label = specialityLabel(spec, locale);
-                      return (
-                        <Pressable
-                          key={spec.id}
-                          onPress={() => toggleSpeciality(spec.id)}
-                          style={[
-                            styles.specialityChip,
-                            {
-                              backgroundColor: active ? `${colors.primary}18` : colors.muted,
-                              borderColor: active ? colors.primary : colors.border,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              color: active ? colors.primary : colors.foreground,
-                              fontWeight: "700",
-                              fontSize: 13,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
+                  <SpecialityMultiSelect
+                    specialities={specialities}
+                    selectedIds={specialityIds}
+                    onToggle={toggleSpeciality}
+                    isRTL={isRTL}
+                    locale={locale}
+                    colors={colors}
+                  />
                 </View>
                 <EgpPriceInput
                   value={consultationPrice}
@@ -805,16 +779,6 @@ const styles = StyleSheet.create({
   },
   block: {
     gap: 8,
-  },
-  specialityRow: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  specialityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
   },
   field: {
     gap: 6,

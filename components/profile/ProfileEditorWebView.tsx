@@ -18,11 +18,12 @@ import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-nativ
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import { ProfileAiField } from "@/components/profile/ProfileAiField";
+import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
-import { specialityLabel } from "@/domains/home/specialityLabel";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
@@ -356,6 +357,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
             </Text>
             <View style={{ gap: 16 }}>
               <ProfileLanguageField embedded wideCards />
+              <ProfileAiField />
             </View>
           </View>
 
@@ -414,35 +416,14 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
                 {isRTL ? "التخصصات" : "Specialities"}
               </Text>
-              <View style={[styles.specialityRow, { flexDirection: dir }]}>
-                {specialities.map((spec) => {
-                  const active = specialityIds.includes(spec.id);
-                  const label = specialityLabel(spec, locale);
-                  return (
-                    <Pressable
-                      key={spec.id}
-                      onPress={() => toggleSpeciality(spec.id)}
-                      style={[
-                        styles.specialityChip,
-                        {
-                          backgroundColor: active ? `${colors.primary}18` : colors.muted,
-                          borderColor: active ? colors.primary : colors.border,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          color: active ? colors.primary : colors.foreground,
-                          fontWeight: "700",
-                          fontSize: 13,
-                        }}
-                      >
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <SpecialityMultiSelect
+                specialities={specialities}
+                selectedIds={specialityIds}
+                onToggle={toggleSpeciality}
+                isRTL={isRTL}
+                locale={locale}
+                colors={colors}
+              />
 
               <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
                 {t.settings.digitalSignature}
@@ -911,16 +892,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 8,
     marginBottom: 10,
-  },
-  specialityRow: {
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  specialityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
   },
   field: {
     gap: 6,

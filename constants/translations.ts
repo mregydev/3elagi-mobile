@@ -47,8 +47,14 @@ const en = {
       "Notification permission was denied. Enable it in system settings.",
     notificationsUpdateFailed: "Could not update notification settings.",
     aiAssistance: "AI assistance",
-    aiAssistanceHint:
-      "Use AI to read medical records, draft prescriptions, and show the AI assistant.",
+    aiAssistanceHintPatient:
+      "Insights when adding medical records, labs, and imaging.",
+    aiAssistanceHintDoctor:
+      "Help with diagnosis, prescriptions, imaging, and medications.",
+    aiAssistanceTooltipPatient:
+      "AI is used when adding medical records. It provides insights on lab results, X-rays, and possible conditions. It does not provide medical opinions.",
+    aiAssistanceTooltipDoctor:
+      "AI helps with diagnosis, prescriptions, X-ray suggestions, and medication recommendations.",
   },
   prescription: {
     newTitle: "New Prescription",
@@ -732,8 +738,14 @@ const ar: typeof en = {
       "تم رفض إذن الإشعارات. فعّله من إعدادات النظام.",
     notificationsUpdateFailed: "تعذر تحديث إعدادات الإشعارات.",
     aiAssistance: "المساعدة بالذكاء الاصطناعي",
-    aiAssistanceHint:
-      "استخدم الذكاء الاصطناعي لقراءة السجلات الطبية وصياغة الروشتات وإظهار المساعد الذكي.",
+    aiAssistanceHintPatient:
+      "رؤى عند إضافة السجلات الطبية والتحاليل والأشعة.",
+    aiAssistanceHintDoctor:
+      "مساعدة في التشخيص والروشتات والأشعة والأدوية.",
+    aiAssistanceTooltipPatient:
+      "يُستخدم الذكاء الاصطناعي عند إضافة السجلات الطبية. يقدم رؤى عن نتائج المختبر والأشعة والحالات المحتملة. لا يقدم آراء طبية.",
+    aiAssistanceTooltipDoctor:
+      "يساعد الذكاء الاصطناعي في التشخيص وكتابة الروشتات واقتراح الأشعة والأدوية.",
   },
   prescription: {
     newTitle: "روشتة جديدة",
@@ -1406,8 +1418,14 @@ const de: typeof en = {
     notificationsUpdateFailed:
       "Benachrichtigungseinstellungen konnten nicht aktualisiert werden.",
     aiAssistance: "KI-Unterstützung",
-    aiAssistanceHint:
-      "KI nutzen, um Befunde zu lesen, Rezepte zu entwerfen und den KI-Assistenten anzuzeigen.",
+    aiAssistanceHintPatient:
+      "Einblicke beim Hinzufügen von Befunden, Labor und Bildgebung.",
+    aiAssistanceHintDoctor:
+      "Hilfe bei Diagnose, Rezepten, Bildgebung und Medikamenten.",
+    aiAssistanceTooltipPatient:
+      "KI wird beim Hinzufügen medizinischer Befunde genutzt. Sie liefert Einblicke zu Laborwerten, Röntgenbildern und möglichen Erkrankungen. Sie erteilt keine medizinischen Meinungen.",
+    aiAssistanceTooltipDoctor:
+      "KI unterstützt bei Diagnose, Rezepten, Röntgenempfehlungen und Medikamentenvorschlägen.",
   },
   prescription: {
     newTitle: "Neues Rezept",
@@ -2085,8 +2103,14 @@ const es: typeof en = {
       "Se denegó el permiso de notificaciones. Actívalo en los ajustes del sistema.",
     notificationsUpdateFailed: "No se pudieron actualizar las notificaciones.",
     aiAssistance: "Asistencia de IA",
-    aiAssistanceHint:
-      "Usa la IA para leer informes, redactar recetas y mostrar el asistente de IA.",
+    aiAssistanceHintPatient:
+      "Información al añadir historiales, laboratorio e imágenes.",
+    aiAssistanceHintDoctor:
+      "Ayuda con diagnóstico, recetas, imágenes y medicamentos.",
+    aiAssistanceTooltipPatient:
+      "La IA se usa al añadir historiales médicos. Ofrece información sobre análisis, radiografías y posibles condiciones. No emite opiniones médicas.",
+    aiAssistanceTooltipDoctor:
+      "La IA ayuda con el diagnóstico, recetas, sugerencias de radiografías y recomendaciones de medicamentos.",
   },
   prescription: {
     newTitle: "Nueva receta",

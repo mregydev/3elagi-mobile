@@ -15,6 +15,7 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { filterAppNavItems, HOME_NAV_RESET_EVENT } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
@@ -43,13 +44,14 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
   const logout = useAuthStore((s) => s.logout);
   const signedIn = isSignedIn(profile, accessToken);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const aiEnabled = useAiEnabled();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const isArabic = locale === "ar";
   const navFontSize = isArabic ? 17 : 14;
   const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
-  const items = filterAppNavItems(role, { signedIn }).map((item) => ({
+  const items = filterAppNavItems(role, { signedIn, aiEnabled }).map((item) => ({
     ...item,
     active: item.match(pathname),
   }));
