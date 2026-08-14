@@ -20,6 +20,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
+import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
 import {
@@ -85,7 +86,8 @@ export function ProfileEditor({
     setCertificationDescription,
     specialities,
     specialityId,
-    setSpecialityId,
+    specialityIds,
+    toggleSpeciality,
     consultationPrice,
     setConsultationPrice,
     videoConsultationPrice,
@@ -251,7 +253,7 @@ export function ProfileEditor({
                   <Text
                     style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
                   >
-                    {isRTL ? "التخصص" : "Speciality"}
+                    {isRTL ? "التخصصات" : "Specialities"}
                   </Text>
                   <ScrollView
                     horizontal
@@ -259,12 +261,12 @@ export function ProfileEditor({
                     contentContainerStyle={[styles.specialityRow, { flexDirection: dir }]}
                   >
                     {specialities.map((spec) => {
-                      const active = specialityId === spec.id;
+                      const active = specialityIds.includes(spec.id);
                       const label = specialityLabel(spec, locale);
                       return (
                         <Pressable
                           key={spec.id}
-                          onPress={() => setSpecialityId(spec.id)}
+                          onPress={() => toggleSpeciality(spec.id)}
                           style={[
                             styles.specialityChip,
                             {
@@ -564,6 +566,9 @@ export function ProfileEditor({
                   <ProfileNotificationsField />
                 </View>
               ) : null}
+              <View style={{ marginTop: 12 }}>
+                <ProfileAiField />
+              </View>
             </SectionCard>
         </KeyboardSafeScrollView>
 

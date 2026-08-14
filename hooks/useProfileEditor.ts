@@ -40,7 +40,13 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [certifications, setCertifications] = useState<DoctorCertification[]>([]);
   const [certUploading, setCertUploading] = useState(false);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
-  const [specialityId, setSpecialityId] = useState("");
+  // First id is the primary speciality — the one browse and chat headers show.
+  const [specialityIds, setSpecialityIds] = useState<string[]>([]);
+  const specialityId = specialityIds[0] ?? "";
+  const toggleSpeciality = (id: string) =>
+    setSpecialityIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    );
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [videoConsultationPrice, setVideoConsultationPrice] = useState(1);
   const [videoConsultationMinutes, setVideoConsultationMinutes] = useState(30);
@@ -71,7 +77,13 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setInfo(data.info ?? "");
       setLocation(data.location ?? "");
       setCertifications(data.certifications ?? []);
-      setSpecialityId(data.specialityId ?? "");
+      setSpecialityIds(
+        data.specialityIds?.length
+          ? data.specialityIds
+          : data.specialityId
+            ? [data.specialityId]
+            : [],
+      );
       setConsultationPrice(data.consultationPrice ?? 1);
       setVideoConsultationPrice(data.videoConsultationPrice ?? 1);
       setVideoConsultationMinutes(data.videoConsultationMinutes ?? 30);
@@ -196,7 +208,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       showErrorToast(isRTL ? "الاسم مطلوب" : "Name required");
       return false;
     }
-    if (isDoctor && !specialityId) {
+    if (isDoctor && !specialityIds.length) {
       showErrorToast(
         isRTL ? "التخصص مطلوب" : "Speciality required",
         isRTL ? "اختر تخصصك الطبي." : "Please select your medical speciality.",
@@ -226,6 +238,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         location: isDoctor ? location : undefined,
         certifications: isDoctor ? certifications : undefined,
         specialityId: isDoctor ? specialityId : undefined,
+        specialityIds: isDoctor ? specialityIds : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
         videoConsultationPrice: isDoctor ? videoConsultationPrice : undefined,
         videoConsultationMinutes: isDoctor ? videoConsultationMinutes : undefined,
@@ -287,7 +300,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setCertificationDescription,
     specialities,
     specialityId,
-    setSpecialityId,
+    specialityIds,
+    toggleSpeciality,
     consultationPrice,
     setConsultationPrice,
     videoConsultationPrice,

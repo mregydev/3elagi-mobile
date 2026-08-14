@@ -23,6 +23,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
@@ -154,6 +155,7 @@ function FormField({
 
 export function PrescriptionAddWebView() {
   const colors = useColors();
+  const aiEnabled = useAiEnabled();
   const { isRTL, t, locale } = useI18n();
   const apiLang = useApiLang();
   const { isDesktop, isTablet } = useWebLayout();
@@ -499,7 +501,7 @@ export function PrescriptionAddWebView() {
                 colors={colors}
                 textAlign={textAlign}
               />
-              {isDoctor ? (
+              {isDoctor && aiEnabled ? (
                 <Pressable
                   onPress={() => void completeWithAi()}
                   disabled={!title.trim() || busy}

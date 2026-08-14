@@ -17,6 +17,7 @@ import {
 import React from "react";
 import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useColors } from "@/hooks/useColors";
@@ -31,6 +32,7 @@ export default function TabsLayout() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const signedIn = isSignedIn(profile, accessToken);
   const isDoctor = role?.toLowerCase() === "doctor";
+  const aiEnabled = useAiEnabled();
 
   if (!hydrated) return null;
 
@@ -89,6 +91,7 @@ export default function TabsLayout() {
           options={{
             title: t.tabs.assistant,
             tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
+            href: aiEnabled ? undefined : null,
           }}
         />
         <Tabs.Screen

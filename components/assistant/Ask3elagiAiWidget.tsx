@@ -26,6 +26,7 @@ import {
   getGuestAiSessionId,
   setGuestAiSentCount,
 } from "@/domains/ai/guestSession";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import type { AiMessage } from "@/domains/ai/types";
 import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
@@ -555,11 +556,12 @@ export function Ask3elagiAiWidget() {
   const openWidget = useAsk3elagiAiWidgetStore((s) => s.openWidget);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
 
+  const aiEnabled = useAiEnabled();
   const signedIn = isSignedIn(profile, accessToken);
   const roleOk =
     role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
   /** Guests + patient/doctor accounts; hide for admin / unsupported roles when signed in. */
-  const canUseWidget = !signedIn || roleOk;
+  const canUseWidget = (!signedIn || roleOk) && aiEnabled;
   const hidden = shouldHideOnRoute(pathname, segments as string[]);
   // Circle icon-only on native + mobile web; labeled pill on desktop web.
   const iconOnlyFab = Platform.OS !== "web" || !isDesktop;

@@ -23,6 +23,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
@@ -173,6 +174,7 @@ function InsightOptionCard({
 
 export function MedicalAddWebView() {
   const colors = useColors();
+  const aiEnabled = useAiEnabled();
   const { isDesktop, isTablet } = useWebLayout();
   const form = useMedicalAddForm();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -554,6 +556,7 @@ export function MedicalAddWebView() {
                   disabled={!title.trim() || completingAi || uploading}
                   style={({ pressed }) => [
                     {
+                      display: aiEnabled ? "flex" : "none",
                       marginTop: 10,
                       flexDirection: isRTL ? "row-reverse" : "row",
                       alignItems: "center",

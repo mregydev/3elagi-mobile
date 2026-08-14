@@ -1,3 +1,4 @@
+import { isAiEnabled } from "@/domains/ai/aiPreference";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import type { MedicalCategory } from "@/domains/medical/types";
 
@@ -33,19 +34,19 @@ export function buildMedicalAddMethodHref(options?: {
 }
 
 /**
- * Entry for "Add medical record".
- * Patients get manual vs AI choice; doctors go straight to the manual form.
+ * Entry for "Add medical record". Nobody is asked manual-vs-AI any more — the
+ * AI switch in the profile decides, and doctors always get the manual form.
  */
 export function buildMedicalAddEntryHref(options?: {
   patientUserId?: string | null;
   bodyPart?: BodyPart | null;
   requestId?: string | null;
   category?: MedicalCategory | null;
-  /** Patient role → method choice; doctor / other → manual form. */
+  /** Patient role → AI form when AI is on; doctor / other → manual form. */
   isPatient?: boolean;
 }): string {
-  if (options?.isPatient) {
-    return buildMedicalAddMethodHref(options);
+  if (options?.isPatient && isAiEnabled()) {
+    return buildMedicalAddAiHref(options);
   }
   return buildMedicalAddHref(options?.category ?? null, options);
 }

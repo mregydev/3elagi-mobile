@@ -55,6 +55,7 @@ interface RawDoctor {
   personal_clinic_location?: string | null;
   certification_urls?: DoctorCertification[] | null;
   speciality_id?: string | null;
+  speciality_ids?: string[] | null;
   speciality_name_en?: string | null;
   speciality_name_ar?: string | null;
   consultation_price?: number | null;
@@ -84,6 +85,8 @@ export interface AccountProfile {
   location?: string;
   certifications?: DoctorCertification[];
   specialityId?: string;
+  /** Every speciality the doctor practises; the first one is the primary. */
+  specialityIds?: string[];
   specialityNameEn?: string;
   specialityNameAr?: string;
   consultationPrice?: number;
@@ -124,6 +127,11 @@ export async function fetchAccountProfile(
         ? doctor.certification_urls
         : [],
       specialityId: doctor.speciality_id ?? undefined,
+      specialityIds: Array.isArray(doctor.speciality_ids)
+        ? doctor.speciality_ids
+        : doctor.speciality_id
+          ? [doctor.speciality_id]
+          : [],
       specialityNameEn: doctor.speciality_name_en ?? undefined,
       specialityNameAr: doctor.speciality_name_ar ?? undefined,
       consultationPrice: Math.min(100_000, Math.max(1, doctor.consultation_price ?? 1)),
@@ -168,6 +176,7 @@ export async function updateAccountProfile(
     location?: string;
     certifications?: DoctorCertification[];
     specialityId?: string;
+    specialityIds?: string[];
     consultationPrice?: number;
     videoConsultationPrice?: number;
     videoConsultationMinutes?: number;
@@ -201,6 +210,7 @@ export async function updateAccountProfile(
         personal_clinic_location: payload.location?.trim() || null,
         certification_urls: payload.certifications ?? undefined,
         speciality_id: payload.specialityId ?? undefined,
+        speciality_ids: payload.specialityIds ?? undefined,
         consultation_price: payload.consultationPrice ?? undefined,
         video_consultation_price: payload.videoConsultationPrice ?? undefined,
         video_consultation_minutes: payload.videoConsultationMinutes ?? undefined,

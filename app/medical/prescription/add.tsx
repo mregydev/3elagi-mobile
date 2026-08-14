@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -57,6 +58,7 @@ interface ScanAsset extends PrescriptionScanAsset {}
 
 export default function AddPrescriptionScreen() {
   const colors = useColors();
+  const aiEnabled = useAiEnabled();
   const { isRTL, t, locale } = useI18n();
   const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
@@ -413,7 +415,7 @@ export default function AddPrescriptionScreen() {
           textAlign={textAlign}
         />
 
-        {isDoctor ? (
+        {isDoctor && aiEnabled ? (
           <Pressable
             onPress={() => void completeWithAi()}
             disabled={!title.trim() || busy}

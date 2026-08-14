@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
@@ -73,6 +74,7 @@ interface AttachedFile {
 
 export default function AddMedicalScreen() {
   const colors = useColors();
+  const aiEnabled = useAiEnabled();
   const { isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
@@ -643,6 +645,7 @@ export default function AddMedicalScreen() {
                   backgroundColor: `${colors.primary}12`,
                   opacity: !title.trim() || completingAi || uploading ? 0.55 : 1,
                   marginBottom: 12,
+                  display: aiEnabled ? "flex" : "none",
                 },
               ]}
             >

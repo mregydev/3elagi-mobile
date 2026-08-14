@@ -20,6 +20,7 @@ import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { WebContentColumn } from "@/components/web/WebContentColumn";
 import { WebSidebar } from "@/components/web/WebSidebar";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useColors } from "@/hooks/useColors";
@@ -34,6 +35,7 @@ export default function TabsLayoutWeb() {
   const role = useAuthStore((s) => s.role);
   const signedIn = isSignedIn(profile, accessToken);
   const isDoctor = role?.toLowerCase() === "doctor";
+  const aiEnabled = useAiEnabled();
   const authOnlyHref = signedIn ? undefined : null;
   // About us is a marketing page — drop it from the tabs once signed in.
   const guestOnlyHref = signedIn ? null : undefined;
@@ -101,6 +103,7 @@ export default function TabsLayoutWeb() {
               options={{
                 title: t.tabs.assistant,
                 tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
+                href: aiEnabled ? undefined : null,
               }}
             />
             <Tabs.Screen

@@ -46,6 +46,9 @@ const en = {
     notificationsPermissionDenied:
       "Notification permission was denied. Enable it in system settings.",
     notificationsUpdateFailed: "Could not update notification settings.",
+    aiAssistance: "AI assistance",
+    aiAssistanceHint:
+      "Use AI to read medical records, draft prescriptions, and show the AI assistant.",
   },
   prescription: {
     newTitle: "New Prescription",
@@ -728,6 +731,9 @@ const ar: typeof en = {
     notificationsPermissionDenied:
       "تم رفض إذن الإشعارات. فعّله من إعدادات النظام.",
     notificationsUpdateFailed: "تعذر تحديث إعدادات الإشعارات.",
+    aiAssistance: "المساعدة بالذكاء الاصطناعي",
+    aiAssistanceHint:
+      "استخدم الذكاء الاصطناعي لقراءة السجلات الطبية وصياغة الروشتات وإظهار المساعد الذكي.",
   },
   prescription: {
     newTitle: "روشتة جديدة",
@@ -1399,6 +1405,9 @@ const de: typeof en = {
       "Benachrichtigungen wurden verweigert. Bitte in den Systemeinstellungen aktivieren.",
     notificationsUpdateFailed:
       "Benachrichtigungseinstellungen konnten nicht aktualisiert werden.",
+    aiAssistance: "KI-Unterstützung",
+    aiAssistanceHint:
+      "KI nutzen, um Befunde zu lesen, Rezepte zu entwerfen und den KI-Assistenten anzuzeigen.",
   },
   prescription: {
     newTitle: "Neues Rezept",
@@ -2075,6 +2084,9 @@ const es: typeof en = {
     notificationsPermissionDenied:
       "Se denegó el permiso de notificaciones. Actívalo en los ajustes del sistema.",
     notificationsUpdateFailed: "No se pudieron actualizar las notificaciones.",
+    aiAssistance: "Asistencia de IA",
+    aiAssistanceHint:
+      "Usa la IA para leer informes, redactar recetas y mostrar el asistente de IA.",
   },
   prescription: {
     newTitle: "Nueva receta",

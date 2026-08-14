@@ -106,7 +106,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setCertificationDescription,
     specialities,
     specialityId,
-    setSpecialityId,
+    specialityIds,
+    toggleSpeciality,
     consultationPrice,
     setConsultationPrice,
     videoConsultationPrice,
@@ -411,16 +412,16 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                 />
               </View>
               <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
-                {isRTL ? "التخصص" : "Speciality"}
+                {isRTL ? "التخصصات" : "Specialities"}
               </Text>
               <View style={[styles.specialityRow, { flexDirection: dir }]}>
                 {specialities.map((spec) => {
-                  const active = specialityId === spec.id;
+                  const active = specialityIds.includes(spec.id);
                   const label = specialityLabel(spec, locale);
                   return (
                     <Pressable
                       key={spec.id}
-                      onPress={() => setSpecialityId(spec.id)}
+                      onPress={() => toggleSpeciality(spec.id)}
                       style={[
                         styles.specialityChip,
                         {
