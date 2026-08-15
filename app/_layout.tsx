@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View } from "react-native";
@@ -29,12 +28,13 @@ import { GuestAuthRequiredDialog } from "@/components/auth/GuestAuthRequiredDial
 import { ChatMessageSync } from "@/components/ChatMessageSync";
 import { PresenceChatSync } from "@/components/PresenceChatSync";
 import { PresenceSocket } from "@/components/PresenceSocket";
-import colors from "@/constants/colors";
+import { ThemeBootstrap } from "@/components/ThemeBootstrap";
 import { useAuthStore } from "@/domains/auth/store";
 import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { usePointsStore } from "@/domains/points/store";
 import { useRemindersStore } from "@/domains/reminders/store";
+import { useColors } from "@/hooks/useColors";
 
 function MedicalDataLoader() {
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -108,6 +108,57 @@ function PointsDataLoader() {
   return null;
 }
 
+function AppRoot() {
+  const colors = useColors();
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaProvider>
+        <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
+          <ThemeBootstrap />
+          <MedicalDataLoader />
+          <PointsDataLoader />
+          <RemindersBootstrap />
+          <LocaleBootstrap />
+          <LocaleAuthSync />
+          <AuthRedirect />
+          <View style={{ flex: 1 }}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="welcome" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
+              <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
+              <Stack.Screen name="auth/verify-email" options={{ presentation: "modal" }} />
+              <Stack.Screen name="auth/forgot-password" options={{ presentation: "modal" }} />
+              <Stack.Screen name="auth/reset-password" options={{ presentation: "modal" }} />
+              <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
+              <Stack.Screen name="contact" />
+              <Stack.Screen name="chat/[id]" />
+              <Stack.Screen name="video-call" />
+              <Stack.Screen name="ai/[id]" />
+              <Stack.Screen name="doctor/[doctorId]" />
+              <Stack.Screen name="patients/[userId]" />
+              <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />
+              <Stack.Screen name="medical/add-method" options={{ presentation: "modal" }} />
+              <Stack.Screen name="medical/add-ai" options={{ presentation: "modal" }} />
+              <Stack.Screen name="medical/prescription/add" options={{ presentation: "modal" }} />
+              <Stack.Screen name="medical/[id]" />
+              <Stack.Screen name="medical/request/[id]" />
+              <Stack.Screen name="doctor-pending" />
+              <Stack.Screen name="points/checkout" />
+            </Stack>
+            <NavLoadingOverlay />
+            <AppToast />
+            <Ask3elagiAiWidget />
+            <GuestAuthRequiredDialog />
+          </View>
+        </KeyboardProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
   const handleSplashDone = useCallback(() => setShowSplash(false), []);
@@ -130,54 +181,7 @@ export default function RootLayout() {
       <SystemNotifications />
       <IncomingVideoCallOverlay />
       <HardwareBackHandler />
-      {showSplash ? (
-        <AppSplash onDone={handleSplashDone} />
-      ) : (
-        <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.light.background }}>
-          <SafeAreaProvider>
-            <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
-              <StatusBar style="dark" />
-              <MedicalDataLoader />
-              <PointsDataLoader />
-              <RemindersBootstrap />
-              <LocaleBootstrap />
-              <LocaleAuthSync />
-              <AuthRedirect />
-              <View style={{ flex: 1 }}>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="welcome" />
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="auth/verify-email" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="auth/forgot-password" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="auth/reset-password" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="contact" />
-                  <Stack.Screen name="chat/[id]" />
-                  <Stack.Screen name="video-call" />
-                  <Stack.Screen name="ai/[id]" />
-                  <Stack.Screen name="doctor/[doctorId]" />
-                  <Stack.Screen name="patients/[userId]" />
-                  <Stack.Screen name="medical/add" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="medical/add-method" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="medical/add-ai" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="medical/prescription/add" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="medical/[id]" />
-                  <Stack.Screen name="medical/request/[id]" />
-                  <Stack.Screen name="doctor-pending" />
-                  <Stack.Screen name="points/checkout" />
-                </Stack>
-                <NavLoadingOverlay />
-                <AppToast />
-                <Ask3elagiAiWidget />
-                <GuestAuthRequiredDialog />
-              </View>
-            </KeyboardProvider>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      )}
+      {showSplash ? <AppSplash onDone={handleSplashDone} /> : <AppRoot />}
     </>
   );
 }

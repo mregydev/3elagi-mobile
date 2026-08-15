@@ -41,6 +41,10 @@ const en = {
     saved: "Saved successfully",
     saveFailed: "Failed to save",
     language: "Language",
+    theme: "Appearance",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
     notifications: "Notifications",
     notificationsHint: "Receive alerts for chats, appointments, and calls.",
     notificationsPermissionDenied:
@@ -646,6 +650,7 @@ const en = {
     myConsultations: "My consultations",
     noConsultations: "No consultations yet",
     open: "Open",
+    waitingActive: "Active",
     completed: "Completed",
     cancelled: "Cancelled",
     refunded: "Refunded",
@@ -669,6 +674,13 @@ const en = {
     egpPerConsultation: "points/consultation",
     new: "New",
     reviews: "reviews",
+    profile: {
+      aboutDoctor: "About Doctor",
+      professionalInfo: "Professional Information",
+      location: "Location",
+      openInGoogleMaps: "Open in Google Maps",
+      qualifications: "Qualifications",
+    },
   },
   home: {
     greeting: (period: "morning" | "afternoon" | "evening") =>
@@ -765,6 +777,10 @@ const ar: typeof en = {
     saved: "تم الحفظ بنجاح",
     saveFailed: "فشل الحفظ",
     language: "اللغة",
+    theme: "المظهر",
+    themeLight: "فاتح",
+    themeDark: "داكن",
+    themeSystem: "النظام",
     notifications: "الإشعارات",
     notificationsHint: "استلام تنبيهات للمحادثات والمواعيد والمكالمات.",
     notificationsPermissionDenied:
@@ -1358,6 +1374,7 @@ const ar: typeof en = {
     myConsultations: "استشاراتي",
     noConsultations: "لا توجد استشارات بعد",
     open: "مفتوحة",
+    waitingActive: "نشطة",
     completed: "مكتملة",
     cancelled: "ملغاة",
     refunded: "مستردة",
@@ -1381,6 +1398,13 @@ const ar: typeof en = {
     egpPerConsultation: "نقطة/استشارة",
     new: "جديد",
     reviews: "تقييم",
+    profile: {
+      aboutDoctor: "نبذة عن الطبيب",
+      professionalInfo: "المعلومات المهنية",
+      location: "الموقع",
+      openInGoogleMaps: "فتح في خرائط Google",
+      qualifications: "المؤهلات",
+    },
   },
   home: {
     greeting: (period: "morning" | "afternoon" | "evening") =>
@@ -1476,6 +1500,10 @@ const de: typeof en = {
     saved: "Erfolgreich gespeichert",
     saveFailed: "Speichern fehlgeschlagen",
     language: "Sprache",
+    theme: "Erscheinungsbild",
+    themeLight: "Hell",
+    themeDark: "Dunkel",
+    themeSystem: "System",
     notifications: "Benachrichtigungen",
     notificationsHint:
       "Erhalten Sie Hinweise zu Chats, Terminen und Anrufen.",
@@ -2077,6 +2105,7 @@ const de: typeof en = {
     myConsultations: "Meine Beratungen",
     noConsultations: "Noch keine Beratungen",
     open: "Offen",
+    waitingActive: "Aktiv",
     completed: "Abgeschlossen",
     cancelled: "Storniert",
     refunded: "Erstattet",
@@ -2100,6 +2129,13 @@ const de: typeof en = {
     egpPerConsultation: "Punkte/Beratung",
     new: "Neu",
     reviews: "Bewertungen",
+    profile: {
+      aboutDoctor: "Über den Arzt",
+      professionalInfo: "Berufliche Informationen",
+      location: "Standort",
+      openInGoogleMaps: "In Google Maps öffnen",
+      qualifications: "Qualifikationen",
+    },
   },
   home: {
     greeting: (period: "morning" | "afternoon" | "evening") =>
@@ -2196,6 +2232,10 @@ const es: typeof en = {
     saved: "Guardado correctamente",
     saveFailed: "Error al guardar",
     language: "Idioma",
+    theme: "Apariencia",
+    themeLight: "Claro",
+    themeDark: "Oscuro",
+    themeSystem: "Sistema",
     notifications: "Notificaciones",
     notificationsHint: "Recibe alertas de chats, citas y llamadas.",
     notificationsPermissionDenied:
@@ -2794,6 +2834,7 @@ const es: typeof en = {
     myConsultations: "Mis consultas",
     noConsultations: "Aún no hay consultas",
     open: "Abierta",
+    waitingActive: "Activa",
     completed: "Completada",
     cancelled: "Cancelada",
     refunded: "Reembolsada",
@@ -2817,6 +2858,13 @@ const es: typeof en = {
     egpPerConsultation: "puntos/consulta",
     new: "Nuevo",
     reviews: "reseñas",
+    profile: {
+      aboutDoctor: "Sobre el médico",
+      professionalInfo: "Información profesional",
+      location: "Ubicación",
+      openInGoogleMaps: "Abrir en Google Maps",
+      qualifications: "Calificaciones",
+    },
   },
   home: {
     greeting: (period: "morning" | "afternoon" | "evening") =>

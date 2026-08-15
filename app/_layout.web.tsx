@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
+import { ThemeBootstrap } from "@/components/ThemeBootstrap";
 import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -109,7 +109,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <KeyboardProvider>
         <View style={[styles.root, { backgroundColor: colors.background }]}>
-          <StatusBar style="dark" />
+          <ThemeBootstrap />
           <GlobalWebStyles />
           <LocaleBootstrap />
           <MedicalDataLoader />

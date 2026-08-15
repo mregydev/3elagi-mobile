@@ -1,6 +1,14 @@
 import { API_BASE } from "@/constants/api";
 import { resolveMediaUrl } from "@/domains/chat";
 
+export interface PublicDoctorClinic {
+  id: string;
+  name: string;
+  location: string;
+  phone?: string | null;
+  logoUrl?: string | null;
+}
+
 export interface PublicDoctorProfile {
   id: string;
   userId: string;
@@ -17,6 +25,7 @@ export interface PublicDoctorProfile {
   ratingAverage: number;
   ratingTotal: number;
   tags: string[];
+  clinic: PublicDoctorClinic | null;
 }
 
 export interface DoctorReviewItem {
@@ -87,6 +96,22 @@ export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorP
     ratingAverage: Number(data.rating_average ?? 0),
     ratingTotal: Number(data.rating_total ?? 0),
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    clinic: (() => {
+      const raw = data.clinic;
+      if (!raw || typeof raw !== "object") return null;
+      const c = raw as Record<string, unknown>;
+      const name = typeof c.name === "string" ? c.name.trim() : "";
+      const location = typeof c.location === "string" ? c.location.trim() : "";
+      const id = typeof c.id === "string" ? c.id : "";
+      if (!id || (!name && !location)) return null;
+      return {
+        id,
+        name,
+        location,
+        phone: (c.phone as string | null) ?? null,
+        logoUrl: (c.logo_url as string | null) ?? null,
+      };
+    })(),
   };
 }
 

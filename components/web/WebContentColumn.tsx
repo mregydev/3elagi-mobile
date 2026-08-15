@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, View, type ViewProps } from "react-native";
+import { ThemeToggleCorner } from "@/components/ThemeToggle";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
@@ -29,6 +30,7 @@ export function WebContentColumn({
 
   return (
     <View style={[styles.fill, styles.center, style]} {...rest}>
+      <ThemeToggleCorner variant="fixed" />
       <View style={[styles.column, { maxWidth: limit }]}>{children}</View>
     </View>
   );

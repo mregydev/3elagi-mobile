@@ -10,7 +10,9 @@ html, body, #root {
 body {
   margin: 0;
   overflow: hidden;
-  background: #f5f7fa;
+  background: var(--app-bg, #f5f7fa);
+  color: var(--app-fg, #1a2132);
+  color-scheme: light dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

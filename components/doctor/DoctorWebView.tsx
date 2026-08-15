@@ -1,10 +1,5 @@
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  ArrowRight,
-  MessageCircle,
-  Star,
-} from "lucide-react-native";
+import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,14 +8,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
-  type ViewStyle,
 } from "react-native";
-import { AppTextInput } from "@/components/AppTextInput";
-import { DoctorProfileFacts } from "@/components/doctor/DoctorProfileFacts";
-import { DoctorProfilePhoto } from "@/components/doctor/DoctorProfilePhoto";
-import { cardShell, UI } from "@/constants/uiTokens";
+import { DoctorProfileBody } from "@/components/doctor/DoctorProfileBody";
+import { DoctorProfileConsultCta } from "@/components/doctor/DoctorProfileConsultCta";
+import { DoctorProfileHeader } from "@/components/doctor/DoctorProfileHeader";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { chatRepository } from "@/domains/chat/repository";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
@@ -41,66 +33,13 @@ import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
 
-function StarPicker({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <View style={styles.starRow}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => onChange(n)} hitSlop={6}>
-          <Star size={28} color="#f59e0b" fill={n <= value ? "#f59e0b" : "transparent"} />
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-function ReviewCard({ item, isRTL, colors }: { item: DoctorReviewItem; isRTL: boolean; colors: ReturnType<typeof useColors> }) {
-  const dir = isRTL ? "row-reverse" : "row";
-  const textAlign = isRTL ? "right" : "left";
-
-  return (
-    <View style={[styles.reviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[styles.reviewCardHeader, { flexDirection: dir }]}>
-        <Text style={{ color: colors.foreground, fontWeight: "700" }}>{item.patientName}</Text>
-        <View style={styles.starMiniRow}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <Star key={n} size={12} color="#f59e0b" fill={n <= item.rating ? "#f59e0b" : "transparent"} />
-          ))}
-        </View>
-      </View>
-      {item.comment ? (
-        <Text style={{ color: colors.mutedForeground, marginTop: 6, textAlign, lineHeight: 20 }}>
-          {item.comment}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-function gridStyle(columns: number): ViewStyle {
-  if (columns <= 1) {
-    return { flexDirection: "column", gap: 12 };
-  }
-  return {
-    display: "grid",
-    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-    gap: 16,
-  } as unknown as ViewStyle;
-}
-
 export function DoctorWebView() {
   const colors = useColors();
-  const { isRTL, t, locale } = useI18n();
+  const { isRTL, locale } = useI18n();
   const { isDesktop } = useWebLayout();
   const router = useRouter();
   usePathname();
   const dir = isRTL ? "row-reverse" : "row";
-  const textAlign = isRTL ? "right" : "left";
   const showBack = canNavigateBack(router);
 
   const profile = useAuthStore((s) => s.profile);
@@ -243,154 +182,36 @@ export function DoctorWebView() {
             </Pressable>
           ) : null}
 
-          <View
-            style={[
-              styles.heroCard,
-              cardShell(colors.border, colors.card),
-              { flexDirection: dir },
-            ]}
-          >
-            <DoctorProfilePhoto
-              photoUrl={doctor.photoUrl}
-              userId={doctor.userId}
-              size={isDesktop ? 72 : 64}
-            />
-            <View style={[styles.heroBody, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
-              <Text style={[styles.pageTitle, { color: colors.foreground, textAlign, fontSize: 20 }]}>
-                {doctor.name}
-              </Text>
-              {specialtyLabelText ? (
-                <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign, marginTop: 0 }]}>
-                  {specialtyLabelText}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-
-          <DoctorProfileFacts
+          <DoctorProfileHeader
             doctor={doctor}
             userId={userId}
             specialtyLabel={specialtyLabelText}
             ratingAvg={ratingAvg}
             ratingTotal={ratingTotal}
+            action={
+              <DoctorProfileConsultCta
+                signedIn={isSignedIn(profile, accessToken)}
+                onPress={openChat}
+              />
+            }
           />
 
-          {doctor.description ? (
-            <View style={[styles.sectionCard, cardShell(colors.border, colors.card)]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
-                {isRTL ? "نبذة" : "About"}
-              </Text>
-              <Text style={[styles.description, { color: colors.foreground, textAlign }]}>
-                {doctor.description}
-              </Text>
-            </View>
-          ) : null}
-
-          <Pressable
-            onPress={openChat}
-            style={({ pressed }) => [
-              styles.chatBtn,
-              {
-                backgroundColor: colors.primary,
-                opacity: pressed ? 0.9 : 1,
-                flexDirection: dir,
-                alignSelf: "stretch",
-              },
-            ]}
-          >
-            <MessageCircle size={20} color="#fff" />
-            <Text style={styles.chatBtnText}>
-              {isSignedIn(profile, accessToken)
-                ? t.home.startConsultation
-                : isRTL
-                  ? "سجّل الدخول لبدء الاستشارة"
-                  : "Sign in to start consultation"}
-            </Text>
-          </Pressable>
-
-          {isPatient && reviewStatus?.canReview ? (
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
-                {reviewStatus.hasExistingReview
-                  ? isRTL
-                    ? "تعديل تقييمك"
-                    : "Edit your review"
-                  : isRTL
-                    ? "أضف تقييمك"
-                    : "Add your review"}
-              </Text>
-              <StarPicker value={reviewRating} onChange={setReviewRating} />
-              <AppTextInput
-                value={reviewComment}
-                onChangeText={setReviewComment}
-                placeholder={isRTL ? "تعليق اختياري…" : "Optional comment…"}
-                placeholderTextColor={colors.mutedForeground}
-                multiline
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.muted,
-                    color: colors.foreground,
-                    textAlign,
-                    borderColor: colors.border,
-                  },
-                ]}
-              />
-              <Pressable
-                onPress={() => void submitReview()}
-                disabled={submitting}
-                style={[
-                  styles.submitBtn,
-                  {
-                    backgroundColor: colors.primary,
-                    opacity: submitting ? 0.7 : 1,
-                    alignSelf: isRTL ? "flex-end" : "flex-start",
-                  },
-                ]}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={{ color: "#fff", fontWeight: "800" }}>
-                    {reviewStatus.hasExistingReview
-                      ? isRTL
-                        ? "تحديث التقييم"
-                        : "Update review"
-                      : isRTL
-                        ? "إرسال التقييم"
-                        : "Submit review"}
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          ) : null}
-
-          {isPatient && reviewStatus && !reviewStatus.canReview ? (
-            <View style={[styles.hintCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              <Text style={{ color: colors.mutedForeground, textAlign, lineHeight: 20 }}>
-                {isRTL
-                  ? "يمكنك تقييم الطبيب بعد أن يضيف تشخيصًا لك."
-                  : "You can review this doctor after they add a diagnosis for you."}
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={styles.reviewsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
-              {isRTL ? "التقييمات" : "Reviews"}
-            </Text>
-            {reviews.length === 0 ? (
-              <Text style={{ color: colors.mutedForeground, textAlign, paddingVertical: 20 }}>
-                {isRTL ? "لا توجد تقييمات بعد" : "No reviews yet"}
-              </Text>
-            ) : (
-              <View style={gridStyle(reviewColumns)}>
-                {reviews.map((r) => (
-                  <ReviewCard key={r.id} item={r} isRTL={isRTL} colors={colors} />
-                ))}
-              </View>
-            )}
-          </View>
+          <DoctorProfileBody
+            doctor={doctor}
+            specialtyLabel={specialtyLabelText}
+            twoColumn={isDesktop}
+            reviews={reviews}
+            reviewTotal={ratingTotal}
+            reviewStatus={reviewStatus}
+            isPatient={isPatient}
+            reviewRating={reviewRating}
+            onReviewRatingChange={setReviewRating}
+            reviewComment={reviewComment}
+            onReviewCommentChange={setReviewComment}
+            submitting={submitting}
+            onSubmitReview={() => void submitReview()}
+            reviewColumns={reviewColumns}
+          />
         </View>
       </ScrollView>
     </View>
@@ -414,67 +235,8 @@ const styles = StyleSheet.create({
   },
   container: {
     width: "100%",
-    gap: 12,
+    gap: 14,
   },
   backBtn: { alignItems: "center", gap: 8, paddingVertical: 4, alignSelf: "flex-start" },
   backText: { fontSize: 14, fontWeight: "600" },
-  pageHeader: { gap: 6, paddingHorizontal: 2 },
-  pageTitle: { fontSize: 26, fontWeight: "800", lineHeight: 32 },
-  pageSubtitle: { fontSize: 15, lineHeight: 22, maxWidth: 560 },
-  heroCard: {
-    padding: 14,
-    gap: 14,
-    alignItems: "center",
-  },
-  heroBody: { flex: 1, minWidth: 0, gap: 2 },
-  description: { fontSize: 14, lineHeight: 21 },
-  chatBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: UI.radius.chip,
-    minHeight: 48,
-    marginTop: 4,
-  },
-  chatBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
-  sectionCard: {
-    padding: 14,
-    gap: 8,
-  },
-  hintCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
-  sectionTitle: { fontSize: 17, fontWeight: "800" },
-  starRow: { flexDirection: "row", gap: 8, justifyContent: "center" },
-  input: {
-    minHeight: 90,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 14,
-    fontSize: 14,
-  },
-  submitBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    minHeight: 46,
-  },
-  reviewsSection: { gap: 14 },
-  reviewCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
-  reviewCardHeader: {
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  starMiniRow: { flexDirection: "row", gap: 2 },
 });

@@ -1,10 +1,23 @@
+import { useMemo } from "react";
+import { useColorScheme } from "react-native";
 import colors from "@/constants/colors";
+import { resolveTheme, useThemeStore } from "@/domains/theme/store";
 
-// Stable reference: returning a fresh object each render invalidated every
-// memo/callback that depends on `colors`, causing app-wide re-renders and
-// sluggish tab switches. The palette is static, so compute it once.
-const palette = { ...colors.light, radius: colors.radius };
+export type AppColors = (typeof colors)["light"] & { radius: number };
 
-export function useColors() {
-  return palette;
+export function useColors(): AppColors {
+  const mode = useThemeStore((s) => s.mode);
+  const systemScheme = useColorScheme();
+  const resolved = resolveTheme(mode, systemScheme);
+
+  return useMemo(
+    () => ({ ...colors[resolved], radius: colors.radius }),
+    [resolved],
+  );
+}
+
+export function useResolvedTheme() {
+  const mode = useThemeStore((s) => s.mode);
+  const systemScheme = useColorScheme();
+  return resolveTheme(mode, systemScheme);
 }

@@ -18,6 +18,7 @@ import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-nativ
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
@@ -357,6 +358,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
             </Text>
             <View style={{ gap: 16 }}>
               <ProfileLanguageField embedded wideCards />
+              <ProfileThemeField />
               <ProfileAiField />
             </View>
           </View>

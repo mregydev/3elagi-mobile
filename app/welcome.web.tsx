@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
@@ -114,6 +115,7 @@ export default function WelcomeScreenWeb() {
           <View style={styles.actionTopSpacer} />
           <View style={[styles.topActions, { flexDirection: dir }]}>
             <MobileAppLink variant="toolbar" />
+            <ThemeToggle />
             <AuthLanguageField />
           </View>
         </View>

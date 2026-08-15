@@ -22,6 +22,7 @@ import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
 import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
 import {
@@ -535,6 +536,7 @@ export function ProfileEditor({
               textAlign={textAlign}
             >
               <ProfileLanguageField embedded wideCards />
+              <ProfileThemeField />
               {Platform.OS !== "web" ? (
                 <View style={{ marginTop: 12 }}>
                   <ProfileNotificationsField />

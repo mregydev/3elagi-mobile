@@ -16,6 +16,7 @@ import {
   MOBILE_WEB_COMPOSER_FOOTER_GAP,
   mobileWebComposerStyles,
 } from "@/constants/mobileWebComposer";
+import { UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
 
@@ -148,7 +149,7 @@ export function AssistantComposer({
               ? "#ef4444"
               : micLoading
                 ? colors.primary
-                : colors.muted,
+                : colors.background,
             opacity: micBtnDisabled ? 0.45 : 1,
           },
         ]}
@@ -175,7 +176,7 @@ export function AssistantComposer({
         iconBtnStyle,
         iconBtnMobile,
         {
-          backgroundColor: colors.muted,
+          backgroundColor: colors.background,
           opacity: disabled || sending || aiAttachLoading ? 0.45 : 1,
         },
       ]}
@@ -198,7 +199,7 @@ export function AssistantComposer({
         iconBtnStyle,
         iconBtnMobile,
         {
-          backgroundColor: colors.muted,
+          backgroundColor: colors.background,
           opacity: disabled || sending || aiAttachLoading ? 0.45 : 1,
         },
       ]}
@@ -235,7 +236,7 @@ export function AssistantComposer({
 
   const aiAttachmentPreview =
     aiAttachment && onRemoveAiAttachment ? (
-      <View style={[styles.aiPreview, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+      <View style={[styles.aiPreview, { borderColor: colors.border, backgroundColor: colors.background }]}>
         {aiAttachment.isPdf || !aiAttachment.previewUri ? (
           <FileText color={colors.primary} size={20} />
         ) : (
@@ -325,13 +326,13 @@ export function AssistantComposer({
 }
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: UI.space.md,
+    paddingTop: UI.space.sm + 4,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8,
+    gap: UI.space.sm,
   },
   wrapCompact: {
-    paddingHorizontal: 12,
+    paddingHorizontal: UI.space.sm + 4,
     paddingTop: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 6,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     maxHeight: 120,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
+    borderRadius: UI.radius.inner,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     maxHeight: 100,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
+    borderRadius: UI.radius.inner,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 15,

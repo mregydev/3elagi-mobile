@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-na
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
@@ -81,6 +82,7 @@ export default function WelcomeScreen() {
             <View style={styles.backBtnPlaceholder} />
           )}
           <View style={styles.topBarSpacer} />
+          <ThemeToggle />
           <AuthLanguageField />
         </View>
 

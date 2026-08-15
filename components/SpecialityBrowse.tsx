@@ -7,7 +7,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { cardShell } from "@/constants/uiTokens";
+import { surfaceCard } from "@/constants/uiTokens";
 import type { Speciality } from "@/domains/home/api";
 import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
@@ -114,6 +114,7 @@ export function SpecialityGrid({
   isRTL,
   onSelect,
 }: SpecialityGridProps) {
+  const colors = useColors();
   const { locale } = useI18n();
   const heading =
     locale === "ar"
@@ -128,7 +129,11 @@ export function SpecialityGrid({
 
   return (
     <View
-      style={[styles.wrap, { direction: isRTL ? "rtl" : "ltr" } as object]}
+      style={[
+        styles.wrap,
+        surfaceCard(colors.card, colors.border),
+        { direction: isRTL ? "rtl" : "ltr" } as object,
+      ]}
       // @ts-expect-error web writing direction
       dir={isRTL ? "rtl" : "ltr"}
     >
@@ -142,6 +147,7 @@ export function SpecialityGrid({
           style={[
             styles.heading,
             {
+              color: colors.primary,
               fontSize: isArabic ? 24 : 20,
               writingDirection: isRTL ? "rtl" : "ltr",
             },
@@ -175,7 +181,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 16,
     paddingBottom: 14,
-    ...cardShell("#d9e2ed", "#ffffff"),
   },
   headingRow: {
     flexDirection: "row",
@@ -190,10 +195,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     textAlign: "center",
-    letterSpacing: 0.2,
-    color: "#3057F2",
-    flexShrink: 1,
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   grid: {
     flexDirection: "row",
