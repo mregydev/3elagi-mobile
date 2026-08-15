@@ -25,6 +25,8 @@ export interface PublicDoctorProfile {
   ratingAverage: number;
   ratingTotal: number;
   tags: string[];
+  /** Doctor profile page — personal clinic address for maps. */
+  location?: string | null;
   clinic: PublicDoctorClinic | null;
 }
 
@@ -96,6 +98,12 @@ export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorP
     ratingAverage: Number(data.rating_average ?? 0),
     ratingTotal: Number(data.rating_total ?? 0),
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    location: (() => {
+      const raw = data.personal_clinic_location;
+      if (typeof raw !== "string") return null;
+      const trimmed = raw.trim();
+      return trimmed || null;
+    })(),
     clinic: (() => {
       const raw = data.clinic;
       if (!raw || typeof raw !== "object") return null;

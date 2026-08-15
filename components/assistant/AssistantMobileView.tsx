@@ -23,7 +23,6 @@ import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageB
 import { AssistantVoiceModeView } from "@/components/assistant/AssistantVoiceModeView";
 import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { AssistantVoiceWebStyles } from "@/components/assistant/AssistantVoiceWebStyles";
-import { ThemeToggleCorner } from "@/components/ThemeToggle";
 import { useAppSidebar } from "@/contexts/AppSidebarContext";
 import type { MedicalRecord } from "@/domains/medical/types";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
@@ -337,7 +336,6 @@ export function AssistantMobileView({
           },
         ]}
       >
-        <ThemeToggleCorner />
         <View style={[styles.headerRow, isRTL && styles.headerRowRtl]}>
           <Pressable
             onPress={openSidebar}
@@ -516,11 +514,9 @@ export function AssistantMobileView({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    position: "relative",
     paddingHorizontal: 12,
     paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    minHeight: 40,
   },
   headerRow: {
     flexDirection: "row",

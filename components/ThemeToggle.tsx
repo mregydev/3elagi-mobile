@@ -25,8 +25,6 @@ const THUMB = 24;
 const PAD = 3;
 const TRAVEL = TRACK_W - THUMB - PAD * 2;
 
-type CornerVariant = "header" | "fixed";
-
 interface ThemeToggleProps {
   style?: ViewStyle;
 }
@@ -114,54 +112,6 @@ export function ThemeToggle({ style }: ThemeToggleProps) {
         />
       </Animated.View>
     </Pressable>
-  );
-}
-
-interface ThemeToggleCornerProps {
-  variant?: CornerVariant;
-}
-
-/** End-edge placement: top-right in LTR, top-left in RTL. */
-export function ThemeToggleCorner({ variant = "header" }: ThemeToggleCornerProps) {
-  const colors = useColors();
-  const { isRTL } = useI18n();
-
-  const positionStyle: ViewStyle =
-    variant === "fixed"
-      ? {
-          position: "absolute",
-          top: 16,
-          zIndex: 50,
-          ...(isRTL ? { left: 16, right: undefined } : { right: 16, left: undefined }),
-        }
-      : {
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          justifyContent: "center",
-          zIndex: 2,
-          ...(isRTL ? { left: 12, right: undefined } : { right: 12, left: undefined }),
-        };
-
-  return (
-    <View
-      style={[
-        positionStyle,
-        variant === "fixed"
-          ? {
-              backgroundColor: colors.card,
-              borderRadius: 20,
-              padding: 6,
-              borderWidth: 1,
-              borderColor: colors.border,
-              ...UI.shadow,
-            }
-          : null,
-      ]}
-      pointerEvents="box-none"
-    >
-      <ThemeToggle />
-    </View>
   );
 }
 

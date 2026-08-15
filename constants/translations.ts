@@ -24,6 +24,9 @@ const en = {
     digitalSignature: "Digital Signature",
     signatureHint: "Upload a clear image of your signature for prescriptions.",
     personalClinicLocation: "Personal Clinic Location",
+    googleMapsLocationHint:
+      "Paste a Google Maps link from the place page (Share → Copy link). Patients will see an embedded map on your profile.",
+    googleMapsLocationPlaceholder: "https://www.google.com/maps/place/...",
     clinicInfo: "Clinic Information",
     name: "Full name",
     email: "Email",
@@ -675,11 +678,10 @@ const en = {
     new: "New",
     reviews: "reviews",
     profile: {
-      aboutDoctor: "About Doctor",
+      aboutDoctor: "About / Doctor info",
       professionalInfo: "Professional Information",
       location: "Location",
       openInGoogleMaps: "Open in Google Maps",
-      qualifications: "Qualifications",
     },
   },
   home: {
@@ -760,6 +762,9 @@ const ar: typeof en = {
     digitalSignature: "التوقيع الرقمي",
     signatureHint: "ارفع صورة واضحة لتوقيعك لاستخدامها في الروشتات.",
     personalClinicLocation: "موقع العيادة الشخصية",
+    googleMapsLocationHint:
+      "الصق رابط Google Maps من صفحة المكان (مشاركة → نسخ الرابط). سيرى المرضى خريطة مدمجة في ملفك.",
+    googleMapsLocationPlaceholder: "https://www.google.com/maps/place/...",
     clinicInfo: "بيانات العيادة",
     name: "الاسم الكامل",
     email: "البريد الإلكتروني",
@@ -1399,11 +1404,10 @@ const ar: typeof en = {
     new: "جديد",
     reviews: "تقييم",
     profile: {
-      aboutDoctor: "نبذة عن الطبيب",
+      aboutDoctor: "نبذة / معلومات الطبيب",
       professionalInfo: "المعلومات المهنية",
       location: "الموقع",
       openInGoogleMaps: "فتح في خرائط Google",
-      qualifications: "المؤهلات",
     },
   },
   home: {
@@ -1483,6 +1487,9 @@ const de: typeof en = {
     digitalSignature: "Digitale Unterschrift",
     signatureHint: "Laden Sie ein klares Bild Ihrer Unterschrift für Rezepte hoch.",
     personalClinicLocation: "Standort der eigenen Praxis",
+    googleMapsLocationHint:
+      "Fügen Sie einen Google-Maps-Link von der Ortsseite ein (Teilen → Link kopieren). Patienten sehen eine eingebettete Karte in Ihrem Profil.",
+    googleMapsLocationPlaceholder: "https://www.google.com/maps/place/...",
     clinicInfo: "Klinikinformationen",
     name: "Vollständiger Name",
     email: "E-Mail",
@@ -2130,11 +2137,10 @@ const de: typeof en = {
     new: "Neu",
     reviews: "Bewertungen",
     profile: {
-      aboutDoctor: "Über den Arzt",
+      aboutDoctor: "Über / Arztinfo",
       professionalInfo: "Berufliche Informationen",
       location: "Standort",
       openInGoogleMaps: "In Google Maps öffnen",
-      qualifications: "Qualifikationen",
     },
   },
   home: {
@@ -2215,6 +2221,9 @@ const es: typeof en = {
     digitalSignature: "Firma digital",
     signatureHint: "Sube una imagen clara de tu firma para las recetas.",
     personalClinicLocation: "Ubicación de la consulta personal",
+    googleMapsLocationHint:
+      "Pega un enlace de Google Maps desde la página del lugar (Compartir → Copiar enlace). Los pacientes verán un mapa integrado en tu perfil.",
+    googleMapsLocationPlaceholder: "https://www.google.com/maps/place/...",
     clinicInfo: "Información de la clínica",
     name: "Nombre completo",
     email: "Correo electrónico",
@@ -2859,11 +2868,10 @@ const es: typeof en = {
     new: "Nuevo",
     reviews: "reseñas",
     profile: {
-      aboutDoctor: "Sobre el médico",
+      aboutDoctor: "Acerca de / Info del médico",
       professionalInfo: "Información profesional",
       location: "Ubicación",
       openInGoogleMaps: "Abrir en Google Maps",
-      qualifications: "Calificaciones",
     },
   },
   home: {

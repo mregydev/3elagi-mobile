@@ -1,15 +1,21 @@
 import React from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
 import { DoctorProfileAboutSection } from "@/components/doctor/DoctorProfileAboutSection";
 import { DoctorProfileLocationSection } from "@/components/doctor/DoctorProfileLocationSection";
 import { DoctorProfileProfessionalSection } from "@/components/doctor/DoctorProfileProfessionalSection";
 import { DoctorProfileReviewsSection } from "@/components/doctor/DoctorProfileReviewsSection";
+import {
+  hasDoctorAboutSection,
+  hasDoctorLocationSection,
+  hasDoctorProfessionalSection,
+} from "@/components/doctor/doctorProfileSections";
 import { UI } from "@/constants/uiTokens";
 import type {
   DoctorReviewItem,
   DoctorReviewStatus,
   PublicDoctorProfile,
 } from "@/domains/doctor/api";
+import { useWebLayout } from "@/hooks/useWebLayout";
 
 type ReviewProps = {
   reviews: DoctorReviewItem[];
@@ -28,49 +34,93 @@ type ReviewProps = {
 type Props = {
   doctor: PublicDoctorProfile;
   specialtyLabel: string;
-  twoColumn?: boolean;
 } & ReviewProps;
 
-function columnStyle(twoColumn: boolean): ViewStyle {
-  if (!twoColumn) {
+function sectionsGridStyle(twoCol: boolean): ViewStyle {
+  if (!twoCol) {
     return { flexDirection: "column", gap: UI.space.md };
   }
   return {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1.65fr) minmax(280px, 1fr)",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: UI.space.md,
-    alignItems: "start",
+    alignItems: "stretch",
   } as unknown as ViewStyle;
 }
 
 export function DoctorProfileBody({
   doctor,
   specialtyLabel,
-  twoColumn = false,
   ...reviewProps
 }: Props) {
-  const location = <DoctorProfileLocationSection clinic={doctor.clinic} />;
+  const { isMobile } = useWebLayout();
+  const twoCol = !isMobile;
+
+  const sectionDefs: { key: string; node: React.ReactNode }[] = [];
+
+  if (hasDoctorAboutSection(doctor)) {
+    sectionDefs.push({
+      key: "about",
+      node: <DoctorProfileAboutSection doctor={doctor} />,
+    });
+  }
+
+  if (hasDoctorProfessionalSection(doctor, specialtyLabel)) {
+    sectionDefs.push({
+      key: "professional",
+      node: (
+        <DoctorProfileProfessionalSection doctor={doctor} specialtyLabel={specialtyLabel} />
+      ),
+    });
+  }
+
+  if (hasDoctorLocationSection(doctor)) {
+    sectionDefs.push({
+      key: "location",
+      node: (
+        <DoctorProfileLocationSection
+          clinic={doctor.clinic}
+          profileLocation={doctor.location}
+        />
+      ),
+    });
+  }
+
+  const spanLast = twoCol && sectionDefs.length % 2 === 1;
 
   return (
-    <View style={columnStyle(twoColumn)}>
-      <View style={styles.main}>
-        <DoctorProfileAboutSection doctor={doctor} />
-        <DoctorProfileProfessionalSection doctor={doctor} specialtyLabel={specialtyLabel} />
-        {!twoColumn ? location : null}
-        <DoctorProfileReviewsSection {...reviewProps} />
-      </View>
-      {twoColumn ? <View style={styles.side}>{location}</View> : null}
+    <View style={styles.root}>
+      {sectionDefs.length > 0 ? (
+        <View style={sectionsGridStyle(twoCol)}>
+          {sectionDefs.map((section, index) => {
+            const fullWidth = spanLast && index === sectionDefs.length - 1;
+            return (
+              <View
+                key={section.key}
+                style={[styles.cell, fullWidth ? styles.cellFull : null]}
+              >
+                {section.node}
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+      <DoctorProfileReviewsSection {...reviewProps} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  main: {
+  root: {
     gap: UI.space.md,
     minWidth: 0,
   },
-  side: {
+  cell: {
     minWidth: 0,
-    gap: UI.space.md,
+    width: "100%",
   },
+  cellFull: Platform.select({
+    web: { gridColumn: "1 / -1" } as ViewStyle,
+    default: {},
+  }),
 });

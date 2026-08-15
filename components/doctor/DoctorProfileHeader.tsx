@@ -10,11 +10,13 @@ import type { PublicDoctorProfile } from "@/domains/doctor/api";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { formatEgpPerUnit } from "@/utils/credits";
 import { flexRow } from "@/utils/rtl";
 
 const HEADER_MIN_H = 196;
 const PHOTO_SIZE = 96;
+const PHOTO_SIZE_MOBILE = 80;
 
 type Props = {
   doctor: PublicDoctorProfile;
@@ -60,8 +62,10 @@ export function DoctorProfileHeader({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
+  const photoSize = isMobile ? PHOTO_SIZE_MOBILE : PHOTO_SIZE;
   const [hovered, setHovered] = useState(false);
   const chatUserId = userId ?? doctor.userId;
   const cached = chatRepository.getUser(chatUserId);
@@ -75,10 +79,106 @@ export function DoctorProfileHeader({
   const availColor = availabilityColor(isOnline, onCall, immediate, colors);
   const availLabel = availabilityLabel(isOnline, onCall, immediate, t);
 
+  const identityBlock = (
+    <View style={[styles.identity, { flexDirection: dir }]}>
+      <Avatar
+        uri={doctor.photoUrl}
+        seed={chatUserId}
+        role="doctor"
+        size={photoSize}
+        presence={isOnline ? "online" : "offline"}
+      />
+
+      <View style={styles.main}>
+        <Text
+          style={[
+            styles.name,
+            isMobile && styles.nameMobile,
+            { color: colors.foreground, textAlign },
+          ]}
+          numberOfLines={2}
+        >
+          {doctor.name}
+        </Text>
+
+        {specialtyLabel ? (
+          <Text
+            style={[styles.specialty, { color: colors.mutedForeground, textAlign }]}
+            numberOfLines={2}
+          >
+            {specialtyLabel}
+          </Text>
+        ) : null}
+
+        <View style={[styles.ratingRow, { flexDirection: dir }]}>
+          <Star
+            size={13}
+            color={colors.warning}
+            fill={hasRating ? colors.warning : "transparent"}
+          />
+          <Text style={[styles.ratingValue, { color: colors.foreground }]}>
+            {hasRating ? ratingAvg.toFixed(1) : t.doctor.new}
+          </Text>
+          {hasRating && ratingTotal > 0 ? (
+            <Text style={[styles.reviewCount, { color: colors.mutedForeground }]}>
+              · {ratingTotal} {t.doctor.reviews}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={[styles.statusRow, { flexDirection: dir }]}>
+          {hasCountry ? (
+            <View style={[styles.statusChip, { flexDirection: dir, backgroundColor: colors.background }]}>
+              <CircledCountryFlag country={country as MarketCountryCode} size={15} />
+              <Text style={[styles.statusText, { color: colors.foreground }]} numberOfLines={1}>
+                {patientCountryLabel(country as MarketCountryCode, isRTL)}
+              </Text>
+            </View>
+          ) : null}
+          <View
+            style={[
+              styles.statusChip,
+              { flexDirection: dir, backgroundColor: `${availColor}12` },
+            ]}
+          >
+            <View style={[styles.availDot, { backgroundColor: availColor }]} />
+            <Text style={[styles.statusText, { color: availColor }]} numberOfLines={1}>
+              {availLabel}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  const actionsBlock = (
+    <View
+      style={[
+        isMobile ? styles.actionsMobile : styles.actions,
+        !isMobile && { alignItems: isRTL ? "flex-start" : "flex-end" },
+      ]}
+    >
+      <Text
+        style={[
+          styles.price,
+          isMobile && styles.priceMobile,
+          {
+            color: colors.foreground,
+            textAlign: isMobile ? textAlign : isRTL ? "left" : "right",
+          },
+        ]}
+      >
+        {formatEgpPerUnit(doctor.consultationPrice, t)}
+      </Text>
+      {action ? <View style={styles.actionSlot}>{action}</View> : null}
+    </View>
+  );
+
   return (
     <View
       style={[
         styles.card,
+        isMobile && styles.cardMobile,
         surfaceCard(colors.card, colors.border),
         Platform.OS === "web" && hovered ? UI.shadowHover : null,
       ]}
@@ -86,77 +186,17 @@ export function DoctorProfileHeader({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <View style={[styles.row, { flexDirection: dir }]}>
-        <View style={[styles.identity, { flexDirection: dir }]}>
-          <Avatar
-            uri={doctor.photoUrl}
-            seed={chatUserId}
-            role="doctor"
-            size={PHOTO_SIZE}
-            presence={isOnline ? "online" : "offline"}
-          />
-
-          <View style={styles.main}>
-            <Text style={[styles.name, { color: colors.foreground, textAlign }]} numberOfLines={2}>
-              {doctor.name}
-            </Text>
-
-            {specialtyLabel ? (
-              <Text
-                style={[styles.specialty, { color: colors.mutedForeground, textAlign }]}
-                numberOfLines={1}
-              >
-                {specialtyLabel}
-              </Text>
-            ) : null}
-
-            <View style={[styles.ratingRow, { flexDirection: dir }]}>
-              <Star
-                size={13}
-                color={colors.warning}
-                fill={hasRating ? colors.warning : "transparent"}
-              />
-              <Text style={[styles.ratingValue, { color: colors.foreground }]}>
-                {hasRating ? ratingAvg.toFixed(1) : t.doctor.new}
-              </Text>
-              {hasRating && ratingTotal > 0 ? (
-                <Text style={[styles.reviewCount, { color: colors.mutedForeground }]}>
-                  · {ratingTotal} {t.doctor.reviews}
-                </Text>
-              ) : null}
-            </View>
-
-            <View style={[styles.statusRow, { flexDirection: dir }]}>
-              {hasCountry ? (
-                <View style={[styles.statusChip, { flexDirection: dir, backgroundColor: colors.background }]}>
-                  <CircledCountryFlag country={country as MarketCountryCode} size={15} />
-                  <Text style={[styles.statusText, { color: colors.foreground }]} numberOfLines={1}>
-                    {patientCountryLabel(country as MarketCountryCode, isRTL)}
-                  </Text>
-                </View>
-              ) : null}
-              <View
-                style={[
-                  styles.statusChip,
-                  { flexDirection: dir, backgroundColor: `${availColor}12` },
-                ]}
-              >
-                <View style={[styles.availDot, { backgroundColor: availColor }]} />
-                <Text style={[styles.statusText, { color: availColor }]} numberOfLines={1}>
-                  {availLabel}
-                </Text>
-              </View>
-            </View>
-          </View>
+      {isMobile ? (
+        <>
+          <View style={[styles.rowMobile, { flexDirection: dir }]}>{identityBlock}</View>
+          {actionsBlock}
+        </>
+      ) : (
+        <View style={[styles.row, { flexDirection: dir }]}>
+          {identityBlock}
+          {actionsBlock}
         </View>
-
-        <View style={[styles.actions, { alignItems: isRTL ? "flex-start" : "flex-end" }]}>
-          <Text style={[styles.price, { color: colors.foreground, textAlign: isRTL ? "left" : "right" }]}>
-            {formatEgpPerUnit(doctor.consultationPrice, t)}
-          </Text>
-          {action ? <View style={styles.actionSlot}>{action}</View> : null}
-        </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -167,12 +207,20 @@ const styles = StyleSheet.create({
     minHeight: HEADER_MIN_H,
     justifyContent: "center",
   },
+  cardMobile: {
+    minHeight: undefined,
+  },
   row: {
     alignItems: "stretch",
     paddingHorizontal: UI.space.md,
     paddingVertical: UI.space.md,
     gap: UI.space.md,
     minHeight: HEADER_MIN_H,
+  },
+  rowMobile: {
+    paddingHorizontal: UI.space.md,
+    paddingTop: UI.space.md,
+    paddingBottom: UI.space.sm,
   },
   identity: {
     flex: 1,
@@ -191,6 +239,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.35,
     lineHeight: 27,
+  },
+  nameMobile: {
+    fontSize: 19,
+    lineHeight: 25,
   },
   specialty: {
     fontSize: 14,
@@ -243,10 +295,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingLeft: UI.space.sm,
   },
+  actionsMobile: {
+    gap: UI.space.sm,
+    paddingHorizontal: UI.space.md,
+    paddingBottom: UI.space.md,
+    width: "100%",
+  },
   price: {
     fontSize: 14,
     fontWeight: "800",
     lineHeight: 19,
+  },
+  priceMobile: {
+    fontSize: 15,
   },
   actionSlot: {
     alignSelf: "stretch",

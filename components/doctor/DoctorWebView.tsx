@@ -199,7 +199,6 @@ export function DoctorWebView() {
           <DoctorProfileBody
             doctor={doctor}
             specialtyLabel={specialtyLabelText}
-            twoColumn={isDesktop}
             reviews={reviews}
             reviewTotal={ratingTotal}
             reviewStatus={reviewStatus}

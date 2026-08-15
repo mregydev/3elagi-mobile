@@ -1,6 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { AppBackButton } from "@/components/nav/AppBackButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { DoctorProfileBody } from "@/components/doctor/DoctorProfileBody";
 import { DoctorProfileConsultCta } from "@/components/doctor/DoctorProfileConsultCta";
 import { DoctorProfileHeader } from "@/components/doctor/DoctorProfileHeader";
@@ -29,11 +28,13 @@ import {
 } from "@/domains/doctor/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 export default function DoctorProfileScreen() {
   const colors = useColors();
   const { isRTL, locale } = useI18n();
+  const { isMobile } = useWebLayout();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
@@ -157,10 +158,15 @@ export default function DoctorProfileScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
           {doctor.name}
         </Text>
-        <ThemeToggle />
       </View>
 
-      <KeyboardSafeScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
+      <KeyboardSafeScrollView
+        contentContainerStyle={[
+          styles.content,
+          isMobile && styles.contentMobile,
+          { paddingBottom: insets.bottom + (isMobile ? 20 : 24) },
+        ]}
+      >
         <DoctorProfileHeader
           doctor={doctor}
           userId={userId}
@@ -203,6 +209,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 17, fontWeight: "800" },
+  headerTitle: { fontSize: 17, fontWeight: "800", flexShrink: 1 },
   content: { padding: 14, gap: 14 },
+  contentMobile: { padding: 12, gap: 12 },
 });

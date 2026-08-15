@@ -4,29 +4,31 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { DoctorProfileSection } from "@/components/doctor/DoctorProfileSection";
 import { GoogleMapsEmbed } from "@/components/doctor/GoogleMapsEmbed";
 import {
-  googleMapsOpenUrl,
   resolveDoctorLocation,
 } from "@/components/doctor/doctorProfileLocation";
 import { UI } from "@/constants/uiTokens";
 import type { PublicDoctorClinic } from "@/domains/doctor/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 type Props = {
   clinic: PublicDoctorClinic | null;
+  profileLocation?: string | null;
 };
 
-export function DoctorProfileLocationSection({ clinic }: Props) {
+export function DoctorProfileLocationSection({ clinic, profileLocation }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
-  const location = resolveDoctorLocation(clinic);
+  const location = resolveDoctorLocation(clinic, profileLocation);
   if (!location) return null;
 
   const openMaps = () => {
-    void Linking.openURL(googleMapsOpenUrl(location.mapSearchQuery));
+    void Linking.openURL(location.openUrl);
   };
 
   return (
@@ -47,7 +49,7 @@ export function DoctorProfileLocationSection({ clinic }: Props) {
         </View>
       </View>
 
-      <GoogleMapsEmbed query={location.mapQuery} height={176} />
+      <GoogleMapsEmbed query={location.mapQuery} height={isMobile ? 160 : 176} />
 
       <Pressable
         onPress={openMaps}

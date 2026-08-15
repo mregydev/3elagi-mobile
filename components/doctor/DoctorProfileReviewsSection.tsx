@@ -21,6 +21,7 @@ import type { DoctorReviewItem, DoctorReviewStatus } from "@/domains/doctor/api"
 import { formatReviewDate } from "@/components/doctor/doctorProfileLocation";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 function StarPicker({
@@ -46,11 +47,13 @@ function ReviewCard({
   isRTL,
   locale,
   colors,
+  stacked,
 }: {
   item: DoctorReviewItem;
   isRTL: boolean;
   locale: string;
   colors: ReturnType<typeof useColors>;
+  stacked?: boolean;
 }) {
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
@@ -58,7 +61,12 @@ function ReviewCard({
 
   return (
     <View style={[styles.reviewCard, surfaceCard(colors.card, colors.border)]}>
-      <View style={[styles.reviewHeader, { flexDirection: dir }]}>
+      <View
+        style={[
+          styles.reviewHeader,
+          stacked ? styles.reviewHeaderMobile : { flexDirection: dir },
+        ]}
+      >
         <View style={styles.reviewerBlock}>
           <Text style={[styles.reviewerName, { color: colors.foreground, textAlign }]}>
             {item.patientName}
@@ -124,6 +132,7 @@ export function DoctorProfileReviewsSection({
 }: Props) {
   const colors = useColors();
   const { isRTL, locale } = useI18n();
+  const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const count = reviewTotal > 0 ? reviewTotal : reviews.length;
@@ -155,7 +164,14 @@ export function DoctorProfileReviewsSection({
       ) : (
         <View style={gridStyle(reviewColumns)}>
           {reviews.map((r) => (
-            <ReviewCard key={r.id} item={r} isRTL={isRTL} locale={locale} colors={colors} />
+            <ReviewCard
+              key={r.id}
+              item={r}
+              isRTL={isRTL}
+              locale={locale}
+              colors={colors}
+              stacked={isMobile}
+            />
           ))}
         </View>
       )}
@@ -311,6 +327,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 8,
+  },
+  reviewHeaderMobile: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 6,
   },
   reviewerBlock: {
     flex: 1,

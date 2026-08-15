@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { UI, primaryButton } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 export function DoctorProfileConsultCta({ signedIn, onPress }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
 
   return (
@@ -27,6 +29,7 @@ export function DoctorProfileConsultCta({ signedIn, onPress }: Props) {
       style={({ pressed }) => [
         primaryButton(),
         styles.cta,
+        isMobile && styles.ctaMobile,
         {
           backgroundColor: colors.primary,
           opacity: pressed ? 0.92 : 1,
@@ -34,8 +37,8 @@ export function DoctorProfileConsultCta({ signedIn, onPress }: Props) {
         },
       ]}
     >
-      <MessageCircle size={14} color="#fff" />
-      <Text style={styles.ctaText} numberOfLines={1}>
+      <MessageCircle size={isMobile ? 16 : 14} color="#fff" />
+      <Text style={[styles.ctaText, isMobile && styles.ctaTextMobile]} numberOfLines={2}>
         {signedIn
           ? t.home.startConsultation
           : isRTL
@@ -55,10 +58,18 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     ...UI.pressable,
   },
+  ctaMobile: {
+    minHeight: 44,
+    paddingVertical: 11,
+    justifyContent: "center",
+  },
   ctaText: {
     fontSize: 12,
     fontWeight: "800",
     color: "#fff",
     flexShrink: 1,
+  },
+  ctaTextMobile: {
+    fontSize: 13,
   },
 });

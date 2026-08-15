@@ -5,6 +5,7 @@ import { UI } from "@/constants/uiTokens";
 import type { PublicDoctorProfile } from "@/domains/doctor/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 type Props = {
@@ -20,6 +21,7 @@ type InfoRow = {
 export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
@@ -35,16 +37,12 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
         value: t.home.yearsExperience(doctor.experienceYears),
       });
     }
-    const title = doctor.professionalTitle?.trim() ?? "";
-    if (title && title.toLowerCase() !== specialty.toLowerCase()) {
-      items.push({ label: t.doctor.profile.qualifications, value: title });
-    }
     const languages = doctor.tags.map((tag) => tag.trim()).filter(Boolean);
     if (languages.length > 0) {
       items.push({ label: t.home.languages, value: languages.join(", ") });
     }
     return items;
-  }, [doctor.experienceYears, doctor.professionalTitle, doctor.tags, specialtyLabel, t]);
+  }, [doctor.experienceYears, doctor.tags, specialtyLabel, t]);
 
   if (rows.length === 0) return null;
 
@@ -56,7 +54,7 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
             key={row.label}
             style={[
               styles.row,
-              { flexDirection: dir },
+              isMobile ? styles.rowMobile : { flexDirection: dir },
               index < rows.length - 1 && {
                 borderBottomWidth: StyleSheet.hairlineWidth,
                 borderBottomColor: `${colors.border}66`,
@@ -64,7 +62,13 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
               },
             ]}
           >
-            <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
+            <Text
+              style={[
+                styles.label,
+                isMobile && styles.labelMobile,
+                { color: colors.mutedForeground, textAlign },
+              ]}
+            >
               {row.label}
             </Text>
             <Text style={[styles.value, { color: colors.foreground, textAlign }]}>
@@ -85,6 +89,10 @@ const styles = StyleSheet.create({
     gap: UI.space.md,
     alignItems: "flex-start",
   },
+  rowMobile: {
+    flexDirection: "column",
+    gap: 4,
+  },
   label: {
     width: 112,
     flexShrink: 0,
@@ -93,6 +101,9 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     textTransform: "uppercase",
     letterSpacing: 0.3,
+  },
+  labelMobile: {
+    width: "auto",
   },
   value: {
     flex: 1,

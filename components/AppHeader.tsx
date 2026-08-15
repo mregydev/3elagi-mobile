@@ -3,7 +3,6 @@ import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { AppSidebarMenuButton } from "@/components/nav/AppSidebarDrawer";
-import { ThemeToggleCorner } from "@/components/ThemeToggle";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useColors } from "@/hooks/useColors";
 import { useHubEmbedded } from "@/hooks/useHubEmbedded";
@@ -42,7 +41,6 @@ export function AppHeader({ children, surface = "background" }: Props) {
         <View style={styles.brandRow}>
           <AppSidebarMenuButton />
           <Logo3elagi height={LOGO_HEIGHT.header} />
-          <ThemeToggleCorner />
         </View>
       )}
       {children ? (

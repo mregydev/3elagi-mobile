@@ -31,6 +31,8 @@ export function DoctorProfileSection({ title, textAlign, children, card = false 
 const styles = StyleSheet.create({
   root: {
     gap: UI.space.sm,
+    flex: 1,
+    minWidth: 0,
   },
   title: {
     fontSize: 16,
@@ -38,5 +40,6 @@ const styles = StyleSheet.create({
   card: {
     padding: UI.space.md,
     gap: UI.space.sm,
+    flex: 1,
   },
 });

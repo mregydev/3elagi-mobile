@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { filterAppNavItems, HOME_NAV_RESET_EVENT } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
@@ -161,6 +162,15 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
             {t.settings.language}
           </Text>
           <LanguageDropdown compact showLabel fullWidth placement="top" />
+        </View>
+
+        <View style={styles.prefBlock}>
+          <View style={[styles.prefRow, { flexDirection: dir }]}>
+            <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign, flex: 1 }]}>
+              {t.settings.theme}
+            </Text>
+            <ThemeToggle />
+          </View>
         </View>
 
         {role ? (
@@ -355,6 +365,12 @@ const styles = StyleSheet.create({
   },
   prefBlock: {
     gap: 6,
+  },
+  prefRow: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingHorizontal: 2,
   },
   prefLabel: {
     fontSize: 12,

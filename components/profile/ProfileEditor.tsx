@@ -231,11 +231,26 @@ export function ProfileEditor({
                   colors={colors}
                   isRTL={isRTL}
                 />
+                <Text
+                  style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
+                >
+                  {t.settings.personalClinicLocation}
+                </Text>
+                <Text
+                  style={[
+                    styles.fieldHint,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
+                  {t.settings.googleMapsLocationHint}
+                </Text>
                 <Field
-                  label={isRTL ? "الموقع" : "Location"}
+                  label=""
                   value={location}
                   onChangeText={setLocation}
-                  placeholder={isRTL ? "المدينة، العنوان" : "City, address"}
+                  placeholder={t.settings.googleMapsLocationPlaceholder}
+                  autoCapitalize="none"
+                  multiline
                   colors={colors}
                   isRTL={isRTL}
                 />
@@ -677,9 +692,11 @@ function Field({
 
   return (
     <View style={styles.field}>
-      <Text style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}>
-        {label}
-      </Text>
+      {label ? (
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}>
+          {label}
+        </Text>
+      ) : null}
       <AppTextInput
         value={value}
         onChangeText={onChangeText}
@@ -788,6 +805,11 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  fieldHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 2,
   },
   input: {
     borderWidth: 1,

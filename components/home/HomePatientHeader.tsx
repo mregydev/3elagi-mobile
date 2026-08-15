@@ -1,11 +1,12 @@
 import { router } from "expo-router";
 import { Bot, CalendarDays, ChevronRight, Stethoscope } from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { cardShell, UI } from "@/constants/uiTokens";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { alignText, flexRow } from "@/utils/rtl";
 
 type QuickAction = {
@@ -38,6 +39,8 @@ export function HomePatientHeader({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isMobile } = useWebLayout();
+  const stackActions = Platform.OS !== "web" || isMobile;
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const { width } = useWindowDimensions();
@@ -98,7 +101,12 @@ export function HomePatientHeader({
         </Text>
       </View>
 
-      <View style={[styles.actionsRow, { flexDirection: dir }]}>
+      <View
+        style={[
+          styles.actionsRow,
+          stackActions ? styles.actionsStack : { flexDirection: dir },
+        ]}
+      >
         {actions.map((action) => (
           <Pressable
             key={action.key}
@@ -107,6 +115,7 @@ export function HomePatientHeader({
             accessibilityLabel={`${action.label}. ${action.hint}`}
             style={({ pressed }) => [
               styles.actionCard,
+              stackActions ? styles.actionCardStacked : styles.actionCardInline,
               cardShell(action.borderAccent, colors.card),
               {
                 borderColor: action.borderAccent,
@@ -121,11 +130,11 @@ export function HomePatientHeader({
             <View style={styles.actionCopy}>
               <Text
                 style={[styles.actionLabel, { color: colors.foreground, textAlign }]}
-                numberOfLines={compact ? 1 : 2}
+                numberOfLines={stackActions ? 1 : compact ? 1 : 2}
               >
                 {action.label}
               </Text>
-              {!compact ? (
+              {stackActions || !compact ? (
                 <Text
                   style={[styles.actionHint, { color: colors.mutedForeground, textAlign }]}
                   numberOfLines={1}
@@ -169,11 +178,21 @@ const styles = StyleSheet.create({
   actionsRow: {
     gap: 8,
   },
+  actionsStack: {
+    flexDirection: "column",
+  },
   actionCard: {
-    flex: 1,
-    minWidth: 0,
     alignItems: "center",
     gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  actionCardStacked: {
+    width: "100%",
+  },
+  actionCardInline: {
+    flex: 1,
+    minWidth: 0,
     paddingHorizontal: 10,
     paddingVertical: 10,
   },
