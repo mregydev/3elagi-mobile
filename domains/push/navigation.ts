@@ -23,7 +23,7 @@ export function getPushNotificationPath(data: PushNotificationData): string {
     return `/chat/${data.chatId}`;
   }
   if (data.type === "chat") return `/chat/${data.chatId}`;
-  return `/ai/${data.chatId}`;
+  return `/(tabs)/assistant?chatId=${encodeURIComponent(data.chatId)}`;
 }
 
 export function navigateFromPushNotification(
@@ -65,6 +65,15 @@ export function navigateFromPushNotification(
 
   if (data.type === "chat") {
     router.push(`/chat/${data.chatId}`);
+    return;
+  }
+
+  if (data.type === "ai") {
+    if (Platform.OS !== "web" && isMobileAiPushDisabled()) return;
+    router.push({
+      pathname: "/(tabs)/assistant",
+      params: { chatId: data.chatId },
+    });
     return;
   }
 

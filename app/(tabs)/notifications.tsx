@@ -71,7 +71,10 @@ export default function NotificationsTab() {
     // Fallback: chat / AI ids in data without type.
     const chatId = item.data.chatId || item.data.chat_id;
     if (item.type === "ai" && chatId) {
-      router.push(`/ai/${chatId}`);
+      router.push({
+        pathname: "/(tabs)/assistant",
+        params: { chatId: String(chatId) },
+      });
       return;
     }
     if (chatId) {

@@ -1,18 +1,19 @@
+import { Redirect, useLocalSearchParams } from "expo-router";
 import React from "react";
-import AssistantScreenWeb from "../(tabs)/assistant.web";
-import { WebMobileTabShell } from "@/components/web/WebMobileTabShell";
-import { useWebLayout } from "@/hooks/useWebLayout";
 
+/** Keep AI deep links inside the tab shell so sidebar nav stays available. */
 export default function AiChatDeepLinkWeb() {
-  const { isDesktop } = useWebLayout();
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
+  const chatId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : undefined;
 
-  if (isDesktop) {
-    return <AssistantScreenWeb />;
-  }
+  if (!chatId) return <Redirect href="/(tabs)/assistant" />;
 
   return (
-    <WebMobileTabShell>
-      <AssistantScreenWeb />
-    </WebMobileTabShell>
+    <Redirect
+      href={{
+        pathname: "/(tabs)/assistant",
+        params: { chatId },
+      }}
+    />
   );
 }
