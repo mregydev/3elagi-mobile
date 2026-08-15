@@ -2,7 +2,6 @@ import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import {
   ArrowLeft,
   ArrowRight,
-  Coins,
   MessageCircle,
   Star,
 } from "lucide-react-native";
@@ -19,7 +18,9 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { DoctorProfileFacts } from "@/components/doctor/DoctorProfileFacts";
 import { DoctorProfilePhoto } from "@/components/doctor/DoctorProfilePhoto";
+import { cardShell, UI } from "@/constants/uiTokens";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { chatRepository } from "@/domains/chat/repository";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
@@ -95,7 +96,7 @@ function gridStyle(columns: number): ViewStyle {
 export function DoctorWebView() {
   const colors = useColors();
   const { isRTL, t, locale } = useI18n();
-  const { isDesktop, isTablet } = useWebLayout();
+  const { isDesktop } = useWebLayout();
   const router = useRouter();
   usePathname();
   const dir = isRTL ? "row-reverse" : "row";
@@ -170,6 +171,9 @@ export function DoctorWebView() {
         ratingTotal: doctor.ratingTotal,
         consultationPrice: doctor.consultationPrice,
         doctorEntityId: doctor.id,
+        country: chatRepository.getUser(chatUserId)?.country,
+        immediateCallEnabled: chatRepository.getUser(chatUserId)?.immediateCallEnabled,
+        onCall: chatRepository.getUser(chatUserId)?.onCall,
       },
     ]);
     router.push(`/chat/${chatUserId}`);
@@ -239,100 +243,70 @@ export function DoctorWebView() {
             </Pressable>
           ) : null}
 
-          <View style={styles.pageHeader}>
-            <Text style={[styles.pageTitle, { color: colors.foreground, textAlign }]}>
-              {doctor.name}
-            </Text>
-            {specialtyLabelText ? (
-              <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign }]}>
-                {specialtyLabelText}
-              </Text>
-            ) : null}
-          </View>
-
           <View
             style={[
               styles.heroCard,
+              cardShell(colors.border, colors.card),
+              { flexDirection: dir },
+            ]}
+          >
+            <DoctorProfilePhoto
+              photoUrl={doctor.photoUrl}
+              userId={doctor.userId}
+              size={isDesktop ? 72 : 64}
+            />
+            <View style={[styles.heroBody, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+              <Text style={[styles.pageTitle, { color: colors.foreground, textAlign, fontSize: 20 }]}>
+                {doctor.name}
+              </Text>
+              {specialtyLabelText ? (
+                <Text style={[styles.pageSubtitle, { color: colors.mutedForeground, textAlign, marginTop: 0 }]}>
+                  {specialtyLabelText}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          <DoctorProfileFacts
+            doctor={doctor}
+            userId={userId}
+            specialtyLabel={specialtyLabelText}
+            ratingAvg={ratingAvg}
+            ratingTotal={ratingTotal}
+          />
+
+          {doctor.description ? (
+            <View style={[styles.sectionCard, cardShell(colors.border, colors.card)]}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+                {isRTL ? "نبذة" : "About"}
+              </Text>
+              <Text style={[styles.description, { color: colors.foreground, textAlign }]}>
+                {doctor.description}
+              </Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={openChat}
+            style={({ pressed }) => [
+              styles.chatBtn,
               {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                flexDirection: isDesktop || isTablet ? dir : "column",
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.9 : 1,
+                flexDirection: dir,
+                alignSelf: "stretch",
               },
             ]}
           >
-            <View style={styles.heroAvatar}>
-              <DoctorProfilePhoto
-                photoUrl={doctor.photoUrl}
-                userId={doctor.userId}
-                size={isDesktop ? 96 : 88}
-              />
-            </View>
-
-            <View
-              style={[
-                styles.heroBody,
-                (isDesktop || isTablet) ? styles.heroBodyRow : styles.heroBodyStacked,
-                { alignItems: isRTL ? "flex-end" : "flex-start" },
-              ]}
-            >
-              {doctor.professionalTitle ? (
-                <Text style={[styles.heroTitle, { color: colors.mutedForeground, textAlign }]}>
-                  {doctor.professionalTitle}
-                </Text>
-              ) : null}
-
-              <View style={[styles.statsGrid, gridStyle(isDesktop ? 2 : 1)]}>
-                <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <Star size={18} color="#f59e0b" fill="#f59e0b" />
-                  <Text style={{ color: colors.foreground, fontWeight: "800", fontSize: 18 }}>
-                    {ratingAvg > 0 ? ratingAvg.toFixed(1) : isRTL ? "جديد" : "New"}
-                  </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
-                    {ratingTotal} {isRTL ? "تقييم" : "reviews"}
-                  </Text>
-                </View>
-                <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <Coins size={18} color={colors.primary} />
-                  <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 18 }}>
-                    {doctor.consultationPrice}
-                  </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
-                    {t.doctor.egpPerConsultation}
-                  </Text>
-                </View>
-              </View>
-
-              {doctor.description ? (
-                <Text style={[styles.description, { color: colors.foreground, textAlign }]}>
-                  {doctor.description}
-                </Text>
-              ) : null}
-
-              <Pressable
-                onPress={openChat}
-                style={({ pressed }) => [
-                  styles.chatBtn,
-                  {
-                    backgroundColor: colors.primary,
-                    opacity: pressed ? 0.9 : 1,
-                    flexDirection: dir,
-                    alignSelf: isRTL ? "flex-end" : "flex-start",
-                  },
-                ]}
-              >
-                <MessageCircle size={20} color="#fff" />
-                <Text style={styles.chatBtnText}>
-                  {isSignedIn(profile, accessToken)
-                    ? isRTL
-                      ? "مراسلة الطبيب"
-                      : "Message doctor"
-                    : isRTL
-                      ? "سجّل الدخول لبدء الاستشارة"
-                      : "Sign in to start consultation"}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+            <MessageCircle size={20} color="#fff" />
+            <Text style={styles.chatBtnText}>
+              {isSignedIn(profile, accessToken)
+                ? t.home.startConsultation
+                : isRTL
+                  ? "سجّل الدخول لبدء الاستشارة"
+                  : "Sign in to start consultation"}
+            </Text>
+          </Pressable>
 
           {isPatient && reviewStatus?.canReview ? (
             <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -440,7 +414,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: "100%",
-    gap: 24,
+    gap: 12,
   },
   backBtn: { alignItems: "center", gap: 8, paddingVertical: 4, alignSelf: "flex-start" },
   backText: { fontSize: 14, fontWeight: "600" },
@@ -448,45 +422,26 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 26, fontWeight: "800", lineHeight: 32 },
   pageSubtitle: { fontSize: 15, lineHeight: 22, maxWidth: 560 },
   heroCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 24,
-    gap: 24,
-    alignItems: "flex-start",
-  },
-  heroAvatar: {
+    padding: 14,
+    gap: 14,
     alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
   },
-  heroBody: { gap: 16 },
-  heroBodyRow: { flex: 1, minWidth: 0 },
-  heroBodyStacked: { width: "100%" },
-  heroTitle: { fontSize: 14, fontWeight: "600" },
-  statsGrid: { width: "100%" },
-  statCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: "center",
-    gap: 6,
-  },
-  description: { fontSize: 15, lineHeight: 24 },
+  heroBody: { flex: 1, minWidth: 0, gap: 2 },
+  description: { fontSize: 14, lineHeight: 21 },
   chatBtn: {
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingHorizontal: 24,
+    borderRadius: UI.radius.chip,
+    minHeight: 48,
     marginTop: 4,
   },
   chatBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   sectionCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
-    gap: 14,
+    padding: 14,
+    gap: 8,
   },
   hintCard: {
     borderWidth: 1,

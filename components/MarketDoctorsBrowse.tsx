@@ -148,6 +148,20 @@ export function MarketDoctorsBrowse({
     [signedIn],
   );
 
+  const startConsultationWithDoctor = useCallback(
+    (doctorUserId: string) => {
+      if (!signedIn) {
+        promptAuthForConsultation(`/chat/${doctorUserId}`);
+        return;
+      }
+      router.push({
+        pathname: "/chat/[id]",
+        params: { id: doctorUserId, from: "doctors" },
+      });
+    },
+    [signedIn],
+  );
+
   if (loadingHome && specialities.length === 0) {
     return (
       <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
@@ -163,6 +177,7 @@ export function MarketDoctorsBrowse({
         isRTL={isRTL}
         onBack={clearSpeciality}
         onSelectDoctor={openDoctorProfile}
+        onStartConsultation={startConsultationWithDoctor}
       />
     );
   }

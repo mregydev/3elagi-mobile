@@ -670,6 +670,39 @@ const en = {
     new: "New",
     reviews: "reviews",
   },
+  home: {
+    greeting: (period: "morning" | "afternoon" | "evening") =>
+      period === "morning"
+        ? "Good morning"
+        : period === "afternoon"
+          ? "Good afternoon"
+          : "Good evening",
+    greetingNamed: (period: "morning" | "afternoon" | "evening", name: string) =>
+      period === "morning"
+        ? `Good morning, ${name}`
+        : period === "afternoon"
+          ? `Good afternoon, ${name}`
+          : `Good evening, ${name}`,
+    subtitle: "Start a consultation in minutes — pick a doctor below.",
+    quickActions: "Quick actions",
+    findDoctor: "Find a Doctor",
+    findDoctorHint: "Browse by speciality",
+    aiAssistant: "AI Assistant",
+    aiAssistantHint: "Ask about your records",
+    myConsultations: "My Consultations",
+    myConsultationsHint: "Active & past visits",
+    startConsultation: "Start Consultation",
+    online: "Online",
+    offline: "Offline",
+    specialty: "Specialty",
+    experience: "Experience",
+    yearsExperience: (years: number) => `${years}+ years`,
+    country: "Country",
+    availability: "Availability",
+    rating: "Rating",
+    consultationCost: "Consultation",
+    languages: "Languages",
+  },
   ai: {
     insufficientCredits:
       "You do not have enough credits to message the AI assistant. Add credits from the Credits tab.",
@@ -1348,6 +1381,39 @@ const ar: typeof en = {
     egpPerConsultation: "نقطة/استشارة",
     new: "جديد",
     reviews: "تقييم",
+  },
+  home: {
+    greeting: (period: "morning" | "afternoon" | "evening") =>
+      period === "morning"
+        ? "صباح الخير"
+        : period === "afternoon"
+          ? "مساء الخير"
+          : "مساء الخير",
+    greetingNamed: (period: "morning" | "afternoon" | "evening", name: string) =>
+      period === "morning"
+        ? `صباح الخير، ${name}`
+        : period === "afternoon"
+          ? `مساء الخير، ${name}`
+          : `مساء الخير، ${name}`,
+    subtitle: "ابدأ استشارتك خلال دقائق — اختر طبيبًا أدناه.",
+    quickActions: "إجراءات سريعة",
+    findDoctor: "ابحث عن طبيب",
+    findDoctorHint: "تصفح حسب التخصص",
+    aiAssistant: "المساعد الذكي",
+    aiAssistantHint: "اسأل عن سجلاتك",
+    myConsultations: "استشاراتي",
+    myConsultationsHint: "الزيارات النشطة والسابقة",
+    startConsultation: "بدء استشارة",
+    online: "متصل",
+    offline: "غير متصل",
+    specialty: "التخصص",
+    experience: "الخبرة",
+    yearsExperience: (years: number) => `${years}+ سنوات`,
+    country: "الدولة",
+    availability: "التوفر",
+    rating: "التقييم",
+    consultationCost: "الاستشارة",
+    languages: "اللغات",
   },
   ai: {
     insufficientCredits:
@@ -2035,6 +2101,39 @@ const de: typeof en = {
     new: "Neu",
     reviews: "Bewertungen",
   },
+  home: {
+    greeting: (period: "morning" | "afternoon" | "evening") =>
+      period === "morning"
+        ? "Guten Morgen"
+        : period === "afternoon"
+          ? "Guten Tag"
+          : "Guten Abend",
+    greetingNamed: (period: "morning" | "afternoon" | "evening", name: string) =>
+      period === "morning"
+        ? `Guten Morgen, ${name}`
+        : period === "afternoon"
+          ? `Guten Tag, ${name}`
+          : `Guten Abend, ${name}`,
+    subtitle: "Starten Sie eine Beratung in Minuten — wählen Sie unten einen Arzt.",
+    quickActions: "Schnellaktionen",
+    findDoctor: "Arzt finden",
+    findDoctorHint: "Nach Fachgebiet suchen",
+    aiAssistant: "KI-Assistent",
+    aiAssistantHint: "Fragen zu Ihren Befunden",
+    myConsultations: "Meine Beratungen",
+    myConsultationsHint: "Aktive & vergangene Besuche",
+    startConsultation: "Beratung starten",
+    online: "Online",
+    offline: "Offline",
+    specialty: "Fachgebiet",
+    experience: "Erfahrung",
+    yearsExperience: (years: number) => `${years}+ Jahre`,
+    country: "Land",
+    availability: "Verfügbarkeit",
+    rating: "Bewertung",
+    consultationCost: "Beratung",
+    languages: "Sprachen",
+  },
   ai: {
     insufficientCredits:
       "Sie haben nicht genügend Guthaben, um dem KI-Assistenten zu schreiben. Fügen Sie Guthaben im Tab „Guthaben“ hinzu.",
@@ -2718,6 +2817,39 @@ const es: typeof en = {
     egpPerConsultation: "puntos/consulta",
     new: "Nuevo",
     reviews: "reseñas",
+  },
+  home: {
+    greeting: (period: "morning" | "afternoon" | "evening") =>
+      period === "morning"
+        ? "Buenos días"
+        : period === "afternoon"
+          ? "Buenas tardes"
+          : "Buenas noches",
+    greetingNamed: (period: "morning" | "afternoon" | "evening", name: string) =>
+      period === "morning"
+        ? `Buenos días, ${name}`
+        : period === "afternoon"
+          ? `Buenas tardes, ${name}`
+          : `Buenas noches, ${name}`,
+    subtitle: "Inicia una consulta en minutos — elige un médico abajo.",
+    quickActions: "Acciones rápidas",
+    findDoctor: "Buscar médico",
+    findDoctorHint: "Explorar por especialidad",
+    aiAssistant: "Asistente IA",
+    aiAssistantHint: "Pregunta sobre tus registros",
+    myConsultations: "Mis consultas",
+    myConsultationsHint: "Visitas activas y pasadas",
+    startConsultation: "Iniciar consulta",
+    online: "En línea",
+    offline: "Desconectado",
+    specialty: "Especialidad",
+    experience: "Experiencia",
+    yearsExperience: (years: number) => `${years}+ años`,
+    country: "País",
+    availability: "Disponibilidad",
+    rating: "Valoración",
+    consultationCost: "Consulta",
+    languages: "Idiomas",
   },
   ai: {
     insufficientCredits:

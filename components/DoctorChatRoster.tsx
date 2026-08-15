@@ -1,6 +1,5 @@
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
-import { DoctorTrailingMeta } from "@/components/DoctorListMeta";
-import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
+import { DoctorBrowseCard } from "@/components/home/DoctorBrowseCard";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,8 +10,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { Avatar } from "@/components/Avatar";
-import type { Conversation } from "@/domains/chat/types";
 import {
   MARKET_COUNTRY_CODES,
   patientCountryLabel,
@@ -25,37 +22,6 @@ import { specialityLabel } from "@/domains/home/specialityLabel";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-
-/** Red = line busy, green = free to ring right now. Doctors with immediate calls on. */
-function CallStateFlag({
-  onCall,
-  isRTL,
-  colors,
-}: {
-  onCall: boolean;
-  isRTL: boolean;
-  colors: ReturnType<typeof useColors>;
-}) {
-  const { t } = useI18n();
-  const tint = onCall ? "#ef4444" : colors.success;
-  return (
-    <View
-      style={[
-        styles.flag,
-        {
-          flexDirection: isRTL ? "row-reverse" : "row",
-          alignSelf: isRTL ? "flex-end" : "flex-start",
-          backgroundColor: `${tint}1A`,
-        },
-      ]}
-    >
-      <View style={[styles.flagDot, { backgroundColor: tint }]} />
-      <Text style={[styles.flagText, { color: tint }]}>
-        {onCall ? t.auth.doctorOnCall : t.auth.doctorAvailableNow}
-      </Text>
-    </View>
-  );
-}
 
 /** Country filter pill — doctors are listed from every market now. */
 function CountryChip({
@@ -100,72 +66,6 @@ function CountryChip({
   );
 }
 
-function ConversationRow({
-  item,
-  colors,
-  isRTL,
-  onPress,
-}: {
-  item: Conversation;
-  colors: ReturnType<typeof useColors>;
-  isRTL: boolean;
-  onPress: () => void;
-}) {
-  const isOnline = usePresenceStore((s) => s.isOnline(item.user.id));
-  const presence = isOnline ? "online" : "offline";
-  const dir = isRTL ? "row-reverse" : "row";
-  // Socket wins when it has spoken about this doctor; otherwise the fetched flag.
-  const liveBusy = usePresenceStore((s) => s.busyDoctors[item.user.id]);
-  const onCall = liveBusy ?? !!item.user.onCall;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { flexDirection: dir },
-        pressed && { backgroundColor: colors.muted },
-      ]}
-    >
-      <Avatar
-        uri={item.user.photoUrl}
-        seed={item.user.id}
-        role="doctor"
-        size={46}
-        presence={presence}
-      />
-
-      <View style={[styles.content, { flexDirection: dir }]}>
-        <View style={styles.mainCol}>
-          <NameWithCountryFlag
-            name={item.user.name}
-            country={item.user.country}
-            isRTL={isRTL}
-            nameStyle={[
-              styles.name,
-              { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-            ]}
-          />
-          {/* Offline doctors can't be rung at all, so no availability flag. */}
-          {item.user.immediateCallEnabled && isOnline ? (
-            <CallStateFlag onCall={onCall} isRTL={isRTL} colors={colors} />
-          ) : null}
-        </View>
-
-        <View style={[styles.trailingCol, { alignItems: isRTL ? "flex-start" : "flex-end" }]}>
-          <DoctorTrailingMeta
-            isRTL={isRTL}
-            rating={item.user.rating}
-            ratingTotal={item.user.ratingTotal}
-            consultationPrice={item.user.consultationPrice}
-            showReviewCount
-          />
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 interface Props {
   speciality: Speciality;
   doctors: SpecialityDoctor[];
@@ -173,6 +73,7 @@ interface Props {
   isRTL: boolean;
   onBack: () => void;
   onSelectDoctor: (doctorUserId: string, doctorEntityId?: string) => void;
+  onStartConsultation: (doctorUserId: string, doctorEntityId?: string) => void;
   hideHeaderBorder?: boolean;
 }
 
@@ -183,12 +84,12 @@ export function DoctorChatRoster({
   isRTL,
   onBack,
   onSelectDoctor,
+  onStartConsultation,
   hideHeaderBorder = false,
 }: Props) {
   const colors = useColors();
   const { locale } = useI18n();
   const onlineUsers = usePresenceStore((s) => s.users);
-  // Every market is listed by default; country is a filter the user opts into.
   const [countryFilter, setCountryFilter] = useState<MarketCountryCode | "all">(
     "all",
   );
@@ -224,6 +125,7 @@ export function DoctorChatRoster({
       <View
         style={[
           styles.header,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
           hideHeaderBorder && styles.headerBorderless,
         ]}
       >
@@ -252,10 +154,20 @@ export function DoctorChatRoster({
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.primary }]} numberOfLines={1}>
             {label}
           </Text>
         </View>
+        <Text style={[styles.countLabel, { color: colors.mutedForeground }]}>
+          {filtered.length}{" "}
+          {filtered.length === 1
+            ? locale === "ar"
+              ? "طبيب"
+              : "doctor"
+            : locale === "ar"
+              ? "أطباء"
+              : "doctors"}
+        </Text>
 
         {!loading ? (
           <View
@@ -304,22 +216,17 @@ export function DoctorChatRoster({
           data={filtered}
           keyExtractor={(c) => c.id}
           extraData={onlineUsers}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          ItemSeparatorComponent={() => (
-            <View
-              style={[
-                styles.divider,
-                { backgroundColor: colors.border },
-                isRTL ? { marginRight: 74, marginLeft: 0 } : { marginLeft: 74, marginRight: 0 },
-              ]}
-            />
-          )}
+          contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <ConversationRow
+            <DoctorBrowseCard
               item={item}
-              colors={colors}
               isRTL={isRTL}
-              onPress={() => onSelectDoctor(item.id, item.user.doctorEntityId)}
+              onViewProfile={() =>
+                onSelectDoctor(item.id, item.user.doctorEntityId)
+              }
+              onStartConsultation={() =>
+                onStartConsultation(item.id, item.user.doctorEntityId)
+              }
             />
           )}
         />
@@ -333,9 +240,8 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.08)",
   },
   headerBorderless: {
     borderBottomWidth: 0,
@@ -355,9 +261,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 21,
     fontWeight: "800",
-    letterSpacing: 0.3,
-    color: "#1D4ED8",
+    letterSpacing: 0.2,
     flexShrink: 1,
+  },
+  countLabel: {
+    textAlign: "center",
+    fontSize: 13,
+    marginTop: 4,
   },
   filterRow: {
     marginTop: 12,
@@ -374,38 +284,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: { fontSize: 13, fontWeight: "700" },
-  row: {
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  listContent: {
+    paddingTop: 6,
+    paddingBottom: 16,
+    gap: 6,
   },
-  content: {
-    flex: 1,
-    // Centred against the avatar: with the speciality line gone the name is a
-    // single row, and top-aligning left it floating above the picture.
-    alignItems: "center",
-    gap: 10,
-  },
-  mainCol: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: "center",
-  },
-  trailingCol: {
-    gap: 4,
-  },
-  name: { fontSize: 16, fontWeight: "600" },
-  flag: {
-    marginTop: 4,
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  flagDot: { width: 7, height: 7, borderRadius: 3.5 },
-  flagText: { fontSize: 11, fontWeight: "700" },
-  divider: { height: StyleSheet.hairlineWidth },
   empty: { alignItems: "center", paddingVertical: 60 },
 });

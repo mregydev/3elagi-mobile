@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { cardShell } from "@/constants/uiTokens";
 import type { Speciality } from "@/domains/home/api";
 import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
@@ -180,13 +181,12 @@ export function SpecialityGrid({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginHorizontal: 12,
-    marginVertical: 8,
+    marginHorizontal: 16,
+    marginVertical: 6,
     paddingHorizontal: 8,
-    paddingTop: 20,
-    paddingBottom: 18,
-    backgroundColor: "#EEF3F8",
-    borderRadius: 24,
+    paddingTop: 16,
+    paddingBottom: 14,
+    ...cardShell("#d9e2ed", "#ffffff"),
   },
   headingRow: {
     flexDirection: "row",
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
     letterSpacing: 0.2,
-    color: "#1D4ED8",
+    color: "#3057F2",
     flexShrink: 1,
   },
   grid: {

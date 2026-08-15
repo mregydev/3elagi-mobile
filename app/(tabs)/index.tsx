@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
   ActivityIndicator,
@@ -11,12 +11,13 @@ import {
   StyleSheet,
   Text,
   View,
+  type ScrollView as ScrollViewType,
 } from "react-native";
-import { AiAssistantHomeCard } from "@/components/assistant/AiAssistantHomeCard";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
+import { HomePatientHeader } from "@/components/home/HomePatientHeader";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
@@ -154,7 +155,6 @@ function ChatsHomeBrowse() {
       if (!doctorEntityId) {
         router.push({
           pathname: "/chat/[id]",
-          // Remembered for the no-history case: back returns to the doctor list.
           params: { id: doctorUserId, from: "doctors" },
         });
         return;
@@ -166,6 +166,30 @@ function ChatsHomeBrowse() {
     },
     [signedIn],
   );
+
+  const startConsultationWithDoctor = useCallback(
+    (doctorUserId: string) => {
+      if (!signedIn) {
+        promptAuthForConsultation(`/chat/${doctorUserId}`);
+        return;
+      }
+      router.push({
+        pathname: "/chat/[id]",
+        params: { id: doctorUserId, from: "doctors" },
+      });
+    },
+    [signedIn],
+  );
+
+  const scrollRef = useRef<ScrollViewType>(null);
+  const [specialitiesY, setSpecialitiesY] = useState(0);
+
+  const scrollToSpecialities = useCallback(() => {
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, specialitiesY - 12),
+      animated: true,
+    });
+  }, [specialitiesY]);
 
   if (loadingHome && specialities.length === 0) {
     return (
@@ -200,21 +224,27 @@ function ChatsHomeBrowse() {
         isRTL={isRTL}
         onBack={clearSpeciality}
         onSelectDoctor={openDoctorProfile}
+        onStartConsultation={startConsultationWithDoctor}
       />
     );
   }
 
   return (
     <ScrollView
+      ref={scrollRef}
       nativeID={BRAND_SCROLL_NATIVE_ID}
       style={styles.scroll}
-      contentContainerStyle={{ paddingBottom: 24 }}
+      contentContainerStyle={{ paddingBottom: 32 }}
       showsVerticalScrollIndicator
       refreshControl={
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }
     >
-      {signedIn && aiEnabled ? <AiAssistantHomeCard /> : null}
+      <HomePatientHeader
+        aiEnabled={aiEnabled}
+        signedIn={signedIn}
+        onFindDoctor={scrollToSpecialities}
+      />
       <HomeBannerVideo />
       {domainMarket ? (
         <View
@@ -257,11 +287,16 @@ function ChatsHomeBrowse() {
           </Text>
         </View>
       ) : (
-        <SpecialityGrid
-          specialities={specialities}
-          isRTL={isRTL}
-          onSelect={setSelectedSpeciality}
-        />
+        <View
+          onLayout={(e) => setSpecialitiesY(e.nativeEvent.layout.y)}
+          collapsable={false}
+        >
+          <SpecialityGrid
+            specialities={specialities}
+            isRTL={isRTL}
+            onSelect={setSelectedSpeciality}
+          />
+        </View>
       )}
     </ScrollView>
   );

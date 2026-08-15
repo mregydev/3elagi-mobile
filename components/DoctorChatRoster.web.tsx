@@ -17,15 +17,7 @@ export function DoctorChatRoster(props: Props) {
 
   return (
     <View style={styles.shell}>
-      <View
-        style={[
-          styles.panel,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-          },
-        ]}
-      >
+      <View style={[styles.panel, { backgroundColor: colors.card }]}>
         <NativeDoctorChatRoster {...props} hideHeaderBorder />
       </View>
     </View>
@@ -42,7 +34,10 @@ const styles = StyleSheet.create({
   panel: {
     flex: 1,
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 0,
     overflow: "hidden",
+    ...({
+      boxShadow: "0 1px 6px rgba(26,33,50,0.05)",
+    } as object),
   },
 });

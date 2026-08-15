@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Coins, MessageCircle, Star } from "lucide-react-native";
+import { MessageCircle, Star } from "lucide-react-native";
 import { AppBackButton } from "@/components/nav/AppBackButton";
+import { DoctorProfileFacts } from "@/components/doctor/DoctorProfileFacts";
+import { cardShell, UI } from "@/constants/uiTokens";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
@@ -144,6 +145,9 @@ export default function DoctorProfileScreen() {
         ratingTotal: doctor.ratingTotal,
         consultationPrice: doctor.consultationPrice,
         doctorEntityId: doctor.id,
+        country: chatRepository.getUser(chatUserId)?.country,
+        immediateCallEnabled: chatRepository.getUser(chatUserId)?.immediateCallEnabled,
+        onCall: chatRepository.getUser(chatUserId)?.onCall,
       },
     ]);
     router.push(`/chat/${chatUserId}`);
@@ -197,61 +201,48 @@ export default function DoctorProfileScreen() {
         </Text>
       </View>
 
-      <KeyboardSafeScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Avatar uri={doctor.photoUrl} seed={doctor.userId} role="doctor" size={88} />
-          <Text style={[styles.name, { color: colors.foreground }]}>{doctor.name}</Text>
-          {specialtyLabelText ? (
-            <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
-              {specialtyLabelText}
-            </Text>
-          ) : null}
-          <View style={[styles.statsRow, { flexDirection: dir }]}>
-            <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Star size={16} color="#f59e0b" fill="#f59e0b" />
-              <Text style={{ color: colors.foreground, fontWeight: "800" }}>
-                {ratingAvg > 0 ? ratingAvg.toFixed(1) : isRTL ? "جديد" : "New"}
-              </Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                {ratingTotal} {isRTL ? "تقييم" : "reviews"}
-              </Text>
-            </View>
-            <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Coins size={16} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: "800" }}>{doctor.consultationPrice}</Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                {t.doctor.egpPerConsultation}
-              </Text>
-            </View>
-          </View>
-          {doctor.description ? (
-            <Text style={{ color: colors.foreground, lineHeight: 22, textAlign: isRTL ? "right" : "left", marginTop: 8 }}>
-              {doctor.description}
-            </Text>
-          ) : null}
-        </View>
-
-        <Pressable
-          onPress={openChat}
-          style={({ pressed }) => [
-            styles.chatBtn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1, flexDirection: dir },
+      <KeyboardSafeScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 80 }]}>
+        <View
+          style={[
+            styles.heroRow,
+            cardShell(colors.border, colors.card),
+            { flexDirection: dir },
           ]}
         >
-          <MessageCircle size={20} color="#fff" />
-          <Text style={styles.chatBtnText}>
-            {isSignedIn(profile, accessToken)
-              ? isRTL
-                ? "مراسلة الطبيب"
-                : "Message doctor"
-              : isRTL
-                ? "سجّل الدخول لبدء الاستشارة"
-                : "Sign in to start consultation"}
-          </Text>
-        </Pressable>
+          <Avatar uri={doctor.photoUrl} seed={doctor.userId} role="doctor" size={64} />
+          <View style={[styles.heroCopy, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+            <Text style={[styles.name, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
+              {doctor.name}
+            </Text>
+            {specialtyLabelText ? (
+              <Text style={[styles.specialty, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+                {specialtyLabelText}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        <DoctorProfileFacts
+          doctor={doctor}
+          userId={userId}
+          specialtyLabel={specialtyLabelText}
+          ratingAvg={ratingAvg}
+          ratingTotal={ratingTotal}
+        />
+
+        {doctor.description ? (
+          <View style={[styles.sectionCard, cardShell(colors.border, colors.card)]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
+              {isRTL ? "نبذة" : "About"}
+            </Text>
+            <Text style={{ color: colors.foreground, lineHeight: 20, fontSize: 14, textAlign: isRTL ? "right" : "left" }}>
+              {doctor.description}
+            </Text>
+          </View>
+        ) : null}
 
         {isPatient && reviewStatus?.canReview ? (
-          <View style={[styles.reviewForm, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.reviewForm, cardShell(colors.border, colors.card)]}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               {reviewStatus.hasExistingReview
                 ? isRTL
@@ -320,6 +311,34 @@ export default function DoctorProfileScreen() {
           reviews.map((r) => <ReviewRow key={r.id} item={r} isRTL={isRTL} />)
         )}
       </KeyboardSafeScrollView>
+
+      <View
+        style={[
+          styles.stickyDock,
+          {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 12),
+          },
+        ]}
+      >
+        <Pressable
+          onPress={openChat}
+          style={({ pressed }) => [
+            styles.chatBtn,
+            { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1, flexDirection: dir },
+          ]}
+        >
+          <MessageCircle size={20} color="#fff" />
+          <Text style={styles.chatBtnText}>
+            {isSignedIn(profile, accessToken)
+              ? t.home.startConsultation
+              : isRTL
+                ? "سجّل الدخول لبدء الاستشارة"
+                : "Sign in to start consultation"}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -333,39 +352,52 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
-  hero: { alignItems: "center", gap: 8 },
-  name: { fontSize: 22, fontWeight: "800", marginTop: 8 },
-  statsRow: { gap: 12, marginTop: 12, width: "100%" },
-  stat: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
+  headerTitle: { fontSize: 17, fontWeight: "800" },
+  content: { padding: 14, gap: 10 },
+  heroRow: {
+    padding: 12,
+    gap: 12,
     alignItems: "center",
-    gap: 4,
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  name: { fontSize: 18, fontWeight: "800" },
+  specialty: { ...UI.type.subtitle },
+  sectionCard: {
+    padding: 12,
+    gap: 6,
+  },
+  stickyDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingTop: 10,
   },
   chatBtn: {
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: UI.radius.chip,
+    minHeight: 48,
   },
-  chatBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  chatBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   reviewForm: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
+    padding: 12,
+    gap: 10,
   },
   reviewHint: {
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: UI.radius.card,
+    padding: 12,
   },
-  sectionTitle: { fontSize: 17, fontWeight: "800" },
+  sectionTitle: { fontSize: 15, fontWeight: "800" },
   input: {
     minHeight: 80,
     borderRadius: 12,
