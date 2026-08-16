@@ -395,7 +395,10 @@ export default function SignupScreen() {
         {/* Collapsed by default, and inert until consent is given — the form
             writes medical data, so it stays dimmed until then. */}
         <View
-          style={{ opacity: formLocked ? 0.45 : 1, display: formOpen ? "flex" : "none" }}
+          style={[
+            styles.collapsibleForm,
+            { opacity: formLocked ? 0.45 : 1, display: formOpen ? "flex" : "none" },
+          ]}
           pointerEvents={formLocked ? "none" : "auto"}
         >
         <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
@@ -747,6 +750,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
+    // The collapsible wrapper now stretches full width, so the avatar needs to
+    // centre itself rather than inheriting the old shrink-wrapped alignment.
+    alignSelf: "center",
     position: "relative",
   },
   avatar: {
@@ -823,7 +829,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  collapsibleForm: {
+    width: "100%",
+    alignSelf: "stretch",
+  },
   formToggle: {
+    width: "100%",
+    alignSelf: "stretch",
     alignItems: "center",
     gap: 8,
     marginTop: 14,
