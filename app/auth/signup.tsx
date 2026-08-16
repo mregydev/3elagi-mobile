@@ -2,7 +2,16 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
+import {
+  Camera,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Stethoscope,
+  UserRound,
+  X,
+} from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,6 +30,7 @@ import { AuthFormBody } from "@/components/auth/AuthFormBody";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
@@ -79,6 +89,7 @@ export default function SignupScreen() {
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
@@ -90,6 +101,8 @@ export default function SignupScreen() {
   }, [roleParam]);
 
   const isDoctor = role === "doctor";
+  // Doctors consent through their own flow; patients must tick the box above.
+  const formLocked = !isDoctor && !medicalRecordsConsent;
   const urlMarket = getUrlMarketCountry();
   const phonePlaceholder =
     urlMarket === "JO" ||
@@ -339,6 +352,36 @@ export default function SignupScreen() {
           />
         </View>
 
+        {!isDoctor ? (
+          <GoogleAuthButton
+            requireConsent
+            dividerBelow
+            onConsentChange={setMedicalRecordsConsent}
+          />
+        ) : null}
+
+        <Pressable
+          onPress={() => setFormOpen((open) => !open)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: formOpen }}
+          style={[styles.formToggle, { borderColor: colors.border, flexDirection: dir }]}
+        >
+          <Text style={{ color: colors.foreground, fontWeight: "700", flex: 1, textAlign: isRTL ? "right" : "left" }}>
+            {isRTL ? "التسجيل بالبريد الإلكتروني" : "Sign up with email"}
+          </Text>
+          {formOpen ? (
+            <ChevronUp size={18} color={colors.mutedForeground} />
+          ) : (
+            <ChevronDown size={18} color={colors.mutedForeground} />
+          )}
+        </Pressable>
+
+        {/* Collapsed by default, and inert until consent is given — the form
+            writes medical data, so it stays dimmed until then. */}
+        <View
+          style={{ opacity: formLocked ? 0.45 : 1, display: formOpen ? "flex" : "none" }}
+          pointerEvents={formLocked ? "none" : "auto"}
+        >
         <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
           {photoPreview ? (
             <Image source={{ uri: photoPreview }} style={styles.avatar} />
@@ -524,65 +567,9 @@ export default function SignupScreen() {
             </View>
           )}
 
-          {!isDoctor ? (
-            <View style={{ gap: 6 }}>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: medicalRecordsConsent }}
-                onPress={() => {
-                  setMedicalRecordsConsent((prev) => !prev);
-                  if (fieldErrors.medicalRecordsConsent) {
-                    setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
-                  }
-                  if (formError) setFormError(null);
-                }}
-                style={[
-                  styles.consentRow,
-                  { flexDirection: dir, alignItems: "flex-start" },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.consentBox,
-                    {
-                      borderColor: fieldErrors.medicalRecordsConsent
-                        ? colors.destructive
-                        : medicalRecordsConsent
-                          ? colors.primary
-                          : colors.border,
-                      backgroundColor: medicalRecordsConsent
-                        ? colors.primary
-                        : colors.card,
-                    },
-                  ]}
-                >
-                  {medicalRecordsConsent ? (
-                    <Check size={14} color="#fff" strokeWidth={3} />
-                  ) : null}
-                </View>
-                <Text
-                  style={[
-                    styles.consentText,
-                    {
-                      color: colors.foreground,
-                      textAlign: isRTL ? "right" : "left",
-                    },
-                  ]}
-                >
-                  {t.auth.medicalRecordsConsentLabel}
-                </Text>
-              </Pressable>
-              {fieldErrors.medicalRecordsConsent ? (
-                <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
-                  {fieldErrors.medicalRecordsConsent}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-
           <Pressable
             onPress={submit}
-            disabled={loading}
+            disabled={loading || formLocked}
             style={({ pressed }) => [
               styles.btn,
               {
@@ -604,6 +591,7 @@ export default function SignupScreen() {
               )}
             </LinearGradient>
           </Pressable>
+        </View>
 
           <Pressable
             onPress={() => router.replace("/auth/login")}
@@ -818,6 +806,15 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: "center",
     justifyContent: "center",
+  },
+  formToggle: {
+    alignItems: "center",
+    gap: 8,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderRadius: 12,
   },
   btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
 });

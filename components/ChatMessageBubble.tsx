@@ -26,6 +26,8 @@ interface Props {
   mine: boolean;
   isRTL: boolean;
   rowDir: "row" | "row-reverse";
+  /** Chat counterpart for in-call / appointment joins (doctor or patient user id). */
+  conversationPeerId?: string;
   patientUserId?: string;
   canOpenMedicalLink?: boolean;
   isDoctor?: boolean;
@@ -56,6 +58,7 @@ export function ChatMessageBubble({
   isRTL,
   rowDir,
   patientUserId,
+  conversationPeerId,
   canOpenMedicalLink = true,
   isDoctor = false,
   appointmentStatus,
@@ -76,7 +79,12 @@ export function ChatMessageBubble({
   const { width: screenWidth } = useWindowDimensions();
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const maxBubbleWidth = useMemo(() => Math.round(screenWidth * 0.78), [screenWidth]);
+  // 86% of the column on a phone; capped on desktop, where screenWidth is the
+  // whole window and an unbounded bubble would stretch across the page.
+  const maxBubbleWidth = useMemo(
+    () => Math.min(Math.round(screenWidth * 0.86), 560),
+    [screenWidth],
+  );
   const imageWidth = useMemo(() => Math.min(240, maxBubbleWidth), [maxBubbleWidth]);
   const imageHeight = useMemo(() => Math.round(imageWidth * 0.72), [imageWidth]);
 
@@ -128,8 +136,8 @@ export function ChatMessageBubble({
   const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
   const isDocumentRequest = item.type === "document_request" && !!item.documentRequest;
-  const medicalBubbleWidth = Math.min(300, maxBubbleWidth);
-  const consultationBubbleWidth = Math.min(400, maxBubbleWidth);
+  const medicalBubbleWidth = maxBubbleWidth;
+  const consultationBubbleWidth = maxBubbleWidth;
   const videoWidth = imageWidth;
   const videoHeight = Math.round(imageWidth * 0.75);
   const responsiveMediaWidth = useMemo(() => {
@@ -640,16 +648,13 @@ export function ChatMessageBubble({
         </View>
         <View style={styles.medicalTextWrap}>
           <View style={[styles.consultRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-            <Text
-              style={[styles.medicalTitle, { color: colors.foreground }]}
-              numberOfLines={1}
-            >
+            {/* Titles like "Consultation request — waiting for the doctor" are
+                longer than one line on a phone; let them wrap. */}
+            <Text style={[styles.medicalTitle, styles.consultTitle, { color: colors.foreground }]}>
               {title}
             </Text>
             {detail ? (
-              <Text style={[styles.consultMeta, { color: accent }]} numberOfLines={1}>
-                {detail}
-              </Text>
+              <Text style={[styles.consultMeta, { color: accent }]}>{detail}</Text>
             ) : null}
           </View>
           {item.text?.trim() ? (
@@ -946,7 +951,9 @@ export function ChatMessageBubble({
                     ...(meta.duration_minutes
                       ? { durationMinutes: String(meta.duration_minutes) }
                       : {}),
-                    ...(patientUserId ? { patientUserId } : {}),
+                    ...(conversationPeerId || patientUserId
+                      ? { peerUserId: conversationPeerId ?? patientUserId }
+                      : {}),
                   },
                 })
               }
@@ -1090,7 +1097,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
     elevation: 5,
-    // @ts-expect-error web box-shadow
     boxShadow: "0 4px 14px rgba(26, 33, 50, 0.16)",
   },
   mediaCaptionText: {
@@ -1198,6 +1204,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flexWrap: "wrap",
+  },
+  // Wrapping needs a flexible basis, or the title is squeezed to an ellipsis.
+  consultTitle: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   consultMeta: {
     fontSize: 12,

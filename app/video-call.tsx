@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   Beaker,
   ClipboardList,
+  MessageSquare,
   Pill,
   Phone,
   PhoneOff,
@@ -22,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { WherebyMeetingEmbed } from "@/components/video-call/WherebyMeetingEmbed";
+import { InMeetingChatPanel } from "@/components/video-call/InMeetingChatPanel";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
 import { ChatActionsMenu, type ChatAction } from "@/components/chat/ChatActionsMenu";
@@ -42,10 +44,16 @@ import {
   toVideoEmbedUrl,
   type VideoCallSession,
 } from "@/domains/video-call/api";
+import {
+  buildDirectMeetingSession,
+  resolveMeetingChatPeerId,
+} from "@/domains/video-call/meetingChat";
+import { formatVideoParticipantName } from "@/domains/video-call/participantNames";
 import { stopIncomingCallRing } from "@/domains/video-call/incomingCallRing";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useRinger } from "@/hooks/useRinger";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { chatFlexRow } from "@/utils/rtl";
 import { showInfoToast, showSuccessToast, showErrorToast } from "@/utils/toast";
 
@@ -94,12 +102,16 @@ export default function VideoCallScreen() {
     sessionId?: string | string[];
     meetingUrl?: string | string[];
     patientUserId?: string | string[];
+    peerUserId?: string | string[];
+    peerName?: string | string[];
     durationMinutes?: string | string[];
   }>();
 
   const sessionId = readParam(params.sessionId);
   const meetingUrlParam = readParam(params.meetingUrl);
   const patientUserIdParam = readParam(params.patientUserId);
+  const peerUserIdParam = readParam(params.peerUserId);
+  const peerNameParam = readParam(params.peerName);
   const durationParam = parseDurationMinutes(params.durationMinutes);
 
   const isDoctor = role?.toLowerCase() === "doctor";
@@ -120,6 +132,9 @@ export default function VideoCallScreen() {
     DEFAULT_MEETING_DURATION_MIN * 60,
   );
   const [meetingExpired, setMeetingExpired] = useState(false);
+  const { isTablet, isDesktop } = useWebLayout();
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatDefaultedRef = useRef(false);
 
   const clearPoll = useCallback(() => {
     if (pollRef.current) {
@@ -147,16 +162,18 @@ export default function VideoCallScreen() {
 
     try {
       if (meetingUrlParam) {
-        setSession({
-          id: "direct",
-          status: "accepted",
-          roomUrl: meetingUrlParam,
-          patientUserId: "",
-          doctorUserId: "",
-          patientName: "",
-          doctorName: "",
-          durationMinutes: durationParam ?? DEFAULT_MEETING_DURATION_MIN,
-        });
+        setSession(
+          buildDirectMeetingSession({
+            meetingUrl: meetingUrlParam,
+            durationMinutes: durationParam ?? DEFAULT_MEETING_DURATION_MIN,
+            isDoctor,
+            selfUserId: profile?.id ?? "",
+            selfName: profile?.name,
+            peerUserId: peerUserIdParam,
+            peerName: peerNameParam,
+            patientUserIdParam,
+          }),
+        );
         return;
       }
 
@@ -180,7 +197,19 @@ export default function VideoCallScreen() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, isDoctor, isRTL, meetingUrlParam, sessionId, durationParam]);
+  }, [
+    accessToken,
+    durationParam,
+    isDoctor,
+    isRTL,
+    meetingUrlParam,
+    patientUserIdParam,
+    peerUserIdParam,
+    peerNameParam,
+    profile?.id,
+    profile?.name,
+    sessionId,
+  ]);
 
   useEffect(() => {
     void loadSession();
@@ -382,12 +411,49 @@ export default function VideoCallScreen() {
   };
 
   const rowDir = chatFlexRow();
-  const peerName =
-    session && isDoctor
-      ? session.patientName
-      : session?.doctorName ?? (isRTL ? "الطبيب" : "Doctor");
-  const displayName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
+  const selfRoleLabel = isDoctor ? t.auth.doctor : t.auth.patient;
+  const peerRoleLabel = isDoctor ? t.auth.patient : t.auth.doctor;
+  const rawSelfName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
+  // No role-word fallback here: formatVideoParticipantName already falls back
+  // to the role label, and pre-filling it produced "Doctor Doctor".
+  const rawPeerName =
+    (isDoctor ? session?.patientName : session?.doctorName)?.trim() ||
+    peerNameParam?.trim() ||
+    "";
+  const displayName = formatVideoParticipantName({
+    role: isDoctor ? "doctor" : "patient",
+    name: rawSelfName,
+    roleLabel: selfRoleLabel,
+  });
+  const peerName = formatVideoParticipantName({
+    role: isDoctor ? "patient" : "doctor",
+    name: rawPeerName,
+    roleLabel: peerRoleLabel,
+  });
   const canJoin = !!session?.roomUrl && session.status === "accepted" && !meetingExpired;
+  const chatPeerId = resolveMeetingChatPeerId({
+    isDoctor,
+    session,
+    peerUserIdParam,
+    patientUserIdParam,
+  });
+  const canUseMeetingChat = canJoin && !!chatPeerId;
+  const useSideChatLayout = isTablet || isDesktop;
+  const chatLayout = useSideChatLayout ? "side" : "overlay";
+
+  useEffect(() => {
+    if (!canUseMeetingChat || chatDefaultedRef.current) return;
+    chatDefaultedRef.current = true;
+    setChatOpen(useSideChatLayout);
+  }, [canUseMeetingChat, useSideChatLayout]);
+
+  useEffect(() => {
+    if (!canUseMeetingChat) {
+      chatDefaultedRef.current = false;
+      setChatOpen(false);
+    }
+  }, [canUseMeetingChat]);
+
   const diagPatientId = session?.patientUserId?.trim() || patientUserIdParam || null;
   const canAddClinicalNotes =
     isDoctor && canJoin && !!diagPatientId && !!accessToken;
@@ -546,6 +612,34 @@ export default function VideoCallScreen() {
             </View>
           </View>
 
+          {canUseMeetingChat ? (
+            <Pressable
+              onPress={() => setChatOpen((open) => !open)}
+              style={[
+                styles.chatToggleBtn,
+                {
+                  backgroundColor: chatOpen ? colors.primary : colors.muted,
+                  borderColor: colors.border,
+                  flexDirection: rowDir,
+                  gap: 6,
+                  paddingHorizontal: chatOpen || useSideChatLayout ? 10 : 0,
+                  width: chatOpen || useSideChatLayout ? undefined : 40,
+                },
+              ]}
+              accessibilityLabel={isRTL ? "محادثة الاجتماع" : "Meeting chat"}
+            >
+              <MessageSquare
+                size={18}
+                color={chatOpen ? "#fff" : colors.foreground}
+              />
+              {!chatOpen && useSideChatLayout ? (
+                <Text style={[styles.chatToggleLabel, { color: colors.foreground }]}>
+                  {isRTL ? "محادثة" : "Chat"}
+                </Text>
+              ) : null}
+            </Pressable>
+          ) : null}
+
           {canJoin ? (
             <View
               style={[
@@ -678,12 +772,43 @@ export default function VideoCallScreen() {
             </View>
           </View>
         ) : canJoin ? (
-          <WherebyMeetingEmbed
-            roomUrl={session.roomUrl}
-            embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
-          />
+          <View style={[styles.meetingBody, { flexDirection: rowDir }]}>
+            <View style={styles.videoPane}>
+              <WherebyMeetingEmbed
+                roomUrl={session.roomUrl}
+                embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
+              />
+            </View>
+            {chatOpen && chatPeerId ? (
+              <InMeetingChatPanel
+                peerId={chatPeerId}
+                peerName={peerName}
+                isDoctor={isDoctor}
+                layout={chatLayout}
+                onClose={chatLayout === "overlay" ? () => setChatOpen(false) : undefined}
+              />
+            ) : null}
+          </View>
         ) : null}
       </View>
+
+      {canUseMeetingChat && !chatOpen && !useSideChatLayout ? (
+        <Pressable
+          onPress={() => setChatOpen(true)}
+          style={[
+            styles.chatFab,
+            {
+              backgroundColor: colors.primary,
+              bottom: insets.bottom + 20,
+              flexDirection: rowDir,
+            },
+          ]}
+          accessibilityLabel={isRTL ? "فتح محادثة الاجتماع" : "Open meeting chat"}
+        >
+          <MessageSquare size={22} color="#fff" />
+          <Text style={styles.chatFabLabel}>{isRTL ? "محادثة" : "Chat"}</Text>
+        </Pressable>
+      ) : null}
 
       {canAddClinicalNotes && diagPatientId && accessToken ? (
         <DiagnosisChatModal
@@ -798,6 +923,50 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     position: "relative",
+  },
+  meetingBody: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+  },
+  videoPane: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+  },
+  chatToggleBtn: {
+    minWidth: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  chatToggleLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  chatFab: {
+    position: "absolute",
+    right: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 999,
+    zIndex: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  chatFabLabel: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
   },
   clinicalActions: {
     alignItems: "center",

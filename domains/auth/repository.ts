@@ -195,6 +195,23 @@ async function applySignupUploads(
 }
 
 export const authRepository = {
+  /**
+   * Google sign-in. The browser only ever holds the one-time `code`; the API
+   * swaps it for tokens using the client secret, which never reaches the app.
+   */
+  async loginWithGoogle(input: {
+    code: string;
+    redirectUri: string;
+    medicalRecordsConsent?: boolean;
+  }): Promise<AuthSession> {
+    const raw = await post<RawAuthResponse>("/auth/google", {
+      code: input.code,
+      redirect_uri: input.redirectUri,
+      medical_records_storage_consent: input.medicalRecordsConsent ?? false,
+    });
+    return toSession(raw, "");
+  },
+
   async login(creds: Credentials): Promise<AuthSession> {
     const email = creds.email.trim().toLowerCase();
     try {

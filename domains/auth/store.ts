@@ -23,6 +23,11 @@ interface AuthState {
   error: string | null;
   hydrated: boolean;
   login: (c: Credentials) => Promise<void>;
+  loginWithGoogle: (input: {
+    code: string;
+    redirectUri: string;
+    medicalRecordsConsent?: boolean;
+  }) => Promise<void>;
   signup: (s: SignupInput) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
@@ -81,6 +86,15 @@ export const useAuthStore = create<AuthState>()(
             throw new Error("__UNSUPPORTED_ROLE__");
           }
           applySession(set, session);
+        } catch (e) {
+          set({ error: (e as Error).message, loading: false });
+          throw e;
+        }
+      },
+      loginWithGoogle: async (input) => {
+        set({ loading: true, error: null });
+        try {
+          applySession(set, await authRepository.loginWithGoogle(input));
         } catch (e) {
           set({ error: (e as Error).message, loading: false });
           throw e;

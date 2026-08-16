@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { CalendarClock, Coins, Bell, Users } from "lucide-react-native";
+import { CalendarClock, Coins, Bell, Users, Video } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
@@ -22,6 +22,13 @@ export function HomeDoctorSummary({ metrics }: Props) {
   const textAlign = alignText(isRTL);
 
   const stats = [
+    {
+      key: "video-calls",
+      label: t.doctorDashboard.upcomingVideoCalls,
+      value: String(metrics.upcomingVideoCalls),
+      icon: Video,
+      onPress: () => router.push("/(tabs)/appointments"),
+    },
     {
       key: "appointments",
       label: t.doctorDashboard.appointmentsToday,

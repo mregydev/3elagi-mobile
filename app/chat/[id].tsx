@@ -83,6 +83,7 @@ import { AppBackButton } from "@/components/nav/AppBackButton";
 import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
+import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
@@ -213,7 +214,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
   // Patients can ring a doctor who has immediate calls switched on.
   const canCallDoctor =
-    isPatient && peer?.role === "doctor" && !!peer?.immediateCallEnabled;
+    IMMEDIATE_VIDEO_CALL_ENABLED &&
+    isPatient &&
+    peer?.role === "doctor" &&
+    !!peer?.immediateCallEnabled;
   const latestConsultationAction = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i];
@@ -1430,6 +1434,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   isRTL={isRTL}
                   rowDir={rowDir}
                   patientUserId={patientUserIdForLinks}
+                  conversationPeerId={id}
                   canOpenMedicalLink={canOpenSharedMedicalLinks}
                   isDoctor={isDoctor}
                   appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
@@ -1477,6 +1482,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   isRTL={isRTL}
                   rowDir={rowDir}
                   patientUserId={patientUserIdForLinks}
+                  conversationPeerId={id}
                   canOpenMedicalLink={canOpenSharedMedicalLinks}
                   onImagePress={setFullscreenImage}
                   onVideoPress={setFullscreenVideo}

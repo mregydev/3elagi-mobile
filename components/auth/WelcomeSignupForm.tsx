@@ -42,6 +42,7 @@ import { getUrlMarketCountry } from "@/domains/market/resolveMarketCountry";
 import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 
 type LocalFile = SignupFile & { label: string };
 
@@ -290,6 +291,8 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
       </Pressable>
 
       {formError ? <AuthFormError message={formError} colors={colors} /> : null}
+
+      <GoogleAuthButton requireConsent />
 
       <AuthFormField
         label={t.auth.name}

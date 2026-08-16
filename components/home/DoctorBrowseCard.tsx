@@ -17,6 +17,7 @@ import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { formatEgpPerUnit } from "@/utils/credits";
+import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 import { flexRow } from "@/utils/rtl";
 
 function availabilityLabel(
@@ -73,18 +74,9 @@ export function DoctorBrowseCard({
   const price = item.user.consultationPrice ?? 1;
   const country = item.user.country?.trim().toUpperCase() ?? "";
   const hasCountry = /^[A-Z]{2}$/.test(country);
-  const availColor = availabilityColor(
-    isOnline,
-    onCall,
-    !!item.user.immediateCallEnabled,
-    colors,
-  );
-  const availLabel = availabilityLabel(
-    isOnline,
-    onCall,
-    !!item.user.immediateCallEnabled,
-    t,
-  );
+  const canCallNow = IMMEDIATE_VIDEO_CALL_ENABLED && !!item.user.immediateCallEnabled;
+  const availColor = availabilityColor(isOnline, onCall, canCallNow, colors);
+  const availLabel = availabilityLabel(isOnline, onCall, canCallNow, t);
 
   return (
     <View
@@ -206,13 +198,13 @@ export function DoctorBrowseCard({
               },
             ]}
           >
-            {item.user.immediateCallEnabled ? (
+            {canCallNow ? (
               <Video size={15} color={colors.primaryForeground} />
             ) : (
               <MessageCircle size={15} color={colors.primaryForeground} />
             )}
             <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
-              {item.user.immediateCallEnabled ? t.home.videoConsultation : t.home.startConsultation}
+              {canCallNow ? t.home.videoConsultation : t.home.startConsultation}
             </Text>
           </Pressable>
         </View>

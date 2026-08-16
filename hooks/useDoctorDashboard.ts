@@ -7,9 +7,11 @@ import {
 import { fetchMyConsultations, type DoctorConsultation } from "@/domains/consultations/api";
 import { fetchUnreadNotificationCount } from "@/domains/notifications/api";
 import { fetchPointsBalance } from "@/domains/points/api";
+import { countUpcomingVideoCalls } from "@/domains/appointments/upcomingVideoCalls";
 
 export type DoctorDashboardMetrics = {
   appointmentsToday: number;
+  upcomingVideoCalls: number;
   openConsultations: number;
   unreadNotifications: number;
   reimbursableCredits: number;
@@ -17,6 +19,7 @@ export type DoctorDashboardMetrics = {
 
 const EMPTY_METRICS: DoctorDashboardMetrics = {
   appointmentsToday: 0,
+  upcomingVideoCalls: 0,
   openConsultations: 0,
   unreadNotifications: 0,
   reimbursableCredits: 0,
@@ -48,10 +51,12 @@ export function useDoctorDashboard(accessToken: string | null, role: string | nu
       const appointmentsToday = appointments.filter(
         (item) => isToday(item.date) && item.status !== "cancelled",
       ).length;
+      const upcomingVideoCalls = countUpcomingVideoCalls(appointments);
       const openConsultations = consultationList.filter((c) => c.status === "open").length;
 
       setMetrics({
         appointmentsToday,
+        upcomingVideoCalls,
         openConsultations,
         unreadNotifications,
         reimbursableCredits: pointsSummary.message_points ?? 0,

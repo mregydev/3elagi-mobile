@@ -207,7 +207,10 @@ export default function AppointmentsTab() {
                         ? { durationMinutes: String(item.duration_minutes) }
                         : {}),
                       ...(item.other_user_id
-                        ? { patientUserId: item.other_user_id }
+                        ? {
+                            peerUserId: item.other_user_id,
+                            peerName: item.other_name,
+                          }
                         : {}),
                     },
                   });

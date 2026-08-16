@@ -97,6 +97,10 @@ export function toVideoEmbedUrl(roomUrl: string, displayName: string): string {
     const url = new URL(roomUrl);
     const name = displayName.trim();
     if (name) url.searchParams.set("userName", name);
+    // Embedded rooms hide the chat toolbar by default; turn it on so the call
+    // has a side panel for text, like Meet. `people` keeps the roster button.
+    url.searchParams.set("chat", "on");
+    url.searchParams.set("people", "on");
     return url.toString();
   } catch {
     return roomUrl;

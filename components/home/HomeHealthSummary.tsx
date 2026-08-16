@@ -1,10 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ClipboardList, Coins, MessageSquare } from "lucide-react-native";
+import { ClipboardList, Coins, MessageSquare, Video } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
 import { useAuthStore } from "@/domains/auth/store";
+import { fetchMyAppointments } from "@/domains/appointments/api";
+import { countUpcomingVideoCalls } from "@/domains/appointments/upcomingVideoCalls";
 import { fetchPatientConsultations } from "@/domains/consultations/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { selectPointsBalance, usePointsStore } from "@/domains/points/store";
@@ -29,6 +31,7 @@ export function HomeHealthSummary({ signedIn }: Props) {
   const credits = selectPointsBalance(pointsSummary);
   const recordCount = records.length;
   const [openConsultations, setOpenConsultations] = useState(0);
+  const [upcomingVideoCalls, setUpcomingVideoCalls] = useState(0);
 
   const loadOpenConsultations = useCallback(async () => {
     if (!accessToken) return;
@@ -40,10 +43,22 @@ export function HomeHealthSummary({ signedIn }: Props) {
     }
   }, [accessToken]);
 
+  const loadUpcomingVideoCalls = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const list = await fetchMyAppointments(accessToken);
+      setUpcomingVideoCalls(countUpcomingVideoCalls(list));
+    } catch {
+      // Keep the last count if refresh fails.
+    }
+  }, [accessToken]);
+
   useFocusEffect(
     useCallback(() => {
-      if (signedIn) void loadOpenConsultations();
-    }, [signedIn, loadOpenConsultations]),
+      if (!signedIn) return;
+      void loadOpenConsultations();
+      void loadUpcomingVideoCalls();
+    }, [signedIn, loadOpenConsultations, loadUpcomingVideoCalls]),
   );
 
   if (!signedIn) {
@@ -81,6 +96,13 @@ export function HomeHealthSummary({ signedIn }: Props) {
       icon: MessageSquare,
       onPress: () =>
         router.push({ pathname: "/(tabs)/consultations", params: { status: "open" } }),
+    },
+    {
+      key: "video-calls",
+      label: t.home.upcomingVideoCallsStat,
+      value: String(upcomingVideoCalls),
+      icon: Video,
+      onPress: () => router.push("/(tabs)/appointments"),
     },
   ];
 

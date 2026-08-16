@@ -14,6 +14,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 
 import { AuthFormBody } from "@/components/auth/AuthFormBody";
 import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
@@ -195,6 +196,7 @@ export default function LoginScreen() {
               )}
             </LinearGradient>
           </Pressable>
+          <GoogleAuthButton />
           <Pressable
             onPress={() => router.replace("/auth/signup")}
             style={{ paddingVertical: 8, alignItems: "center" }}

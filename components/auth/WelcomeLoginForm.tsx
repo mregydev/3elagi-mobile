@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -20,6 +21,7 @@ import {
 } from "@/domains/auth/validation";
 import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 
 interface Props {
   onSwitchToSignup: () => void;
@@ -134,6 +136,7 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
           )}
         </LinearGradient>
       </Pressable>
+      <GoogleAuthButton />
       <Pressable onPress={onSwitchToSignup} style={styles.switchLink}>
         <Text style={{ color: colors.primary, fontWeight: "600" }}>
           {t.auth.noAccountSignUp}

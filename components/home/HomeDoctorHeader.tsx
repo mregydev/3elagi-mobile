@@ -20,6 +20,7 @@ import { surfaceCard, UI } from "@/constants/uiTokens";
 import { useAuthStore } from "@/domains/auth/store";
 import type { DoctorDashboardMetrics } from "@/hooks/useDoctorDashboard";
 import { useColors } from "@/hooks/useColors";
+import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -99,15 +100,24 @@ export function HomeDoctorHeader({
       icon: <ClipboardList size={18} color={colors.primary} />,
       onPress: () => router.push("/(tabs)/patients"),
     },
-    {
-      key: "availability",
-      label: t.doctorDashboard.availability,
-      hint: immediateCallEnabled
-        ? t.doctorDashboard.availabilityOn
-        : t.doctorDashboard.availabilityOff,
-      icon: <Radio size={18} color={immediateCallEnabled ? colors.success : colors.mutedForeground} />,
-      toggle: true,
-    },
+    ...(IMMEDIATE_VIDEO_CALL_ENABLED
+      ? [
+          {
+            key: "availability",
+            label: t.doctorDashboard.availability,
+            hint: immediateCallEnabled
+              ? t.doctorDashboard.availabilityOn
+              : t.doctorDashboard.availabilityOff,
+            icon: (
+              <Radio
+                size={18}
+                color={immediateCallEnabled ? colors.success : colors.mutedForeground}
+              />
+            ),
+            toggle: true,
+          } satisfies QuickAction,
+        ]
+      : []),
   ];
 
   return (
@@ -128,17 +138,21 @@ export function HomeDoctorHeader({
         <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
           {t.doctorDashboard.subtitle}
         </Text>
-        <View style={[styles.statusPill, { backgroundColor: colors.card, flexDirection: dir }]}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: immediateCallEnabled ? colors.success : colors.mutedForeground },
-            ]}
-          />
-          <Text style={[styles.statusText, { color: colors.foreground, textAlign }]}>
-            {immediateCallEnabled ? t.doctorDashboard.availabilityOn : t.doctorDashboard.availabilityOff}
-          </Text>
-        </View>
+        {IMMEDIATE_VIDEO_CALL_ENABLED ? (
+          <View style={[styles.statusPill, { backgroundColor: colors.card, flexDirection: dir }]}>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: immediateCallEnabled ? colors.success : colors.mutedForeground },
+              ]}
+            />
+            <Text style={[styles.statusText, { color: colors.foreground, textAlign }]}>
+              {immediateCallEnabled
+                ? t.doctorDashboard.availabilityOn
+                : t.doctorDashboard.availabilityOff}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
@@ -163,7 +177,8 @@ export function HomeDoctorHeader({
               ? { backgroundColor: colors.primary }
               : surfaceCard(colors.card, colors.border),
             { flexDirection: dir },
-          ] as const;
+            // Not `as const`: RN's StyleProp rejects readonly tuples.
+          ];
 
           const inner = (
             <>
