@@ -20,6 +20,7 @@ export default function GoogleCallbackScreen() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
+  const logout = useAuthStore((s) => s.logout);
   const [error, setError] = useState<string | null>(null);
   const [needsConsent, setNeedsConsent] = useState(false);
   // React 18 double-invokes effects in dev; a code may only be redeemed once.
@@ -56,15 +57,23 @@ export default function GoogleCallbackScreen() {
       .then(() => router.replace((returnTo as never) ?? "/(tabs)"))
       .catch((e: unknown) => {
         const message = e instanceof Error ? e.message : "Google sign-in failed";
-        // New account without consent: the code is spent, so the user has to
-        // agree here and run the flow again.
+        // No account for this Google email: drop whatever partial session may
+        // exist and send them to sign up rather than leaving them half-authed.
+        if (/ACCOUNT_NOT_FOUND|no .*account/i.test(message)) {
+          logout();
+          router.replace({
+            pathname: "/auth/signup",
+            params: { error: "google_no_account" },
+          });
+          return;
+        }
         if (/consent/i.test(message)) {
           setNeedsConsent(true);
           return;
         }
         setError(message);
       });
-  }, [isRTL, loginWithGoogle]);
+  }, [isRTL, loginWithGoogle, logout]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

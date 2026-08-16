@@ -73,7 +73,10 @@ export default function SignupScreen() {
   const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
-  const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
+  const { role: roleParam, error: errorParam } = useLocalSearchParams<{
+    role?: string;
+    error?: string;
+  }>();
 
   const [role, setRole] = useState<SignupRole>("patient");
   const [name, setName] = useState("");
@@ -89,7 +92,9 @@ export default function SignupScreen() {
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
+  // Bounced here from Google sign-in because no account matched that email.
+  const [formOpen, setFormOpen] = useState(errorParam === "google_no_account");
+  const googleNoAccount = errorParam === "google_no_account";
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
@@ -321,6 +326,17 @@ export default function SignupScreen() {
           <Text style={[styles.sub, { color: colors.mutedForeground }]}>
             {t.auth.createAccountSubtitle}
           </Text>
+        ) : null}
+
+        {googleNoAccount ? (
+          <AuthFormError
+            message={
+              isRTL
+                ? "لا يوجد حساب مرتبط بحساب Google هذا. أنشئ حساباً للمتابعة."
+                : "No 3elagi account is linked to that Google account. Create one to continue."
+            }
+            colors={colors}
+          />
         ) : null}
 
         <View style={[styles.roleRow, { flexDirection: dir, marginTop: showSubtitle ? 20 : 16 }]}>
