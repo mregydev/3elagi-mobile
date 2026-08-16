@@ -8,6 +8,7 @@ import {
   googleRedirectUri,
   startGoogleSignIn,
 } from "@/domains/auth/google";
+import { AuthApiError } from "@/domains/auth/repository";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -57,18 +58,22 @@ export default function GoogleCallbackScreen() {
       .then(() => router.replace((returnTo as never) ?? "/(tabs)"))
       .catch((e: unknown) => {
         const message = e instanceof Error ? e.message : "Google sign-in failed";
-        // No account for this Google email: drop whatever partial session may
-        // exist and send them to sign up rather than leaving them half-authed.
-        if (/ACCOUNT_NOT_FOUND|no .*account/i.test(message)) {
+        const apiError = e instanceof AuthApiError ? e : null;
+        // No account yet: drop any partial session and hand the verified email
+        // and name to the signup form so the user finishes registering there.
+        if (
+          apiError?.code === "ACCOUNT_NOT_FOUND" ||
+          /ACCOUNT_NOT_FOUND|no .*account/i.test(message)
+        ) {
           logout();
           router.replace({
             pathname: "/auth/signup",
-            params: { error: "google_no_account" },
+            params: {
+              error: "google_no_account",
+              email: apiError?.email ?? "",
+              name: apiError?.name_ ?? "",
+            },
           });
-          return;
-        }
-        if (/consent/i.test(message)) {
-          setNeedsConsent(true);
           return;
         }
         setError(message);

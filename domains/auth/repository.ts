@@ -5,13 +5,19 @@ import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, S
 export class AuthApiError extends Error {
   code?: string;
   email?: string;
+  /** Verified display name, when the API knows one (e.g. from Google). */
+  name_?: string;
   status: number;
 
-  constructor(message: string, opts?: { code?: string; email?: string; status?: number }) {
+  constructor(
+    message: string,
+    opts?: { code?: string; email?: string; name?: string; status?: number },
+  ) {
     super(message);
     this.name = "AuthApiError";
     this.code = opts?.code;
     this.email = opts?.email;
+    this.name_ = opts?.name;
     this.status = opts?.status ?? 400;
   }
 }
@@ -39,6 +45,7 @@ async function post<T>(path: string, body: object): Promise<T> {
     throw new AuthApiError(String(msg), {
       code: nested?.code ?? data?.code,
       email: nested?.email ?? data?.email,
+      name: nested?.name ?? data?.name,
       status: res.status,
     });
   }

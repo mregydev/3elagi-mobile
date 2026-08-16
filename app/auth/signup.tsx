@@ -73,14 +73,21 @@ export default function SignupScreen() {
   const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
-  const { role: roleParam, error: errorParam } = useLocalSearchParams<{
+  const {
+    role: roleParam,
+    error: errorParam,
+    email: emailParam,
+    name: nameParam,
+  } = useLocalSearchParams<{
     role?: string;
     error?: string;
+    email?: string;
+    name?: string;
   }>();
 
   const [role, setRole] = useState<SignupRole>("patient");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(nameParam ?? "");
+  const [email, setEmail] = useState(emailParam ?? "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [photo, setPhoto] = useState<SignupFile | null>(null);
@@ -106,8 +113,6 @@ export default function SignupScreen() {
   }, [roleParam]);
 
   const isDoctor = role === "doctor";
-  // Doctors consent through their own flow; patients must tick the box above.
-  const formLocked = !isDoctor && !medicalRecordsConsent;
   const urlMarket = getUrlMarketCountry();
   const phonePlaceholder =
     urlMarket === "JO" ||
@@ -369,11 +374,7 @@ export default function SignupScreen() {
         </View>
 
         {!isDoctor ? (
-          <GoogleAuthButton
-            requireConsent
-            dividerBelow
-            onConsentChange={setMedicalRecordsConsent}
-          />
+          <GoogleAuthButton dividerBelow />
         ) : null}
 
         <Pressable
@@ -395,11 +396,7 @@ export default function SignupScreen() {
         {/* Collapsed by default, and inert until consent is given — the form
             writes medical data, so it stays dimmed until then. */}
         <View
-          style={[
-            styles.collapsibleForm,
-            { opacity: formLocked ? 0.45 : 1, display: formOpen ? "flex" : "none" },
-          ]}
-          pointerEvents={formLocked ? "none" : "auto"}
+          style={[styles.collapsibleForm, { display: formOpen ? "flex" : "none" }]}
         >
         <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
           {photoPreview ? (
@@ -586,9 +583,57 @@ export default function SignupScreen() {
             </View>
           )}
 
+          {!isDoctor ? (
+            <View style={{ gap: 6, width: "100%" }}>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: medicalRecordsConsent }}
+                onPress={() => {
+                  setMedicalRecordsConsent((prev) => !prev);
+                  if (fieldErrors.medicalRecordsConsent) {
+                    setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+                  }
+                  if (formError) setFormError(null);
+                }}
+                style={[styles.consentRow, { flexDirection: dir, alignItems: "flex-start" }]}
+              >
+                <View
+                  style={[
+                    styles.consentBox,
+                    {
+                      borderColor: fieldErrors.medicalRecordsConsent
+                        ? colors.destructive
+                        : medicalRecordsConsent
+                          ? colors.primary
+                          : colors.border,
+                      backgroundColor: medicalRecordsConsent ? colors.primary : colors.card,
+                    },
+                  ]}
+                >
+                  {medicalRecordsConsent ? (
+                    <Check size={14} color="#fff" strokeWidth={3} />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.consentText,
+                    { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+                  ]}
+                >
+                  {t.auth.medicalRecordsConsentLabel}
+                </Text>
+              </Pressable>
+              {fieldErrors.medicalRecordsConsent ? (
+                <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
+                  {fieldErrors.medicalRecordsConsent}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
           <Pressable
             onPress={submit}
-            disabled={loading || formLocked}
+            disabled={loading}
             style={({ pressed }) => [
               styles.btn,
               {
