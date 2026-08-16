@@ -17,6 +17,7 @@ import {
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
+import { PublicLandingNav } from "@/components/marketing/PublicLandingNav";
 import { WebContentColumn } from "@/components/web/WebContentColumn";
 import { WebSidebar } from "@/components/web/WebSidebar";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
@@ -54,7 +55,14 @@ export default function TabsLayoutWeb() {
         ]}
       >
         <WebSidebar />
-        <WebContentColumn wide style={styles.main}>
+        {/* Guests: full-bleed column so the landing scrollbar sits on the page
+            edge (right in English, left in Arabic via #brand-scroll CSS). */}
+        <WebContentColumn wide fluid={!signedIn} style={styles.main}>
+          {!signedIn ? (
+            <View style={styles.guestNav}>
+              <PublicLandingNav />
+            </View>
+          ) : null}
           <Tabs
             tabBar={() => null}
             screenOptions={{
@@ -79,6 +87,20 @@ export default function TabsLayoutWeb() {
                 tabBarIcon: ({ color, size }) => (
                   <Info color={color} size={size} />
                 ),
+              }}
+            />
+            <Tabs.Screen
+              name="for-doctors"
+              options={{
+                title: t.tabs.forDoctors,
+                href: guestOnlyHref,
+              }}
+            />
+            <Tabs.Screen
+              name="faq"
+              options={{
+                title: t.tabs.faq,
+                href: guestOnlyHref,
               }}
             />
             <Tabs.Screen
@@ -208,4 +230,6 @@ export default function TabsLayoutWeb() {
 const styles = StyleSheet.create({
   shell: { flex: 1, minHeight: 0, overflow: "hidden" },
   main: { minWidth: 0 },
+  // Matches the 95% guest content width in the home scroll below it.
+  guestNav: { width: "95%", alignSelf: "center" },
 });

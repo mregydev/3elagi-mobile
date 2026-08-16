@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -62,6 +62,7 @@ export default function SignupScreen() {
   const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
+  const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
 
   const [role, setRole] = useState<SignupRole>("patient");
   const [name, setName] = useState("");
@@ -82,6 +83,10 @@ export default function SignupScreen() {
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (roleParam === "doctor") setRole("doctor");
+  }, [roleParam]);
 
   const isDoctor = role === "doctor";
   const urlMarket = getUrlMarketCountry();
@@ -583,7 +588,7 @@ export default function SignupScreen() {
             ]}
           >
             <LinearGradient
-              colors={loading ? ["#94A3B8", "#94A3B8"] : ["#3057F2", "#1B9AAA"]}
+              colors={loading ? ["#94A3B8", "#94A3B8"] : ["#0F766E", "#34D399"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.btnGradient}
@@ -800,7 +805,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#3057F2",
+    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

@@ -1,7 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Href, usePathname, useRouter } from "expo-router";
-import { LogIn, LogOut, Mail, UserPlus } from "lucide-react-native";
-import React from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  LogIn,
+  LogOut,
+  Mail,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings2,
+  UserPlus,
+} from "lucide-react-native";
+import React, { useState } from "react";
 import {
   Alert,
   Platform,
@@ -21,6 +32,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useNotificationsStore } from "@/domains/notifications/store";
+import { useChatStore } from "@/domains/chat/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
@@ -32,9 +44,19 @@ type Props = {
   showBrand?: boolean;
   /** Extra footer content (e.g. mobile app link on web). */
   footerExtra?: React.ReactNode;
+  /** Icon-only rail (desktop web). */
+  collapsed?: boolean;
+  /** Shows the rail toggle when provided; also used to expand on menu taps while collapsed. */
+  onToggleCollapse?: () => void;
 };
 
-export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Props) {
+export function AppSidebarNav({
+  onNavigate,
+  showBrand = true,
+  footerExtra,
+  collapsed = false,
+  onToggleCollapse,
+}: Props) {
   const colors = useColors();
   const { t, isRTL, locale } = useI18n();
   const router = useRouter();
@@ -45,17 +67,24 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
   const logout = useAuthStore((s) => s.logout);
   const signedIn = isSignedIn(profile, accessToken);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const chatUnreadCount = useChatStore((s) =>
+    s.conversations.reduce((total, c) => total + (c.unreadCount ?? 0), 0),
+  );
   const aiEnabled = useAiEnabled();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const isArabic = locale === "ar";
   const navFontSize = isArabic ? 17 : 14;
-  const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   const items = filterAppNavItems(role, { signedIn, aiEnabled }).map((item) => ({
     ...item,
     active: item.match(pathname),
   }));
+  const primaryItems = items.filter((item) => !item.secondary);
+  const secondaryItems = items.filter((item) => item.secondary);
+
+  const [moreOpen, setMoreOpen] = useState(secondaryItems.some((item) => item.active));
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   const handleLogout = () => {
     const confirmed =
@@ -94,46 +123,43 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
     router.navigate(href);
   };
 
-  return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      bounces={false}
-    >
-      {showBrand ? (
-        <View
-          style={[
-            styles.brandRow,
-            { alignItems: isRTL ? "flex-end" : "center" },
-          ]}
-        >
-          <Logo3elagi height={LOGO_HEIGHT.sidebar} />
-        </View>
-      ) : null}
-
-      <View style={styles.nav}>
-        {items.map(({ href, labelKey, active, Icon }) => (
-          <Pressable
-            key={String(href)}
-            onPress={() => go(href)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.navItem,
-              {
-                flexDirection: dir,
-                backgroundColor: active
-                  ? `${colors.primary}18`
-                  : pressed || hovered
-                    ? colors.muted
-                    : "transparent",
-                borderColor: active ? `${colors.primary}55` : "transparent",
-              },
-            ]}
-          >
-            <Icon size={18} color={active ? colors.primary : colors.mutedForeground} />
+  const renderNavItem = ({ href, labelKey, active, Icon }: (typeof items)[number]) => {
+    const badgeCount =
+      labelKey === "notifications" ? unreadCount : labelKey === "history" ? chatUnreadCount : 0;
+    return (
+      <Pressable
+        key={String(href)}
+        onPress={() => go(href)}
+        accessibilityRole="button"
+        accessibilityLabel={t.tabs[labelKey]}
+        accessibilityState={{ selected: active }}
+        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+          styles.navItem,
+          collapsed && styles.navItemRail,
+          {
+            flexDirection: dir,
+            backgroundColor: active
+              ? colors.accent
+              : pressed || hovered
+                ? colors.muted
+                : "transparent",
+            borderLeftWidth: active && !isRTL && !collapsed ? 3 : 0,
+            borderRightWidth: active && isRTL && !collapsed ? 3 : 0,
+            borderLeftColor: active && !isRTL ? colors.primary : "transparent",
+            borderRightColor: active && isRTL ? colors.primary : "transparent",
+          },
+        ]}
+      >
+        <Icon
+          size={18}
+          color={active ? colors.primary : colors.mutedForeground}
+          strokeWidth={active ? 2.25 : 2}
+        />
+        {collapsed ? (
+          // Rail has no room for the count — a dot still flags unread.
+          badgeCount > 0 ? <View style={styles.railDot} /> : null
+        ) : (
+          <>
             <Text
               style={[
                 styles.navLabel,
@@ -142,73 +168,210 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
                   textAlign,
                   writingDirection: isRTL ? "rtl" : "ltr",
                   fontSize: navFontSize,
+                  fontWeight: active ? "600" : "500",
                 },
               ]}
             >
               {t.tabs[labelKey]}
             </Text>
-            {labelKey === "notifications" && unreadCount > 0 ? (
+            {badgeCount > 0 ? (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{badgeLabel}</Text>
+                <Text style={styles.badgeText}>
+                  {badgeCount > 99 ? "99+" : String(badgeCount)}
+                </Text>
               </View>
             ) : null}
-          </Pressable>
-        ))}
-      </View>
+          </>
+        )}
+      </Pressable>
+    );
+  };
 
-      <View style={styles.footer}>
-        <View style={styles.prefBlock}>
-          <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
-            {t.settings.language}
-          </Text>
-          <LanguageDropdown compact showLabel fullWidth placement="top" />
-        </View>
-
-        <View style={styles.prefBlock}>
-          <View style={[styles.prefRow, { flexDirection: dir }]}>
-            <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign, flex: 1 }]}>
-              {t.settings.theme}
-            </Text>
-            <ThemeToggle />
-          </View>
-        </View>
-
-        {role ? (
-          <Text style={[styles.roleHint, { color: colors.mutedForeground, textAlign }]}>
-            {role.toLowerCase() === "doctor"
-              ? t.tabs.doctorAccount
-              : t.tabs.patientAccount}
-          </Text>
-        ) : null}
-
-        <Pressable
-          onPress={() => go("/contact")}
-          accessibilityRole="button"
-          accessibilityLabel={t.tabs.contactUs}
-          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-            styles.logoutBtn,
-            {
-              flexDirection: dir,
-              borderColor: colors.border,
-              backgroundColor:
-                pressed || hovered ? colors.muted : "transparent",
-            },
+  return (
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      bounces={false}
+    >
+      {showBrand || onToggleCollapse ? (
+        <View
+          style={[
+            styles.brandRow,
+            { flexDirection: dir, alignItems: "center" },
+            collapsed && { justifyContent: "center" },
           ]}
         >
-          <Mail size={18} color={colors.primary} />
-          <Text
-            style={[
-              styles.navLabel,
+          {showBrand && !collapsed ? (
+            <View style={styles.brandLogo}>
+              <Logo3elagi height={LOGO_HEIGHT.sidebar} />
+            </View>
+          ) : null}
+          {onToggleCollapse ? (
+            <Pressable
+              onPress={onToggleCollapse}
+              accessibilityRole="button"
+              accessibilityLabel={t.tabs.menu}
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.iconBtn,
+                { backgroundColor: pressed || hovered ? colors.muted : "transparent" },
+              ]}
+            >
+              {collapsed ? (
+                <PanelLeftOpen size={18} color={colors.mutedForeground} />
+              ) : (
+                <PanelLeftClose size={18} color={colors.mutedForeground} />
+              )}
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.nav}>{primaryItems.map(renderNavItem)}</View>
+
+      {secondaryItems.length ? (
+        <View style={styles.group}>
+          <Pressable
+            onPress={collapsed ? onToggleCollapse : () => setMoreOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel={t.tabs.more}
+            accessibilityState={{ expanded: moreOpen }}
+            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+              styles.navItem,
+              collapsed && styles.navItemRail,
               {
-                color: colors.foreground,
-                textAlign,
-                writingDirection: isRTL ? "rtl" : "ltr",
-                fontSize: navFontSize,
+                flexDirection: dir,
+                backgroundColor: pressed || hovered ? colors.muted : "transparent",
               },
             ]}
           >
-            {t.tabs.contactUs}
-          </Text>
+            <MoreHorizontal size={18} color={colors.mutedForeground} />
+            {collapsed ? null : (
+              <>
+                <Text
+                  style={[
+                    styles.navLabel,
+                    {
+                      color: colors.foreground,
+                      textAlign,
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                      fontSize: navFontSize,
+                      fontWeight: "500",
+                    },
+                  ]}
+                >
+                  {t.tabs.more}
+                </Text>
+                {moreOpen ? (
+                  <ChevronUp size={16} color={colors.mutedForeground} />
+                ) : (
+                  <ChevronDown size={16} color={colors.mutedForeground} />
+                )}
+              </>
+            )}
+          </Pressable>
+          {moreOpen && !collapsed ? (
+            <View style={[styles.nav, styles.groupItems]}>
+              {secondaryItems.map(renderNavItem)}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.footer}>
+        {prefsOpen && !collapsed ? (
+          <View
+            style={[
+              styles.prefPanel,
+              { backgroundColor: colors.muted, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.prefBlock}>
+              <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
+                {t.settings.language}
+              </Text>
+              <LanguageDropdown compact showLabel fullWidth placement="top" />
+            </View>
+
+            <View style={[styles.prefRow, { flexDirection: dir }]}>
+              <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign, flex: 1 }]}>
+                {t.settings.theme}
+              </Text>
+              <ThemeToggle />
+            </View>
+
+            <Pressable
+              onPress={() => go("/contact")}
+              accessibilityRole="button"
+              accessibilityLabel={t.tabs.contactUs}
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.navItem,
+                {
+                  flexDirection: dir,
+                  backgroundColor: pressed || hovered ? colors.card : "transparent",
+                },
+              ]}
+            >
+              <Mail size={18} color={colors.primary} />
+              <Text
+                style={[
+                  styles.navLabel,
+                  {
+                    color: colors.foreground,
+                    textAlign,
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    fontSize: navFontSize,
+                  },
+                ]}
+              >
+                {t.tabs.contactUs}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <Pressable
+          onPress={collapsed ? onToggleCollapse : () => setPrefsOpen((open) => !open)}
+          accessibilityRole="button"
+          accessibilityLabel={t.settings.preferences}
+          accessibilityState={{ expanded: prefsOpen }}
+          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+            styles.navItem,
+            collapsed && styles.navItemRail,
+            {
+              flexDirection: dir,
+              backgroundColor: pressed || hovered ? colors.muted : "transparent",
+            },
+          ]}
+        >
+          <Settings2 size={18} color={colors.mutedForeground} />
+          {collapsed ? null : (
+            <>
+              <Text
+                style={[
+                  styles.navLabel,
+                  {
+                    color: colors.foreground,
+                    textAlign,
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    fontSize: navFontSize,
+                  },
+                ]}
+              >
+                {role
+                  ? role.toLowerCase() === "doctor"
+                    ? t.tabs.doctorAccount
+                    : t.tabs.patientAccount
+                  : t.settings.preferences}
+              </Text>
+              {prefsOpen ? (
+                <ChevronDown size={16} color={colors.mutedForeground} />
+              ) : (
+                <ChevronUp size={16} color={colors.mutedForeground} />
+              )}
+            </>
+          )}
         </Pressable>
 
         {signedIn ? (
@@ -218,26 +381,29 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
             accessibilityLabel={t.tabs.logout}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
               styles.logoutBtn,
+              collapsed && styles.navItemRail,
               {
                 flexDirection: dir,
-                borderColor: colors.border,
+                borderColor: pressed || hovered ? "#ef4444" : "#fecaca",
                 backgroundColor: pressed || hovered ? "#fef2f2" : "transparent",
               },
             ]}
           >
             <LogOut size={18} color="#ef4444" />
-            <Text
-              style={[
-                styles.logoutText,
-                {
-                  textAlign,
-                  writingDirection: isRTL ? "rtl" : "ltr",
-                  fontSize: navFontSize,
-                },
-              ]}
-            >
-              {t.tabs.logout}
-            </Text>
+            {collapsed ? null : (
+              <Text
+                style={[
+                  styles.logoutText,
+                  {
+                    textAlign,
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    fontSize: navFontSize,
+                  },
+                ]}
+              >
+                {t.tabs.logout}
+              </Text>
+            )}
           </Pressable>
         ) : (
           <>
@@ -252,7 +418,7 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
               ]}
             >
               <LinearGradient
-                colors={["#3057F2", "#1B9AAA"]}
+                colors={["#0F766E", "#34D399"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.authCtaGradient, { flexDirection: dir }]}
@@ -283,20 +449,20 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
                 styles.authCtaSignup,
                 {
                   flexDirection: dir,
-                  borderColor: "#3057F2",
+                  borderColor: "#0F766E",
                   backgroundColor:
                     pressed || hovered
-                      ? "rgba(48,87,242,0.16)"
-                      : "rgba(48,87,242,0.08)",
+                      ? "rgba(15, 118, 110,0.16)"
+                      : "rgba(15, 118, 110,0.08)",
                 },
               ]}
             >
-              <UserPlus size={18} color="#1D4ED8" />
+              <UserPlus size={18} color="#0F766E" />
               <Text
                 style={[
                   styles.navLabel,
                   {
-                    color: "#1D4ED8",
+                    color: "#0F766E",
                     textAlign,
                     writingDirection: isRTL ? "rtl" : "ltr",
                     fontWeight: "800",
@@ -310,7 +476,7 @@ export function AppSidebarNav({ onNavigate, showBrand = true, footerExtra }: Pro
           </>
         )}
 
-        {footerExtra}
+        {collapsed ? null : footerExtra}
       </View>
     </ScrollView>
   );
@@ -323,26 +489,49 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    // Extra bottom pad so logout isn’t clipped at the viewport edge.
+    paddingHorizontal: 14,
+    paddingTop: 12,
     paddingBottom: 28,
-    gap: 8,
+    gap: 10,
   },
   brandRow: {
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 4,
   },
-  nav: { gap: 4 },
+  brandLogo: { flex: 1, alignItems: "center" },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  nav: { gap: 2 },
+  group: { gap: 2 },
+  groupItems: { paddingTop: 2 },
   navItem: {
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     borderRadius: 12,
-    borderWidth: 1,
   },
-  navLabel: { fontSize: 14, fontWeight: "700", flex: 1 },
+  navItemRail: {
+    justifyContent: "center",
+    paddingHorizontal: 0,
+  },
+  railDot: {
+    position: "absolute",
+    top: 8,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+  },
+  navLabel: { fontSize: 14, flex: 1 },
   badge: {
     minWidth: 20,
     height: 20,
@@ -358,10 +547,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   footer: {
-    gap: 12,
-    // Push Android / language / contact / logout toward the sidebar bottom.
+    gap: 8,
+    // Preferences / logout stay anchored at the sidebar bottom.
     marginTop: "auto",
     paddingTop: 16,
+  },
+  prefPanel: {
+    gap: 10,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   prefBlock: {
     gap: 6,
@@ -377,7 +572,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingHorizontal: 2,
   },
-  roleHint: { fontSize: 12, fontWeight: "600", paddingHorizontal: 4 },
   logoutBtn: {
     alignItems: "center",
     gap: 10,
@@ -391,7 +585,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   authCtaLogin: {
-    shadowColor: "#3057F2",
+    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,

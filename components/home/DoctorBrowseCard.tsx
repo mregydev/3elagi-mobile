@@ -1,9 +1,9 @@
-import { MessageCircle, Star } from "lucide-react-native";
+import { MessageCircle, Star, Video } from "lucide-react-native";
 import React, { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
-import { cardShellSoft, UI } from "@/constants/uiTokens";
+import { cardShellSoft, primaryButton, UI } from "@/constants/uiTokens";
 import { patientCountryLabel, type MarketCountryCode } from "@/constants/patientCountries";
 import type { Conversation } from "@/domains/chat/types";
 import { usePresenceStore } from "@/domains/presence/store";
@@ -162,7 +162,7 @@ export function DoctorBrowseCard({
         </Pressable>
 
         <View style={[styles.actions, { alignItems: isRTL ? "flex-start" : "flex-end" }]}>
-          <Text style={[styles.price, { color: colors.primary, textAlign: isRTL ? "left" : "right" }]}>
+          <Text style={[styles.price, { color: colors.foreground, textAlign: isRTL ? "left" : "right" }]}>
             {formatEgpPerUnit(price, t)}
           </Text>
           <Pressable
@@ -174,15 +174,25 @@ export function DoctorBrowseCard({
             onMouseLeave={() => setCtaHovered(false)}
             style={({ pressed }) => [
               styles.cta,
+              primaryButton(),
               {
-                backgroundColor: ctaHovered && Platform.OS === "web" ? "#2648d9" : colors.primary,
+                backgroundColor:
+                  ctaHovered && Platform.OS === "web"
+                    ? colors.accentForeground
+                    : colors.primary,
                 opacity: pressed ? 0.92 : 1,
                 flexDirection: dir,
               },
             ]}
           >
-            <MessageCircle size={14} color="#fff" />
-            <Text style={styles.ctaText}>{t.home.startConsultation}</Text>
+            {item.user.immediateCallEnabled ? (
+              <Video size={15} color={colors.primaryForeground} />
+            ) : (
+              <MessageCircle size={15} color={colors.primaryForeground} />
+            )}
+            <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
+              {item.user.immediateCallEnabled ? t.home.videoConsultation : t.home.startConsultation}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -192,14 +202,15 @@ export function DoctorBrowseCard({
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 12,
+    marginHorizontal: 16,
+    marginVertical: 4,
     overflow: "visible",
   },
   row: {
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 14,
   },
   info: {
     flex: 1,
@@ -215,9 +226,9 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-    lineHeight: 20,
+    fontWeight: "700",
+    letterSpacing: -0.15,
+    lineHeight: 21,
   },
   specialty: {
     fontSize: 13,
@@ -262,21 +273,16 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 13,
-    fontWeight: "800",
-    lineHeight: 17,
+    fontWeight: "600",
+    lineHeight: 18,
   },
   cta: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: UI.radius.chip,
-    minHeight: 36,
+    gap: 6,
+    paddingHorizontal: 16,
+    minWidth: 148,
   },
   ctaText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

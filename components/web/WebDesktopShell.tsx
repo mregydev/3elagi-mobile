@@ -11,10 +11,12 @@ import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
   children: React.ReactNode;
+  /** Public pages (e.g. the doctor directory) render for guests instead of bouncing to welcome. */
+  allowGuests?: boolean;
 }
 
 /** Web shell with sidebar — always shown on web, including medical record routes. */
-export function WebDesktopShell({ children }: Props) {
+export function WebDesktopShell({ children, allowGuests = false }: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
   const router = useRouter();
@@ -24,11 +26,11 @@ export function WebDesktopShell({ children }: Props) {
   const signedIn = isSignedIn(profile, accessToken);
 
   useEffect(() => {
-    if (!hydrated || signedIn) return;
+    if (!hydrated || signedIn || allowGuests) return;
     navigateToWelcome(router);
-  }, [hydrated, signedIn, router]);
+  }, [hydrated, signedIn, allowGuests, router]);
 
-  if (!hydrated || !signedIn) return null;
+  if (!hydrated || (!signedIn && !allowGuests)) return null;
 
   return (
     <View

@@ -165,7 +165,7 @@ export default function WelcomeScreenWeb() {
                   accessibilityRole="button"
                 >
                   <LinearGradient
-                    colors={["#3057F2", "#1B9AAA"]}
+                    colors={["#0F766E", "#34D399"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.btnLoginGradient}
@@ -180,16 +180,16 @@ export default function WelcomeScreenWeb() {
                     styles.btn,
                     styles.btnSignup,
                     {
-                      borderColor: "#3057F2",
+                      borderColor: "#0F766E",
                       backgroundColor: hovered
-                        ? "rgba(48,87,242,0.16)"
-                        : "rgba(48,87,242,0.08)",
+                        ? "rgba(15, 118, 110,0.16)"
+                        : "rgba(15, 118, 110,0.08)",
                     },
                     pressed && styles.btnPressed,
                   ]}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.btnSignupText, { color: "#1D4ED8" }]}>
+                  <Text style={[styles.btnSignupText, { color: "#0F766E" }]}>
                     {t.auth.register}
                   </Text>
                 </Pressable>
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   btnLogin: {
     paddingHorizontal: 0,
     paddingVertical: 0,
-    shadowColor: "#3057F2",
+    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
     shadowRadius: 18,

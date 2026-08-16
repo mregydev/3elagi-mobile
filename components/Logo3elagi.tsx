@@ -19,8 +19,8 @@ export function Logo3elagi({
   centered = false,
   style,
 }: Props) {
-  const stroke = dark ? "#ffffff" : "#3057F2";
-  const fill = dark ? "rgba(255,255,255,0.12)" : "rgba(48,87,242,0.08)";
+  const stroke = dark ? "#ffffff" : "#0F766E";
+  const fill = dark ? "rgba(255,255,255,0.12)" : "rgba(15, 118, 110,0.08)";
   const ratio = markOnly ? 1 : 360 / 90;
   const width = height * ratio;
   const viewBox = markOnly ? "0 0 90 90" : "0 0 360 90";

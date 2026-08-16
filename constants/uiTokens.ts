@@ -1,12 +1,13 @@
 import { Platform, StyleSheet, type ViewStyle } from "react-native";
 
-/** Shared visual tokens — 8px spacing grid, premium healthcare SaaS surfaces. */
+/** Shared visual tokens — calm medical aesthetic, blue primary, 8px spacing grid. */
 export const UI = {
   radius: {
-    card: 12,
-    inner: 10,
+    card: 16,
+    inner: 12,
     chip: 999,
-    icon: 8,
+    icon: 10,
+    xl: 20,
   },
   space: {
     xs: 4,
@@ -20,25 +21,56 @@ export const UI = {
     normal: 200,
   },
   type: {
-    title: { fontSize: 15, fontWeight: "800" as const, letterSpacing: -0.2 },
-    section: { fontSize: 16, fontWeight: "800" as const, letterSpacing: -0.25 },
-    subtitle: { fontSize: 13, fontWeight: "600" as const, lineHeight: 18 },
-    meta: { fontSize: 12, fontWeight: "500" as const, lineHeight: 16 },
-    cta: { fontSize: 13, fontWeight: "800" as const },
+    title: { fontSize: 15, fontWeight: "700" as const, letterSpacing: -0.15 },
+    section: { fontSize: 17, fontWeight: "700" as const, letterSpacing: -0.2 },
+    subtitle: { fontSize: 14, fontWeight: "500" as const, lineHeight: 20 },
+    meta: { fontSize: 12, fontWeight: "500" as const, lineHeight: 17 },
+    cta: { fontSize: 14, fontWeight: "600" as const },
   },
   shadow: Platform.select({
-    web: { boxShadow: "0 1px 3px rgba(15,23,42,0.05)" } as ViewStyle,
+    web: { boxShadow: "0 1px 4px rgba(26,33,50,0.06)" } as ViewStyle,
     default: {
-      shadowColor: "#0f172a",
+      shadowColor: "#1a2132",
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 3,
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
       elevation: 1,
+    } as ViewStyle,
+  }),
+  shadowMd: Platform.select({
+    web: { boxShadow: "0 4px 14px rgba(26,33,50,0.08)" } as ViewStyle,
+    default: {
+      shadowColor: "#1a2132",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 2,
+    } as ViewStyle,
+  }),
+  shadowXl: Platform.select({
+    web: { boxShadow: "0 18px 45px rgba(26,33,50,0.14)" } as ViewStyle,
+    default: {
+      shadowColor: "#1a2132",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.14,
+      shadowRadius: 24,
+      elevation: 8,
+    } as ViewStyle,
+  }),
+  /** Green "live" halo — pairs with the consultation pulse on the hero monitor. */
+  shadowGlow: Platform.select({
+    web: { boxShadow: "0 0 24px rgba(34,197,94,0.45)" } as ViewStyle,
+    default: {
+      shadowColor: "#22c55e",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 14,
+      elevation: 0,
     } as ViewStyle,
   }),
   shadowHover: Platform.select({
     web: {
-      boxShadow: "0 4px 16px rgba(15,23,42,0.08)",
+      boxShadow: "0 6px 20px rgba(26,33,50,0.1)",
       transition: "box-shadow 180ms ease, transform 180ms ease",
     } as ViewStyle,
     default: {},
@@ -49,7 +81,7 @@ export const UI = {
   }),
 };
 
-/** Primary card surface — clean white/card bg, subtle elevation. */
+/** Primary card surface — soft shadow, minimal border. */
 export function surfaceCard(backgroundColor: string, borderColor?: string): ViewStyle {
   return {
     backgroundColor,
@@ -58,9 +90,9 @@ export function surfaceCard(backgroundColor: string, borderColor?: string): View
     ...(borderColor
       ? Platform.select({
           web: {
-            boxShadow: `0 1px 3px rgba(15,23,42,0.05), inset 0 0 0 1px ${borderColor}33`,
+            boxShadow: `0 1px 4px rgba(26,33,50,0.06), inset 0 0 0 1px ${borderColor}40`,
           } as ViewStyle,
-          default: { borderWidth: StyleSheet.hairlineWidth, borderColor: `${borderColor}44` },
+          default: { borderWidth: StyleSheet.hairlineWidth, borderColor: `${borderColor}55` },
         })
       : {}),
   };
@@ -89,7 +121,7 @@ export function statusBadge(fg: string, bg: string): ViewStyle {
 export function emptyStateSurface(backgroundColor: string, borderColor: string): ViewStyle {
   return {
     ...surfaceCard(backgroundColor, borderColor),
-    paddingVertical: UI.space.md,
+    paddingVertical: UI.space.lg,
     paddingHorizontal: UI.space.md,
     alignItems: "center",
     gap: UI.space.sm,
@@ -101,10 +133,10 @@ export function primaryButton(): ViewStyle {
   return {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
     borderRadius: UI.radius.inner,
-    minHeight: 40,
+    minHeight: 42,
     ...Platform.select({
       web: { transition: "opacity 150ms ease, background-color 150ms ease" } as ViewStyle,
       default: {},
@@ -117,13 +149,13 @@ export function secondaryButton(borderColor: string, backgroundColor: string): V
   return {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
     borderRadius: UI.radius.inner,
     borderWidth: 1,
     borderColor,
     backgroundColor,
-    minHeight: 40,
+    minHeight: 42,
     ...UI.pressable,
   };
 }

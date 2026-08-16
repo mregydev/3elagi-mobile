@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { Logo3elagi } from "@/components/Logo3elagi";
 
-const AUTH_HERO = require("@/assets/images/welcome-hero-mobile.jpg");
+const AUTH_HERO = require("@/assets/images/auth-hero.png");
 
 const CARD_WIDTH_RATIO = 0.9;
 /** Breathing room between the brand mark and the card. */
@@ -38,7 +38,7 @@ export function AuthLoginBackground({ children }: Props) {
         source={AUTH_HERO}
         style={styles.image}
         contentFit="cover"
-        contentPosition="top center"
+        contentPosition="center"
         accessibilityLabel=""
       />
 

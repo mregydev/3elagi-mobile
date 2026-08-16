@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +17,9 @@ import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { HomePatientHeader } from "@/components/home/HomePatientHeader";
+import { HomeHealthSummary } from "@/components/home/HomeHealthSummary";
+import { DoctorHomeBrowse } from "@/components/home/DoctorHomeBrowse";
+import { PublicLandingSections } from "@/components/marketing/PublicLandingSections";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
@@ -38,17 +40,23 @@ import {
 } from "@/domains/market/resolveMarketCountry";
 import { onDoctorRegistered } from "@/domains/presence/socket";
 import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
+import { surfaceCard, UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { on } from "@/utils/eventBus";
+import { alignText } from "@/utils/rtl";
 
 function ChatsHomeBrowse() {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { t, isRTL } = useI18n();
+  const textAlign = alignText(isRTL);
+  const { isDesktop } = useWebLayout();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
   const signedIn = isSignedIn(profile, accessToken);
+  const isDoctor = role?.toLowerCase() === "doctor";
   const aiEnabled = useAiEnabled();
   const domainMarket = getDomainMarketCountry();
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
@@ -61,6 +69,7 @@ function ChatsHomeBrowse() {
   const [error, setError] = useState<string | null>(null);
 
   const loadHome = useCallback(async () => {
+    if (isDoctor && signedIn) return;
     setLoadingHome(true);
     setError(null);
     try {
@@ -70,11 +79,12 @@ function ChatsHomeBrowse() {
     } finally {
       setLoadingHome(false);
     }
-  }, []);
+  }, [isDoctor, signedIn]);
 
   useEffect(() => {
+    if (isDoctor && signedIn) return;
     void loadHome();
-  }, [loadHome]);
+  }, [loadHome, isDoctor, signedIn]);
 
   useEffect(
     () =>
@@ -88,11 +98,12 @@ function ChatsHomeBrowse() {
 
   useFocusEffect(
     useCallback(() => {
+      if (isDoctor && signedIn) return;
       // Only fetch when we have nothing yet — refetching on every tab focus
       // caused a network round-trip + re-render that made the home tab feel
       // like it hung when switching back to it.
       if (!selectedSpeciality && specialities.length === 0) void loadHome();
-    }, [loadHome, selectedSpeciality, specialities.length]),
+    }, [loadHome, selectedSpeciality, specialities.length, isDoctor, signedIn]),
   );
 
   useEffect(() => {
@@ -182,14 +193,12 @@ function ChatsHomeBrowse() {
   );
 
   const scrollRef = useRef<ScrollViewType>(null);
-  const [specialitiesY, setSpecialitiesY] = useState(0);
 
-  const scrollToSpecialities = useCallback(() => {
-    scrollRef.current?.scrollTo({
-      y: Math.max(0, specialitiesY - 12),
-      animated: true,
-    });
-  }, [specialitiesY]);
+  const openDoctorDirectory = useCallback(() => router.push("/doctors"), []);
+
+  if (isDoctor && signedIn) {
+    return <DoctorHomeBrowse />;
+  }
 
   if (loadingHome && specialities.length === 0) {
     return (
@@ -234,25 +243,37 @@ function ChatsHomeBrowse() {
       ref={scrollRef}
       nativeID={BRAND_SCROLL_NATIVE_ID}
       style={styles.scroll}
-      contentContainerStyle={{ paddingBottom: 32 }}
+      contentContainerStyle={[
+        { paddingBottom: 40, gap: 8 },
+        // Guests: content sits at 95% of the page, scrollbar stays on the edge.
+        !signedIn && styles.guestContent,
+      ]}
       showsVerticalScrollIndicator
       refreshControl={
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }
     >
-      <HomePatientHeader
-        aiEnabled={aiEnabled}
-        signedIn={signedIn}
-        onFindDoctor={scrollToSpecialities}
-      />
-      <HomeBannerVideo />
+      {!signedIn ? (
+        <PublicLandingSections />
+      ) : (
+        <>
+          <HomePatientHeader
+            aiEnabled={aiEnabled}
+            signedIn={signedIn}
+            onFindDoctor={openDoctorDirectory}
+            onVideoConsultation={openDoctorDirectory}
+          />
+          <HomeHealthSummary signedIn={signedIn} />
+          {!isDesktop ? <HomeBannerVideo /> : null}
+        </>
+      )}
       {domainMarket ? (
         <View
           style={[
             styles.marketBanner,
             {
-              backgroundColor: `${colors.primary}12`,
-              borderColor: `${colors.primary}33`,
+              backgroundColor: colors.muted,
+              borderColor: colors.border,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
@@ -281,22 +302,29 @@ function ChatsHomeBrowse() {
         </View>
       ) : null}
       {specialities.length === 0 && !loadingHome && !error ? (
-        <View style={styles.empty}>
-          <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
-            {isRTL ? "لا توجد تخصصات متاحة" : "No specialities available"}
+        <View style={[styles.empty, surfaceCard(colors.card, colors.border), styles.emptyCard]}>
+          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, lineHeight: 20 }}>
+            {isRTL ? "لا توجد تخصصات متاحة حاليًا" : "No specialities available right now. Check back soon."}
           </Text>
         </View>
       ) : (
-        <View
-          onLayout={(e) => setSpecialitiesY(e.nativeEvent.layout.y)}
-          collapsable={false}
-        >
+        <>
+          <View style={styles.specialitiesHeading}>
+            <Text style={[styles.specialitiesTitle, { color: colors.foreground, textAlign }]}>
+              {t.landing.specialtiesTitle}
+            </Text>
+            <Text
+              style={[styles.specialitiesSubtitle, { color: colors.mutedForeground, textAlign }]}
+            >
+              {t.landing.specialtiesSubtitle}
+            </Text>
+          </View>
           <SpecialityGrid
             specialities={specialities}
             isRTL={isRTL}
             onSelect={setSelectedSpeciality}
           />
-        </View>
+        </>
       )}
     </ScrollView>
   );
@@ -304,12 +332,10 @@ function ChatsHomeBrowse() {
 
 export default function ChatsTab() {
   const colors = useColors();
-  const { isDesktop } = useWebLayout();
-  const showHeader = Platform.OS !== "web" || !isDesktop;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {showHeader ? <AppHeader /> : null}
+      <AppHeader />
       <ChatsHomeBrowse />
     </View>
   );
@@ -318,17 +344,22 @@ export default function ChatsTab() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flex: 1 },
-  empty: { alignItems: "center", paddingVertical: 60 },
+  guestContent: { width: "95%", alignSelf: "center" },
+  specialitiesHeading: { marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
+  specialitiesTitle: { ...UI.type.section, fontSize: 20 },
+  specialitiesSubtitle: { fontSize: 14, lineHeight: 20, marginTop: 4 },
+  empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24 },
+  emptyCard: { marginHorizontal: 16, marginTop: 8 },
   marketBanner: {
     marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     gap: 10,
   },
-  marketBannerText: { fontSize: 14, fontWeight: "700", flex: 1 },
+  marketBannerText: { fontSize: 14, fontWeight: "600", flex: 1, lineHeight: 20 },
 });

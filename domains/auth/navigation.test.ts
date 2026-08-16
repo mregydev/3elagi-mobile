@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { isPublicWebPath } from "./navigation";
-import { GUEST_ALLOWED_TABS } from "./guestBrowse";
+import { GUEST_ALLOWED_TABS, isGuestAllowedRoot } from "./guestBrowse";
 
 vi.mock("react-native", () => ({ Platform: { OS: "web" } }));
 vi.mock("expo-router", () => ({ router: {} }));
@@ -31,5 +31,13 @@ describe("isPublicWebPath", () => {
     expect(isPublicWebPath("/")).toBe(true);
     expect(isPublicWebPath("/(tabs)")).toBe(true);
     expect(isPublicWebPath("/auth/login")).toBe(true);
+  });
+
+  it("keeps the doctor directory public in both guards", () => {
+    // Hero CTAs and the patient role card all land here while signed out; if
+    // either guard misses it the push is immediately bounced to welcome.
+    expect(isPublicWebPath("/doctors")).toBe(true);
+    expect(isGuestAllowedRoot("doctors")).toBe(true);
+    expect(isGuestAllowedRoot("points")).toBe(false);
   });
 });

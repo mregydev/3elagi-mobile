@@ -14,7 +14,7 @@ const BANNER_RATIO = BANNER_H / BANNER_W;
 const MIN_VIEWPORT_FRACTION = 0.3;
 
 /** Home hero (web): local looping muted banner video (replaces ad image carousel). */
-export function HomeBannerVideo() {
+export function HomeBannerVideo({ embedded = false }: { embedded?: boolean }) {
   const colors = useColors();
   const { width, height: windowHeight } = useWindowDimensions();
   const { isDesktop } = useWebLayout();
@@ -34,14 +34,15 @@ export function HomeBannerVideo() {
     }, []),
   );
 
-  const horizontalPadding = isDesktop ? 24 : 16;
-  const bannerWidth = Math.max(280, width - horizontalPadding * 2);
-  const ratioHeight = Math.round(bannerWidth * BANNER_RATIO);
-  // Mobile web: match native — keep the banner ≥ 30% of the viewport.
-  const bannerHeight = Math.max(
-    ratioHeight,
-    isDesktop ? BANNER_H : Math.round(windowHeight * MIN_VIEWPORT_FRACTION),
-  );
+  const horizontalPadding = embedded ? 0 : isDesktop ? 24 : 16;
+  const bannerWidth = embedded ? 0 : Math.max(280, width - horizontalPadding * 2);
+  const ratioHeight = embedded ? 0 : Math.round(bannerWidth * BANNER_RATIO);
+  const bannerHeight = embedded
+    ? undefined
+    : Math.max(
+        ratioHeight,
+        isDesktop ? BANNER_H : Math.round(windowHeight * MIN_VIEWPORT_FRACTION),
+      );
 
   const src = useMemo(() => {
     if (typeof BANNER_VIDEO === "string") return BANNER_VIDEO;
@@ -49,16 +50,19 @@ export function HomeBannerVideo() {
   }, []);
 
   return (
-    <View style={[styles.wrap, { paddingHorizontal: horizontalPadding }]}>
+    <View style={[embedded ? styles.embedWrap : styles.wrap, !embedded && { paddingHorizontal: horizontalPadding }]}>
       <View
         style={[
           styles.hero,
-          {
-            width: "100%",
-            height: bannerHeight,
-            borderColor: colors.border,
-            backgroundColor: colors.muted,
-          },
+          embedded && styles.heroEmbedded,
+          embedded
+            ? undefined
+            : {
+                width: "100%",
+                height: bannerHeight,
+                borderColor: colors.border,
+                backgroundColor: colors.muted,
+              },
         ]}
       >
         {React.createElement("video", {
@@ -71,8 +75,7 @@ export function HomeBannerVideo() {
           style: {
             width: "100%",
             height: "100%",
-            // Fill banner width + height exactly (no crop).
-            objectFit: "fill",
+            objectFit: embedded ? "contain" : "fill",
             display: "block",
           },
           "aria-label": "3elagi banner",
@@ -87,10 +90,21 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
+  embedWrap: {
+    width: "100%",
+    height: "100%",
+  },
   hero: {
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
     position: "relative",
+  },
+  heroEmbedded: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: "transparent",
   },
 });

@@ -8,7 +8,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
 /** Same ramp as the primary auth buttons. */
-const BRAND_GRADIENT = ["#3057F2", "#1B9AAA"] as const;
+const BRAND_GRADIENT = ["#0F766E", "#34D399"] as const;
 
 type Props = {
   /** Smaller type for the top bar; default is the footer size. */

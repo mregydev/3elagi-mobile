@@ -21,6 +21,7 @@ import { AppSplash } from "@/components/SplashScreen";
 import { NavLoadingOverlay } from "@/components/NavLoadingOverlay";
 import { SystemNotifications } from "@/components/SystemNotifications";
 import { SystemNotificationSync } from "@/components/SystemNotificationSync";
+import { ArabicFontBootstrap } from "@/components/ArabicFontBootstrap";
 import { LocaleBootstrap } from "@/components/LocaleBootstrap";
 import { LocaleAuthSync } from "@/components/LocaleAuthSync";
 import { AuthRedirect } from "@/components/AuthRedirect";
@@ -120,6 +121,7 @@ function AppRoot() {
           <PointsDataLoader />
           <RemindersBootstrap />
           <LocaleBootstrap />
+          <ArabicFontBootstrap />
           <LocaleAuthSync />
           <AuthRedirect />
           <View style={{ flex: 1 }}>
@@ -134,6 +136,7 @@ function AppRoot() {
               <Stack.Screen name="auth/reset-password" options={{ presentation: "modal" }} />
               <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
               <Stack.Screen name="contact" />
+              <Stack.Screen name="doctors" />
               <Stack.Screen name="chat/[id]" />
               <Stack.Screen name="video-call" />
               <Stack.Screen name="ai/[id]" />

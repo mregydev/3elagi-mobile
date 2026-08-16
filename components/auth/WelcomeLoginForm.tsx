@@ -118,7 +118,7 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
         ]}
       >
         <LinearGradient
-          colors={loading ? ["#94A3B8", "#94A3B8"] : ["#3057F2", "#1B9AAA"]}
+          colors={loading ? ["#94A3B8", "#94A3B8"] : ["#0F766E", "#34D399"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.btnGradient}
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#3057F2",
+    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.32,
     shadowRadius: 12,

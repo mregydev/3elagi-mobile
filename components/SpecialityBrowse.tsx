@@ -1,12 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { surfaceCard } from "@/constants/uiTokens";
 import type { Speciality } from "@/domains/home/api";
 import { specialityLabel } from "@/domains/home/specialityLabel";
@@ -23,11 +17,9 @@ const COLUMNS = 3;
 
 function SpecialityTile({
   item,
-  index,
   onPress,
 }: {
   item: Speciality;
-  index: number;
   onPress: () => void;
 }) {
   const colors = useColors();
@@ -35,71 +27,54 @@ function SpecialityTile({
   const label = specialityLabel(item, locale);
   const { icon: Icon, color, image } = specialityVisual(item.nameEn);
   const illustration = image ?? (item.imageUrl ? { uri: item.imageUrl } : null);
-  const scale = useSharedValue(1);
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
   const isArabic = locale === "ar";
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 45).springify().damping(14)}
-      style={styles.tile}
-    >
-      <Animated.View style={cardStyle}>
-        <Pressable
-          onPress={onPress}
-          onPressIn={() => {
-            scale.value = withSpring(0.96, { damping: 14 });
-          }}
-          onPressOut={() => {
-            scale.value = withSpring(1, { damping: 12 });
-          }}
-          style={styles.pressable}
-        >
-          {illustration ? (
-            <View
-              style={[
-                styles.circle,
-                {
-                  borderColor: color,
-                  shadowColor: color,
-                },
-              ]}
-            >
-              <Image
-                source={illustration}
-                style={styles.illustration}
-                resizeMode="contain"
-              />
-            </View>
-          ) : (
-            <LinearGradient
-              colors={specialityGradient(color)}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.circle, styles.orbFallback, { borderColor: color }]}
-            >
-              <Icon size={28} color="#fff" />
-            </LinearGradient>
-          )}
-          <Text
+    <View style={styles.tile}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.pressable, { opacity: pressed ? 0.88 : 1 }]}
+      >
+        {illustration ? (
+          <View
             style={[
-              styles.primaryLabel,
-              {
-                color: colors.foreground,
-                fontSize: isArabic ? 17 : 14,
-                lineHeight: isArabic ? 24 : 20,
-                writingDirection: isRTL ? "rtl" : "ltr",
-              },
+              styles.circle,
+              surfaceCard(colors.card, `${color}55`),
+              { borderColor: `${color}66` },
             ]}
-            numberOfLines={2}
           >
-            {label}
-          </Text>
-        </Pressable>
-      </Animated.View>
-    </Animated.View>
+            <Image
+              source={illustration}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+          </View>
+        ) : (
+          <LinearGradient
+            colors={specialityGradient(color)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.circle, styles.orbFallback, { borderColor: `${color}55` }]}
+          >
+            <Icon size={28} color="#fff" />
+          </LinearGradient>
+        )}
+        <Text
+          style={[
+            styles.primaryLabel,
+            {
+              color: colors.foreground,
+              fontSize: isArabic ? 16 : 13,
+              lineHeight: isArabic ? 22 : 18,
+              writingDirection: isRTL ? "rtl" : "ltr",
+            },
+          ]}
+          numberOfLines={2}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -140,15 +115,15 @@ export function SpecialityGrid({
       <View style={styles.headingRow}>
         <Image
           source={require("@/assets/images/splash-mark.png")}
-          style={styles.logo}
+          style={[styles.logo, { tintColor: colors.primary }]}
           resizeMode="contain"
         />
         <Text
           style={[
             styles.heading,
             {
-              color: colors.primary,
-              fontSize: isArabic ? 24 : 20,
+              color: colors.foreground,
+              fontSize: isArabic ? 22 : 18,
               writingDirection: isRTL ? "rtl" : "ltr",
             },
           ]}
@@ -156,18 +131,9 @@ export function SpecialityGrid({
           {heading}
         </Text>
       </View>
-      {/*
-        Use direction/dir for RTL — do NOT also use row-reverse
-        (that double-flips and leaves the empty gap on the right).
-      */}
       <View style={styles.grid}>
-        {specialities.map((item, index) => (
-          <SpecialityTile
-            key={item.id}
-            item={item}
-            index={index}
-            onPress={() => onSelect(item)}
-          />
+        {specialities.map((item) => (
+          <SpecialityTile key={item.id} item={item} onPress={() => onSelect(item)} />
         ))}
       </View>
     </View>
@@ -177,9 +143,9 @@ export function SpecialityGrid({
 const styles = StyleSheet.create({
   wrap: {
     marginHorizontal: 16,
-    marginVertical: 6,
-    paddingHorizontal: 8,
-    paddingTop: 16,
+    marginVertical: 8,
+    paddingHorizontal: 10,
+    paddingTop: 18,
     paddingBottom: 14,
   },
   headingRow: {
@@ -190,10 +156,9 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 18,
   },
-  logo: { width: 28, height: 28, flexShrink: 0 },
+  logo: { width: 26, height: 26, flexShrink: 0, opacity: 0.9 },
   heading: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "700",
     textAlign: "center",
     letterSpacing: -0.2,
     flexShrink: 1,
@@ -214,13 +179,8 @@ const styles = StyleSheet.create({
     height: CIRCLE,
     borderRadius: CIRCLE / 2,
     overflow: "hidden",
-    borderWidth: 2,
+    borderWidth: 1,
     marginBottom: 8,
-    backgroundColor: "transparent",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 3,
   },
   illustration: {
     width: "100%",
@@ -232,9 +192,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryLabel: {
-    fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "600",
     textAlign: "center",
-    lineHeight: 20,
   },
 });

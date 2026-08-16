@@ -1,7 +1,14 @@
 import { useGuestAuthDialogStore } from "@/domains/auth/guestAuthDialogStore";
 
 /** Tab segments guests may open without signing in. */
-export const GUEST_ALLOWED_TABS = new Set(["index", "about-us", "assistant", "pricing"]);
+export const GUEST_ALLOWED_TABS = new Set([
+  "index",
+  "about-us",
+  "assistant",
+  "pricing",
+  "faq",
+  "for-doctors",
+]);
 
 /** Root segments guests may open (browse + auth + marketing). */
 export function isGuestAllowedRoot(
@@ -12,7 +19,9 @@ export function isGuestAllowedRoot(
     root === undefined ||
     root === "welcome" ||
     root === "auth" ||
-    root === "contact"
+    root === "contact" ||
+    // Doctor directory: browsing is public, starting a consultation still prompts.
+    root === "doctors"
   ) {
     return true;
   }

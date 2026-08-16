@@ -151,7 +151,7 @@ export function DoctorChatRoster({
         >
           <Image
             source={require("@/assets/images/splash-mark.png")}
-            style={styles.logo}
+            style={[styles.logo, { tintColor: colors.primary }]}
             resizeMode="contain"
           />
           <Text style={[styles.title, { color: colors.primary }]} numberOfLines={1}>

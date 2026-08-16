@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     borderWidth: 1.5,
     zIndex: 2,
-    shadowColor: "#3057F2",
+    shadowColor: "#0F766E",
     shadowOpacity: 0.25,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },

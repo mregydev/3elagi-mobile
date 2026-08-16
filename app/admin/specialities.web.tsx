@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(48,87,242,0.04)",
+    backgroundColor: "rgba(15, 118, 110,0.04)",
   },
   headSpeciality: {
     flex: 1,

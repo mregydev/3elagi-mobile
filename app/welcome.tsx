@@ -146,12 +146,12 @@ export default function WelcomeScreen() {
                     styles.btnPrimary,
                     {
                       opacity: pressed ? 0.92 : 1,
-                      shadowColor: "#3057F2",
+                      shadowColor: "#0F766E",
                     },
                   ]}
                 >
                   <LinearGradient
-                    colors={["#3057F2", "#1B9AAA"]}
+                    colors={["#0F766E", "#34D399"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.btnPrimaryGradient}
@@ -165,14 +165,14 @@ export default function WelcomeScreen() {
                   style={({ pressed }) => [
                     styles.btnGhost,
                     {
-                      borderColor: "#3057F2",
+                      borderColor: "#0F766E",
                       backgroundColor: pressed
-                        ? "rgba(48,87,242,0.16)"
-                        : "rgba(48,87,242,0.08)",
+                        ? "rgba(15, 118, 110,0.16)"
+                        : "rgba(15, 118, 110,0.08)",
                     },
                   ]}
                 >
-                  <Text style={[styles.btnGhostText, { color: "#1D4ED8" }]}>
+                  <Text style={[styles.btnGhostText, { color: "#0F766E" }]}>
                     {t.auth.register}
                   </Text>
                 </Pressable>

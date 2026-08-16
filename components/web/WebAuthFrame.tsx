@@ -11,7 +11,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
-const AUTH_BRAND_HERO = require("@/assets/images/welcome-hero-left.jpg");
+const AUTH_BRAND_HERO = require("@/assets/images/auth-hero.png");
 
 interface Props {
   children: React.ReactNode;
