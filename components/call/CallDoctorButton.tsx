@@ -13,7 +13,7 @@ type Props = {
   doctorUserId: string;
   /** Credits held for the call — the doctor's video consultation price. */
   price?: number;
-  /** Offline doctors cannot pick up, so the button is dead. */
+  /** Offline doctors still get a ringing push, so the button stays live. */
   offline?: boolean;
 };
 
@@ -29,7 +29,7 @@ export function CallDoctorButton({ doctorUserId, price, offline = false }: Props
   const [calling, setCalling] = useState(false);
 
   const start = async () => {
-    if (!accessToken || calling || offline) return;
+    if (!accessToken || calling) return;
     const body = t.auth.callConfirmBody.replace("{price}", String(price ?? 1));
 
     const confirmed =
@@ -61,17 +61,17 @@ export function CallDoctorButton({ doctorUserId, price, offline = false }: Props
   return (
     <Pressable
       onPress={() => void start()}
-      disabled={calling || offline}
+      disabled={calling}
       accessibilityRole="button"
-      accessibilityLabel={offline ? t.auth.callDoctorOffline : t.auth.callDoctor}
+      accessibilityLabel={t.auth.callDoctor}
       hitSlop={8}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
         styles.btn,
         {
-          borderColor: offline ? colors.border : colors.primary,
-          backgroundColor:
-            !offline && (pressed || hovered) ? `${colors.primary}14` : colors.card,
-          opacity: calling || offline ? 0.45 : 1,
+          borderColor: colors.primary,
+          // Offline doctors read as dimmer, but the call still goes through.
+          backgroundColor: pressed || hovered ? `${colors.primary}14` : colors.card,
+          opacity: calling ? 0.45 : offline ? 0.7 : 1,
           marginStart: isRTL ? 0 : 6,
           marginEnd: isRTL ? 6 : 0,
         },

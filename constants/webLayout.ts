@@ -16,6 +16,10 @@ export const WEB_MAX_WIDTH = {
 /** Tab bar content row height on mobile web (matches `(tabs)/_layout.web`). */
 export const WEB_MOBILE_TAB_BAR_HEIGHT = 60;
 
+/** Native bottom tab bar row height, excluding the safe-area inset
+ *  (matches `(tabs)/_layout`). Floating UI lifts by this to clear it. */
+export const NATIVE_TAB_BAR_HEIGHT = 58;
+
 /** Minimum top inset for tab page titles/logos on mobile web (below status bar). */
 export const WEB_MOBILE_PAGE_TITLE_TOP_PADDING = 8;
 

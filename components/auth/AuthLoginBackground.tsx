@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthHeroMedia } from "@/components/auth/AuthHeroMedia";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { useResolvedTheme } from "@/hooks/useColors";
 
 const CARD_WIDTH_RATIO = 0.9;
 /** Breathing room between the brand mark and the card. */
@@ -28,6 +29,9 @@ export function AuthLoginBackground({ children }: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const logoHeight = Math.min(56, width * 0.16);
+  // The card was frosted white regardless of theme, so in dark mode the form's
+  // light text landed on a near-white sheet.
+  const isDark = useResolvedTheme() === "dark";
 
   return (
     <View style={styles.page}>
@@ -46,10 +50,28 @@ export function AuthLoginBackground({ children }: Props) {
         bottomOffset={32}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.card, { width: width * CARD_WIDTH_RATIO }]}>
-          {/* Frosted white, not solid: the hero stays visible behind the form. */}
-          <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
-          <View style={styles.tint} pointerEvents="none" />
+        <View
+          style={[
+            styles.card,
+            {
+              width: width * CARD_WIDTH_RATIO,
+              borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.6)",
+            },
+          ]}
+        >
+          {/* Frosted, not solid: the hero stays visible behind the form. */}
+          <BlurView
+            intensity={70}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            style={[
+              styles.tint,
+              { backgroundColor: isDark ? "rgba(15,20,25,0.82)" : "rgba(255,255,255,0.72)" },
+            ]}
+            pointerEvents="none"
+          />
           {children}
         </View>
       </KeyboardSafeScrollView>
@@ -82,11 +104,9 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.6)",
     overflow: "hidden",
   },
   tint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.72)",
   },
 });

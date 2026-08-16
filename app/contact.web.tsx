@@ -5,7 +5,7 @@ import { WebStackScreen } from "@/components/web/WebStackScreen";
 
 export default function ContactScreenWeb() {
   return (
-    <WebDesktopShell>
+    <WebDesktopShell allowGuests>
       <WebStackScreen>
         <ContactScreen />
       </WebStackScreen>

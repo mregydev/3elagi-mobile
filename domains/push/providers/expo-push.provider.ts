@@ -10,7 +10,13 @@ import {
 } from "@/domains/push/registerPushToken";
 import { unregisterPushToken } from "@/domains/push/api";
 import { ensurePushChannels } from "@/domains/push/expoPush";
+import { stopIncomingCallRing } from "@/domains/video-call/incomingCallRing";
 import type { PushBootstrapContext, PushProvider } from "@/domains/push/providers/types";
+import {
+  VIDEO_CALL_EVENTS,
+  type IncomingVideoCallPushPayload,
+} from "@/domains/video-call/events";
+import { emit } from "@/utils/eventBus";
 
 function shouldSuppressForegroundAiPush(data: Record<string, unknown> | undefined): boolean {
   if (data?.type !== "ai") return false;
@@ -24,6 +30,19 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data as Record<string, unknown>;
     if (shouldSuppressForegroundAiPush(data)) {
+      return {
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    }
+    if (data?.type === "video_call_cancelled") {
+      const sessionId = String(data.sessionId ?? data.session_id ?? "");
+      if (sessionId) stopIncomingCallRing(sessionId);
+      // Tray-only replacement for a call that stopped ringing — nothing to
+      // show over an app that is already open.
       return {
         shouldShowAlert: false,
         shouldPlaySound: false,
@@ -127,6 +146,24 @@ export class ExpoPushProvider implements PushProvider {
         content.data as Record<string, unknown>,
       );
       if (shouldSuppressForegroundAiPush(data)) return;
+      if (data?.type === "video_call_cancelled") {
+        const sessionId = String(data.sessionId ?? data.session_id ?? "");
+        if (sessionId) stopIncomingCallRing(sessionId);
+        return;
+      }
+      // A call push in the foreground means the socket did not deliver it (or
+      // has not yet) — raise the in-app overlay so the doctor still hears it.
+      if (data?.type === "incoming_video_call") {
+        const sessionId = String(data.sessionId ?? data.session_id ?? "");
+        if (sessionId) {
+          emit<IncomingVideoCallPushPayload>(VIDEO_CALL_EVENTS.INCOMING_PUSH, {
+            sessionId,
+            callerId: data.callerId ? String(data.callerId) : undefined,
+            callerName: data.callerName ? String(data.callerName) : undefined,
+          });
+        }
+        return;
+      }
       if (data?.type !== "chat" && data?.type !== "appointment_request") return;
       onForegroundChat({
         peerId: String(

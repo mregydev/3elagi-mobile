@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { useAccentGradient, useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors, useResolvedTheme } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
@@ -22,6 +22,7 @@ type WelcomePanel = "home" | "login" | "signup";
 
 export default function WelcomeScreen() {
   const colors = useColors();
+  const isDark = useResolvedTheme() === "dark";
   const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
@@ -110,8 +111,21 @@ export default function WelcomeScreen() {
               />
             ) : (
               <>
-                <BlurView intensity={85} tint="light" style={styles.footerBlur} />
-                <View style={styles.footerTint} />
+                <BlurView
+                  intensity={85}
+                  tint={isDark ? "dark" : "light"}
+                  style={styles.footerBlur}
+                />
+                <View
+                  style={[
+                    styles.footerTint,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(15,20,25,0.42)"
+                        : "rgba(255,255,255,0.32)",
+                    },
+                  ]}
+                />
               </>
             )}
 
@@ -268,7 +282,6 @@ const styles = StyleSheet.create({
   },
   footerTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.32)",
   },
   formScroll: {
     flex: 1,

@@ -239,6 +239,7 @@ export function MarketDoctorsBrowse({
           specialities={specialities}
           isRTL={isRTL}
           onSelect={setSelectedSpeciality}
+          fullHeight
         />
       )}
     </ScrollView>

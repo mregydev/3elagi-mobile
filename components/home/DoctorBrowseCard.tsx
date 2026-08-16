@@ -1,6 +1,13 @@
 import { MessageCircle, Star, Video } from "lucide-react-native";
 import React, { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Avatar } from "@/components/Avatar";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { cardShellSoft, primaryButton, UI } from "@/constants/uiTokens";
@@ -52,6 +59,10 @@ export function DoctorBrowseCard({
   const colors = useColors();
   const { t } = useI18n();
   const dir = flexRow(isRTL);
+  const { width } = useWindowDimensions();
+  // Side-by-side leaves ~100px for the name once the 148px CTA claims its
+  // space, so narrow screens put the actions on their own row underneath.
+  const stacked = width < 480;
   const textAlign = isRTL ? "right" : "left";
   const [hovered, setHovered] = useState(false);
   const [ctaHovered, setCtaHovered] = useState(false);
@@ -89,7 +100,7 @@ export function DoctorBrowseCard({
         setCtaHovered(false);
       }}
     >
-      <View style={[styles.row, { flexDirection: dir }]}>
+      <View style={[styles.row, stacked ? styles.rowStacked : { flexDirection: dir }]}>
         <Pressable
           onPress={onViewProfile}
           accessibilityRole="button"
@@ -107,7 +118,10 @@ export function DoctorBrowseCard({
             presence={isOnline ? "online" : "offline"}
           />
           <View style={styles.main}>
-            <Text style={[styles.name, { color: colors.foreground, textAlign }]} numberOfLines={1}>
+            <Text
+              style={[styles.name, { color: colors.foreground, textAlign }]}
+              numberOfLines={stacked ? 2 : 1}
+            >
               {item.user.name}
             </Text>
             {item.user.specialty ? (
@@ -161,7 +175,14 @@ export function DoctorBrowseCard({
           </View>
         </Pressable>
 
-        <View style={[styles.actions, { alignItems: isRTL ? "flex-start" : "flex-end" }]}>
+        <View
+          style={[
+            styles.actions,
+            stacked
+              ? [styles.actionsStacked, { flexDirection: dir }]
+              : { alignItems: isRTL ? "flex-start" : "flex-end" },
+          ]}
+        >
           <Text style={[styles.price, { color: colors.foreground, textAlign: isRTL ? "left" : "right" }]}>
             {formatEgpPerUnit(price, t)}
           </Text>
@@ -211,6 +232,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 14,
+  },
+  rowStacked: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    gap: 12,
   },
   info: {
     flex: 1,
@@ -270,6 +296,11 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     justifyContent: "center",
     minWidth: 132,
+  },
+  actionsStacked: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    minWidth: 0,
   },
   price: {
     fontSize: 13,

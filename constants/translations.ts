@@ -312,6 +312,8 @@ const en = {
   },
   appointments: {
     title: "Appointments",
+    roomNotOpen: "This room opens at the appointment time — it is not open right now.",
+    roomClosed: "This appointment has ended, so the room is closed.",
     all: "All",
     noAppointments: "No appointments",
     noAppointmentsSub: "No appointments scheduled yet",
@@ -1190,6 +1192,8 @@ const ar: typeof en = {
   },
   appointments: {
     title: "المواعيد",
+    roomNotOpen: "تفتح الغرفة في موعد الاستشارة — ليست متاحة الآن.",
+    roomClosed: "انتهى الموعد، لذلك أُغلقت الغرفة.",
     all: "الكل",
     noAppointments: "لا توجد مواعيد",
     noAppointmentsSub: "لا توجد مواعيد مجدولة بعد",
@@ -2060,6 +2064,8 @@ const de: typeof en = {
   },
   appointments: {
     title: "Termine",
+    roomNotOpen: "Der Raum öffnet zur Terminzeit — jetzt ist er nicht offen.",
+    roomClosed: "Der Termin ist vorbei, der Raum ist geschlossen.",
     all: "Alle",
     noAppointments: "Keine Termine",
     noAppointmentsSub: "Noch keine Termine geplant",
@@ -2933,6 +2939,8 @@ const es: typeof en = {
   },
   appointments: {
     title: "Citas",
+    roomNotOpen: "La sala se abre a la hora de la cita — ahora no está disponible.",
+    roomClosed: "La cita terminó, por lo que la sala está cerrada.",
     all: "Todas",
     noAppointments: "Sin citas",
     noAppointmentsSub: "Aún no hay citas programadas",

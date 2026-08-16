@@ -116,7 +116,11 @@ export function ProfileEditor({
   const displayName = name.trim() || (isRTL ? "مستخدم" : "Your name");
   const displayEmail = account?.email ?? (isRTL ? "—" : "—");
   const saveChromeHeight = profileSaveChromeHeight({ withLogout: showLogout });
-  const dockPadBottom = profileSaveDockBottomPad(insets.bottom);
+  // Inside the tabs the bottom bar already covers the safe area, so adding the
+  // inset here again left a dead gap under Log out.
+  const dockPadBottom = profileSaveDockBottomPad(
+    Platform.OS === "web" ? insets.bottom : 0,
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -564,7 +568,7 @@ export function ProfileEditor({
         </KeyboardSafeScrollView>
 
         <SafeAreaView
-          edges={["bottom"]}
+          edges={Platform.OS === "web" ? ["bottom"] : []}
           style={[
             styles.saveDock,
             {

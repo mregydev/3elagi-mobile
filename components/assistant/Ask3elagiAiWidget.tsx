@@ -40,6 +40,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
+import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
 import { viewportPortal } from "@/utils/viewportPortal";
 
@@ -51,6 +52,8 @@ function makeLocalId(prefix: string) {
 export const ASK_3ELAGI_AI_FAB_SIZE = 56;
 /** Gap from the viewport edge. */
 export const ASK_3ELAGI_AI_FAB_CHROME_GAP = 8;
+/** Extra breathing room above the native bottom tab bar. */
+export const ASK_3ELAGI_AI_FAB_TAB_BAR_GAP = 14;
 
 function isProfileRoute(pathname: string | null, segments: string[]): boolean {
   return segments.includes("profile") || Boolean(pathname?.includes("/profile"));
@@ -597,8 +600,15 @@ export function Ask3elagiAiWidget() {
   );
   const hideFab = hideFabOnChatRoute(pathname, segments as string[]);
   const medicalFormLift = medicalFormSaveBarFabOffset(pathname);
+  // Native tab screens sit under the bottom bar; lift the FAB clear of it,
+  // plus a gap so the two never touch (the base already covers the inset).
+  const tabBarLift =
+    Platform.OS !== "web" && (segments as string[]).includes("(tabs)")
+      ? NATIVE_TAB_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_TAB_BAR_GAP
+      : 0;
   const bottom =
     Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) +
+    tabBarLift +
     addBarLift +
     profileLift +
     medicalFormLift;

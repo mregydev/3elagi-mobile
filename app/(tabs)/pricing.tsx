@@ -20,6 +20,9 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
 
+/** The "your region" wash is a fixed light gradient — text on it stays dark. */
+const HIGHLIGHT_TEXT = "#1a2132";
+
 const MARKET_ORDER: PointMarket[] = ["EG", "JO", "INTL"];
 
 /** Public pricing page — the per-credit rate in every market we serve. */
@@ -116,6 +119,9 @@ export default function PricingTab() {
 
           {rows.map((row) => {
             const isYours = row.market === activeMarket;
+            // The highlight wash is always light, so its text cannot follow the
+            // theme foreground — in dark mode that was white on near-white.
+            const rowColor = isYours ? HIGHLIGHT_TEXT : colors.foreground;
             return (
               <View
                 key={row.market}
@@ -143,12 +149,12 @@ export default function PricingTab() {
                     <CircledCountryFlag country={row.market} size={22} />
                   )}
                   <View style={styles.regionText}>
-                    <Text style={[styles.region, { color: colors.foreground, textAlign }]}>
+                    <Text style={[styles.region, { color: rowColor, textAlign }]}>
                       {marketName(row.market)}
                     </Text>
                     {isYours ? (
                       <Text
-                        style={[styles.yours, { color: colors.foreground, textAlign }]}
+                        style={[styles.yours, { color: HIGHLIGHT_TEXT, textAlign }]}
                       >
                         {t.pricing.yourRegion}
                       </Text>
@@ -156,7 +162,7 @@ export default function PricingTab() {
                   </View>
                 </View>
 
-                <Text style={[styles.price, { color: colors.foreground }]}>
+                <Text style={[styles.price, { color: rowColor }]}>
                   {row.pricePerPoint} {row.currency}
                 </Text>
               </View>

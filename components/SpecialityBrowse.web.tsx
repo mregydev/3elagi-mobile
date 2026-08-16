@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
-import { Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SpecialityGlassShell } from "@/components/SpecialityGlassShell";
 import { UI } from "@/constants/uiTokens";
 import type { Speciality } from "@/domains/home/api";
@@ -118,14 +118,18 @@ interface SpecialityGridProps {
   specialities: Speciality[];
   isRTL: boolean;
   onSelect: (speciality: Speciality) => void;
+  /** Directory page: fill the viewport rather than hugging the tiles. */
+  fullHeight?: boolean;
 }
 
 export function SpecialityGrid({
   specialities,
   isRTL,
   onSelect,
+  fullHeight = false,
 }: SpecialityGridProps) {
   const colors = useColors();
+  const { height: viewportHeight } = useWindowDimensions();
   const { locale } = useI18n();
   const { gridColumns } = useWebLayout();
   const columns = Math.max(gridColumns, 3);
@@ -142,7 +146,10 @@ export function SpecialityGrid({
   const isArabic = locale === "ar";
 
   return (
-    <SpecialityGlassShell isRTL={isRTL}>
+    <SpecialityGlassShell
+      isRTL={isRTL}
+      style={fullHeight ? { minHeight: viewportHeight * 0.9 } : undefined}
+    >
       <View style={styles.headingRow}>
         <Image
           source={require("@/assets/images/splash-mark.png")}

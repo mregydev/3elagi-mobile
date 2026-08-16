@@ -13,6 +13,7 @@ import { navigateBack } from "@/utils/appNavigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -41,6 +42,7 @@ import {
   toVideoEmbedUrl,
   type VideoCallSession,
 } from "@/domains/video-call/api";
+import { stopIncomingCallRing } from "@/domains/video-call/incomingCallRing";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useRinger } from "@/hooks/useRinger";
@@ -78,6 +80,7 @@ export default function VideoCallScreen() {
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const addPendingMessage = useChatStore((s) => s.addPendingMessage);
   const notifyMedicalHistoryChanged = useMedicalStore(
     (s) => s.notifyMedicalHistoryChanged,
   );
@@ -199,6 +202,34 @@ export default function VideoCallScreen() {
     return () => onVideoCallStatus(null);
   }, []);
 
+  // The doctor declined: drop a note in the thread and return the caller to it
+  // rather than leaving them on a dead call screen.
+  const declineHandledRef = useRef(false);
+  useEffect(() => {
+    if (session?.status !== "declined" || !isPatient) return;
+    if (declineHandledRef.current) return;
+    declineHandledRef.current = true;
+
+    const peerId = session.doctorUserId;
+    if (peerId) {
+      addPendingMessage(peerId, {
+        id: `call-declined-${session.id}`,
+        conversationId: peerId,
+        senderId: peerId,
+        text: t.auth.callDeclined,
+        createdAt: new Date().toISOString(),
+        type: "text",
+        pending: false,
+      });
+    }
+    showInfoToast(t.auth.callDeclined);
+    if (peerId) {
+      router.replace({ pathname: "/chat/[id]", params: { id: peerId } });
+    } else {
+      navigateBack();
+    }
+  }, [session?.status, session?.id, session?.doctorUserId, isPatient, addPendingMessage, t]);
+
   useEffect(() => {
     clearPoll();
     if (!accessToken || !session || session.status !== "ringing" || !isPatient) {
@@ -217,6 +248,13 @@ export default function VideoCallScreen() {
     return clearPoll;
   }, [accessToken, clearPoll, isPatient, session?.id, session?.status]);
 
+  useEffect(() => {
+    if (Platform.OS !== "android" || !session?.id) return;
+    if (session.status !== "ringing") {
+      stopIncomingCallRing(session.id);
+    }
+  }, [session?.id, session?.status]);
+
   const handleLeave = () => {
     clearMeetingTimer();
     if (accessToken && session?.id && session.id !== "direct") {
@@ -230,6 +268,7 @@ export default function VideoCallScreen() {
     setActing("accept");
     try {
       const next = await acceptVideoCall(accessToken, session.id);
+      stopIncomingCallRing(session.id);
       setSession(next);
     } catch (e) {
       setError(
@@ -249,6 +288,7 @@ export default function VideoCallScreen() {
     setActing("reject");
     try {
       await declineVideoCall(accessToken, session.id);
+      stopIncomingCallRing(session.id);
       navigateBack(router, "/(tabs)/history");
     } catch (e) {
       setError(
@@ -401,7 +441,7 @@ export default function VideoCallScreen() {
     !!session && isDoctor && session.status === "ringing";
   // Patient hears the ringback while dialing; the doctor hears the ringtone.
   useRinger("ringback", waitingForDoctor);
-  useRinger("ringtone", incomingForDoctor && !acting);
+  useRinger("ringtone", incomingForDoctor && !acting && Platform.OS !== "android");
   const countdownLabel = formatRemainingTime(remainingSeconds);
 
   const endMeetingForTimeout = useCallback(() => {

@@ -1,4 +1,3 @@
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
@@ -17,6 +16,16 @@ export function SpecialityGlassShell({ children, style, isRTL }: Props) {
   const theme = useResolvedTheme();
   const isDark = theme === "dark";
 
+  // Native has no backdrop blur, so the blur + white sheen rendered as an
+  // opaque white card under the grid. Plain background there; glass on web.
+  if (Platform.OS !== "web") {
+    return (
+      <View style={[styles.shell, styles.plainNative, style]}>
+        <View style={styles.content}>{children}</View>
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
@@ -28,13 +37,6 @@ export function SpecialityGlassShell({ children, style, isRTL }: Props) {
       // @ts-expect-error web writing direction
       dir={isRTL ? "rtl" : "ltr"}
     >
-      {Platform.OS !== "web" ? (
-        <BlurView
-          intensity={isDark ? 38 : 68}
-          tint={isDark ? "dark" : "light"}
-          style={StyleSheet.absoluteFillObject}
-        />
-      ) : null}
       <LinearGradient
         colors={
           isDark
@@ -64,6 +66,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     position: "relative",
+  },
+  plainNative: {
+    backgroundColor: "transparent",
   },
   shine: {
     position: "absolute",

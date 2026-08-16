@@ -2,7 +2,6 @@ import { MessageSquare, ShieldCheck, Stethoscope, Video } from "lucide-react-nat
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
-import { Logo3elagi } from "@/components/Logo3elagi";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -24,8 +23,6 @@ export default function AboutUsScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader />
       <ScrollView contentContainerStyle={styles.content}>
-        <Logo3elagi height={56} centered />
-
         <Text style={[styles.headline, { color: colors.foreground, textAlign }]}>
           {t.about.headline}
         </Text>

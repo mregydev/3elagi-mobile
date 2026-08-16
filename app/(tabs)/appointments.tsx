@@ -22,6 +22,8 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { appointmentRoomState } from "@/domains/appointments/roomWindow";
+import { showInfoToast } from "@/utils/toast";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#f59e0b",
@@ -181,7 +183,22 @@ export default function AppointmentsTab() {
           {item.meeting_link ? (
             <View style={styles.linkWrap}>
               <Pressable
-                onPress={() =>
+                onPress={() => {
+                  // Booked rooms are live only for their slot; outside it the
+                  // tap explains why instead of opening an empty meeting.
+                  const state = appointmentRoomState(
+                    item.date,
+                    item.time,
+                    item.duration_minutes,
+                  );
+                  if (state === "early" || state === "unscheduled") {
+                    showInfoToast(t.appointments.roomNotOpen);
+                    return;
+                  }
+                  if (state === "over") {
+                    showInfoToast(t.appointments.roomClosed);
+                    return;
+                  }
                   router.push({
                     pathname: "/video-call",
                     params: {
@@ -193,8 +210,8 @@ export default function AppointmentsTab() {
                         ? { patientUserId: item.other_user_id }
                         : {}),
                     },
-                  })
-                }
+                  });
+                }}
                 style={[styles.openLinkBtn, { borderColor: colors.primary }]}
               >
                 <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>

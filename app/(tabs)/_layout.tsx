@@ -6,11 +6,13 @@ import {
   ClipboardList,
   Coins,
   History,
+  HelpCircle,
   Home,
   Info,
   ListChecks,
   MessageSquare,
   Star,
+  Stethoscope,
   User,
   Users,
 } from "lucide-react-native";
@@ -20,6 +22,7 @@ import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -60,7 +63,7 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: colors.card,
             borderTopColor: colors.border,
-            height: 58 + insets.bottom,
+            height: NATIVE_TAB_BAR_HEIGHT + insets.bottom,
             paddingBottom: Math.max(insets.bottom, 6),
             paddingTop: 6,
           },
@@ -88,6 +91,9 @@ export default function TabsLayout() {
           options={{
             title: t.tabs.forDoctors,
             href: guestOnlyHref,
+            tabBarIcon: ({ color, size }) => (
+              <Stethoscope color={color} size={size} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -95,6 +101,9 @@ export default function TabsLayout() {
           options={{
             title: t.tabs.faq,
             href: guestOnlyHref,
+            tabBarIcon: ({ color, size }) => (
+              <HelpCircle color={color} size={size} />
+            ),
           }}
         />
         <Tabs.Screen

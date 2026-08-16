@@ -1,8 +1,9 @@
 """Regenerates the call ring sounds. Run: python3 assets/sounds/generate.py
 
 Synthesized rather than downloaded so the app ships nothing licence-encumbered.
-Tweak the frequencies / cadence below to taste, or just drop a replacement
-ringback.wav / ringtone.wav in this folder — nothing else references the tones.
+Tweak the frequencies / cadence below to taste, or drop a replacement
+ringback.wav / ringtone.wav / incoming_call.wav in this folder.
+incoming_call.wav is copied into Android res/raw/ on prebuild for native ringing.
 """
 
 import math
@@ -50,5 +51,6 @@ motif = []
 for f in (880.0, 1108.73, 1318.51):
     motif += tone([f, f * 2], 0.16, amp=0.42, fade=0.012) + silence(0.04)
 write("ringtone.wav", motif + silence(0.25) + motif + silence(1.6))
+write("incoming_call.wav", motif + silence(0.25) + motif + silence(1.6))
 
-print("wrote ringback.wav + ringtone.wav")
+print("wrote ringback.wav + ringtone.wav + incoming_call.wav")
