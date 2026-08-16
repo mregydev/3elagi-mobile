@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import colors, { ACCENTS, ACCENT_KEYS } from "@/constants/colors";
 
 describe("accent palettes", () => {
-  it("green is first, and every key covers both themes", () => {
-    expect(ACCENT_KEYS[0]).toBe("green");
+  it("blue is first, and every key covers both themes", () => {
+    expect(ACCENT_KEYS[0]).toBe("blue");
     for (const key of ACCENT_KEYS) {
       for (const theme of ["light", "dark"] as const) {
         // A missing token would silently fall back to the blue base palette.

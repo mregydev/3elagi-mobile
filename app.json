@@ -30,7 +30,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#0F766E"
+        "backgroundColor": "#3057F2"
       }
     },
     "web": {
@@ -59,7 +59,7 @@
         "expo-notifications",
         {
           "defaultChannel": "chat-messages",
-          "color": "#0F766E"
+          "color": "#3057F2"
         }
       ],
       "@react-native-community/datetimepicker",

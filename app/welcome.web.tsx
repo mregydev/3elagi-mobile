@@ -17,7 +17,7 @@ import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import { AUTH_EVENTS } from "@/domains/auth/events";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { on } from "@/utils/eventBus";
@@ -29,6 +29,7 @@ type WelcomePanel = "home" | "login" | "signup";
 
 export default function WelcomeScreenWeb() {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const { isDesktop, isMobile, isTablet } = useWebLayout();
@@ -159,13 +160,14 @@ export default function WelcomeScreenWeb() {
                   style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
                     styles.btn,
                     styles.btnLogin,
+                    { shadowColor: colors.primary },
                     pressed && styles.btnPressed,
                     hovered && styles.btnLoginHovered,
                   ]}
                   accessibilityRole="button"
                 >
                   <LinearGradient
-                    colors={["#0F766E", "#34D399"]}
+                    colors={accentGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.btnLoginGradient}
@@ -180,16 +182,16 @@ export default function WelcomeScreenWeb() {
                     styles.btn,
                     styles.btnSignup,
                     {
-                      borderColor: "#0F766E",
+                      borderColor: colors.primary,
                       backgroundColor: hovered
-                        ? "rgba(15, 118, 110,0.16)"
-                        : "rgba(15, 118, 110,0.08)",
+                        ? colors.primary + "29"
+                        : colors.primary + "14",
                     },
                     pressed && styles.btnPressed,
                   ]}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.btnSignupText, { color: "#0F766E" }]}>
+                  <Text style={[styles.btnSignupText, { color: colors.primary }]}>
                     {t.auth.register}
                   </Text>
                 </Pressable>
@@ -349,7 +351,6 @@ const styles = StyleSheet.create({
   btnLogin: {
     paddingHorizontal: 0,
     paddingVertical: 0,
-    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
     shadowRadius: 18,

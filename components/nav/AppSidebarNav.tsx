@@ -129,6 +129,7 @@ export function AppSidebarNav({
         style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
           styles.navItem,
           collapsed && styles.navItemRail,
+          collapsed && active && styles.navItemRailActive,
           {
             flexDirection: dir,
             backgroundColor: active
@@ -150,7 +151,9 @@ export function AppSidebarNav({
         />
         {collapsed ? (
           // Rail has no room for the count — a dot still flags unread.
-          badgeCount > 0 ? <View style={styles.railDot} /> : null
+          badgeCount > 0 ? (
+            <View style={[styles.railDot, active && styles.railDotActive]} />
+          ) : null
         ) : (
           <>
             <Text
@@ -438,17 +441,31 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   navItemRail: {
+    alignSelf: "center",
     justifyContent: "center",
+    width: 44,
+    height: 44,
     paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 22,
+  },
+  navItemRailActive: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   railDot: {
     position: "absolute",
-    top: 8,
-    right: 12,
+    top: 6,
+    right: 6,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: "#ef4444",
+  },
+  railDotActive: {
+    top: 8,
+    right: 8,
   },
   navLabel: { fontSize: 14, flex: 1 },
   badge: {

@@ -7,13 +7,14 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useGuestAuthDialogStore } from "@/domains/auth/guestAuthDialogStore";
 import { clearPendingAuthReturn } from "@/domains/auth/pendingAuthReturn";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
 /** Design-system dialog prompting guests to log in or sign up (welcome CTA buttons). */
 export function GuestAuthRequiredDialog() {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const visible = useGuestAuthDialogStore((s) => s.visible);
   const close = useGuestAuthDialogStore((s) => s.close);
@@ -82,13 +83,13 @@ export function GuestAuthRequiredDialog() {
             onPress={goLogin}
             style={({ pressed }) => [
               styles.btnPrimary,
-              { opacity: pressed ? 0.92 : 1, shadowColor: "#0F766E" },
+              { opacity: pressed ? 0.92 : 1, shadowColor: colors.primary },
             ]}
             accessibilityRole="button"
             accessibilityLabel={t.auth.logIn}
           >
             <LinearGradient
-              colors={["#0F766E", "#34D399"]}
+              colors={accentGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[styles.btnPrimaryGradient, { flexDirection: dir }]}
@@ -103,18 +104,18 @@ export function GuestAuthRequiredDialog() {
             style={({ pressed }) => [
               styles.btnGhost,
               {
-                borderColor: "#0F766E",
+                borderColor: colors.primary,
                 backgroundColor: pressed
-                  ? "rgba(15, 118, 110,0.16)"
-                  : "rgba(15, 118, 110,0.08)",
+                  ? colors.primary + "29"
+                  : colors.primary + "14",
                 flexDirection: dir,
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel={t.auth.newMemberSignUp}
           >
-            <UserPlus size={18} color="#0F766E" />
-            <Text style={[styles.btnGhostText, { color: "#0F766E" }]}>
+            <UserPlus size={18} color={colors.primary} />
+            <Text style={[styles.btnGhostText, { color: colors.primary }]}>
               {t.auth.newMemberSignUp}
             </Text>
           </Pressable>

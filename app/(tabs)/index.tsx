@@ -244,16 +244,13 @@ function ChatsHomeBrowse() {
       ref={scrollRef}
       nativeID={BRAND_SCROLL_NATIVE_ID}
       style={styles.scroll}
-      contentContainerStyle={[
-        { paddingBottom: 40, gap: 8 },
-        // Guests: content sits at 95% of the page, scrollbar stays on the edge.
-        !signedIn && styles.guestContent,
-      ]}
+      contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator
       refreshControl={
         <RefreshControl refreshing={loadingHome} onRefresh={() => void loadHome()} />
       }
     >
+      <View style={signedIn ? styles.pageContent : styles.guestContent}>
       {!signedIn ? (
         <PublicLandingSections />
       ) : (
@@ -327,6 +324,7 @@ function ChatsHomeBrowse() {
           />
         </>
       )}
+      </View>
       <LandingWaveFooter />
     </ScrollView>
   );
@@ -346,7 +344,9 @@ export default function ChatsTab() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flex: 1 },
-  guestContent: { width: "95%", alignSelf: "center" },
+  scrollContent: { flexGrow: 1, gap: 8, paddingBottom: 0 },
+  pageContent: { flexGrow: 1, gap: 8 },
+  guestContent: { flexGrow: 1, width: "95%", alignSelf: "center", gap: 8 },
   specialitiesHeading: { marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
   specialitiesTitle: { ...UI.type.section, fontSize: 20 },
   specialitiesSubtitle: { fontSize: 14, lineHeight: 20, marginTop: 4 },

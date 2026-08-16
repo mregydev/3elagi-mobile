@@ -12,11 +12,11 @@ export default function DoctorsDirectoryScreenWeb() {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const signedIn = isSignedIn(profile, accessToken);
-  const { isDesktop } = useWebLayout();
+  const { isMobile } = useWebLayout();
 
   return (
     <WebDesktopShell allowGuests>
-      {!signedIn && !isDesktop ? <PublicLandingNav /> : null}
+      {!signedIn && isMobile ? <PublicLandingNav /> : null}
       <DoctorsDirectoryScreen />
     </WebDesktopShell>
   );

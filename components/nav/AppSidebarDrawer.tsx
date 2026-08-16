@@ -20,10 +20,10 @@ export function AppSidebarDrawer() {
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const { open, closeSidebar } = useAppSidebar();
-  const { isDesktop } = useWebLayout();
+  const { isTablet } = useWebLayout();
 
-  // Desktop web keeps the permanent sidebar; drawer is for mobile (native + web).
-  if (Platform.OS === "web" && isDesktop) return null;
+  // Tablet+ web keeps the permanent sidebar; drawer is for mobile web + native.
+  if (Platform.OS === "web" && isTablet) return null;
 
   return (
     <Modal
@@ -99,9 +99,9 @@ export function AppSidebarMenuButton() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { openSidebar } = useAppSidebar();
-  const { isDesktop } = useWebLayout();
+  const { isTablet } = useWebLayout();
 
-  if (Platform.OS === "web" && isDesktop) return null;
+  if (Platform.OS === "web" && isTablet) return null;
 
   return (
     <Pressable

@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { AccentPicker } from "@/components/AccentPicker";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -62,6 +63,7 @@ export function PublicLandingNav() {
     <>
       <LanguageDropdown compact />
       <ThemeToggle />
+      <AccentPicker />
       <Pressable
         onPress={() => router.push("/auth/login")}
         style={({ pressed }) => [

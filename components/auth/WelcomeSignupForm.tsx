@@ -39,7 +39,7 @@ import {
   setDoctorSignupMarketOverride,
 } from "@/domains/market/doctorSignupMarket";
 import { getUrlMarketCountry } from "@/domains/market/resolveMarketCountry";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
@@ -55,6 +55,7 @@ function initialSignupCountry(): PatientCountryCode {
 
 export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL, locale } = useI18n();
   const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
   const dir = flexRow(isRTL);
@@ -519,11 +520,14 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         disabled={loading}
         style={({ pressed }) => [
           styles.btn,
-          { opacity: loading ? 0.7 : pressed ? 0.92 : 1 },
+          {
+            shadowColor: colors.primary,
+            opacity: loading ? 0.7 : pressed ? 0.92 : 1,
+          },
         ]}
       >
         <LinearGradient
-          colors={loading ? ["#94A3B8", "#94A3B8"] : ["#0F766E", "#34D399"]}
+          colors={loading ? ["#94A3B8", "#94A3B8"] : accentGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.btnGradient}
@@ -693,7 +697,6 @@ const styles = StyleSheet.create({
     width: "100%",
     borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.32,
     shadowRadius: 12,

@@ -51,8 +51,8 @@ const colors = {
 };
 
 
-/** Switchable primary palettes — picked from the sidebar, green is the default. */
-export const ACCENT_KEYS = ["green", "blue", "red"] as const;
+/** Switchable primary palettes — picked from the sidebar, blue is the default. */
+export const ACCENT_KEYS = ["blue", "green", "red"] as const;
 export type AccentKey = (typeof ACCENT_KEYS)[number];
 
 type AccentTokens = Pick<

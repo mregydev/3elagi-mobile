@@ -23,7 +23,7 @@ export function AppHeader({
   title,
 }: Props) {
   const colors = useColors();
-  const { isDesktop } = useWebLayout();
+  const { isMobile, isTablet } = useWebLayout();
   const mobileTitleTop = useMobileWebPageTitlePaddingTop();
   const showHeader = useShowAppHeader();
 
@@ -38,11 +38,11 @@ export function AppHeader({
           borderBottomColor: colors.border,
           borderBottomWidth: borderless ? 0 : StyleSheet.hairlineWidth,
           // Mobile web: sit at the viewport top (safe-area only — no extra gap).
-          paddingTop: isDesktop ? 16 : mobileTitleTop,
+          paddingTop: isTablet ? 16 : mobileTitleTop,
         },
       ]}
     >
-      {!isDesktop ? (
+      {isMobile ? (
         <View style={styles.brandRow}>
           <AppSidebarMenuButton />
           <Pressable

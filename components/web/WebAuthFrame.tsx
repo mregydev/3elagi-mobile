@@ -1,17 +1,15 @@
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Home } from "lucide-react-native";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AuthHeroMedia } from "@/components/auth/AuthHeroMedia";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
-
-const AUTH_BRAND_HERO = require("@/assets/images/auth-hero.png");
 
 interface Props {
   children: React.ReactNode;
@@ -59,13 +57,7 @@ export function WebAuthFrame({
     >
       {!stackVertical ? (
         <View style={styles.heroPane}>
-          <Image
-            source={AUTH_BRAND_HERO}
-            style={styles.heroImage}
-            contentFit="cover"
-            contentPosition="center"
-            accessibilityLabel=""
-          />
+          <AuthHeroMedia overlayOpacity={0.48} />
         </View>
       ) : null}
 
@@ -166,11 +158,7 @@ const styles = StyleSheet.create({
     minHeight: "100%" as unknown as number,
     backgroundColor: "#eef4fc",
     overflow: "hidden",
-  },
-  heroImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
+    position: "relative",
   },
   actionPane: {
     flex: 0.85,

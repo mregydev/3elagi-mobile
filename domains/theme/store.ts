@@ -8,7 +8,7 @@ export type ResolvedTheme = "light" | "dark";
 
 interface ThemeState {
   mode: ThemeMode;
-  /** Primary colour palette; green ships as the default. */
+  /** Primary colour palette; blue ships as the default. */
   accent: AccentKey;
   hydrated: boolean;
   setMode: (mode: ThemeMode) => void;
@@ -37,7 +37,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       mode: "system",
-      accent: "green",
+      accent: "blue",
       hydrated: false,
       setMode: (mode) => set({ mode }),
       setAccent: (accent) => set({ accent }),
@@ -52,13 +52,13 @@ export const useThemeStore = create<ThemeState>()(
           ...current,
           ...stored,
           mode: isThemeMode(stored?.mode) ? stored.mode : "system",
-          accent: isAccentKey(stored?.accent) ? stored.accent : "green",
+          accent: isAccentKey(stored?.accent) ? stored.accent : "blue",
         };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
           if (!isThemeMode(state.mode)) state.mode = "system";
-          if (!isAccentKey(state.accent)) state.accent = "green";
+          if (!isAccentKey(state.accent)) state.accent = "blue";
           state.hydrated = true;
         }
       },

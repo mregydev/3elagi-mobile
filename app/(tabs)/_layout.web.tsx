@@ -31,7 +31,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 export default function TabsLayoutWeb() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { isMobile } = useWebLayout();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -60,9 +60,8 @@ export default function TabsLayoutWeb() {
         {/* Guests: full-bleed column so the landing scrollbar sits on the page
             edge (right in English, left in Arabic via #brand-scroll CSS). */}
         <WebContentColumn wide fluid={!signedIn} style={styles.main}>
-          {/* Desktop guests navigate from the sidebar; the top bar is the
-              narrow-screen fallback (it carries the hamburger menu). */}
-          {!signedIn && !isDesktop ? (
+          {/* Mobile guests use PublicLandingNav; tablet+ guests use the sidebar. */}
+          {!signedIn && isMobile ? (
             <View style={styles.guestNav}>
               <PublicLandingNav />
             </View>

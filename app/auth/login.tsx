@@ -24,12 +24,13 @@ import {
   validateLoginFields,
   type LoginFieldErrors,
 } from "@/domains/auth/validation";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function LoginScreen() {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const login = useAuthStore((s) => s.login);
@@ -175,11 +176,14 @@ export default function LoginScreen() {
             disabled={loading}
             style={({ pressed }) => [
               styles.btn,
-              { opacity: loading ? 0.7 : pressed ? 0.92 : 1 },
+              {
+                shadowColor: colors.primary,
+                opacity: loading ? 0.7 : pressed ? 0.92 : 1,
+              },
             ]}
           >
             <LinearGradient
-              colors={loading ? ["#94A3B8", "#94A3B8"] : ["#0F766E", "#34D399"]}
+              colors={loading ? ["#94A3B8", "#94A3B8"] : accentGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.btnGradient}
@@ -237,7 +241,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#0F766E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

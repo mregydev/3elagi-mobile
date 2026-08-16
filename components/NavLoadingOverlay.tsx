@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { Logo3elagi } from "@/components/Logo3elagi";
 import { useColors } from "@/hooks/useColors";
 
 // How long a navigation must take before we bother showing the loader. Fast
@@ -88,7 +89,8 @@ export function NavLoadingOverlay() {
 
   return (
     <View style={[styles.overlay, { backgroundColor: colors.background }]} pointerEvents="auto">
-      <ActivityIndicator size="large" color={colors.primary} />
+      <Logo3elagi height={56} markOnly centered />
+      <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
     </View>
   );
 }
@@ -99,5 +101,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 9999,
+  },
+  spinner: {
+    marginTop: 20,
   },
 });

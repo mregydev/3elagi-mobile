@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
@@ -22,6 +22,7 @@ type WelcomePanel = "home" | "login" | "signup";
 
 export default function WelcomeScreen() {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
   const insets = useSafeAreaInsets();
@@ -146,12 +147,12 @@ export default function WelcomeScreen() {
                     styles.btnPrimary,
                     {
                       opacity: pressed ? 0.92 : 1,
-                      shadowColor: "#0F766E",
+                      shadowColor: colors.primary,
                     },
                   ]}
                 >
                   <LinearGradient
-                    colors={["#0F766E", "#34D399"]}
+                    colors={accentGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.btnPrimaryGradient}
@@ -165,14 +166,14 @@ export default function WelcomeScreen() {
                   style={({ pressed }) => [
                     styles.btnGhost,
                     {
-                      borderColor: "#0F766E",
+                      borderColor: colors.primary,
                       backgroundColor: pressed
-                        ? "rgba(15, 118, 110,0.16)"
-                        : "rgba(15, 118, 110,0.08)",
+                        ? colors.primary + "29"
+                        : colors.primary + "14",
                     },
                   ]}
                 >
-                  <Text style={[styles.btnGhostText, { color: "#0F766E" }]}>
+                  <Text style={[styles.btnGhostText, { color: colors.primary }]}>
                     {t.auth.register}
                   </Text>
                 </Pressable>

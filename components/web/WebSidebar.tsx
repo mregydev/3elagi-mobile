@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AppSidebarNav } from "@/components/nav/AppSidebarNav";
 import { MobileAppLink } from "@/components/web/MobileAppLink";
@@ -9,12 +9,16 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 export function WebSidebar() {
   const colors = useColors();
   const { isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
-  const [collapsed, setCollapsed] = useState(false);
+  const { isDesktop, isTablet } = useWebLayout();
+  const [collapsed, setCollapsed] = useState(true);
 
-  // Guests get the same rail (nav items + Log in / Get started in the footer);
+  // Desktop: expanded rail. Tablet: icon rail to preserve content width.
+  useEffect(() => {
+    setCollapsed(!isDesktop);
+  }, [isDesktop]);
+
   // PublicLandingNav is only the narrow-screen fallback.
-  if (!isDesktop) return null;
+  if (!isTablet) return null;
 
   return (
     <View

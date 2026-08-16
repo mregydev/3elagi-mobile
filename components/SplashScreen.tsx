@@ -1,5 +1,4 @@
 import * as ExpoSplashScreen from "expo-splash-screen";
-import { Image } from "expo-image";
 import React, { useCallback, useEffect, useRef } from "react";
 import {
   Animated,
@@ -8,18 +7,16 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import colors from "@/constants/colors";
+import { Logo3elagi } from "@/components/Logo3elagi";
 import { en } from "@/constants/translations";
+import { useColors } from "@/hooks/useColors";
 
-const splashLogo = require("@/assets/images/splash-logo.png");
-
-const SPLASH_BACKGROUND = colors.light.background;
 const SPLASH_TAGLINE = en.app.tagline;
 
 export function AppSplash({ onDone }: { onDone: () => void }) {
+  const colors = useColors();
   const { width: screenWidth } = useWindowDimensions();
-  const logoWidth = Math.min(screenWidth - 32, 340);
-  const logoHeight = logoWidth * (200 / 840);
+  const logoHeight = Math.min(Math.round(screenWidth * 0.2), 84);
   const nativeSplashHidden = useRef(false);
 
   const logoScale = useRef(new Animated.Value(1)).current;
@@ -75,23 +72,18 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
 
   return (
     <View
-      style={[styles.root, { backgroundColor: SPLASH_BACKGROUND }]}
+      style={[styles.root, { backgroundColor: colors.background }]}
       onLayout={hideNativeSplash}
     >
       <Animated.View style={{ transform: [{ scale: logoScale }] }}>
-        <Image
-          source={splashLogo}
-          style={{ width: logoWidth, height: logoHeight }}
-          contentFit="contain"
-          accessibilityLabel="3elagi"
-        />
+        <Logo3elagi height={logoHeight} centered />
       </Animated.View>
 
       <Animated.Text
         style={[
           styles.tagline,
           {
-            color: colors.light.mutedForeground,
+            color: colors.mutedForeground,
             opacity: taglineOpacity,
             transform: [{ translateY: taglineTranslateY }],
           },

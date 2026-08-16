@@ -74,11 +74,11 @@ textarea:focus-visible {
 @supports (-moz-appearance: none) {
   * {
     scrollbar-width: thin !important;
-    scrollbar-color: #0f766e rgba(15, 118, 110, 0.1) !important;
+    scrollbar-color: var(--scrollbar-thumb, #3057f2) var(--scrollbar-track, rgba(48, 87, 242, 0.1)) !important;
   }
 }
 
-/* Branded blue scrollbars on every overflow container (incl. RN Web ScrollView). */
+/* Branded scrollbars on every overflow container (incl. RN Web ScrollView). */
 *::-webkit-scrollbar {
   width: 8px !important;
   height: 8px !important;
@@ -87,18 +87,18 @@ textarea:focus-visible {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #0f766e !important;
+  background-color: var(--scrollbar-thumb, #3057f2) !important;
   border-radius: 999px !important;
   border: 2px solid transparent !important;
   background-clip: padding-box !important;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #115e59 !important;
+  background-color: var(--scrollbar-thumb-hover, #2546c4) !important;
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(15, 118, 110, 0.1) !important;
+  background: var(--scrollbar-track, rgba(48, 87, 242, 0.1)) !important;
 }
 
 #auth-form-scroll,
