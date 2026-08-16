@@ -1,15 +1,15 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { HomeBannerVideo } from "@/components/HomeBannerVideo";
-import { UI } from "@/constants/uiTokens";
+import { glowShadow, UI } from "@/constants/uiTokens";
+import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-
-const PULSE_GREEN = "#22c55e";
 
 /** Banner video in a TV set — bezel, screen, stand. Used by the public hero (desktop)
  *  and the mobile hero media section. */
 export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
   const { t, isRTL } = useI18n();
+  const colors = useColors();
 
   // Slow 6s breathe — enough to catch the eye, not enough to distract.
   const breathe = useRef(new Animated.Value(0)).current;
@@ -27,7 +27,7 @@ export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
     return () => loop.stop();
   }, [animate, breathe]);
 
-  // "Live consultation" pulse: green glow + badge fade up, hold, fade out,
+  // "Live consultation" pulse: accent glow + badge fade up, hold, fade out,
   // then a long quiet gap so it reads as occasional rather than blinking.
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -73,12 +73,16 @@ export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
         <View style={styles.screen}>
           <HomeBannerVideo embedded />
         </View>
-        <View style={styles.led} />
+        <View style={[styles.led, { backgroundColor: colors.primary }]} />
 
-        {/* Green ring around the monitor — pointerEvents none so it never eats taps. */}
+        {/* Accent ring around the monitor — pointerEvents none so it never eats taps. */}
         <Animated.View
           pointerEvents="none"
-          style={[styles.pulseRing, { opacity: pulseOpacity }]}
+          style={[
+            styles.pulseRing,
+            glowShadow(colors.primary),
+            { borderColor: colors.primary, opacity: pulseOpacity },
+          ]}
         />
 
         <Animated.View
@@ -87,6 +91,7 @@ export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
             styles.statusPill,
             isRTL ? styles.statusPillRTL : styles.statusPillLTR,
             {
+              borderColor: `${colors.primary}80`,
               opacity: pulseOpacity,
               transform: [
                 { translateY: pulse.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) },
@@ -133,8 +138,7 @@ const styles = StyleSheet.create({
     bottom: -3,
     borderRadius: 23,
     borderWidth: 2,
-    borderColor: PULSE_GREEN,
-    ...UI.shadowGlow,
+    // borderColor + glow come from the active accent (see glowShadow).
   },
   statusPill: {
     position: "absolute",
@@ -147,7 +151,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(9, 14, 24, 0.82)",
     borderWidth: 1,
-    borderColor: "rgba(34, 197, 94, 0.5)",
   },
   statusPillLTR: { right: 26 },
   statusPillRTL: { left: 26 },
@@ -155,7 +158,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: PULSE_GREEN,
   },
   statusText: {
     color: "#e8fff1",
@@ -169,7 +171,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#4ade80",
   },
   neck: {
     width: "12%",

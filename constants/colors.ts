@@ -50,4 +50,38 @@ const colors = {
   radius: 16,
 };
 
+
+/** Switchable primary palettes — picked from the sidebar, green is the default. */
+export const ACCENT_KEYS = ["green", "blue", "red"] as const;
+export type AccentKey = (typeof ACCENT_KEYS)[number];
+
+type AccentTokens = Pick<
+  (typeof colors)["light"],
+  "primary" | "tint" | "accent" | "accentForeground"
+>;
+
+export const ACCENTS: Record<
+  AccentKey,
+  { light: AccentTokens; dark: AccentTokens; swatch: string; gradient: [string, string] }
+> = {
+  green: {
+    swatch: "#0f766e",
+    gradient: ["#0F766E", "#34D399"],
+    light: { primary: "#0f766e", tint: "#0f766e", accent: "#e6f4f1", accentForeground: "#115e59" },
+    dark: { primary: "#2dd4bf", tint: "#2dd4bf", accent: "#123430", accentForeground: "#99f6e4" },
+  },
+  blue: {
+    swatch: "#3057f2",
+    gradient: ["#3057F2", "#38BDF8"],
+    light: { primary: "#3057f2", tint: "#3057f2", accent: "#e8effe", accentForeground: "#2546c4" },
+    dark: { primary: "#6b8af7", tint: "#6b8af7", accent: "#1e2a42", accentForeground: "#a5b8fc" },
+  },
+  red: {
+    swatch: "#be123c",
+    gradient: ["#BE123C", "#FB7185"],
+    light: { primary: "#be123c", tint: "#be123c", accent: "#ffe4e6", accentForeground: "#9f1239" },
+    dark: { primary: "#fb7185", tint: "#fb7185", accent: "#3f1d24", accentForeground: "#fecdd3" },
+  },
+};
+
 export default colors;

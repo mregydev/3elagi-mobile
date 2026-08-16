@@ -57,17 +57,6 @@ export const UI = {
       elevation: 8,
     } as ViewStyle,
   }),
-  /** Green "live" halo — pairs with the consultation pulse on the hero monitor. */
-  shadowGlow: Platform.select({
-    web: { boxShadow: "0 0 24px rgba(34,197,94,0.45)" } as ViewStyle,
-    default: {
-      shadowColor: "#22c55e",
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 14,
-      elevation: 0,
-    } as ViewStyle,
-  }),
   shadowHover: Platform.select({
     web: {
       boxShadow: "0 6px 20px rgba(26,33,50,0.1)",
@@ -80,6 +69,55 @@ export const UI = {
     default: {},
   }),
 };
+
+/** "Live" halo in the given colour — pairs with the consultation pulse. */
+export function glowShadow(color: string): ViewStyle {
+  return (
+    Platform.select({
+      // A View has no `color`, so the web glow needs the literal colour here.
+      web: { boxShadow: `0 0 24px ${color}73` } as ViewStyle,
+      default: {
+        shadowColor: color,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 14,
+        elevation: 0,
+      } as ViewStyle,
+    }) ?? {}
+  );
+}
+
+/** Frosted glass panel — web uses backdrop-filter; native pairs with BlurView. */
+export function glassSurface(opts: {
+  isDark: boolean;
+  accentColor?: string;
+}): ViewStyle {
+  const { isDark, accentColor = "#0f766e" } = opts;
+  const webBg = isDark ? "rgba(26, 33, 50, 0.58)" : "rgba(255, 255, 255, 0.5)";
+  const border = isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.72)";
+
+  return {
+    backgroundColor: Platform.OS === "web" ? webBg : "transparent",
+    borderRadius: UI.radius.xl,
+    borderWidth: 1,
+    borderColor: border,
+    overflow: "hidden",
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        boxShadow: isDark
+          ? "0 12px 40px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.1)"
+          : `0 12px 40px ${accentColor}1a, inset 0 1px 0 rgba(255,255,255,0.78), inset 0 -1px 0 rgba(255,255,255,0.28)`,
+      } as ViewStyle,
+      default: {
+        ...UI.shadowMd,
+        shadowColor: accentColor,
+        shadowOpacity: 0.14,
+      } as ViewStyle,
+    }),
+  };
+}
 
 /** Primary card surface — soft shadow, minimal border. */
 export function surfaceCard(backgroundColor: string, borderColor?: string): ViewStyle {

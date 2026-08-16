@@ -1,14 +1,22 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { ACCENT_KEYS, type AccentKey } from "@/constants/colors";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
 interface ThemeState {
   mode: ThemeMode;
+  /** Primary colour palette; green ships as the default. */
+  accent: AccentKey;
   hydrated: boolean;
   setMode: (mode: ThemeMode) => void;
+  setAccent: (accent: AccentKey) => void;
+}
+
+function isAccentKey(value: unknown): value is AccentKey {
+  return ACCENT_KEYS.includes(value as AccentKey);
 }
 
 function isThemeMode(value: unknown): value is ThemeMode {
@@ -29,24 +37,28 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       mode: "system",
+      accent: "green",
       hydrated: false,
       setMode: (mode) => set({ mode }),
+      setAccent: (accent) => set({ accent }),
     }),
     {
       name: "3elagi-theme",
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ mode: state.mode }),
+      partialize: (state) => ({ mode: state.mode, accent: state.accent }),
       merge: (persisted, current) => {
         const stored = persisted as Partial<ThemeState> | undefined;
         return {
           ...current,
           ...stored,
           mode: isThemeMode(stored?.mode) ? stored.mode : "system",
+          accent: isAccentKey(stored?.accent) ? stored.accent : "green",
         };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
           if (!isThemeMode(state.mode)) state.mode = "system";
+          if (!isAccentKey(state.accent)) state.accent = "green";
           state.hydrated = true;
         }
       },

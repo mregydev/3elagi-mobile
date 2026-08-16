@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { surfaceCard } from "@/constants/uiTokens";
+import { SpecialityGlassShell } from "@/components/SpecialityGlassShell";
 import type { Speciality } from "@/domains/home/api";
 import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
@@ -29,37 +29,49 @@ function SpecialityTile({
   const illustration = image ?? (item.imageUrl ? { uri: item.imageUrl } : null);
   const isArabic = locale === "ar";
 
+  const circleVisual = (pressed: boolean) =>
+    illustration ? (
+      <View
+        style={[
+          styles.circle,
+          {
+            backgroundColor: `${color}18`,
+            borderColor: `${color}55`,
+            transform: [{ scale: pressed ? 0.94 : 1 }],
+          },
+        ]}
+      >
+        <Image
+          source={illustration}
+          style={[styles.illustration, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+          resizeMode="contain"
+        />
+      </View>
+    ) : (
+      <LinearGradient
+        colors={specialityGradient(color)}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[
+          styles.circle,
+          styles.orbFallback,
+          { borderColor: `${color}55`, transform: [{ scale: pressed ? 0.94 : 1 }] },
+        ]}
+      >
+        <Icon size={28} color="#fff" />
+      </LinearGradient>
+    );
+
   return (
     <View style={styles.tile}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [styles.pressable, { opacity: pressed ? 0.88 : 1 }]}
       >
-        {illustration ? (
-          <View
-            style={[
-              styles.circle,
-              surfaceCard(colors.card, `${color}55`),
-              { borderColor: `${color}66` },
-            ]}
-          >
-            <Image
-              source={illustration}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
-          </View>
-        ) : (
-          <LinearGradient
-            colors={specialityGradient(color)}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.circle, styles.orbFallback, { borderColor: `${color}55` }]}
-          >
-            <Icon size={28} color="#fff" />
-          </LinearGradient>
-        )}
-        <Text
+        {({ pressed }) => (
+          <>
+            {circleVisual(pressed)}
+            <Text
           style={[
             styles.primaryLabel,
             {
@@ -73,6 +85,8 @@ function SpecialityTile({
         >
           {label}
         </Text>
+          </>
+        )}
       </Pressable>
     </View>
   );
@@ -103,15 +117,7 @@ export function SpecialityGrid({
   const isArabic = locale === "ar";
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        surfaceCard(colors.card, colors.border),
-        { direction: isRTL ? "rtl" : "ltr" } as object,
-      ]}
-      // @ts-expect-error web writing direction
-      dir={isRTL ? "rtl" : "ltr"}
-    >
+    <SpecialityGlassShell isRTL={isRTL}>
       <View style={styles.headingRow}>
         <Image
           source={require("@/assets/images/splash-mark.png")}
@@ -136,18 +142,11 @@ export function SpecialityGrid({
           <SpecialityTile key={item.id} item={item} onPress={() => onSelect(item)} />
         ))}
       </View>
-    </View>
+    </SpecialityGlassShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    paddingHorizontal: 10,
-    paddingTop: 18,
-    paddingBottom: 14,
-  },
   headingRow: {
     flexDirection: "row",
     alignItems: "center",

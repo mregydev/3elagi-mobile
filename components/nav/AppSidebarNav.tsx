@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { AccentPicker } from "@/components/AccentPicker";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { filterAppNavItems, HOME_NAV_RESET_EVENT } from "@/constants/appNav";
@@ -29,7 +30,7 @@ import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useNotificationsStore } from "@/domains/notifications/store";
 import { useChatStore } from "@/domains/chat/store";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -54,6 +55,7 @@ export function AppSidebarNav({
   onToggleCollapse,
 }: Props) {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL, locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
@@ -181,7 +183,7 @@ export function AppSidebarNav({
   return (
     <ScrollView
       style={styles.root}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, collapsed && styles.contentRail]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       bounces={false}
@@ -243,37 +245,41 @@ export function AppSidebarNav({
               <ThemeToggle />
             </View>
 
+            <View style={[styles.prefRow, { flexDirection: dir }]}>
+              <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign, flex: 1 }]}>
+                {t.settings.accentColor}
+              </Text>
+              <AccentPicker />
+            </View>
+
             <Pressable
               onPress={() => go("/contact")}
               accessibilityRole="button"
               accessibilityLabel={t.tabs.contactUs}
               style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
                 styles.contactCta,
-                { opacity: pressed || hovered ? 0.92 : 1 },
+                {
+                  flexDirection: dir,
+                  borderColor: colors.border,
+                  backgroundColor: pressed || hovered ? colors.accent : colors.card,
+                },
               ]}
             >
-              <LinearGradient
-                colors={["#0F766E", "#34D399"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.contactCtaGradient, { flexDirection: dir }]}
+              <Mail size={18} color={colors.primary} />
+              <Text
+                style={[
+                  styles.navLabel,
+                  {
+                    color: colors.foreground,
+                    textAlign,
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    fontWeight: "600",
+                    fontSize: navFontSize,
+                  },
+                ]}
               >
-                <Mail size={18} color="#FFFFFF" />
-                <Text
-                  style={[
-                    styles.navLabel,
-                    {
-                      color: "#FFFFFF",
-                      textAlign,
-                      writingDirection: isRTL ? "rtl" : "ltr",
-                      fontWeight: "800",
-                      fontSize: navFontSize,
-                    },
-                  ]}
-                >
-                  {t.tabs.contactUs}
-                </Text>
-              </LinearGradient>
+                {t.tabs.contactUs}
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -318,30 +324,37 @@ export function AppSidebarNav({
               style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
                 styles.authCta,
                 styles.authCtaLogin,
-                { opacity: pressed || hovered ? 0.92 : 1 },
+                collapsed && styles.authCtaRail,
+                { shadowColor: colors.primary, opacity: pressed || hovered ? 0.92 : 1 },
               ]}
             >
               <LinearGradient
-                colors={["#0F766E", "#34D399"]}
+                colors={accentGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.authCtaGradient, { flexDirection: dir }]}
+                style={[
+                  styles.authCtaGradient,
+                  { flexDirection: dir },
+                  collapsed && styles.authCtaGradientRail,
+                ]}
               >
                 <LogIn size={18} color="#FFFFFF" />
-                <Text
-                  style={[
-                    styles.navLabel,
-                    {
-                      color: "#FFFFFF",
-                      textAlign,
-                      writingDirection: isRTL ? "rtl" : "ltr",
-                      fontWeight: "800",
-                      fontSize: navFontSize,
-                    },
-                  ]}
-                >
-                  {t.auth.logIn}
-                </Text>
+                {collapsed ? null : (
+                  <Text
+                    style={[
+                      styles.navLabel,
+                      {
+                        color: "#FFFFFF",
+                        textAlign,
+                        writingDirection: isRTL ? "rtl" : "ltr",
+                        fontWeight: "800",
+                        fontSize: navFontSize,
+                      },
+                    ]}
+                  >
+                    {t.auth.logIn}
+                  </Text>
+                )}
               </LinearGradient>
             </Pressable>
             <Pressable
@@ -351,31 +364,31 @@ export function AppSidebarNav({
               style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
                 styles.logoutBtn,
                 styles.authCtaSignup,
+                collapsed && styles.authCtaRail,
                 {
                   flexDirection: dir,
-                  borderColor: "#0F766E",
-                  backgroundColor:
-                    pressed || hovered
-                      ? "rgba(15, 118, 110,0.16)"
-                      : "rgba(15, 118, 110,0.08)",
+                  borderColor: colors.primary,
+                  backgroundColor: `${colors.primary}${pressed || hovered ? "29" : "14"}`,
                 },
               ]}
             >
-              <UserPlus size={18} color="#0F766E" />
-              <Text
-                style={[
-                  styles.navLabel,
-                  {
-                    color: "#0F766E",
-                    textAlign,
-                    writingDirection: isRTL ? "rtl" : "ltr",
-                    fontWeight: "800",
-                    fontSize: navFontSize,
-                  },
-                ]}
-              >
-                {t.auth.register}
-              </Text>
+              <UserPlus size={18} color={colors.primary} />
+              {collapsed ? null : (
+                <Text
+                  style={[
+                    styles.navLabel,
+                    {
+                      color: colors.primary,
+                      textAlign,
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                      fontWeight: "800",
+                      fontSize: navFontSize,
+                    },
+                  ]}
+                >
+                  {t.auth.register}
+                </Text>
+              )}
             </Pressable>
           </>
         )}
@@ -397,6 +410,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 28,
     gap: 10,
+  },
+  contentRail: {
+    paddingHorizontal: 8,
+    alignItems: "center",
   },
   brandRow: {
     alignItems: "center",
@@ -450,7 +467,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: 8,
-    // Preferences / logout stay anchored at the sidebar bottom.
+    // Preferences / auth actions stay anchored at the sidebar bottom.
     marginTop: "auto",
     paddingTop: 16,
   },
@@ -474,21 +491,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingHorizontal: 2,
   },
+  // Quiet outline — the gradient competed with the Log in CTA below it.
   contactCta: {
-    borderRadius: 12,
-    overflow: "hidden",
-    marginTop: 2,
-    shadowColor: "#0F766E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  contactCtaGradient: {
     alignItems: "center",
     gap: 10,
+    marginTop: 2,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   logoutBtn: {
     alignItems: "center",
@@ -503,7 +514,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   authCtaLogin: {
-    shadowColor: "#0F766E",
+    // Breathing room between the preferences block (Contact us) and the CTAs.
+    marginTop: 22,
+    // shadowColor is set inline from the active accent.
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -517,6 +530,30 @@ const styles = StyleSheet.create({
   },
   authCtaSignup: {
     borderWidth: 2,
+  },
+  // Rail: same 44x44 square as every other icon item, so the CTAs stop
+  // stretching into slabs when the labels are gone.
+  authCtaRail: {
+    alignSelf: "center",
+    width: 44,
+    height: 44,
+    minHeight: 44,
+    marginTop: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 12,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  authCtaGradientRail: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    gap: 0,
   },
   logoutText: { color: "#ef4444", fontWeight: "700", fontSize: 14, flex: 1 },
 });

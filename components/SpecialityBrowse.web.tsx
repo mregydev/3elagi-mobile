@@ -1,7 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { surfaceCard, UI } from "@/constants/uiTokens";
+import { Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { SpecialityGlassShell } from "@/components/SpecialityGlassShell";
+import { UI } from "@/constants/uiTokens";
 import type { Speciality } from "@/domains/home/api";
 import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
@@ -38,22 +39,34 @@ function SpecialityTile({
         // @ts-expect-error RN Web hover
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        style={({ pressed }) => [
-          styles.pressable,
-          { opacity: pressed ? 0.88 : hovered ? 0.96 : 1 },
-        ]}
+        style={({ pressed }) => [styles.pressable, { opacity: pressed ? 0.88 : 1 }]}
       >
         {illustration ? (
           <View
             style={[
               styles.circle,
-              surfaceCard(colors.card, `${color}55`),
-              { borderColor: `${color}66` },
+              styles.circleGlass,
+              styles.circleZoom,
+              {
+                backgroundColor: `${color}18`,
+                borderColor: `${color}55`,
+                transform: [{ scale: hovered ? 1.1 : 1 }],
+                zIndex: hovered ? 2 : 0,
+              },
+              hovered && {
+                ...Platform.select({
+                  web: { boxShadow: `0 10px 28px ${color}35` } as object,
+                  default: {},
+                }),
+              },
             ]}
           >
             <Image
               source={illustration}
-              style={styles.illustration}
+              style={[
+                styles.illustration,
+                { transform: [{ scale: hovered ? 1.06 : 1 }] },
+              ]}
               resizeMode="contain"
             />
           </View>
@@ -62,7 +75,22 @@ function SpecialityTile({
             colors={specialityGradient(color)}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.circle, styles.orbFallback, { borderColor: `${color}55` }]}
+            style={[
+              styles.circle,
+              styles.orbFallback,
+              styles.circleZoom,
+              {
+                borderColor: `${color}55`,
+                transform: [{ scale: hovered ? 1.1 : 1 }],
+                zIndex: hovered ? 2 : 0,
+              },
+              hovered && {
+                ...Platform.select({
+                  web: { boxShadow: `0 10px 28px ${color}35` } as object,
+                  default: {},
+                }),
+              },
+            ]}
           >
             <Icon size={32} color="#fff" />
           </LinearGradient>
@@ -114,15 +142,7 @@ export function SpecialityGrid({
   const isArabic = locale === "ar";
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        surfaceCard(colors.card, colors.border),
-        { direction: isRTL ? "rtl" : "ltr" } as object,
-      ]}
-      // @ts-expect-error web writing direction
-      dir={isRTL ? "rtl" : "ltr"}
-    >
+    <SpecialityGlassShell isRTL={isRTL}>
       <View style={styles.headingRow}>
         <Image
           source={require("@/assets/images/splash-mark.png")}
@@ -152,18 +172,11 @@ export function SpecialityGrid({
           />
         ))}
       </View>
-    </View>
+    </SpecialityGlassShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    paddingHorizontal: 12,
-    paddingTop: 20,
-    paddingBottom: 18,
-  },
   headingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -183,13 +196,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-start",
+    overflow: "visible" as const,
   },
-  tile: { paddingVertical: 10, paddingHorizontal: 8 },
+  tile: { paddingVertical: 10, paddingHorizontal: 8, overflow: "visible" as const },
   pressable: {
     alignItems: "center",
     cursor: "pointer" as "auto",
     ...UI.pressable,
   },
+  circleZoom: Platform.select({
+    web: {
+      transition: "transform 0.22s ease, box-shadow 0.22s ease",
+    } as object,
+    default: {},
+  }),
   circle: {
     width: CIRCLE,
     height: CIRCLE,
@@ -198,10 +218,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
   },
+  circleGlass: Platform.select({
+    web: {
+      backdropFilter: "blur(8px) saturate(140%)",
+      WebkitBackdropFilter: "blur(8px) saturate(140%)",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55)",
+    } as object,
+    default: {},
+  }),
   illustration: {
     width: "100%",
     height: "100%",
     backgroundColor: "transparent",
+    ...Platform.select({
+      web: { transition: "transform 0.22s ease" } as object,
+      default: {},
+    }),
   },
   orbFallback: {
     alignItems: "center",

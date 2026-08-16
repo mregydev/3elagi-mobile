@@ -4,17 +4,19 @@ import { PublicLandingNav } from "@/components/marketing/PublicLandingNav";
 import { WebDesktopShell } from "@/components/web/WebDesktopShell";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
+import { useWebLayout } from "@/hooks/useWebLayout";
 
 /** Same sidebar shell as the tabs, so the directory keeps the side nav on desktop.
- *  Guests are allowed through — they get the public nav instead of the sidebar. */
+ *  Guests are allowed through — on desktop they get the sidebar, below it the top nav. */
 export default function DoctorsDirectoryScreenWeb() {
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const signedIn = isSignedIn(profile, accessToken);
+  const { isDesktop } = useWebLayout();
 
   return (
     <WebDesktopShell allowGuests>
-      {!signedIn ? <PublicLandingNav /> : null}
+      {!signedIn && !isDesktop ? <PublicLandingNav /> : null}
       <DoctorsDirectoryScreen />
     </WebDesktopShell>
   );

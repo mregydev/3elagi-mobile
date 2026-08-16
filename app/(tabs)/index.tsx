@@ -19,6 +19,7 @@ import { DoctorChatRoster } from "@/components/DoctorChatRoster";
 import { HomePatientHeader } from "@/components/home/HomePatientHeader";
 import { HomeHealthSummary } from "@/components/home/HomeHealthSummary";
 import { DoctorHomeBrowse } from "@/components/home/DoctorHomeBrowse";
+import { LandingWaveFooter } from "@/components/marketing/LandingWaveFooter";
 import { PublicLandingSections } from "@/components/marketing/PublicLandingSections";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { HomeBannerVideo } from "@/components/HomeBannerVideo";
@@ -326,6 +327,7 @@ function ChatsHomeBrowse() {
           />
         </>
       )}
+      <LandingWaveFooter />
     </ScrollView>
   );
 }

@@ -27,7 +27,16 @@ export function PublicHowItWorksSection() {
       </Text>
       <View style={[styles.grid, isDesktop ? { flexDirection: dir } : styles.gridStack]}>
         {steps.map((step, index) => (
-          <View key={step.title} style={[styles.step, isDesktop && { flex: 1 }]}>
+          <View
+            key={step.title}
+            style={[
+              styles.step,
+              // Badge + icon follow the text side; without this they stay left
+              // while Arabic copy is right-aligned.
+              { alignItems: isRTL ? "flex-end" : "flex-start" },
+              isDesktop && { flex: 1 },
+            ]}
+          >
             <View style={[styles.stepBadge, { backgroundColor: colors.primary }]}>
               <Text style={styles.stepNumber}>{index + 1}</Text>
             </View>
@@ -66,6 +75,7 @@ const styles = StyleSheet.create({
   step: {
     gap: 8,
     paddingVertical: 4,
+    minWidth: 0,
   },
   stepBadge: {
     width: 24,
