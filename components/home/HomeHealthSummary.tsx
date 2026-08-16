@@ -1,8 +1,11 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { ClipboardList, Coins, MessageSquare } from "lucide-react-native";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
+import { useAuthStore } from "@/domains/auth/store";
+import { fetchPatientConsultations } from "@/domains/consultations/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { selectPointsBalance, usePointsStore } from "@/domains/points/store";
 import { useColors } from "@/hooks/useColors";
@@ -22,8 +25,26 @@ export function HomeHealthSummary({ signedIn }: Props) {
   const textAlign = alignText(isRTL);
   const records = useMedicalStore((s) => s.records);
   const pointsSummary = usePointsStore((s) => s.summary);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const credits = selectPointsBalance(pointsSummary);
   const recordCount = records.length;
+  const [openConsultations, setOpenConsultations] = useState(0);
+
+  const loadOpenConsultations = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const list = await fetchPatientConsultations(accessToken);
+      setOpenConsultations(list.filter((c) => c.status === "open").length);
+    } catch {
+      // Keep the last count if refresh fails.
+    }
+  }, [accessToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (signedIn) void loadOpenConsultations();
+    }, [signedIn, loadOpenConsultations]),
+  );
 
   if (!signedIn) {
     return (
@@ -56,9 +77,10 @@ export function HomeHealthSummary({ signedIn }: Props) {
     {
       key: "consultations",
       label: t.home.consultationsStat,
-      value: t.home.consultationsEmpty,
+      value: String(openConsultations),
       icon: MessageSquare,
-      onPress: () => router.push("/(tabs)/consultations"),
+      onPress: () =>
+        router.push({ pathname: "/(tabs)/consultations", params: { status: "open" } }),
     },
   ];
 

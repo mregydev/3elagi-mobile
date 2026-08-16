@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { CalendarClock, Coins, MessageSquare, Users } from "lucide-react-native";
+import { CalendarClock, Coins, Bell, Users } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
@@ -30,18 +30,18 @@ export function HomeDoctorSummary({ metrics }: Props) {
       onPress: () => router.push("/(tabs)/appointments"),
     },
     {
-      key: "pending",
-      label: t.doctorDashboard.pendingConsultations,
-      value: String(metrics.pendingConsultations),
+      key: "consultations",
+      label: t.doctorDashboard.activeConsultations,
+      value: String(metrics.openConsultations),
       icon: Users,
       onPress: () => router.push("/(tabs)/consultations"),
     },
     {
-      key: "messages",
-      label: t.doctorDashboard.unreadMessages,
-      value: String(metrics.unreadMessages),
-      icon: MessageSquare,
-      onPress: () => router.push("/(tabs)/history"),
+      key: "notifications",
+      label: t.doctorDashboard.unreadNotifications,
+      value: String(metrics.unreadNotifications),
+      icon: Bell,
+      onPress: () => router.push("/(tabs)/notifications"),
     },
     {
       key: "credits",

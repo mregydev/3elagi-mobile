@@ -1,18 +1,14 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Href, usePathname, useRouter } from "expo-router";
 import {
-  ChevronDown,
-  ChevronUp,
   LogIn,
   LogOut,
   Mail,
-  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings2,
   UserPlus,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React from "react";
 import {
   Alert,
   Platform,
@@ -80,11 +76,6 @@ export function AppSidebarNav({
     ...item,
     active: item.match(pathname),
   }));
-  const primaryItems = items.filter((item) => !item.secondary);
-  const secondaryItems = items.filter((item) => item.secondary);
-
-  const [moreOpen, setMoreOpen] = useState(secondaryItems.some((item) => item.active));
-  const [prefsOpen, setPrefsOpen] = useState(false);
 
   const handleLogout = () => {
     const confirmed =
@@ -228,59 +219,10 @@ export function AppSidebarNav({
         </View>
       ) : null}
 
-      <View style={styles.nav}>{primaryItems.map(renderNavItem)}</View>
-
-      {secondaryItems.length ? (
-        <View style={styles.group}>
-          <Pressable
-            onPress={collapsed ? onToggleCollapse : () => setMoreOpen((open) => !open)}
-            accessibilityRole="button"
-            accessibilityLabel={t.tabs.more}
-            accessibilityState={{ expanded: moreOpen }}
-            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.navItem,
-              collapsed && styles.navItemRail,
-              {
-                flexDirection: dir,
-                backgroundColor: pressed || hovered ? colors.muted : "transparent",
-              },
-            ]}
-          >
-            <MoreHorizontal size={18} color={colors.mutedForeground} />
-            {collapsed ? null : (
-              <>
-                <Text
-                  style={[
-                    styles.navLabel,
-                    {
-                      color: colors.foreground,
-                      textAlign,
-                      writingDirection: isRTL ? "rtl" : "ltr",
-                      fontSize: navFontSize,
-                      fontWeight: "500",
-                    },
-                  ]}
-                >
-                  {t.tabs.more}
-                </Text>
-                {moreOpen ? (
-                  <ChevronUp size={16} color={colors.mutedForeground} />
-                ) : (
-                  <ChevronDown size={16} color={colors.mutedForeground} />
-                )}
-              </>
-            )}
-          </Pressable>
-          {moreOpen && !collapsed ? (
-            <View style={[styles.nav, styles.groupItems]}>
-              {secondaryItems.map(renderNavItem)}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+      <View style={styles.nav}>{items.map(renderNavItem)}</View>
 
       <View style={styles.footer}>
-        {prefsOpen && !collapsed ? (
+        {!collapsed ? (
           <View
             style={[
               styles.prefPanel,
@@ -306,73 +248,35 @@ export function AppSidebarNav({
               accessibilityRole="button"
               accessibilityLabel={t.tabs.contactUs}
               style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                styles.navItem,
-                {
-                  flexDirection: dir,
-                  backgroundColor: pressed || hovered ? colors.card : "transparent",
-                },
+                styles.contactCta,
+                { opacity: pressed || hovered ? 0.92 : 1 },
               ]}
             >
-              <Mail size={18} color={colors.primary} />
-              <Text
-                style={[
-                  styles.navLabel,
-                  {
-                    color: colors.foreground,
-                    textAlign,
-                    writingDirection: isRTL ? "rtl" : "ltr",
-                    fontSize: navFontSize,
-                  },
-                ]}
+              <LinearGradient
+                colors={["#0F766E", "#34D399"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.contactCtaGradient, { flexDirection: dir }]}
               >
-                {t.tabs.contactUs}
-              </Text>
+                <Mail size={18} color="#FFFFFF" />
+                <Text
+                  style={[
+                    styles.navLabel,
+                    {
+                      color: "#FFFFFF",
+                      textAlign,
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                      fontWeight: "800",
+                      fontSize: navFontSize,
+                    },
+                  ]}
+                >
+                  {t.tabs.contactUs}
+                </Text>
+              </LinearGradient>
             </Pressable>
           </View>
         ) : null}
-
-        <Pressable
-          onPress={collapsed ? onToggleCollapse : () => setPrefsOpen((open) => !open)}
-          accessibilityRole="button"
-          accessibilityLabel={t.settings.preferences}
-          accessibilityState={{ expanded: prefsOpen }}
-          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-            styles.navItem,
-            collapsed && styles.navItemRail,
-            {
-              flexDirection: dir,
-              backgroundColor: pressed || hovered ? colors.muted : "transparent",
-            },
-          ]}
-        >
-          <Settings2 size={18} color={colors.mutedForeground} />
-          {collapsed ? null : (
-            <>
-              <Text
-                style={[
-                  styles.navLabel,
-                  {
-                    color: colors.foreground,
-                    textAlign,
-                    writingDirection: isRTL ? "rtl" : "ltr",
-                    fontSize: navFontSize,
-                  },
-                ]}
-              >
-                {role
-                  ? role.toLowerCase() === "doctor"
-                    ? t.tabs.doctorAccount
-                    : t.tabs.patientAccount
-                  : t.settings.preferences}
-              </Text>
-              {prefsOpen ? (
-                <ChevronDown size={16} color={colors.mutedForeground} />
-              ) : (
-                <ChevronUp size={16} color={colors.mutedForeground} />
-              )}
-            </>
-          )}
-        </Pressable>
 
         {signedIn ? (
           <Pressable
@@ -509,8 +413,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   nav: { gap: 2 },
-  group: { gap: 2 },
-  groupItems: { paddingTop: 2 },
   navItem: {
     alignItems: "center",
     gap: 10,
@@ -571,6 +473,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     paddingHorizontal: 2,
+  },
+  contactCta: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginTop: 2,
+    shadowColor: "#0F766E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  contactCtaGradient: {
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   logoutBtn: {
     alignItems: "center",

@@ -7,7 +7,6 @@ import {
   Coins,
   History,
   Home,
-  HelpCircle,
   Info,
   ListChecks,
   MessageSquare,
@@ -31,8 +30,6 @@ export type AppNavItem = {
   guestOnly?: boolean;
   /** Hidden when AI is switched off in the profile. */
   aiOnly?: boolean;
-  /** Informational page — collapsed under "More" in the sidebar. */
-  secondary?: boolean;
   match: (path: string) => boolean;
 };
 
@@ -77,7 +74,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     Icon: Info,
     guestAllowed: true,
     guestOnly: true,
-    secondary: true,
     match: (path) => pathHas(path, "about-us"),
   },
   {
@@ -93,7 +89,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "pricing",
     Icon: Coins,
     guestAllowed: true,
-    secondary: true,
     match: (path) => pathHas(path, "pricing"),
   },
   {
@@ -101,18 +96,8 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "forDoctors",
     Icon: Stethoscope,
     guestAllowed: true,
-    secondary: true,
-    // Marketing page — guests and doctors keep it, signed-in patients don't.
-    doctorOnly: true,
+    guestOnly: true,
     match: (path) => pathHas(path, "for-doctors"),
-  },
-  {
-    href: "/(tabs)/faq",
-    labelKey: "faq",
-    Icon: HelpCircle,
-    guestAllowed: true,
-    secondary: true,
-    match: (path) => pathHas(path, "faq"),
   },
   {
     href: "/(tabs)/notifications",

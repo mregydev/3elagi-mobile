@@ -109,11 +109,7 @@ export function DoctorHomeBrowse() {
         onToggleAvailability={(next) => void handleToggleAvailability(next)}
       />
       <HomeDoctorSummary metrics={metrics} />
-      <DoctorConsultationQueue
-        consultations={consultations}
-        unreadMessages={metrics.unreadMessages}
-        onChanged={() => void bootstrap()}
-      />
+      <DoctorConsultationQueue consultations={consultations} />
     </ScrollView>
   );
 }

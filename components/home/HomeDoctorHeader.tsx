@@ -71,8 +71,8 @@ export function HomeDoctorHeader({
     : t.doctorDashboard.greeting(period);
 
   const queueBadge =
-    metrics.pendingConsultations > 0
-      ? t.doctorDashboard.startVideoQueueBadge(metrics.pendingConsultations)
+    metrics.openConsultations > 0
+      ? t.doctorDashboard.startVideoQueueBadge(metrics.openConsultations)
       : undefined;
 
   const actions: QuickAction[] = [
