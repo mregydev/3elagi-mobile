@@ -11,6 +11,7 @@ import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
+import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { useAccentGradient, useColors, useResolvedTheme } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -30,7 +31,13 @@ export default function WelcomeScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const logoHeight = Math.min(64, screenWidth * 0.18);
   const [panel, setPanel] = useState<WelcomePanel>("home");
+  const [googlePrefill, setGooglePrefill] = useState<GoogleNoAccountPayload | null>(null);
   const showForm = panel !== "home";
+
+  const handleGoogleNoAccount = (payload: GoogleNoAccountPayload) => {
+    setGooglePrefill(payload);
+    setPanel("signup");
+  };
 
   const formTitle =
     panel === "login" ? t.auth.logIn : panel === "signup" ? t.auth.register : "";
@@ -141,9 +148,16 @@ export default function WelcomeScreen() {
                 </Text>
 
                 {panel === "login" ? (
-                  <WelcomeLoginForm onSwitchToSignup={() => setPanel("signup")} />
+                  <WelcomeLoginForm
+                    onSwitchToSignup={() => setPanel("signup")}
+                    onGoogleNoAccount={handleGoogleNoAccount}
+                  />
                 ) : (
-                  <WelcomeSignupForm onSwitchToLogin={() => setPanel("login")} />
+                  <WelcomeSignupForm
+                    onSwitchToLogin={() => setPanel("login")}
+                    googlePrefill={googlePrefill}
+                    onGoogleNoAccount={handleGoogleNoAccount}
+                  />
                 )}
               </KeyboardSafeScrollView>
             ) : (
@@ -261,7 +275,7 @@ const styles = StyleSheet.create({
   },
   footerOuterExpanded: {
     flex: 1,
-    marginTop: 8,
+    marginTop: 4,
     minHeight: 0,
   },
   footer: {
@@ -290,15 +304,15 @@ const styles = StyleSheet.create({
   footerContent: {
     gap: 12,
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   formTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
     textAlign: "center",
     letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: 0,
   },
   ctaTitle: {
     fontSize: 24,

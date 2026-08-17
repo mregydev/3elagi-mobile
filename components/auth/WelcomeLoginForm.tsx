@@ -22,12 +22,14 @@ import {
 import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
 
 interface Props {
   onSwitchToSignup: () => void;
+  onGoogleNoAccount?: (payload: GoogleNoAccountPayload) => void;
 }
 
-export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
+export function WelcomeLoginForm({ onSwitchToSignup, onGoogleNoAccount }: Props) {
   const colors = useColors();
   const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
@@ -136,7 +138,7 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
           )}
         </LinearGradient>
       </Pressable>
-      <GoogleAuthButton />
+      <GoogleAuthButton onAccountNotFound={onGoogleNoAccount} />
       <Pressable onPress={onSwitchToSignup} style={styles.switchLink}>
         <Text style={{ color: colors.primary, fontWeight: "600" }}>
           {t.auth.noAccountSignUp}

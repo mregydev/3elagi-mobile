@@ -219,6 +219,18 @@ export const authRepository = {
     return toSession(raw, "");
   },
 
+  /** Native: the device already holds a verified ID token, no code exchange. */
+  async loginWithGoogleIdToken(input: {
+    idToken: string;
+    medicalRecordsConsent?: boolean;
+  }): Promise<AuthSession> {
+    const raw = await post<RawAuthResponse>("/auth/google", {
+      id_token: input.idToken,
+      medical_records_storage_consent: input.medicalRecordsConsent ?? false,
+    });
+    return toSession(raw, "");
+  },
+
   async login(creds: Credentials): Promise<AuthSession> {
     const email = creds.email.trim().toLowerCase();
     try {

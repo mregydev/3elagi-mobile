@@ -28,6 +28,10 @@ interface AuthState {
     redirectUri: string;
     medicalRecordsConsent?: boolean;
   }) => Promise<void>;
+  loginWithGoogleIdToken: (input: {
+    idToken: string;
+    medicalRecordsConsent?: boolean;
+  }) => Promise<void>;
   signup: (s: SignupInput) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
@@ -95,6 +99,25 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true, error: null });
         try {
           applySession(set, await authRepository.loginWithGoogle(input));
+        } catch (e) {
+          set({ error: (e as Error).message, loading: false });
+          throw e;
+        }
+      },
+      loginWithGoogleIdToken: async (input) => {
+        set({ loading: true, error: null });
+        try {
+          const session = await authRepository.loginWithGoogleIdToken(input);
+          const role = session.role.toLowerCase();
+          if (role === "admin" && Platform.OS !== "web") {
+            set({ loading: false });
+            throw new Error("__UNSUPPORTED_ROLE__");
+          }
+          if (role !== "patient" && role !== "doctor" && role !== "admin") {
+            set({ loading: false });
+            throw new Error("__UNSUPPORTED_ROLE__");
+          }
+          applySession(set, session);
         } catch (e) {
           set({ error: (e as Error).message, loading: false });
           throw e;

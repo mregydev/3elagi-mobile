@@ -111,6 +111,13 @@ export default function SignupScreen() {
     if (roleParam === "doctor") setRole("doctor");
   }, [roleParam]);
 
+  useEffect(() => {
+    if (!emailParam && !nameParam) return;
+    if (emailParam) setEmail(String(emailParam));
+    if (nameParam) setName(String(nameParam));
+    if (errorParam === "google_no_account") setFormOpen(true);
+  }, [emailParam, nameParam, errorParam]);
+
   const isDoctor = role === "doctor";
   const urlMarket = getUrlMarketCountry();
   const phonePlaceholder =
@@ -293,7 +300,7 @@ export default function SignupScreen() {
             styles.topBar,
             {
               // Native sits inside the auth card, which already clears the notch.
-              paddingTop: Platform.OS === "web" ? 8 : 10,
+              paddingTop: Platform.OS === "web" ? 8 : 4,
               flexDirection: dir,
             },
           ]}
@@ -307,6 +314,7 @@ export default function SignupScreen() {
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
+          Platform.OS !== "web" && styles.bodyNative,
           Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
         ]}
         bottomOffset={32}
@@ -343,7 +351,16 @@ export default function SignupScreen() {
           />
         ) : null}
 
-        <View style={[styles.roleRow, { flexDirection: dir, marginTop: showSubtitle ? 20 : 16 }]}>
+        <View
+          style={[
+            styles.roleRow,
+            {
+              flexDirection: dir,
+              marginTop:
+                Platform.OS === "web" ? (showSubtitle ? 20 : 16) : showSubtitle ? 10 : 6,
+            },
+          ]}
+        >
           <RoleChip
             active={role === "patient"}
             onPress={() => {
@@ -372,9 +389,7 @@ export default function SignupScreen() {
           />
         </View>
 
-        {!isDoctor ? (
-          <GoogleAuthButton dividerBelow />
-        ) : null}
+        <GoogleAuthButton dividerBelow signupRole={role} />
 
         <Pressable
           onPress={() => setFormOpen((open) => !open)}
@@ -772,12 +787,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 40 : 40,
   },
+  bodyNative: {
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
   bodyMobileWeb: {
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 40 + WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING,
   },
-  title: { fontSize: 28, fontWeight: "800" },
+  title: { fontSize: Platform.OS === "web" ? 28 : 24, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4, textAlign: "center" },
   roleRow: { gap: 10, width: "100%" },
   roleChip: {
@@ -791,7 +810,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   avatarWrap: {
-    marginTop: 24,
+    marginTop: Platform.OS === "web" ? 24 : 14,
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     // The collapsible wrapper now stretches full width, so the avatar needs to
@@ -882,7 +901,7 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     alignItems: "center",
     gap: 8,
-    marginTop: 14,
+    marginTop: Platform.OS === "web" ? 14 : 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,

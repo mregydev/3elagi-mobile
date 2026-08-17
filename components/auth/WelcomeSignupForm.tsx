@@ -43,18 +43,25 @@ import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
 
 type LocalFile = SignupFile & { label: string };
 
 interface Props {
   onSwitchToLogin: () => void;
+  googlePrefill?: GoogleNoAccountPayload | null;
+  onGoogleNoAccount?: (payload: GoogleNoAccountPayload) => void;
 }
 
 function initialSignupCountry(): PatientCountryCode {
   return getUrlMarketCountry() ?? DEFAULT_PATIENT_COUNTRY;
 }
 
-export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
+export function WelcomeSignupForm({
+  onSwitchToLogin,
+  googlePrefill,
+  onGoogleNoAccount,
+}: Props) {
   const colors = useColors();
   const accentGradient = useAccentGradient();
   const { t, isRTL, locale } = useI18n();
@@ -85,6 +92,15 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
   useEffect(() => {
     if (roleParam === "doctor") setRole("doctor");
   }, [roleParam]);
+
+  useEffect(() => {
+    if (!googlePrefill) return;
+    if (googlePrefill.email) setEmail(googlePrefill.email);
+    if (googlePrefill.name) setName(googlePrefill.name);
+    if (googlePrefill.role === "doctor" || googlePrefill.role === "patient") {
+      setRole(googlePrefill.role);
+    }
+  }, [googlePrefill]);
   const passwordRef = useRef<TextInput>(null);
 
   const isDoctor = role === "doctor";
@@ -277,6 +293,23 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
         />
       </View>
 
+      {googlePrefill?.email ? (
+        <AuthFormError
+          message={
+            isRTL
+              ? "لا يوجد حساب مرتبط بحساب Google هذا. أكمل التسجيل أدناه."
+              : "No 3elagi account is linked to that Google account. Finish signing up below."
+          }
+          colors={colors}
+        />
+      ) : null}
+
+      <GoogleAuthButton
+        dividerBelow
+        signupRole={role}
+        onAccountNotFound={onGoogleNoAccount}
+      />
+
       <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
         {photoPreview ? (
           <Image source={{ uri: photoPreview }} style={styles.avatar} />
@@ -291,8 +324,6 @@ export function WelcomeSignupForm({ onSwitchToLogin }: Props) {
       </Pressable>
 
       {formError ? <AuthFormError message={formError} colors={colors} /> : null}
-
-      <GoogleAuthButton requireConsent />
 
       <AuthFormField
         label={t.auth.name}

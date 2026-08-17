@@ -87,7 +87,7 @@ export default function LoginScreen() {
             styles.topBar,
             {
               // Native sits inside the auth card, which already clears the notch.
-              paddingTop: Platform.OS === "web" ? 8 : 10,
+              paddingTop: Platform.OS === "web" ? 8 : 4,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
@@ -100,6 +100,7 @@ export default function LoginScreen() {
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
+          Platform.OS !== "web" && styles.bodyNative,
           Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
         ]}
         bottomOffset={32}
@@ -125,7 +126,13 @@ export default function LoginScreen() {
           </Text>
         ) : null}
 
-        <View style={{ width: "100%", gap: 12, marginTop: showSubtitle ? 28 : 20 }}>
+        <View
+          style={{
+            width: "100%",
+            gap: 12,
+            marginTop: Platform.OS === "web" ? (showSubtitle ? 28 : 20) : showSubtitle ? 14 : 10,
+          }}
+        >
           {formError ? <AuthFormError message={formError} colors={colors} /> : null}
           <AuthFormField
             label={t.auth.email}
@@ -199,15 +206,17 @@ export default function LoginScreen() {
           <GoogleAuthButton />
           <Pressable
             onPress={() => router.replace("/auth/signup")}
-            style={{ paddingVertical: 8, alignItems: "center" }}
+            style={{ paddingVertical: Platform.OS === "web" ? 8 : 4, alignItems: "center" }}
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
               {t.auth.noAccountSignUp}
             </Text>
           </Pressable>
-          <View style={{ alignItems: "center" }}>
-            <AuthHomeLink />
-          </View>
+          {Platform.OS === "web" ? (
+            <View style={{ alignItems: "center" }}>
+              <AuthHomeLink />
+            </View>
+          ) : null}
         </View>
       </AuthFormBody>
     </View>
@@ -236,11 +245,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 32 : 24,
   },
+  bodyNative: {
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
   bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 8 },
-  title: { fontSize: 28, fontWeight: "800" },
+  title: { fontSize: Platform.OS === "web" ? 28 : 24, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
   btn: {
-    marginTop: 8,
+    marginTop: Platform.OS === "web" ? 8 : 4,
     borderRadius: 14,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 6 },

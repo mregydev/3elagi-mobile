@@ -9,7 +9,7 @@ import { useResolvedTheme } from "@/hooks/useColors";
 
 const CARD_WIDTH_RATIO = 0.9;
 /** Breathing room between the brand mark and the card. */
-const LOGO_GAP = 18;
+const LOGO_GAP = 6;
 
 interface Props {
   children: React.ReactNode;
@@ -28,7 +28,7 @@ interface Props {
 export function AuthLoginBackground({ children }: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const logoHeight = Math.min(56, width * 0.16);
+  const logoHeight = Math.min(48, width * 0.14);
   // The card was frosted white regardless of theme, so in dark mode the form's
   // light text landed on a near-white sheet.
   const isDark = useResolvedTheme() === "dark";
@@ -37,7 +37,7 @@ export function AuthLoginBackground({ children }: Props) {
     <View style={styles.page}>
       <AuthHeroMedia overlayOpacity={0.48} />
 
-      <View style={[styles.brand, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.brand, { paddingTop: insets.top + 4 }]}>
         <Logo3elagi height={logoHeight} centered />
       </View>
 
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     alignItems: "center",
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   scroll: {
     flex: 1,

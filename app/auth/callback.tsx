@@ -4,11 +4,16 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "
 import {
   consumeGoogleConsent,
   consumeGoogleReturnTo,
+  consumeGoogleSignupRole,
   consumeGoogleState,
   googleRedirectUri,
   startGoogleSignIn,
 } from "@/domains/auth/google";
-import { AuthApiError } from "@/domains/auth/repository";
+import {
+  googleNoAccountPayload,
+  navigateAfterGoogleLogin,
+  navigateGoogleNoAccount,
+} from "@/domains/auth/googleAuthFlow";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -21,7 +26,6 @@ export default function GoogleCallbackScreen() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
-  const logout = useAuthStore((s) => s.logout);
   const [error, setError] = useState<string | null>(null);
   const [needsConsent, setNeedsConsent] = useState(false);
   // React 18 double-invokes effects in dev; a code may only be redeemed once.
@@ -36,6 +40,7 @@ export default function GoogleCallbackScreen() {
     const code = params.get("code");
     const returnTo = consumeGoogleReturnTo();
     const medicalRecordsConsent = consumeGoogleConsent();
+    const signupRole = consumeGoogleSignupRole();
 
     if (denied) {
       setError(isRTL ? "تم إلغاء تسجيل الدخول." : "Sign-in was cancelled.");
@@ -55,30 +60,17 @@ export default function GoogleCallbackScreen() {
       redirectUri: googleRedirectUri(),
       medicalRecordsConsent,
     })
-      .then(() => router.replace((returnTo as never) ?? "/(tabs)"))
+      .then(() => navigateAfterGoogleLogin(router, returnTo ?? undefined))
       .catch((e: unknown) => {
         const message = e instanceof Error ? e.message : "Google sign-in failed";
-        const apiError = e instanceof AuthApiError ? e : null;
-        // No account yet: drop any partial session and hand the verified email
-        // and name to the signup form so the user finishes registering there.
-        if (
-          apiError?.code === "ACCOUNT_NOT_FOUND" ||
-          /ACCOUNT_NOT_FOUND|no .*account/i.test(message)
-        ) {
-          logout();
-          router.replace({
-            pathname: "/auth/signup",
-            params: {
-              error: "google_no_account",
-              email: apiError?.email ?? "",
-              name: apiError?.name_ ?? "",
-            },
-          });
+        const payload = googleNoAccountPayload(e, signupRole ?? undefined);
+        if (payload) {
+          navigateGoogleNoAccount(router, payload);
           return;
         }
         setError(message);
       });
-  }, [isRTL, loginWithGoogle, logout]);
+  }, [isRTL, loginWithGoogle]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

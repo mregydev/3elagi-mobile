@@ -1,8 +1,25 @@
+import { router } from "expo-router";
 import { Check } from "lucide-react-native";
-import React, { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { startGoogleSignIn } from "@/domains/auth/google";
+import {
+  googleNoAccountPayload,
+  navigateAfterGoogleLogin,
+  navigateGoogleNoAccount,
+  type GoogleNoAccountPayload,
+} from "@/domains/auth/googleAuthFlow";
+import { useGoogleNativeSignIn } from "@/domains/auth/googleNative";
+import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
@@ -40,24 +57,71 @@ export function GoogleAuthButton({
   returnTo,
   requireConsent = false,
   dividerBelow = false,
+  signupRole,
   onConsentChange,
+  onAccountNotFound,
 }: {
   returnTo?: string;
   /** Signup surfaces: GDPR consent must be ticked before Google is opened. */
   requireConsent?: boolean;
   /** Signup puts Google first, so its "or" rule sits under the button. */
   dividerBelow?: boolean;
+  /** "patient" | "doctor" — returned to the signup form after the round trip. */
+  signupRole?: string;
   /** Lets the host screen unlock its own form on the same consent. */
   onConsentChange?: (consented: boolean) => void;
+  /** Welcome/signup inline: stay on screen and prefill instead of opening /auth/signup. */
+  onAccountNotFound?: (payload: GoogleNoAccountPayload) => void;
 }) {
   const colors = useColors();
   const { isRTL } = useI18n();
   const [consented, setConsented] = useState(false);
   const blocked = requireConsent && !consented;
+  const isWeb = Platform.OS === "web";
 
-  // Web-only for now: native needs the Google SDK, and the API already accepts
-  // an id_token for when that lands.
-  if (Platform.OS !== "web") return null;
+  const loginWithGoogleIdToken = useAuthStore((s) => s.loginWithGoogleIdToken);
+  const loading = useAuthStore((s) => s.loading);
+
+  // Native: the device gets an ID token straight from Google; unknown emails
+  // land on the signup form exactly as the web callback does.
+  const onIdToken = useCallback(
+    (idToken: string) => {
+      void loginWithGoogleIdToken({
+        idToken,
+        medicalRecordsConsent: requireConsent && consented,
+      })
+        .then(() => navigateAfterGoogleLogin(router, returnTo))
+        .catch((e: unknown) => {
+          const payload = googleNoAccountPayload(e, signupRole);
+          if (payload) {
+            navigateGoogleNoAccount(router, payload, onAccountNotFound);
+            return;
+          }
+          const message = (e as Error).message;
+          if (message === "__UNSUPPORTED_ROLE__") {
+            Alert.alert(
+              "Google",
+              isRTL
+                ? "نوع الحساب غير مدعوم على تطبيق الجوال."
+                : "This account type is not supported in the mobile app.",
+            );
+            return;
+          }
+          Alert.alert("Google", message);
+        });
+    },
+    [
+      consented,
+      loginWithGoogleIdToken,
+      onAccountNotFound,
+      requireConsent,
+      returnTo,
+      signupRole,
+    ],
+  );
+
+  const native = useGoogleNativeSignIn(onIdToken);
+  if (!isWeb && !native.ready) return null;
 
   const divider = (
     <View style={[styles.dividerRow, { flexDirection: flexRow(isRTL) }]}>
@@ -105,10 +169,26 @@ export function GoogleAuthButton({
       ) : null}
 
       <Pressable
-        onPress={() =>
-          startGoogleSignIn({ returnTo, medicalRecordsConsent: requireConsent })
-        }
-        disabled={blocked}
+        onPress={() => {
+          if (!isWeb) {
+            void native.promptAsync().then((result) => {
+              if (result?.type === "error") {
+                Alert.alert(
+                  "Google",
+                  result.error?.message ??
+                    (isRTL ? "تعذر تسجيل الدخول عبر Google." : "Google sign-in failed."),
+                );
+              }
+            });
+            return;
+          }
+          startGoogleSignIn({
+            returnTo,
+            medicalRecordsConsent: requireConsent && consented,
+            signupRole,
+          });
+        }}
+        disabled={blocked || loading}
         accessibilityRole="button"
         accessibilityLabel={isRTL ? "المتابعة باستخدام Google" : "Continue with Google"}
         style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
@@ -117,13 +197,23 @@ export function GoogleAuthButton({
             flexDirection: flexRow(isRTL),
             borderColor: colors.border,
             backgroundColor: pressed || hovered ? colors.muted : colors.card,
-            opacity: blocked ? 0.5 : 1,
+            opacity: blocked || loading ? 0.5 : 1,
           },
         ]}
       >
-        <GoogleMark />
+        {loading ? (
+          <ActivityIndicator color={colors.foreground} />
+        ) : (
+          <GoogleMark />
+        )}
         <Text style={[styles.label, { color: colors.foreground }]}>
-          {isRTL ? "المتابعة باستخدام Google" : "Continue with Google"}
+          {loading
+            ? isRTL
+              ? "جاري تسجيل الدخول…"
+              : "Signing in…"
+            : isRTL
+              ? "المتابعة باستخدام Google"
+              : "Continue with Google"}
         </Text>
       </Pressable>
       {dividerBelow ? divider : null}
@@ -132,7 +222,11 @@ export function GoogleAuthButton({
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: "100%", gap: 12, marginTop: 14 },
+  wrap: {
+    width: "100%",
+    gap: 12,
+    marginTop: Platform.OS === "web" ? 14 : 6,
+  },
   dividerRow: { alignItems: "center", gap: 10 },
   rule: { flex: 1, height: StyleSheet.hairlineWidth },
   dividerText: { fontSize: 12, fontWeight: "600" },

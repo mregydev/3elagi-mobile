@@ -22,7 +22,12 @@ function randomState(): string {
  * checked on the way back, so a callback we did not start is rejected (CSRF).
  */
 export function startGoogleSignIn(
-  options: { returnTo?: string; medicalRecordsConsent?: boolean } = {},
+  options: {
+    returnTo?: string;
+    medicalRecordsConsent?: boolean;
+    /** Signup role, so the form comes back on the tab the user picked. */
+    signupRole?: string;
+  } = {},
 ): void {
   const state = randomState();
   sessionStorage.setItem(STATE_KEY, state);
@@ -31,6 +36,11 @@ export function startGoogleSignIn(
   }
   // The authorization code can only be redeemed once, so consent is captured
   // before the redirect and replayed with the exchange rather than retried.
+  if (options.signupRole) {
+    sessionStorage.setItem(`${STATE_KEY}:role`, options.signupRole);
+  } else {
+    sessionStorage.removeItem(`${STATE_KEY}:role`);
+  }
   if (options.medicalRecordsConsent) {
     sessionStorage.setItem(`${STATE_KEY}:consent`, "1");
   } else {
@@ -59,6 +69,12 @@ export function consumeGoogleConsent(): boolean {
   const value = sessionStorage.getItem(`${STATE_KEY}:consent`);
   sessionStorage.removeItem(`${STATE_KEY}:consent`);
   return value === "1";
+}
+
+export function consumeGoogleSignupRole(): string | null {
+  const value = sessionStorage.getItem(`${STATE_KEY}:role`);
+  sessionStorage.removeItem(`${STATE_KEY}:role`);
+  return value;
 }
 
 export function consumeGoogleReturnTo(): string | null {
