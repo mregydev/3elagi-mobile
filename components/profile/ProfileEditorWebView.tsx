@@ -12,6 +12,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { CountrySelectField } from "@/components/auth/CountrySelectField";
+import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
+import {
+  normalizeMarketCountry,
+  PATIENT_COUNTRY_CODES,
+} from "@/constants/patientCountries";
 
 import { useRouter } from "expo-router";
 import { Camera, FileText, LogOut, Plus, UserRound, X } from "lucide-react-native";
@@ -348,6 +354,25 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                     />
                   </View>
                 )}
+                {/* Saved with the rest of the form, not on tap. */}
+                <View style={spanFull}>
+                  {isDoctor ? (
+                    <ProfileCountryField
+                      value={normalizeMarketCountry(country)}
+                      onChange={setCountry}
+                      disabled={saving}
+                    />
+                  ) : (
+                    <CountrySelectField
+                      label={t.auth.countryOfResidence}
+                      value={country}
+                      codes={PATIENT_COUNTRY_CODES}
+                      onChange={setCountry}
+                      isRTL={isRTL}
+                      disabled={saving}
+                    />
+                  )}
+                </View>
               </View>
             </View>
 

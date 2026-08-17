@@ -47,6 +47,8 @@ export interface ConsultationActionMeta {
   action: ConsultationActionType;
   status: ConsultationStatus;
   reserved_points?: number;
+  /** ISO-2 country of the patient, from their IP at request time. */
+  patient_country?: string | null;
   cancel_reason_type?: ConsultationCancelReasonType;
   cancel_reason?: string;
   diagnosis_id?: string | null;

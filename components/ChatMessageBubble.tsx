@@ -13,6 +13,10 @@ import {
   View,
 } from "react-native";
 import type { ChatMessage } from "@/domains/chat/types";
+import {
+  countryFlagEmoji,
+  PATIENT_COUNTRY_LABELS,
+} from "@/constants/patientCountries";
 import type { MessageEmotionType } from "@/domains/emotions/types";
 import { ChatInlineVideo } from "@/components/chat/ChatInlineVideo";
 import { VoiceMessagePlayer } from "@/components/chat/VoiceMessagePlayer";
@@ -653,6 +657,24 @@ export function ChatMessageBubble({
       meta.action === "start" && meta.reserved_points
         ? t.consultations.reservedInThread(formatEgp(meta.reserved_points, t))
         : reasonLabel;
+    // Where the patient actually was when they asked (resolved from their IP).
+    const patientCountryCode: string = meta.patient_country?.trim() ?? "";
+    // patientCountryLabel() defaults to Egypt for unknown codes — show the raw
+    // code instead rather than name the wrong country.
+    const patientCountryNames =
+      PATIENT_COUNTRY_LABELS[patientCountryCode.toUpperCase()];
+    const patientCountryLine =
+      meta.action === "start" && patientCountryCode
+        ? `${isRTL ? "بلد المريض" : "Patient country"}: ${countryFlagEmoji(
+            patientCountryCode,
+          )} ${
+            patientCountryNames
+              ? isRTL
+                ? patientCountryNames.ar
+                : patientCountryNames.en
+              : patientCountryCode.toUpperCase()
+          }`.trim()
+        : null;
     const canOpenDiagnosis =
       meta.action === "end" && !!meta.diagnosis_id?.trim();
     // The doctor answers the request right here in the thread.
@@ -677,6 +699,16 @@ export function ChatMessageBubble({
               <Text style={[styles.consultMeta, { color: accent }]}>{detail}</Text>
             ) : null}
           </View>
+          {patientCountryLine ? (
+            <Text
+              style={[
+                styles.consultDesc,
+                { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {patientCountryLine}
+            </Text>
+          ) : null}
           {item.text?.trim() ? (
             <Text
               style={[

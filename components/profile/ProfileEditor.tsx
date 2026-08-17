@@ -16,11 +16,17 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
+import { CountrySelectField } from "@/components/auth/CountrySelectField";
+import {
+  normalizeMarketCountry,
+  PATIENT_COUNTRY_CODES,
+} from "@/constants/patientCountries";
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
+import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
@@ -220,6 +226,24 @@ export function ProfileEditor({
                   isRTL={isRTL}
                 />
               ) : null}
+              {/* Country ships with the Save changes button, not on tap.
+                  Doctors pick a live market; patients pick where they live. */}
+              {isDoctor ? (
+                <ProfileCountryField
+                  value={normalizeMarketCountry(country)}
+                  onChange={setCountry}
+                  disabled={saving}
+                />
+              ) : (
+                <CountrySelectField
+                  label={t.auth.countryOfResidence}
+                  value={country}
+                  codes={PATIENT_COUNTRY_CODES}
+                  onChange={setCountry}
+                  isRTL={isRTL}
+                  disabled={saving}
+                />
+              )}
             </SectionCard>
 
             {isDoctor ? (

@@ -1,5 +1,6 @@
 import { API_BASE } from "@/constants/api";
 import type { ConsultationCancelReasonType } from "@/domains/chat/types";
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
 export interface Consultation {
   id: string;
@@ -93,8 +94,12 @@ export async function startConsultation(
   description: string,
   token: string,
 ): Promise<{ consultation: Consultation; points: PointsSummary }> {
+  // The API resolves the country from the request IP; this header is only its
+  // fallback for hosts where the client IP never reaches us (plain Cloud Run).
+  const geo = await detectCountryFromIp().catch(() => null);
   return authJson(`/consultations/start`, token, {
     method: "POST",
+    headers: geo ? { "x-client-geo-country": geo } : undefined,
     body: JSON.stringify({ doctor_id: doctorId, description }),
   });
 }
