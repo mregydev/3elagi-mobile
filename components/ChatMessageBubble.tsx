@@ -19,6 +19,7 @@ import { VoiceMessagePlayer } from "@/components/chat/VoiceMessagePlayer";
 import { MessageEmotionsBar } from "@/components/MessageEmotionsBar";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { formatEgp } from "@/utils/credits";
 
 interface Props {
@@ -76,13 +77,20 @@ export function ChatMessageBubble({
 }: Props) {
   const colors = useColors();
   const { t } = useI18n();
+  const { isDesktop } = useWebLayout();
   const { width: screenWidth } = useWindowDimensions();
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  const wideActionCards = Platform.OS !== "web" || !isDesktop;
 
   // 86% of the column on a phone; capped on desktop, where screenWidth is the
   // whole window and an unbounded bubble would stretch across the page.
   const maxBubbleWidth = useMemo(
     () => Math.min(Math.round(screenWidth * 0.86), 560),
+    [screenWidth],
+  );
+  const cardBubbleWidth = useMemo(
+    () => Math.round(screenWidth * 0.9),
     [screenWidth],
   );
   const imageWidth = useMemo(() => Math.min(240, maxBubbleWidth), [maxBubbleWidth]);
@@ -139,14 +147,16 @@ export function ChatMessageBubble({
   // Card width shared by medical record, document request and consultation
   // cards. `screenWidth` is the whole window on desktop, so the ratio needs the
   // absolute cap beside it to stay a card rather than a banner.
-  const medicalBubbleWidth = Math.min(
+  const compactCardWidth = Math.min(
     maxBubbleWidth,
     Math.round(screenWidth * 0.4),
     360,
   );
+  const wideCardWidth = wideActionCards ? cardBubbleWidth : compactCardWidth;
+  const medicalBubbleWidth = wideCardWidth;
   // Consultation cards (request / started / ended / rejected) match the medical
   // record card so the thread has one card width.
-  const consultationBubbleWidth = medicalBubbleWidth;
+  const consultationBubbleWidth = wideCardWidth;
   const videoWidth = imageWidth;
   const videoHeight = Math.round(imageWidth * 0.75);
   const responsiveMediaWidth = useMemo(() => {
@@ -987,7 +997,7 @@ export function ChatMessageBubble({
     isConsultationAction && styles.medicalBubble,
     bubbleColors,
     isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" as const },
-    isDocumentRequest && { width: medicalBubbleWidth, maxWidth: "100%" as const },
+    isDocumentRequest && { width: compactCardWidth, maxWidth: "100%" as const },
     isConsultationAction && {
       width: consultationBubbleWidth,
       maxWidth: "100%" as const,
@@ -1029,7 +1039,10 @@ export function ChatMessageBubble({
         styles.wrap,
         {
           alignSelf: mine ? "flex-end" : "flex-start",
-          maxWidth: maxBubbleWidth,
+          maxWidth:
+            (isMedicalLink || isConsultationAction) && wideActionCards
+              ? cardBubbleWidth
+              : maxBubbleWidth,
         },
         (item.emotions?.length ?? 0) > 0 && styles.wrapWithReactions,
       ]}

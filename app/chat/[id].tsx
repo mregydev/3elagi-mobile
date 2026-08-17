@@ -447,9 +447,12 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     const newest = messages[messages.length - 1];
     const isOwnMessage = newest?.senderId === "me";
 
-    // Never yank the user back down while reading older messages.
-    // Only auto-follow when stuck to latest, on first load, or after sending.
-    if (!isInitialBatch && !isOwnMessage && !stickToBottomRef.current) return;
+    // Socket-delivered peer messages always jump to the latest line.
+    if (!isInitialBatch && !isOwnMessage) {
+      stickToBottomRef.current = true;
+      scrollToLatest(true);
+      return;
+    }
 
     if (isInitialBatch || isOwnMessage) {
       stickToBottomRef.current = true;
@@ -1464,6 +1467,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               />
             );
 
+            const isWideCardMessage =
+              item.type === "medical_link" ||
+              item.type === "consultation_action";
+
             const bubble = (
               <View
                 ref={(node) => {
@@ -1474,6 +1481,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                 style={[
                   styles.messageColumn,
                   mine ? styles.messageColumnMine : styles.messageColumnTheirs,
+                  !desktopLayout && isWideCardMessage && styles.messageColumnWide,
                 ]}
               >
                 <ChatMessageBubble
@@ -1793,6 +1801,10 @@ const styles = StyleSheet.create({
   },
   messageColumnTheirs: {
     alignItems: "flex-start",
+  },
+  messageColumnWide: {
+    maxWidth: "90%",
+    width: "90%",
   },
   messageList: { flex: 1 },
   loadingMessages: { flex: 1, alignItems: "center", justifyContent: "center" },
