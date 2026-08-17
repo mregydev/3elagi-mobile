@@ -61,9 +61,6 @@ export default function AssistantScreen() {
       }
       medicalImageBusy={assistant.medicalImageBusy}
       onSubmitMedicalImage={(input) => void assistant.submitMedicalImage(input)}
-      onMedicalRecordCreated={(record, previewUri) =>
-        assistant.appendMedicalRecordCreated(record, previewUri)
-      }
     />
   );
 }

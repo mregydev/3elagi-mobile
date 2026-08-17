@@ -128,6 +128,8 @@ export default function TabsLayout() {
             title: t.tabs.assistant,
             tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
             href: null,
+            // Full-height chat — composer sits on the home indicator, not above the tab bar.
+            tabBarStyle: { display: "none" },
           }}
         />
         <Tabs.Screen

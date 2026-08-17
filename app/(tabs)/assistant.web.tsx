@@ -73,8 +73,6 @@ export default function AssistantScreenWeb() {
       void assistant.toggleMessageEmotion(messageId, emotion),
     medicalImageBusy: assistant.medicalImageBusy,
     onSubmitMedicalImage: (input) => void assistant.submitMedicalImage(input),
-    onMedicalRecordCreated: (record, previewUri) =>
-      assistant.appendMedicalRecordCreated(record, previewUri),
   };
 
   if (!isDesktop) {

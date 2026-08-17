@@ -1,7 +1,10 @@
 import { Audio as ExpoAudio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import { AppState, Platform } from "react-native";
-import { normalizeSttMimeType } from "@/utils/sttMime";
+import {
+  mimeTypeForRecordingUri,
+  STT_RECORDING_OPTIONS,
+} from "@/utils/sttRecordingOptions";
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -132,7 +135,7 @@ export class NativeAssistantRecorder {
       // Small delay after permission / mode change so Android can grant focus.
       await sleep(150);
       const { recording } = await ExpoAudio.Recording.createAsync(
-        ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY,
+        STT_RECORDING_OPTIONS,
       );
       this.recording = recording;
       this.startedAt = Date.now();
@@ -155,13 +158,7 @@ export class NativeAssistantRecorder {
     const uri = recording.getURI();
     if (!uri) throw new Error("Could not save recording.");
 
-    const rawMime =
-      Platform.OS === "ios"
-        ? "audio/mp4"
-        : uri.endsWith(".3gp")
-          ? "audio/3gpp"
-          : "audio/mp4";
-    const mimeType = normalizeSttMimeType(rawMime, uri);
+    const mimeType = mimeTypeForRecordingUri(uri);
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });

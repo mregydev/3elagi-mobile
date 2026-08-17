@@ -1,6 +1,5 @@
 import { API_BASE } from "@/constants/api";
 import type { Locale } from "@/domains/i18n/store";
-import { normalizeSttMimeType } from "@/utils/sttMime";
 
 const STT_TIMEOUT_MS = 60_000;
 
@@ -37,8 +36,7 @@ export async function transcribeAssistantAudio(
       },
       body: JSON.stringify({
         audio: audioBase64,
-        mimeType: normalizeSttMimeType(mimeType),
-        // Omit / send auto so the server detects ar | en | de | es from speech.
+        mimeType,
         languageCode:
           !languageCode || languageCode === "auto" ? "auto" : languageCode,
       }),

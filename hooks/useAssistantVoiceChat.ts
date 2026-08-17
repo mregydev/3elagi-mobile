@@ -574,6 +574,13 @@ export function useAssistantVoiceChat({
     async (fallbackText = "") => {
       const captured =
         fallbackText.trim() || liveTranscriptRef.current.trim();
+
+      if (isRecordingRef.current) {
+        voiceSendInFlightRef.current = true;
+        await stopRecording(captured);
+        return;
+      }
+
       if (!captured) {
         if (voiceLoopRef.current) {
           setVoiceError("No speech detected.");
@@ -583,10 +590,6 @@ export function useAssistantVoiceChat({
       if (sentTranscriptRef.current || sendingRef.current) return;
 
       voiceSendInFlightRef.current = true;
-      if (isRecordingRef.current && webSpeechSessionRef.current) {
-        await stopRecording(captured);
-        return;
-      }
       voiceSendInFlightRef.current = false;
       finishVoiceInput(captured);
     },

@@ -10,14 +10,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssistantComposer } from "@/components/assistant/AssistantComposer";
-import { ChatMedicalRecordPills } from "@/components/chat/ChatMedicalRecordPills";
 import { AssistantAvatar } from "@/components/assistant/AssistantAvatar";
 import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadingIndicator";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
 import { AssistantVoiceModeView } from "@/components/assistant/AssistantVoiceModeView";
-import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { AssistantVoiceWebStyles } from "@/components/assistant/AssistantVoiceWebStyles";
-import type { MedicalRecord } from "@/domains/medical/types";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useAuthStore } from "@/domains/auth/store";
@@ -62,7 +59,6 @@ interface Props {
     addToMedicalRecords: boolean;
     generateAiInsight: boolean;
   }) => void;
-  onMedicalRecordCreated?: (record: MedicalRecord, previewUri?: string) => void;
 }
 
 const DISCLAIMER_EN =
@@ -88,16 +84,12 @@ export function AssistantWebView({
   selfUserId,
   onToggleMessageEmotion,
   medicalImageBusy = false,
-  onMedicalRecordCreated,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isRTL } = useI18n();
   const isEn = !isRTL;
-  const accessToken = useAuthStore((s) => s.accessToken);
   const isDoctor = useAuthStore((s) => s.role?.toLowerCase() === "doctor");
-  const [dictatedText, setDictatedText] = useState<string | null>(null);
-  const [createRecordOpen, setCreateRecordOpen] = useState(false);
   const listRef = useRef<FlatList<AiMessage>>(null);
   const isNearBottomRef = useRef(true);
   const initialScrollPendingRef = useRef(true);
@@ -395,23 +387,10 @@ export function AssistantWebView({
         ) : null}
 
         {!voice.isVoiceMode ? (
-          <>
-            {!isDoctor ? (
-              <ChatMedicalRecordPills
-                isRTL={isRTL}
-                onAddMedicalRecord={() => setCreateRecordOpen(true)}
-                disabled={loadingHistory || medicalImageBusy}
-              />
-            ) : null}
           <AssistantComposer
             isRTL={isRTL}
             sending={sending || medicalImageBusy}
             disabled={loadingHistory || medicalImageBusy}
-            isDictating={voice.isDictating}
-            micLoading={voice.isDictating && voice.isTranscribing}
-            onMicPress={() =>
-              voice.toggleDictation((text) => setDictatedText(text))
-            }
             aiAttachment={
               aiFile.attachment
                 ? {
@@ -424,8 +403,6 @@ export function AssistantWebView({
             onAttachAiFile={() => void aiFile.pickFile()}
             aiAttachLoading={aiFile.loading}
             onRemoveAiAttachment={aiFile.clear}
-            dictatedText={dictatedText}
-            onDictatedTextConsumed={() => setDictatedText(null)}
             placeholder={
               isDoctor
                 ? isEn
@@ -437,21 +414,8 @@ export function AssistantWebView({
             }
             onSend={handleSend}
           />
-          </>
         ) : null}
       </View>
-
-      {accessToken ? (
-        <AssistantCreateRecordDialog
-          visible={createRecordOpen}
-          token={accessToken}
-          onClose={() => setCreateRecordOpen(false)}
-          onCreated={(record, previewUri) => {
-            onMedicalRecordCreated?.(record, previewUri);
-            setCreateRecordOpen(false);
-          }}
-        />
-      ) : null}
     </View>
   );
 }
