@@ -39,6 +39,7 @@ import { useMedicalStore } from "@/domains/medical/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { chatFlexRow, flexRow } from "@/utils/rtl";
+import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import {
   buildChatLatestMessageToken,
   isChatStuckToLatest,
@@ -57,6 +58,9 @@ interface Props {
   isDoctor: boolean;
   /** Fixed column beside video (tablet/desktop) or full overlay (mobile). */
   layout: "side" | "overlay";
+  /** Doctor-only clinical actions (diagnosis, prescription, lab/x-ray, exam)
+   *  surfaced under the composer's "+" — same list the call screen shows. */
+  clinicalActions?: ChatAction[];
   onClose?: () => void;
   /** Lift the picker to the video-call root so it sits above the meeting UI. */
   renderMedicalPicker?: (picker: React.ReactNode) => void;
@@ -67,6 +71,7 @@ export function InMeetingChatPanel({
   peerName,
   isDoctor,
   layout,
+  clinicalActions,
   onClose,
   renderMedicalPicker,
 }: Props) {
@@ -232,7 +237,7 @@ export function InMeetingChatPanel({
       setSending(true);
       stickToBottomRef.current = true;
       try {
-        await sendMessage(peerId, input, accessToken, profile.id, role, replaceTempId);
+        await sendMessage(peerId, input, accessToken, profile!.id, role, replaceTempId);
         stickToBottomRef.current = true;
         scrollToLatest(false);
       } catch (e) {
@@ -468,6 +473,7 @@ export function InMeetingChatPanel({
             onAddPending={(msg) => addPendingMessage(peerId, msg)}
             onFailPending={(tempId) => failPendingMessage(peerId, tempId)}
             onPickMedical={openMedicalPicker}
+            actions={clinicalActions}
             canStoreImageInMedicalRecord={isPatient}
             medicalRecordPatientUserId={profile.id}
             disabled={false}

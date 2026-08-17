@@ -782,6 +782,7 @@ export default function VideoCallScreen() {
             </View>
             {chatOpen && chatPeerId ? (
               <InMeetingChatPanel
+                clinicalActions={isDoctor ? clinicalActions : undefined}
                 peerId={chatPeerId}
                 peerName={peerName}
                 isDoctor={isDoctor}
