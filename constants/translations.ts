@@ -688,7 +688,8 @@ const en = {
     perAiMessageLabel: "Per AI message",
     addCredits: "Add credits",
     creditAmount: "Points to buy",
-    creditAmountHint: "Enter how many points to buy. Egypt: 1 point = 100 EGP. Jordan: 1 point = 5 JOD.",
+    creditAmountHint:
+      "Enter how many credits to buy. Your price per credit is based on your IP location: Egypt $2, Jordan $15, elsewhere $50.",
     amountPlaceholder: "e.g. 5",
     continueCheckout: "Continue to checkout",
     continue: "Continue",
@@ -1565,7 +1566,8 @@ const ar: typeof en = {
     perAiMessageLabel: "تكلفة رسالة AI",
     addCredits: "إضافة رصيد",
     creditAmount: "عدد النقاط",
-    creditAmountHint: "أدخل عدد النقاط للشراء. مصر: نقطة = 100 جنيه. الأردن: نقطة = 5 دينار.",
+    creditAmountHint:
+      "أدخل عدد النقاط للشراء. السعر حسب موقعك (IP): مصر 2 دولار، الأردن 15 دولار، خارجها 50 دولار.",
     amountPlaceholder: "مثال: 5",
     continueCheckout: "متابعة للدفع",
     continue: "متابعة",
@@ -2445,7 +2447,8 @@ const de: typeof en = {
     perAiMessageLabel: "Pro KI-Nachricht",
     addCredits: "Guthaben hinzufügen",
     creditAmount: "Punkte zum Kaufen",
-    creditAmountHint: "Geben Sie die Anzahl der Punkte ein. Ägypten: 1 Punkt = 100 EGP. Jordanien: 1 Punkt = 5 JOD.",
+    creditAmountHint:
+      "Geben Sie die Anzahl der Credits ein. Preis nach IP-Standort: Ägypten 2 USD, Jordanien 15 USD, sonst 50 USD.",
     amountPlaceholder: "z. B. 5",
     continueCheckout: "Weiter zur Kasse",
     continue: "Weiter",
@@ -3325,7 +3328,8 @@ const es: typeof en = {
     perAiMessageLabel: "Por mensaje IA",
     addCredits: "Agregar créditos",
     creditAmount: "Puntos a comprar",
-    creditAmountHint: "Introduce cuántos puntos comprar. Egipto: 1 punto = 100 EGP. Jordania: 1 punto = 5 JOD.",
+    creditAmountHint:
+      "Introduce cuántos créditos comprar. Precio según tu IP: Egipto 2 USD, Jordania 15 USD, resto 50 USD.",
     amountPlaceholder: "p. ej. 5",
     continueCheckout: "Continuar al pago",
     continue: "Continuar",

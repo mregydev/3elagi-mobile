@@ -68,7 +68,7 @@ export function ConsultationsSection() {
   // Doctors are paid outside the app now, so the reimburse flow is gone; the
   // header just totals what the listed consultations are worth in USD.
   const totalUsd = items.reduce(
-    (sum, c) => sum + pointsToUsd(c.reserved_points ?? 0),
+    (sum, c) => sum + pointsToUsd(c.reserved_points ?? 0, c.patient_country),
     0,
   );
 
@@ -140,7 +140,7 @@ export function ConsultationsSection() {
                 </Text>
               ) : null}
               <Text style={[styles.date, { color: colors.mutedForeground, textAlign }]}>
-                {date} · {formatUsd(pointsToUsd(item.reserved_points))}
+                {date} · {formatUsd(pointsToUsd(item.reserved_points, item.patient_country))}
               </Text>
             </View>
             <View style={styles.badges}>

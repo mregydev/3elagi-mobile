@@ -26,6 +26,8 @@ export type ComplaintStatus = "pending" | "accepted" | "rejected";
 
 export interface DoctorConsultation extends Consultation {
   patient_name: string;
+  /** ISO country of the patient — drives the USD rate for this consultation. */
+  patient_country?: string | null;
   created_at: string;
   closed_at: string | null;
   complaint_status: ComplaintStatus | null;

@@ -98,21 +98,18 @@ export function marketCurrencyLabel(
 export function marketCurrencyCode(
   country: string | null | undefined,
 ): "EGP" | "JOD" | "USD" {
-  const market = resolvePointMarket(country);
-  if (market === "JO") return "JOD";
-  if (market === "INTL") return "USD";
-  return "EGP";
+  return "USD";
 }
 
 /**
- * Cash charged per 1 credit/point: Egypt 100 EGP, Jordan 10 JOD, rest of the
- * world 5 USD. Keep in step with MARKET_POINT_PRICING on the API.
+ * USD charged per 1 credit/point: Egypt 2, Jordan 15, rest of world 50.
+ * Keep in step with MARKET_POINT_PRICING on the API. Priced by caller IP.
  */
 export function pricePerPoint(country: string | null | undefined): number {
   const market = resolvePointMarket(country);
-  if (market === "JO") return 10;
-  if (market === "INTL") return 5;
-  return 100;
+  if (market === "JO") return 15;
+  if (market === "INTL") return 50;
+  return 2;
 }
 
 /** Total cash to charge for buying `points` in the given market. */

@@ -45,7 +45,7 @@ export default function PointsTab() {
   const tabBarHeight = useBottomTabBarHeight();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
-  // Price follows the caller's IP (Egypt EGP / Jordan JOD / elsewhere USD).
+  // Price follows the caller's IP (Egypt $2 / Jordan $15 / elsewhere $50 USD).
   // Profile country is the fallback until the lookup answers, or if it fails.
   const [pricing, setPricing] = useState<PointPricing | null>(null);
   useEffect(() => {
