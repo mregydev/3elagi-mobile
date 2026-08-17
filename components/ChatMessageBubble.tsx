@@ -136,8 +136,17 @@ export function ChatMessageBubble({
   const isVideo = item.type === "video" && !!(item.localAttachmentUrl ?? item.attachmentUrl);
   const isMedicalLink = item.type === "medical_link" && !!item.medicalLink;
   const isDocumentRequest = item.type === "document_request" && !!item.documentRequest;
-  const medicalBubbleWidth = maxBubbleWidth;
-  const consultationBubbleWidth = maxBubbleWidth;
+  // Card width shared by medical record, document request and consultation
+  // cards. `screenWidth` is the whole window on desktop, so the ratio needs the
+  // absolute cap beside it to stay a card rather than a banner.
+  const medicalBubbleWidth = Math.min(
+    maxBubbleWidth,
+    Math.round(screenWidth * 0.4),
+    360,
+  );
+  // Consultation cards (request / started / ended / rejected) match the medical
+  // record card so the thread has one card width.
+  const consultationBubbleWidth = medicalBubbleWidth;
   const videoWidth = imageWidth;
   const videoHeight = Math.round(imageWidth * 0.75);
   const responsiveMediaWidth = useMemo(() => {
