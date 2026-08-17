@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, Wallet } from "lucide-react-native";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,13 +17,12 @@ import {
   fetchMyConsultations,
   type DoctorConsultation,
 } from "@/domains/consultations/api";
-import { fetchPointsBalance, reimbursePoints } from "@/domains/points/api";
+import { formatUsd, pointsToUsd } from "@/domains/points/usd";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { webConfirm } from "@/utils/webConfirm";
-import { formatEgp } from "@/utils/credits";
-import { showErrorToast, showSuccessToast } from "@/utils/toast";
+import { showErrorToast } from "@/utils/toast";
 import { flexRow } from "@/utils/rtl";
 
 export function ConsultationsSection() {
@@ -34,20 +33,13 @@ export function ConsultationsSection() {
   const textAlign = isRTL ? "right" : "left";
 
   const [items, setItems] = useState<DoctorConsultation[]>([]);
-  const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [reimbursing, setReimbursing] = useState(false);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      const [list, summary] = await Promise.all([
-        fetchMyConsultations(accessToken),
-        fetchPointsBalance(accessToken),
-      ]);
-      setItems(list);
-      setPoints(summary.message_points ?? 0);
+      setItems(await fetchMyConsultations(accessToken));
     } catch (e) {
       showErrorToast(t.common.error, (e as Error).message);
     } finally {
@@ -67,71 +59,27 @@ export function ConsultationsSection() {
     setRefreshing(false);
   };
 
-  const doReimburse = async () => {
-    if (!accessToken || points <= 0) return;
-    setReimbursing(true);
-    try {
-      await reimbursePoints(accessToken);
-      await load();
-      showSuccessToast(t.consultations.reimbursementRequested);
-    } catch (e) {
-      showErrorToast(t.consultations.reimburseFailed, (e as Error).message);
-    } finally {
-      setReimbursing(false);
-    }
-  };
-
-  const confirmReimburse = () => {
-    if (points <= 0) return;
-    const title = t.consultations.reimburseTitle;
-    const msg = t.consultations.reimburseConfirm(formatEgp(points, t));
-    if (Platform.OS === "web") {
-      if (webConfirm(title, msg)) void doReimburse();
-      return;
-    }
-    Alert.alert(title, msg, [
-      { text: t.common.cancel, style: "cancel" },
-      { text: t.consultations.reimburse, onPress: () => void doReimburse() },
-    ]);
-  };
-
   const statusMeta = (status: DoctorConsultation["status"]) => {
     if (status === "open") return { color: colors.primary, text: t.consultations.open };
     if (status === "ended") return { color: "#0d9488", text: t.consultations.completed };
     return { color: "#dc2626", text: t.consultations.cancelled };
   };
 
+  // Doctors are paid outside the app now, so the reimburse flow is gone; the
+  // header just totals what the listed consultations are worth in USD.
+  const totalUsd = items.reduce(
+    (sum, c) => sum + pointsToUsd(c.reserved_points ?? 0),
+    0,
+  );
+
   const header = (
     <View style={[styles.reimburseCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Text style={[styles.reimburseLabel, { color: colors.mutedForeground, textAlign }]}>
-        {t.consultations.reimbursableCredits}
+        {t.consultations.consultationsTotalUsd}
       </Text>
-      <View style={[styles.reimburseRow, { flexDirection: dir }]}>
-        <Text style={[styles.reimburseValue, { color: colors.primary }]}>
-          {formatEgp(points, t)}
-        </Text>
-        <Pressable
-          onPress={confirmReimburse}
-          disabled={reimbursing || points <= 0}
-          style={[
-            styles.reimburseBtn,
-            {
-              backgroundColor: colors.primary,
-              opacity: reimbursing || points <= 0 ? 0.5 : 1,
-              flexDirection: dir,
-            },
-          ]}
-        >
-          {reimbursing ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Wallet size={16} color="#fff" />
-              <Text style={styles.reimburseBtnText}>{t.consultations.reimburse}</Text>
-            </>
-          )}
-        </Pressable>
-      </View>
+      <Text style={[styles.reimburseValue, { color: colors.primary, textAlign }]}>
+        {formatUsd(totalUsd)}
+      </Text>
       <Text style={[styles.listTitle, { color: colors.foreground, textAlign }]}>
         {t.consultations.myConsultations}
       </Text>
@@ -192,7 +140,7 @@ export function ConsultationsSection() {
                 </Text>
               ) : null}
               <Text style={[styles.date, { color: colors.mutedForeground, textAlign }]}>
-                {date} · {formatEgp(item.reserved_points, t)}
+                {date} · {formatUsd(pointsToUsd(item.reserved_points))}
               </Text>
             </View>
             <View style={styles.badges}>
