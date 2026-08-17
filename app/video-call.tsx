@@ -183,7 +183,7 @@ export default function VideoCallScreen() {
           isRTL ? "بيانات المكالمة غير متوفرة" : "Call details are missing",
         );
       }
-
+//
       const next = await fetchVideoCallSession(accessToken, sessionId);
       setSession(next);
     } catch (e) {
