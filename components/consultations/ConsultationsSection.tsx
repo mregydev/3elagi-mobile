@@ -18,6 +18,7 @@ import {
   type DoctorConsultation,
 } from "@/domains/consultations/api";
 import { formatUsd, pointsToUsd } from "@/domains/points/usd";
+import { countryFlagEmoji } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -68,7 +69,8 @@ export function ConsultationsSection() {
   // Doctors are paid outside the app now, so the reimburse flow is gone; the
   // header just totals what the listed consultations are worth in USD.
   const totalUsd = items.reduce(
-    (sum, c) => sum + pointsToUsd(c.reserved_points ?? 0, c.patient_country),
+    (sum, c) =>
+      sum + pointsToUsd(c.reserved_points ?? 0, c.patient_country, c.point_price_usd),
     0,
   );
 
@@ -129,6 +131,10 @@ export function ConsultationsSection() {
           >
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[styles.name, { color: colors.foreground, textAlign }]} numberOfLines={1}>
+                {/* Country the consultation was requested from. */}
+                {item.patient_country
+                  ? `${countryFlagEmoji(item.patient_country)} `
+                  : ""}
                 {item.patient_name}
               </Text>
               {item.description ? (
@@ -140,7 +146,16 @@ export function ConsultationsSection() {
                 </Text>
               ) : null}
               <Text style={[styles.date, { color: colors.mutedForeground, textAlign }]}>
-                {date} · {formatUsd(pointsToUsd(item.reserved_points, item.patient_country))}
+                {date} ·{" "}
+                {formatUsd(
+                  pointsToUsd(
+                    item.reserved_points,
+                    item.patient_country,
+                    item.point_price_usd,
+                  ),
+                )}
+                {/* The country is what sets that value — name it here too. */}
+                {item.patient_country ? ` · ${item.patient_country.toUpperCase()}` : ""}
               </Text>
             </View>
             <View style={styles.badges}>

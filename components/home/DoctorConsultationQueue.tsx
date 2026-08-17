@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { ClipboardList, MessageSquare } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { countryFlagEmoji } from "@/constants/patientCountries";
 import { emptyStateSurface, primaryButton, secondaryButton, surfaceCard, UI } from "@/constants/uiTokens";
 import type { DoctorConsultation } from "@/domains/consultations/api";
 import { useColors } from "@/hooks/useColors";
@@ -66,6 +67,10 @@ export function DoctorConsultationQueue({ consultations }: Props) {
                 <View style={{ gap: 4 }}>
                   <View style={[styles.cardTop, { flexDirection: dir }]}>
                     <Text style={[styles.cardName, { color: colors.foreground, textAlign, flex: 1 }]}>
+                      {/* Country the consultation was requested from. */}
+                      {item.patient_country
+                        ? `${countryFlagEmoji(item.patient_country)} `
+                        : ""}
                       {item.patient_name}
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: `${colors.primary}18` }]}>

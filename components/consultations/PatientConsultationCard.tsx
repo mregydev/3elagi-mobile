@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { countryFlagEmoji } from "@/constants/patientCountries";
 import { surfaceCard, UI } from "@/constants/uiTokens";
 import type { PatientConsultation } from "@/domains/consultations/api";
 import { useColors } from "@/hooks/useColors";
@@ -89,6 +90,8 @@ export function PatientConsultationCard({ item, locale }: Props) {
       <View style={styles.main}>
         <View style={[styles.topRow, { flexDirection: dir }]}>
           <Text style={[styles.name, { color: colors.foreground, textAlign }]} numberOfLines={1}>
+            {/* Country the consultation was requested from. */}
+            {item.patient_country ? `${countryFlagEmoji(item.patient_country)} ` : ""}
             {item.doctor_name}
           </Text>
           <StatusBadge label={meta.label} color={meta.color} muted={meta.muted} />

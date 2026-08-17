@@ -13,6 +13,10 @@ export interface Consultation {
   diagnosis_id: string | null;
   cancel_reason_type: ConsultationCancelReasonType | null;
   cancel_reason: string | null;
+  /** ISO country the patient consulted from (their IP at request time). */
+  patient_country?: string | null;
+  /** USD per credit for that country when the request was made (admin-set). */
+  point_price_usd?: number | null;
 }
 
 export interface PointsSummary {
@@ -27,8 +31,6 @@ export type ComplaintStatus = "pending" | "accepted" | "rejected";
 
 export interface DoctorConsultation extends Consultation {
   patient_name: string;
-  /** ISO country of the patient — drives the USD rate for this consultation. */
-  patient_country?: string | null;
   created_at: string;
   closed_at: string | null;
   complaint_status: ComplaintStatus | null;
