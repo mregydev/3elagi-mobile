@@ -87,6 +87,7 @@ export default function VideoCallScreen() {
   const profile = useAuthStore((s) => s.profile);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
+  const resolveChatPeer = useChatStore((s) => s.resolvePeer);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const addPendingMessage = useChatStore((s) => s.addPendingMessage);
   const notifyMedicalHistoryChanged = useMedicalStore(
@@ -417,9 +418,18 @@ export default function VideoCallScreen() {
   const rawSelfName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
   // No role-word fallback here: formatVideoParticipantName already falls back
   // to the role label, and pre-filling it produced "Doctor Doctor".
+  const chatPeerId = resolveMeetingChatPeerId({
+    isDoctor,
+    session,
+    peerUserIdParam,
+    patientUserIdParam,
+  });
+  // Appointment rooms are built client-side and often carry no patient name,
+  // so fall back to the conversation the two already share.
   const rawPeerName =
     (isDoctor ? session?.patientName : session?.doctorName)?.trim() ||
     peerNameParam?.trim() ||
+    (chatPeerId ? resolveChatPeer(chatPeerId)?.name?.trim() : "") ||
     "";
   const displayName = formatVideoParticipantName({
     role: isDoctor ? "doctor" : "patient",
@@ -432,12 +442,6 @@ export default function VideoCallScreen() {
     roleLabel: peerRoleLabel,
   });
   const canJoin = !!session?.roomUrl && session.status === "accepted" && !meetingExpired;
-  const chatPeerId = resolveMeetingChatPeerId({
-    isDoctor,
-    session,
-    peerUserIdParam,
-    patientUserIdParam,
-  });
   const canUseMeetingChat = canJoin && !!chatPeerId;
   const useSideChatLayout = isTablet || isDesktop;
   const chatLayout = useSideChatLayout ? "side" : "overlay";
@@ -510,6 +514,13 @@ export default function VideoCallScreen() {
   useRinger("ringback", waitingForDoctor);
   useRinger("ringtone", incomingForDoctor && !acting && Platform.OS !== "android");
   const countdownLabel = formatRemainingTime(remainingSeconds);
+  // Wall-clock end = now + whatever is left, which tracks the same timer the
+  // countdown used (and so survives a late join or a reconnect).
+  const endTimeLabel = new Date(Date.now() + remainingSeconds * 1000)
+    .toLocaleTimeString(isRTL ? "ar" : "en", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   const endMeetingForTimeout = useCallback(() => {
     if (endingRef.current) return;
@@ -654,10 +665,10 @@ export default function VideoCallScreen() {
               <Text
                 style={[styles.timerLabel, { color: colors.mutedForeground }]}
               >
-                {isRTL ? "الوقت المتبقي" : "Time left"}
+                {isRTL ? "ينتهي في" : "Ends at"}
               </Text>
               <Text style={[styles.timerValue, { color: colors.foreground }]}>
-                {countdownLabel}
+                {endTimeLabel}
               </Text>
             </View>
           ) : null}

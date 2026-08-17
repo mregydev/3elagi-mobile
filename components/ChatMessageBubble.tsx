@@ -21,6 +21,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { formatEgp } from "@/utils/credits";
+import { appointmentRoomState } from "@/domains/appointments/roomWindow";
 
 interface Props {
   item: ChatMessage;
@@ -881,10 +882,14 @@ export function ChatMessageBubble({
       meta.action === "request" && status === "pending" && isDoctor && !mine;
     const canCancel =
       showAppointmentControls && (status === "pending" || status === "confirmed");
+    // Past its slot the room is closed server-side, so drop the join link
+    // rather than offering a dead door.
+    const roomState = appointmentRoomState(meta.date, meta.time, meta.duration_minutes);
     const canJoinMeeting =
       !!meetingLink &&
       showAppointmentControls &&
       !canRespond &&
+      roomState !== "over" &&
       joinableStatuses.has(status);
 
     return (

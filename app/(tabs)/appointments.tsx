@@ -180,7 +180,8 @@ export default function AppointmentsTab() {
               </Text>
             </View>
           ) : null}
-          {item.meeting_link ? (
+          {item.meeting_link &&
+          appointmentRoomState(item.date, item.time, item.duration_minutes) !== "over" ? (
             <View style={styles.linkWrap}>
               <Pressable
                 onPress={() => {
