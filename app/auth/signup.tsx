@@ -99,8 +99,7 @@ export default function SignupScreen() {
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
-  // Bounced here from Google sign-in because no account matched that email.
-  const [formOpen, setFormOpen] = useState(errorParam === "google_no_account");
+  const [formOpen, setFormOpen] = useState(true);
   const googleNoAccount = errorParam === "google_no_account";
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
