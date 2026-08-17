@@ -4,7 +4,7 @@ import React from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
-const AUTH_HERO = require("@/assets/images/auth-hero.png");
+const AUTH_HERO = require("@/assets/images/auth-hero.jpg");
 
 interface Props {
   style?: StyleProp<ViewStyle>;
