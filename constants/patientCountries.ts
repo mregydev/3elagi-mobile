@@ -81,23 +81,22 @@ export function resolvePointMarket(
   country: string | null | undefined,
 ): PointMarket {
   const code = country?.trim().toUpperCase();
-  if (code === "EG" || code === "JO") return code;
-  return code ? "INTL" : "EG";
+  if (code === "EG") return "EG";
+  if (code === "JO") return "JO";
+  return "INTL";
 }
 
 export function marketCurrencyLabel(
-  country: string | null | undefined,
+  _country: string | null | undefined,
   preferArabic: boolean,
 ): string {
-  const market = resolvePointMarket(country);
-  if (market === "JO") return preferArabic ? "دينار" : "JOD";
-  if (market === "INTL") return preferArabic ? "دولار" : "USD";
-  return preferArabic ? "جنيه" : "EGP";
+  return preferArabic ? "دولار" : "USD";
 }
 
 export function marketCurrencyCode(
   country: string | null | undefined,
 ): "EGP" | "JOD" | "USD" {
+  void country;
   return "USD";
 }
 

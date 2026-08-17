@@ -38,15 +38,12 @@ export default function PricingTab() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const next = await fetchPointPricing();
+      const geo = await detectCountryFromIp();
+      if (cancelled) return;
+      setIpCountry(geo);
+      const next = await fetchPointPricing(geo);
       if (cancelled) return;
       if (next) setPricing(next);
-      // Hosts without a geo header (plain Cloud Run) leave detected_country
-      // null; ask from here, where the request carries the user's own IP.
-      if (!next?.detectedCountry) {
-        const code = await detectCountryFromIp();
-        if (!cancelled) setIpCountry(code);
-      }
     })();
     return () => {
       cancelled = true;

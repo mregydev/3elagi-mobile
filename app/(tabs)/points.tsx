@@ -1,5 +1,5 @@
 import { Plus, Wallet } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,22 +16,17 @@ import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { PointsPieChart } from "@/components/PointsPieChart";
 import { useAuthStore } from "@/domains/auth/store";
-import { fetchPointPricing, type PointPricing } from "@/domains/points/api";
 import { isSignedIn } from "@/domains/auth/session";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { Redirect } from "expo-router";
 import { reimbursePoints } from "@/domains/points/api";
 import { usePointsStore } from "@/domains/points/store";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { Redirect } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useIpPointPricing } from "@/hooks/useIpPointPricing";
 import { usePointsPage } from "@/hooks/usePointsPage";
-import { flexRow } from "@/utils/rtl";
 import { formatMoney } from "@/utils/credits";
-import {
-  marketCurrencyCode,
-  moneyForPoints,
-  pricePerPoint,
-} from "@/constants/patientCountries";
+import { flexRow } from "@/utils/rtl";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 export default function PointsTab() {
@@ -46,20 +41,7 @@ export default function PointsTab() {
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   // Price follows the caller's IP (Egypt $2 / Jordan $15 / elsewhere $50 USD).
-  // Profile country is the fallback until the lookup answers, or if it fails.
-  const [pricing, setPricing] = useState<PointPricing | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void fetchPointPricing().then((next) => {
-      if (!cancelled && next) setPricing(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const rate = pricing?.pricePerPoint ?? pricePerPoint(profile?.country);
-  const currency = pricing?.currency ?? marketCurrencyCode(profile?.country);
+  const { rate, currency, moneyForAmount } = useIpPointPricing();
 
   const {
     loading,
@@ -245,7 +227,7 @@ export default function PointsTab() {
               return (
                 <Text style={{ color: colors.primary, fontWeight: "800", textAlign, fontSize: 15 }}>
                   {t.credits.checkoutAmount}:{" "}
-                  {formatMoney(moneyForPoints(pts, profile?.country), t, profile?.country)}
+                  {formatMoney(moneyForAmount(pts), t)}
                 </Text>
               );
             })()}

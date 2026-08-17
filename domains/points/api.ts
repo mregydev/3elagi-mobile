@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
 /** Matches API signup default (`DEFAULT_MESSAGE_POINTS`). */
 export const DEFAULT_AVAILABLE_POINTS = 10;
@@ -38,12 +39,16 @@ export async function createVisaCheckout(
   token: string,
   amount: number,
 ): Promise<{ checkout_url: string }> {
+  const geo = await detectCountryFromIp();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  if (geo) headers["X-Client-Geo-Country"] = geo;
+
   const res = await fetch(`${API_BASE}/payments/credits/checkout/visa`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({ amount }),
   });
   const data = (await res.json().catch(() => ({}))) as {
@@ -91,10 +96,22 @@ export interface PointPricing extends MarketPrice {
   markets: MarketPrice[];
 }
 
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
+
+const CLIENT_GEO_HEADER = "X-Client-Geo-Country";
+
+async function pricingRequestInit(clientGeo?: string | null): Promise<RequestInit> {
+  const geo = clientGeo ?? (await detectCountryFromIp());
+  return geo ? { headers: { [CLIENT_GEO_HEADER]: geo } } : {};
+}
+
 /** Live per-point price for wherever the caller is (public — no token). */
-export async function fetchPointPricing(): Promise<PointPricing | null> {
+export async function fetchPointPricing(
+  clientGeo?: string | null,
+): Promise<PointPricing | null> {
   try {
-    const res = await fetch(`${API_BASE}/points/pricing`);
+    const init = await pricingRequestInit(clientGeo);
+    const res = await fetch(`${API_BASE}/points/pricing`, init);
     if (!res.ok) return null;
     type Row = {
       market?: PointMarket;

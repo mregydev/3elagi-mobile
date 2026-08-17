@@ -42,13 +42,13 @@ export function currencySuffix(t?: Translations, _country?: string | null): stri
   return dict(t).credits.currencySuffix;
 }
 
-/** Format cash for checkout (EGP / JOD by market). */
+/** Format cash for checkout (always USD for credit purchase). */
 export function formatMoney(
   amount: number,
   t?: Translations,
-  country?: string | null,
+  _country?: string | null,
 ): string {
-  const label = marketCurrencyLabel(resolveCountry(country), preferArabic());
+  const label = marketCurrencyLabel(null, preferArabic());
   return `${Math.round(amount)} ${label}`;
 }
 

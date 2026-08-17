@@ -15,11 +15,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 
 import { router } from "expo-router";
 import { PointsPieChart } from "@/components/PointsPieChart";
-import {
-  marketCurrencyCode,
-  moneyForPoints,
-  pricePerPoint,
-} from "@/constants/patientCountries";
+import { useIpPointPricing } from "@/hooks/useIpPointPricing";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { useColors } from "@/hooks/useColors";
@@ -104,13 +100,11 @@ function AddPointsForm({
 }) {
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
-  const profileCountry = useAuthStore((s) => s.profile?.country);
-  const rate = pricePerPoint(profileCountry);
-  const currency = marketCurrencyCode(profileCountry);
+  const { rate, currency, moneyForAmount } = useIpPointPricing();
   const ptsPreview = parseInt(amountText.trim(), 10);
   const duePreview =
     Number.isFinite(ptsPreview) && ptsPreview >= 1
-      ? moneyForPoints(ptsPreview, profileCountry)
+      ? moneyForAmount(ptsPreview)
       : null;
 
   const handleContinue = () => {
@@ -160,7 +154,7 @@ function AddPointsForm({
           />
           {duePreview != null ? (
             <Text style={{ color: colors.primary, fontWeight: "800", textAlign, marginTop: 8 }}>
-              {t.credits.checkoutAmount}: {formatMoney(duePreview, t, profileCountry)}
+              {t.credits.checkoutAmount}: {formatMoney(duePreview, t)}
             </Text>
           ) : null}
         </View>

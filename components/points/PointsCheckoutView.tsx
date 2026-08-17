@@ -15,15 +15,9 @@ import {
   PaymentMethodCard,
   type PaymentMethodId,
 } from "@/components/points/PaymentMethodCard";
-import {
-  marketCurrencyCode,
-  moneyForPoints,
-  pricePerPoint,
-} from "@/constants/patientCountries";
-import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
-import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { createVisaCheckout } from "@/domains/points/api";
 import { useAuthStore } from "@/domains/auth/store";
+import { useIpPointPricing } from "@/hooks/useIpPointPricing";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -44,16 +38,14 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   const router = useRouter();
   usePathname();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const profileCountry = useAuthStore((s) => s.profile?.country);
+  const { rate, currency, moneyForAmount, loading: pricingLoading } = useIpPointPricing();
   const [payingMethod, setPayingMethod] = useState<PaymentMethodId | null>(null);
   const useWideLayout = desktopLayout || isDesktop;
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
   const showBack = canNavigateBack(router);
-  const currency = marketCurrencyCode(profileCountry);
-  const rate = pricePerPoint(profileCountry);
-  const due = moneyForPoints(amount, profileCountry);
+  const due = moneyForAmount(amount);
 
   const methods: Array<{
     id: PaymentMethodId;
@@ -132,7 +124,7 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
                   {t.credits.checkoutTitle}
                 </Text>
                 <Text style={{ color: colors.mutedForeground, textAlign }}>
-                  {t.credits.pricePerPointLabel(rate, currency)}
+                  {pricingLoading ? "…" : t.credits.pricePerPointLabel(rate, currency)}
                 </Text>
               </View>
             </View>
@@ -149,7 +141,7 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
                 {t.credits.checkoutAmount}
               </Text>
               <Text style={[styles.amountValue, { color: colors.primary }]}>
-                {formatMoney(due, t, profileCountry)}
+                {formatMoney(due, t)}
               </Text>
             </View>
           </View>
