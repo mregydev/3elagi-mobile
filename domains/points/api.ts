@@ -1,6 +1,13 @@
 import { API_BASE } from "@/constants/api";
 import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
+const CLIENT_GEO_HEADER = "X-Client-Geo-Country";
+
+async function pricingRequestInit(clientGeo?: string | null): Promise<RequestInit> {
+  const geo = clientGeo ?? (await detectCountryFromIp());
+  return geo ? { headers: { [CLIENT_GEO_HEADER]: geo } } : {};
+}
+
 /** Matches API signup default (`DEFAULT_MESSAGE_POINTS`). */
 export const DEFAULT_AVAILABLE_POINTS = 10;
 
@@ -94,15 +101,6 @@ export interface PointPricing extends MarketPrice {
   detectedCountry: string | null;
   /** Every market, for the public pricing table. */
   markets: MarketPrice[];
-}
-
-import { detectCountryFromIp } from "@/domains/points/detectCountry";
-
-const CLIENT_GEO_HEADER = "X-Client-Geo-Country";
-
-async function pricingRequestInit(clientGeo?: string | null): Promise<RequestInit> {
-  const geo = clientGeo ?? (await detectCountryFromIp());
-  return geo ? { headers: { [CLIENT_GEO_HEADER]: geo } } : {};
 }
 
 /** Live per-point price for wherever the caller is (public — no token). */
