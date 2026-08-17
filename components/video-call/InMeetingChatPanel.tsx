@@ -20,6 +20,7 @@ import { ChatComposer } from "@/components/ChatComposer";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
+import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   connectConversationSocket,
@@ -27,11 +28,23 @@ import {
 } from "@/domains/chat/conversationSocket";
 import { buildLoggedInUser } from "@/domains/presence/user";
 import { useChatStore } from "@/domains/chat/store";
-import type { ChatMessage, SendMessageInput } from "@/domains/chat/types";
+import type {
+  ChatMessage,
+  MedicalLinkMeta,
+  SendMessageInput,
+} from "@/domains/chat/types";
+import { fetchAllMedicalHistory } from "@/domains/medical/api";
+import type { MedicalRecord } from "@/domains/medical/types";
+import { useMedicalStore } from "@/domains/medical/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { chatFlexRow, flexRow } from "@/utils/rtl";
-import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
+import {
+  buildChatLatestMessageToken,
+  isChatStuckToLatest,
+  scrollChatToLatest,
+  shouldForceChatScrollOnNewMessage,
+} from "@/utils/chatListScroll";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 const SIDE_PANEL_WIDTH = 380;
@@ -45,6 +58,8 @@ interface Props {
   /** Fixed column beside video (tablet/desktop) or full overlay (mobile). */
   layout: "side" | "overlay";
   onClose?: () => void;
+  /** Lift the picker to the video-call root so it sits above the meeting UI. */
+  renderMedicalPicker?: (picker: React.ReactNode) => void;
 }
 
 export function InMeetingChatPanel({
@@ -53,6 +68,7 @@ export function InMeetingChatPanel({
   isDoctor,
   layout,
   onClose,
+  renderMedicalPicker,
 }: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
@@ -78,7 +94,12 @@ export function InMeetingChatPanel({
   const addPendingMessage = useChatStore((s) => s.addPendingMessage);
   const failPendingMessage = useChatStore((s) => s.failPendingMessage);
 
+  const medicalRecords = useMedicalStore((s) => s.records);
+  const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
+
   const [sending, setSending] = useState(false);
+  const [medicalPickerOpen, setMedicalPickerOpen] = useState(false);
+  const [medicalPickerLoading, setMedicalPickerLoading] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [fullscreenVideo, setFullscreenVideo] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatListItem>>(null);
@@ -95,8 +116,9 @@ export function InMeetingChatPanel({
   const joinedAtRef = useRef(new Date().toISOString());
   const listData = useMemo<ChatListItem[]>(
     () =>
-      messages
+      [...messages]
         .filter((message) => message.createdAt >= joinedAtRef.current)
+        .reverse()
         .map((message) => ({ kind: "message", message })),
     [messages],
   );
@@ -150,10 +172,7 @@ export function InMeetingChatPanel({
 
   useEffect(() => {
     if (messagesLoading) return;
-    const token =
-      messages.length === 0
-        ? "empty"
-        : `${messages[messages.length - 1]?.id}:${messages.length}`;
+    const token = buildChatLatestMessageToken(messages);
     if (token === lastMessageTokenRef.current) return;
 
     const prevToken = lastMessageTokenRef.current;
@@ -163,6 +182,13 @@ export function InMeetingChatPanel({
     const isInitialBatch = prevToken === "" || prevToken === "empty";
     const newest = messages[messages.length - 1];
     const isOwnMessage = newest?.senderId === "me";
+
+    if (shouldForceChatScrollOnNewMessage(isInitialBatch, newest)) {
+      stickToBottomRef.current = true;
+      scrollToLatest(true);
+      return;
+    }
+
     if (!isInitialBatch && !isOwnMessage && !stickToBottomRef.current) return;
 
     if (isInitialBatch || isOwnMessage) stickToBottomRef.current = true;
@@ -175,37 +201,118 @@ export function InMeetingChatPanel({
     scrollToLatest(false);
   }, [keyboardVisible, scrollToLatest]);
 
-  const handleSend = async (input: SendMessageInput, replaceTempId?: string) => {
-    const abortSend = () => {
-      if (replaceTempId) failPendingMessage(peerId, replaceTempId);
-      throw new Error("SEND_ABORTED");
-    };
-    if (!accessToken || !profile?.id || sending || sendingRef.current) abortSend();
-
-    sendingRef.current = true;
-    setSending(true);
-    stickToBottomRef.current = true;
+  const loadMedicalRecords = useCallback(async () => {
+    if (!accessToken || !profile?.id) return;
+    setMedicalPickerLoading(true);
     try {
-      await sendMessage(peerId, input, accessToken, profile.id, role, replaceTempId);
-      stickToBottomRef.current = true;
-      scrollToLatest(false);
-    } catch (e) {
-      if (replaceTempId) failPendingMessage(peerId, replaceTempId);
-      if ((e as Error).message !== "SEND_ABORTED") {
-        Alert.alert(
-          isRTL ? "خطأ" : "Error",
-          e instanceof Error
-            ? e.message
-            : isRTL
-              ? "تعذر إرسال الرسالة"
-              : "Failed to send message",
-        );
-      }
+      const apiRecords = await fetchAllMedicalHistory(profile.id, accessToken, role ?? undefined);
+      setRecordsFromApi(apiRecords, profile.id);
+    } catch {
+      // keep cached records if refresh fails
     } finally {
-      sendingRef.current = false;
-      setSending(false);
+      setMedicalPickerLoading(false);
     }
-  };
+  }, [accessToken, profile?.id, role, setRecordsFromApi]);
+
+  const openMedicalPicker = useCallback(() => {
+    if (!accessToken || !profile?.id || !isPatient) return;
+    setMedicalPickerOpen(true);
+    void loadMedicalRecords();
+  }, [accessToken, profile?.id, isPatient, loadMedicalRecords]);
+
+  const handleSend = useCallback(
+    async (input: SendMessageInput, replaceTempId?: string) => {
+      const abortSend = () => {
+        if (replaceTempId) failPendingMessage(peerId, replaceTempId);
+        throw new Error("SEND_ABORTED");
+      };
+      if (!accessToken || !profile?.id || sending || sendingRef.current) abortSend();
+
+      sendingRef.current = true;
+      setSending(true);
+      stickToBottomRef.current = true;
+      try {
+        await sendMessage(peerId, input, accessToken, profile.id, role, replaceTempId);
+        stickToBottomRef.current = true;
+        scrollToLatest(false);
+      } catch (e) {
+        if (replaceTempId) failPendingMessage(peerId, replaceTempId);
+        if ((e as Error).message !== "SEND_ABORTED") {
+          Alert.alert(
+            isRTL ? "خطأ" : "Error",
+            e instanceof Error
+              ? e.message
+              : isRTL
+                ? "تعذر إرسال الرسالة"
+                : "Failed to send message",
+          );
+        }
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+    },
+    [
+      accessToken,
+      profile?.id,
+      sending,
+      peerId,
+      role,
+      sendMessage,
+      failPendingMessage,
+      isRTL,
+      scrollToLatest,
+    ],
+  );
+
+  const handleMedicalPickerSelect = useCallback(
+    async (record: MedicalRecord, note?: string) => {
+      const trimmedNote = note?.trim();
+      const meta: MedicalLinkMeta = {
+        record_type: record.category as MedicalLinkMeta["record_type"],
+        record_id: record.id,
+        title: record.title,
+        ...(trimmedNote ? { note: trimmedNote } : {}),
+      };
+
+      setMedicalPickerOpen(false);
+      await handleSend({
+        recipientId: peerId,
+        type: "medical_link",
+        content: trimmedNote || record.title,
+        medicalLink: meta,
+      });
+    },
+    [peerId, handleSend],
+  );
+
+  const medicalPickerNode = useMemo(() => {
+    if (!isPatient) return null;
+    return (
+      <MedicalRecordPicker
+        visible={medicalPickerOpen}
+        records={medicalRecords}
+        loading={medicalPickerLoading}
+        isRTL={isRTL}
+        mode="share"
+        onClose={() => setMedicalPickerOpen(false)}
+        onSelect={(record, note) => void handleMedicalPickerSelect(record, note)}
+      />
+    );
+  }, [
+    isPatient,
+    medicalPickerOpen,
+    medicalRecords,
+    medicalPickerLoading,
+    isRTL,
+    handleMedicalPickerSelect,
+  ]);
+
+  useEffect(() => {
+    if (!renderMedicalPicker) return;
+    renderMedicalPicker(medicalPickerNode);
+    return () => renderMedicalPicker(null);
+  }, [renderMedicalPicker, medicalPickerNode]);
 
   if (!profile?.id || !accessToken) return null;
 
@@ -360,11 +467,15 @@ export function InMeetingChatPanel({
             onSend={handleSend}
             onAddPending={(msg) => addPendingMessage(peerId, msg)}
             onFailPending={(tempId) => failPendingMessage(peerId, tempId)}
-            onPickMedical={() => undefined}
+            onPickMedical={openMedicalPicker}
+            canStoreImageInMedicalRecord={isPatient}
+            medicalRecordPatientUserId={profile.id}
             disabled={false}
           />
         </KeyboardStickyView>
       </View>
+
+      {!renderMedicalPicker ? medicalPickerNode : null}
 
       <FullscreenImageViewer uri={fullscreenImage} onClose={() => setFullscreenImage(null)} />
       <FullscreenVideoViewer uri={fullscreenVideo} onClose={() => setFullscreenVideo(null)} />

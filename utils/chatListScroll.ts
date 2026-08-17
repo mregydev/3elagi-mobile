@@ -1,5 +1,29 @@
+import type { ChatMessage } from "@/domains/chat/types";
 import type { FlatList, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { Platform } from "react-native";
+
+const SOCKET_SCROLL_MESSAGE_TYPES = new Set<ChatMessage["type"]>([
+  "image",
+  "video",
+  "medical_link",
+]);
+
+/** Stable token for the latest message — includes pending→confirmed transitions. */
+export function buildChatLatestMessageToken(messages: ChatMessage[]): string {
+  if (messages.length === 0) return "empty";
+  const newest = messages[messages.length - 1];
+  return `${newest.id}:${messages.length}:${newest.pending ? "p" : "c"}`;
+}
+
+/** Incoming peer messages and shared media/medical records always scroll to latest. */
+export function shouldForceChatScrollOnNewMessage(
+  isInitialBatch: boolean,
+  newest: ChatMessage | undefined,
+): boolean {
+  if (isInitialBatch || !newest) return false;
+  if (newest.senderId !== "me") return true;
+  return SOCKET_SCROLL_MESSAGE_TYPES.has(newest.type);
+}
 
 type ChatListRef<T> = React.RefObject<FlatList<T> | null>;
 

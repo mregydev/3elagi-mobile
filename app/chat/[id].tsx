@@ -80,7 +80,12 @@ import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
 import { AppBackButton } from "@/components/nav/AppBackButton";
-import { scrollChatToLatest, isChatStuckToLatest } from "@/utils/chatListScroll";
+import {
+  buildChatLatestMessageToken,
+  isChatStuckToLatest,
+  scrollChatToLatest,
+  shouldForceChatScrollOnNewMessage,
+} from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
 import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
@@ -431,10 +436,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
     if (messagesLoading) return;
 
-    const token =
-      messages.length === 0
-        ? "empty"
-        : `${messages[messages.length - 1]?.id}:${messages.length}`;
+    const token = buildChatLatestMessageToken(messages);
 
     if (token === lastMessageTokenRef.current) return;
 
@@ -447,8 +449,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     const newest = messages[messages.length - 1];
     const isOwnMessage = newest?.senderId === "me";
 
-    // Socket-delivered peer messages always jump to the latest line.
-    if (!isInitialBatch && !isOwnMessage) {
+    if (shouldForceChatScrollOnNewMessage(isInitialBatch, newest)) {
       stickToBottomRef.current = true;
       scrollToLatest(true);
       return;

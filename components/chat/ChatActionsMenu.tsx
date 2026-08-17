@@ -59,8 +59,10 @@ export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props
 
   const runAction = (onPress: () => void) => {
     closeMenu();
-    // Dismiss the context window before opening nested modals/pickers.
-    requestAnimationFrame(() => onPress());
+    // Let this modal finish closing before opening nested pickers — stacking
+    // two RN-web modals in the same frame often swallows the second one.
+    const delay = Platform.OS === "web" ? 150 : 16;
+    setTimeout(() => onPress(), delay);
   };
 
   // Native gets a bottom sheet: an anchored popup next to a composer button

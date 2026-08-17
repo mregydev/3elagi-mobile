@@ -135,6 +135,7 @@ export default function VideoCallScreen() {
   const { isTablet, isDesktop } = useWebLayout();
   const [chatOpen, setChatOpen] = useState(false);
   const chatDefaultedRef = useRef(false);
+  const [meetingMedicalPicker, setMeetingMedicalPicker] = useState<React.ReactNode>(null);
 
   const clearPoll = useCallback(() => {
     if (pollRef.current) {
@@ -786,6 +787,7 @@ export default function VideoCallScreen() {
                 isDoctor={isDoctor}
                 layout={chatLayout}
                 onClose={chatLayout === "overlay" ? () => setChatOpen(false) : undefined}
+                renderMedicalPicker={setMeetingMedicalPicker}
               />
             ) : null}
           </View>
@@ -855,6 +857,8 @@ export default function VideoCallScreen() {
           onClose={() => setDocumentRequestType(null)}
         />
       ) : null}
+
+      {meetingMedicalPicker}
     </View>
   );
 }
