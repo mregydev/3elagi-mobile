@@ -24,7 +24,7 @@ export function WebSidebar() {
     <View
       style={[
         styles.sidebar,
-        { width: collapsed ? 72 : 260 },
+        { width: collapsed ? 68 : 260 },
         {
           backgroundColor: colors.card,
           borderColor: colors.border,

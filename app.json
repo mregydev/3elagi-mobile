@@ -8,6 +8,9 @@
     "scheme": "threelagi",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "linking": {
+      "prefixes": ["threelagi://"]
+    },
     "splash": {
       "image": "./assets/images/splash-logo.png",
       "backgroundColor": "#f5f7fa",
@@ -15,11 +18,47 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.threelagi.mobile"
+      "bundleIdentifier": "com.threelagi.mobile",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["threelagi"]
+          },
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.773972750372-8ggmkp52i76ruevgvtpo0ummg1vttdeo"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.threelagi.mobile",
       "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "com.googleusercontent.apps.773972750372-8ggmkp52i76ruevgvtpo0ummg1vttdeo",
+              "host": "oauth2redirect"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "threelagi",
+              "host": "oauthredirect"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "permissions": [
         "POST_NOTIFICATIONS",
         "RECORD_AUDIO",
@@ -39,6 +78,7 @@
     "plugins": [
       "./plugins/withAndroidLaunchBackground.js",
       "./plugins/withAndroidIncomingCall.js",
+      "@react-native-google-signin/google-signin",
       "expo-router",
       "expo-font",
       "expo-web-browser",

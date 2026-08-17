@@ -196,12 +196,16 @@ export function AppSidebarNav({
           style={[
             styles.brandRow,
             { flexDirection: dir, alignItems: "center" },
-            collapsed && { justifyContent: "center" },
+            // Rail: mark above the toggle, both centred in the collapsed column.
+            collapsed && styles.brandRowRail,
           ]}
         >
-          {showBrand && !collapsed ? (
-            <View style={styles.brandLogo}>
-              <Logo3elagi height={LOGO_HEIGHT.sidebar} />
+          {showBrand ? (
+            <View style={collapsed ? undefined : styles.brandLogo}>
+              <Logo3elagi
+                height={collapsed ? 26 : LOGO_HEIGHT.sidebar}
+                markOnly={collapsed}
+              />
             </View>
           ) : null}
           {onToggleCollapse ? (
@@ -415,7 +419,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   contentRail: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     alignItems: "center",
   },
   brandRow: {
@@ -425,12 +429,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   brandLogo: { flex: 1, alignItems: "center" },
+  brandRowRail: {
+    flexDirection: "column",
+    justifyContent: "center",
+    gap: 4,
+    marginBottom: 0,
+  },
   iconBtn: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: 8,
   },
   nav: { gap: 2 },
   navItem: {
@@ -443,29 +453,29 @@ const styles = StyleSheet.create({
   navItemRail: {
     alignSelf: "center",
     justifyContent: "center",
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     paddingHorizontal: 0,
     paddingVertical: 0,
-    borderRadius: 22,
+    borderRadius: 10,
   },
   navItemRailActive: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
   },
   railDot: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 4,
+    right: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: "#ef4444",
   },
   railDotActive: {
-    top: 8,
-    right: 8,
+    top: 5,
+    right: 5,
   },
   navLabel: { fontSize: 14, flex: 1 },
   badge: {
@@ -548,17 +558,16 @@ const styles = StyleSheet.create({
   authCtaSignup: {
     borderWidth: 2,
   },
-  // Rail: same 44x44 square as every other icon item, so the CTAs stop
-  // stretching into slabs when the labels are gone.
+  // Rail: same compact square as every other icon item.
   authCtaRail: {
     alignSelf: "center",
-    width: 44,
-    height: 44,
-    minHeight: 44,
+    width: 36,
+    height: 36,
+    minHeight: 36,
     marginTop: 8,
     paddingHorizontal: 0,
     paddingVertical: 0,
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",

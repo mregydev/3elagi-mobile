@@ -1,6 +1,9 @@
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
-import { useEffect, useRef } from "react";
+import {
+  GoogleSignin,
+  statusCodes,
+  type SignInResponse,
+} from "@react-native-google-signin/google-signin";
+import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 
 import { GOOGLE_CLIENT_ID } from "@/domains/auth/google";
@@ -13,52 +16,73 @@ export const GOOGLE_CLIENT_MOBILE_ID =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_MOBILE_ID ??
   "773972750372-8ggmkp52i76ruevgvtpo0ummg1vttdeo.apps.googleusercontent.com";
 
-// Closes the in-app browser tab once Google redirects back.
-WebBrowser.maybeCompleteAuthSession();
+export type GoogleNativePromptResult =
+  | { type: "success" }
+  | { type: "cancel" }
+  | { type: "error"; error: Error };
 
-function platformClientId(): string {
-  if (Platform.OS === "android") {
-    return (
-      process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID ?? GOOGLE_CLIENT_MOBILE_ID
-    );
-  }
-  if (Platform.OS === "ios") {
-    return (
-      process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS ?? GOOGLE_CLIENT_MOBILE_ID
-    );
-  }
-  return GOOGLE_CLIENT_MOBILE_ID;
-}
+let configured = false;
 
-export function useGoogleNativeSignIn(onIdToken: (idToken: string) => void) {
-  const androidClientId =
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID ?? GOOGLE_CLIENT_MOBILE_ID;
-  const iosClientId =
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS ?? GOOGLE_CLIENT_MOBILE_ID;
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    // Android ID tokens use the web client id as `aud`.
-    clientId: GOOGLE_CLIENT_ID,
-    androidClientId,
-    iosClientId,
+function ensureConfigured(): void {
+  if (configured || Platform.OS === "web") return;
+  GoogleSignin.configure({
+    // Android needs the *web* client id here so the returned ID token `aud`
+    // matches what the API already accepts for browser sign-in.
+    webClientId: GOOGLE_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+    offlineAccess: false,
     scopes: ["openid", "email", "profile"],
   });
+  configured = true;
+}
 
-  // A response object is stable per attempt; guard so a re-render cannot submit
-  // the same token twice.
-  const handledRef = useRef<string | null>(null);
+async function idTokenFromSignIn(result: SignInResponse): Promise<string> {
+  if (result.type === "cancelled") {
+    throw Object.assign(new Error("Sign-in cancelled"), { code: "cancelled" });
+  }
+  if (result.data.idToken) return result.data.idToken;
+  const tokens = await GoogleSignin.getTokens();
+  if (tokens.idToken) return tokens.idToken;
+  throw new Error("Google returned no identity token");
+}
+
+/**
+ * Native Google sign-in via the platform SDK (no in-app browser redirect).
+ * Avoids Custom Tabs getting stuck after Google redirects on Android.
+ */
+export function useGoogleNativeSignIn(onIdToken: (idToken: string) => void) {
+  const [ready, setReady] = useState(Platform.OS === "web");
 
   useEffect(() => {
-    if (response?.type !== "success") return;
-    const idToken =
-      response.params?.id_token ?? response.authentication?.idToken ?? null;
-    if (!idToken || handledRef.current === idToken) return;
-    handledRef.current = idToken;
-    onIdToken(idToken);
-  }, [response, onIdToken]);
+    if (Platform.OS === "web") return;
+    ensureConfigured();
+    setReady(true);
+  }, []);
 
-  const ready =
-    !!request && !!GOOGLE_CLIENT_ID && !!platformClientId();
+  const promptAsync = useCallback(async (): Promise<GoogleNativePromptResult> => {
+    ensureConfigured();
+    try {
+      if (Platform.OS === "android") {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+      const result = await GoogleSignin.signIn();
+      const idToken = await idTokenFromSignIn(result);
+      onIdToken(idToken);
+      return { type: "success" };
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      if (
+        err.code === statusCodes.SIGN_IN_CANCELLED ||
+        err.code === "cancelled"
+      ) {
+        return { type: "cancel" };
+      }
+      return {
+        type: "error",
+        error: new Error(err.message ?? "Google sign-in failed"),
+      };
+    }
+  }, [onIdToken]);
 
   return { ready, promptAsync };
 }

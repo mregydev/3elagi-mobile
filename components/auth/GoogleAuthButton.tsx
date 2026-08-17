@@ -175,7 +175,7 @@ export function GoogleAuthButton({
               if (result?.type === "error") {
                 Alert.alert(
                   "Google",
-                  result.error?.message ??
+                  result.error.message ??
                     (isRTL ? "تعذر تسجيل الدخول عبر Google." : "Google sign-in failed."),
                 );
               }
