@@ -1678,40 +1678,15 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               return <ChatDateSeparator label={row.label} />;
             }
             const item = row.message;
-            if (item.type === "access_action" || item.type === "appointment_action") {
-              const apptId = item.appointmentAction?.appointment_id;
-              const showAppointmentControls = apptId
-                ? latestAppointmentMessageIds.get(apptId) === item.id
-                : false;
-              const showPendingChangePanel = apptId
-                ? openAppointmentChangeRequests.get(apptId) === item.id
-                : false;
-              return (
-                <ChatMessageBubble
-                  item={item}
-                  mine={item.senderId === "me"}
-                  isRTL={isRTL}
-                  rowDir={rowDir}
-                  patientUserId={patientUserIdForLinks}
-                  conversationPeerId={id}
-                  canOpenMedicalLink={canOpenSharedMedicalLinks}
-                  isDoctor={isDoctor}
-                  selfUserId={profile?.id}
-                  appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
-                  showAppointmentControls={showAppointmentControls}
-                  showPendingChangePanel={showPendingChangePanel}
-                  onAppointmentAction={(appointmentId, action) =>
-                    void handleAppointmentAction(appointmentId, action)
-                  }
-                  appointmentActionBusy={appointmentActionBusy}
-                  onPaymentReply={(target, reply) => void handlePaymentReply(target, reply)}
-                  onChangeReply={handleChangeReply}
-                  onRescheduleRequest={(appointmentId) => void openReschedule(appointmentId)}
-                />
-              );
-            }
-
             const mine = item.senderId === "me";
+            const apptId = item.appointmentAction?.appointment_id;
+            const showAppointmentControls = apptId
+              ? latestAppointmentMessageIds.get(apptId) === item.id
+              : false;
+            const showPendingChangePanel = apptId
+              ? openAppointmentChangeRequests.get(apptId) === item.id
+              : false;
+
             const senderAvatar = mine ? (
               <Avatar
                 uri={profile?.avatarUrl}
@@ -1730,7 +1705,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
             const isWideCardMessage =
               item.type === "medical_link" ||
-              item.type === "consultation_action";
+              item.type === "consultation_action" ||
+              item.type === "appointment_action";
 
             const bubble = (
               <View
@@ -1760,6 +1736,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                     canReactToMessage(item) ? () => showReactionPicker(item) : undefined
                   }
                   isDoctor={isDoctor}
+                  appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
+                  showAppointmentControls={showAppointmentControls}
+                  showPendingChangePanel={showPendingChangePanel}
+                  onAppointmentAction={(appointmentId, action) =>
+                    void handleAppointmentAction(appointmentId, action)
+                  }
+                  appointmentActionBusy={appointmentActionBusy}
                   onConsultationAction={
                     item.consultationAction &&
                     !answeredConsultations.has(item.consultationAction.consultation_id)
@@ -1767,7 +1750,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                       : undefined
                   }
                   consultationActionBusy={consultationActionBusy}
-                  onPaymentReply={handlePaymentReply}
+                  onPaymentReply={(target, reply) => void handlePaymentReply(target, reply)}
                   onChangeReply={handleChangeReply}
                   onRescheduleRequest={(appointmentId) =>
                     void openReschedule(appointmentId)

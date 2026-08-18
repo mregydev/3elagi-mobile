@@ -990,15 +990,24 @@ export function ChatMessageBubble({
   }
 
   if (isAccessAction) {
+    const textAlign = isRTL ? "right" : "left";
     return (
-      <View style={styles.accessRow}>
-        <View style={[styles.accessPill, { backgroundColor: `${colors.muted}cc` }]}>
+      <View
+        style={[
+          styles.actionRow,
+          {
+            alignSelf: mine ? "flex-end" : "flex-start",
+            maxWidth: maxBubbleWidth,
+          },
+        ]}
+      >
+        <View style={[styles.actionPill, { backgroundColor: `${colors.muted}cc` }]}>
           <Text
             style={{
               color: colors.mutedForeground,
               fontSize: 12,
               lineHeight: 17,
-              textAlign: "center",
+              textAlign,
               fontWeight: "600",
             }}
           >
@@ -1038,15 +1047,25 @@ export function ChatMessageBubble({
       roomState !== "over" &&
       joinableStatuses.has(status);
 
+    const textAlign = isRTL ? "right" : "left";
+
     return (
-      <View style={styles.accessRow}>
-        <View style={[styles.accessPill, { backgroundColor: `${colors.muted}cc`, gap: 10 }]}>
+      <View
+        style={[
+          styles.actionRow,
+          {
+            alignSelf: mine ? "flex-end" : "flex-start",
+            maxWidth: maxBubbleWidth,
+          },
+        ]}
+      >
+        <View style={[styles.actionPill, { backgroundColor: `${colors.muted}cc`, gap: 10 }]}>
           <Text
             style={{
               color: colors.mutedForeground,
               fontSize: 12,
               lineHeight: 17,
-              textAlign: "center",
+              textAlign,
               fontWeight: "600",
             }}
           >
@@ -1472,20 +1491,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  accessRow: {
-    width: "100%",
-    alignItems: "center",
+  actionRow: {
+    flexShrink: 1,
     paddingVertical: 4,
+    width: "100%",
   },
-  accessPill: {
-    maxWidth: "88%",
+  actionPill: {
+    width: "100%",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 14,
   },
   apptActions: {
     gap: 8,
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   apptInsight: {
     width: "100%",
