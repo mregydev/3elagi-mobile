@@ -59,12 +59,20 @@ export interface ConversationRow {
 }
 
 function mapContact(row: ChatContactRow): ChatUser {
+  const role =
+    row.role === "doctor"
+      ? "doctor"
+      : row.role === "patient"
+        ? "patient"
+        : row.role === "admin"
+          ? "support"
+          : undefined;
   return {
     id: row.id,
     name: row.name,
     photoUrl: row.photo_url,
     presence: "offline",
-    role: row.role === "doctor" ? "doctor" : row.role === "patient" ? "patient" : undefined,
+    role,
     specialty: row.specialty?.trim() || undefined,
     country: row.country?.trim().toUpperCase() || undefined,
     rating: row.rating_average ?? undefined,

@@ -202,6 +202,7 @@ function mergeMessagesById(
 function mapPeerRole(role?: string | null): ChatUser["role"] {
   if (role === "doctor") return "doctor";
   if (role === "patient") return "patient";
+  if (role === "admin" || role === "support") return "support";
   return undefined;
 }
 

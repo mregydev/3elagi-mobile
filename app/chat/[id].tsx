@@ -1448,7 +1448,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           <Avatar
             uri={peer.photoUrl}
             seed={peer.id}
-            role={peer.role === "doctor" ? "doctor" : "patient"}
+            role={
+              peer.role === "doctor"
+                ? "doctor"
+                : peer.role === "patient"
+                  ? "patient"
+                  : undefined
+            }
             size={30}
             presence={peer.presence}
           />
