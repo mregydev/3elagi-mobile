@@ -4,11 +4,15 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Languages,
   LogIn,
   LogOut,
   Mail,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
+  SunMoon,
   UserPlus,
 } from "lucide-react-native";
 import React from "react";
@@ -89,6 +93,7 @@ export function AppSidebarNav({
   const sections = groupAppNavItems(items);
   // Groups start closed; opening one is a per-session preference.
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
+  const [preferencesOpen, setPreferencesOpen] = React.useState(false);
   const toggleGroup = (group: string) =>
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
 
@@ -317,31 +322,132 @@ export function AppSidebarNav({
 
       <View style={styles.footer}>
         {!collapsed ? (
-          <View
-            style={[
-              styles.prefPanel,
-              { backgroundColor: colors.muted, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.prefBlock}>
-              <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign }]}>
-                {t.settings.language}
-              </Text>
-              <LanguageDropdown compact showLabel fullWidth placement="top" />
-            </View>
+          <View style={styles.navSection}>
+            <View
+              style={[
+                styles.prefPanel,
+                { backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            >
+              <Pressable
+                onPress={() => setPreferencesOpen((open) => !open)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: preferencesOpen }}
+                accessibilityLabel={t.settings.preferences}
+                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                  styles.navItem,
+                  {
+                    flexDirection: dir,
+                    backgroundColor:
+                      pressed || hovered ? colors.card : "transparent",
+                  },
+                ]}
+              >
+                <Settings size={18} color={colors.mutedForeground} strokeWidth={2} />
+                <Text
+                  style={[
+                    styles.navLabel,
+                    {
+                      color: colors.foreground,
+                      textAlign,
+                      writingDirection: isRTL ? "rtl" : "ltr",
+                      fontSize: navFontSize,
+                      fontWeight: "500",
+                    },
+                  ]}
+                >
+                  {t.settings.preferences}
+                </Text>
+                {preferencesOpen ? (
+                  <ChevronDown size={16} color={colors.mutedForeground} />
+                ) : (
+                  <ChevronDown
+                    size={16}
+                    color={colors.mutedForeground}
+                    style={{ transform: [{ rotate: isRTL ? "90deg" : "-90deg" }] }}
+                  />
+                )}
+              </Pressable>
 
-            <View style={[styles.prefRow, { flexDirection: dir }]}>
-              <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign, flex: 1 }]}>
-                {t.settings.theme}
-              </Text>
-              <ThemeToggle />
-            </View>
+              {preferencesOpen ? (
+                <>
+                  <View
+                    style={[
+                      styles.prefNavItem,
+                      { flexDirection: dir, backgroundColor: "transparent" },
+                    ]}
+                  >
+                    <Languages
+                      size={18}
+                      color={colors.mutedForeground}
+                      strokeWidth={2}
+                    />
+                    <Text
+                      style={[
+                        styles.navLabel,
+                        {
+                          color: colors.foreground,
+                          textAlign,
+                          writingDirection: isRTL ? "rtl" : "ltr",
+                          fontSize: navFontSize,
+                          fontWeight: "500",
+                        },
+                      ]}
+                    >
+                      {t.settings.language}
+                    </Text>
+                    <LanguageDropdown compact placement="bottom" />
+                  </View>
 
-            <View style={[styles.prefRow, { flexDirection: dir }]}>
-              <Text style={[styles.prefLabel, { color: colors.mutedForeground, textAlign, flex: 1 }]}>
-                {t.settings.accentColor}
-              </Text>
-              <AccentPicker />
+                  <View
+                    style={[
+                      styles.prefNavItem,
+                      { flexDirection: dir, backgroundColor: "transparent" },
+                    ]}
+                  >
+                    <SunMoon size={18} color={colors.mutedForeground} strokeWidth={2} />
+                    <Text
+                      style={[
+                        styles.navLabel,
+                        {
+                          color: colors.foreground,
+                          textAlign,
+                          writingDirection: isRTL ? "rtl" : "ltr",
+                          fontSize: navFontSize,
+                          fontWeight: "500",
+                        },
+                      ]}
+                    >
+                      {t.settings.theme}
+                    </Text>
+                    <ThemeToggle />
+                  </View>
+
+                  <View
+                    style={[
+                      styles.prefNavItem,
+                      { flexDirection: dir, backgroundColor: "transparent" },
+                    ]}
+                  >
+                    <Palette size={18} color={colors.mutedForeground} strokeWidth={2} />
+                    <Text
+                      style={[
+                        styles.navLabel,
+                        {
+                          color: colors.foreground,
+                          textAlign,
+                          writingDirection: isRTL ? "rtl" : "ltr",
+                          fontSize: navFontSize,
+                          fontWeight: "500",
+                        },
+                      ]}
+                    >
+                      {t.settings.accentColor}
+                    </Text>
+                    <AccentPicker />
+                  </View>
+                </>
+              ) : null}
             </View>
 
             <Pressable
@@ -349,15 +455,14 @@ export function AppSidebarNav({
               accessibilityRole="button"
               accessibilityLabel={t.tabs.contactUs}
               style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                styles.contactCta,
+                styles.navItem,
                 {
                   flexDirection: dir,
-                  borderColor: colors.border,
-                  backgroundColor: pressed || hovered ? colors.accent : colors.card,
+                  backgroundColor: pressed || hovered ? colors.muted : "transparent",
                 },
               ]}
             >
-              <Mail size={18} color={colors.primary} />
+              <Mail size={18} color={colors.mutedForeground} strokeWidth={2} />
               <Text
                 style={[
                   styles.navLabel,
@@ -365,7 +470,7 @@ export function AppSidebarNav({
                     color: colors.foreground,
                     textAlign,
                     writingDirection: isRTL ? "rtl" : "ltr",
-                    fontWeight: "600",
+                    fontWeight: "500",
                     fontSize: navFontSize,
                   },
                 ]}
@@ -587,39 +692,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: 8,
-    // Preferences / auth actions stay anchored at the sidebar bottom.
     marginTop: "auto",
     paddingTop: 16,
   },
   prefPanel: {
-    gap: 10,
-    padding: 10,
+    gap: 2,
+    padding: 6,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  prefBlock: {
-    gap: 6,
-  },
-  prefRow: {
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    paddingHorizontal: 2,
-  },
-  prefLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    paddingHorizontal: 2,
-  },
-  // Quiet outline — the gradient competed with the Log in CTA below it.
-  contactCta: {
+  prefNavItem: {
     alignItems: "center",
     gap: 10,
-    marginTop: 2,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 11,
     borderRadius: 12,
-    borderWidth: 1,
   },
   logoutBtn: {
     alignItems: "center",
