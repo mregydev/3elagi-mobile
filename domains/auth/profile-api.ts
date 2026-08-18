@@ -80,6 +80,8 @@ export interface DoctorCertification {
 
 export interface AccountProfile {
   userId: string;
+  /** Doctors only: the doctor row id, needed for schedule/slot lookups. */
+  doctorEntityId?: string;
   email: string;
   name: string;
   phone: string;
@@ -135,6 +137,7 @@ export async function fetchAccountProfile(
     const doctor = await authJson<RawDoctor>("/doctors/me", token);
     return {
       userId: user.id,
+      doctorEntityId: doctor.id,
       email: doctor.email ?? user.email,
       name: doctor.name,
       phone: doctor.phone ?? "",

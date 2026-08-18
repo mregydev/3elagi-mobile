@@ -74,5 +74,5 @@ export function accessActionLabel(action: AccessActionType, isRTL = false): stri
 /** Doctor↔patient messaging is restricted to these roles on the API. */
 export function canUseChat(role: string | null | undefined): boolean {
   const r = role?.toLowerCase();
-  return r === "doctor" || r === "patient";
+  return r === "doctor" || r === "patient" || r === "admin";
 }

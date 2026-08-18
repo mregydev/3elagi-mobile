@@ -158,6 +158,8 @@ export default function RootLayout() {
             <Stack.Screen name="medical/[id]" />
             <Stack.Screen name="medical/request/[id]" />
             <Stack.Screen name="admin/index" />
+            <Stack.Screen name="admin/chats" />
+            <Stack.Screen name="admin/pricing" />
             <Stack.Screen name="admin/specialities" />
             <Stack.Screen name="admin/rag" />
             <Stack.Screen name="admin/complaints" />

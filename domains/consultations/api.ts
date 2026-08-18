@@ -199,6 +199,18 @@ export async function endConsultation(
   });
 }
 
+/** Either side answers a cancellation request. */
+export async function reviewConsultationCancel(
+  consultationId: string,
+  approve: boolean,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/cancel-review`, token, {
+    method: "POST",
+    body: JSON.stringify({ approve }),
+  });
+}
+
 export async function cancelConsultation(
   consultationId: string,
   payload: { reason_type: ConsultationCancelReasonType; reason?: string },

@@ -29,7 +29,10 @@ export type ConsultationActionType =
   | "payment_request"
   | "payment_submitted"
   | "payment_approved"
-  | "payment_rejected";
+  | "payment_rejected"
+  | "cancel_request"
+  | "cancel_approved"
+  | "cancel_declined";
 export type ConsultationCancelReasonType =
   | "video_consultation"
   | "onsite_visit"
@@ -46,7 +49,9 @@ export interface ConsultationDiagnosisSummary {
   }[];
 }
 
-export interface ConsultationActionMeta extends PaymentActionMeta {
+export interface ConsultationActionMeta
+  extends PaymentActionMeta,
+    PendingChangeMeta {
   consultation_id: string;
   action: ConsultationActionType;
   status: ConsultationStatus;
@@ -79,7 +84,21 @@ export type AppointmentActionType =
   | "payment_request"
   | "payment_submitted"
   | "payment_approved"
-  | "payment_rejected";
+  | "payment_rejected"
+  | "reschedule_request"
+  | "reschedule_accepted"
+  | "reschedule_declined"
+  | "cancel_request"
+  | "cancel_approved"
+  | "cancel_declined";
+
+/** A change waiting on the other side: a new slot, or cancelling. */
+export interface PendingChangeMeta {
+  /** Who asked — only the other side may answer. */
+  pending_by?: string | null;
+  proposed_date?: string | null;
+  proposed_time?: string | null;
+}
 
 /** Cash the doctor asked for, paid outside the app. */
 export interface PaymentActionMeta {
@@ -91,7 +110,9 @@ export interface PaymentActionMeta {
   payment_proof_url?: string | null;
 }
 
-export interface AppointmentActionMeta extends PaymentActionMeta {
+export interface AppointmentActionMeta
+  extends PaymentActionMeta,
+    PendingChangeMeta {
   appointment_id: string;
   action: AppointmentActionType;
   date: string;

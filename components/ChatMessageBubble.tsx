@@ -25,6 +25,10 @@ import {
   PaymentActionPanel,
   type PaymentReply,
 } from "@/components/chat/PaymentActionPanel";
+import {
+  PendingChangePanel,
+  type ChangeReply,
+} from "@/components/chat/PendingChangePanel";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -58,6 +62,17 @@ interface Props {
     target: { kind: "appointment" | "consultation"; id: string },
     reply: PaymentReply,
   ) => void;
+  /** Either side proposes a new slot for an appointment. */
+  onRescheduleRequest?: (appointmentId: string) => void;
+  /** Answering a proposed new slot or a cancellation request. */
+  onChangeReply?: (
+    target: {
+      kind: "appointment" | "consultation";
+      id: string;
+      change: "reschedule" | "cancel";
+    },
+    reply: ChangeReply,
+  ) => void;
   consultationActionBusy?: boolean;
   onImagePress?: (uri: string) => void;
   onVideoPress?: (uri: string) => void;
@@ -82,6 +97,8 @@ export function ChatMessageBubble({
   showAppointmentControls = false,
   onConsultationAction,
   onPaymentReply,
+  onChangeReply,
+  onRescheduleRequest,
   consultationActionBusy = false,
   onImagePress,
   onVideoPress,
@@ -834,6 +851,24 @@ export function ChatMessageBubble({
               {isRTL ? "اضغط لعرض التشخيص" : "Tap to view diagnosis"}
             </Text>
           ) : null}
+          {meta.action === "cancel_request" ? (
+            <PendingChangePanel
+              meta={meta}
+              kind="cancel"
+              selfUserId={selfUserId}
+              busy={consultationActionBusy}
+              onReply={(reply) =>
+                onChangeReply?.(
+                  {
+                    kind: "consultation",
+                    id: meta.consultation_id,
+                    change: "cancel",
+                  },
+                  reply,
+                )
+              }
+            />
+          ) : null}
           <PaymentActionPanel
             meta={meta}
             isDoctor={isDoctor}
@@ -1027,6 +1062,25 @@ export function ChatMessageBubble({
               </Text>
             </View>
           ) : null}
+          {meta.action === "reschedule_request" || meta.action === "cancel_request" ? (
+            <PendingChangePanel
+              meta={meta}
+              kind={meta.action === "reschedule_request" ? "reschedule" : "cancel"}
+              selfUserId={selfUserId}
+              busy={appointmentActionBusy}
+              onReply={(reply) =>
+                onChangeReply?.(
+                  {
+                    kind: "appointment",
+                    id: meta.appointment_id,
+                    change:
+                      meta.action === "reschedule_request" ? "reschedule" : "cancel",
+                  },
+                  reply,
+                )
+              }
+            />
+          ) : null}
           <PaymentActionPanel
             meta={meta}
             isDoctor={isDoctor}
@@ -1056,6 +1110,17 @@ export function ChatMessageBubble({
                 <Text style={styles.apptBtnText}>{isRTL ? "رفض" : "Reject"}</Text>
               </Pressable>
             </View>
+          ) : null}
+          {canCancel && onRescheduleRequest ? (
+            <Pressable
+              disabled={appointmentActionBusy}
+              onPress={() => onRescheduleRequest(meta.appointment_id)}
+              style={[styles.apptBtnOutline, { borderColor: colors.primary }]}
+            >
+              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 12 }}>
+                {isRTL ? "تغيير الموعد" : "Change time"}
+              </Text>
+            </Pressable>
           ) : null}
           {canCancel && onAppointmentAction ? (
             <Pressable

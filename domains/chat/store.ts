@@ -46,7 +46,7 @@ interface ChatState {
     selfRole: string | null,
   ) => Promise<void>;
   syncPresence: () => void;
-  ensureContacts: (token: string) => Promise<void>;
+  ensureContacts: (token: string, selfRole?: string | null) => Promise<void>;
   ensurePeer: (peerId: string, token: string) => Promise<ChatUser | undefined>;
   resolvePeer: (peerId: string) => ChatUser | undefined;
   loadMessages: (
@@ -418,7 +418,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  ensureContacts: async (token) => {
+  ensureContacts: async (token, selfRole) => {
+    // Admin picks peers from /admin/chats; the contacts endpoint is doctor/patient only.
+    if (selfRole?.toLowerCase() === "admin") return;
     const users = await fetchChatContacts(token);
     chatRepository.cacheUsers(users);
   },

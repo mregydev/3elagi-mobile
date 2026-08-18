@@ -37,6 +37,7 @@ import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
 import { usePresenceStore } from "@/domains/presence/store";
+import { fetchAccountProfile } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -66,6 +67,7 @@ import { sendAppointmentAction } from "@/domains/appointments/api";
 import {
   acceptConsultation,
   rejectConsultation,
+  reviewConsultationCancel,
   reviewConsultationPayment,
   submitConsultationPaymentProof,
 } from "@/domains/consultations/api";
@@ -187,6 +189,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [accessLoading, setAccessLoading] = useState(false);
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
   const [appointmentActionBusy, setAppointmentActionBusy] = useState(false);
+  /** Appointment being moved, and the doctor's own entity id for slot lookups. */
+  const [rescheduleAppointmentId, setRescheduleAppointmentId] = useState<
+    string | null
+  >(null);
+  const [selfDoctorEntityId, setSelfDoctorEntityId] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatListItem>>(null);
   const chatBodyRef = useRef<View>(null);
   const sendingRef = useRef(false);
@@ -213,6 +220,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const isPatient = role?.toLowerCase() === "patient";
+  const isAdmin = role?.toLowerCase() === "admin";
   const canOpenPatientRecord =
     isDoctor &&
     peer?.role === "patient" &&
@@ -269,7 +277,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     let cancelled = false;
     void (async () => {
       try {
-        await ensureContacts(accessToken);
+        await ensureContacts(accessToken, role);
         await ensurePeer(id, accessToken);
       } finally {
         if (!cancelled) setContactsReady(true);
@@ -278,7 +286,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, id, ensureContacts, ensurePeer]);
+  }, [accessToken, id, role, ensureContacts, ensurePeer]);
 
   useEffect(() => {
     if (!id) return;
@@ -1051,6 +1059,105 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
   };
 
+  /**
+   * Answering a proposed new slot or a cancellation request. Nothing has
+   * changed server-side until this call lands.
+   */
+  const handleChangeReply = async (
+    target: {
+      kind: "appointment" | "consultation";
+      id: string;
+      change: "reschedule" | "cancel";
+    },
+    reply: "accept" | "decline",
+  ) => {
+    if (!accessToken || !id || !profile?.id) return;
+    const busy =
+      target.kind === "consultation" ? consultationActionBusy : appointmentActionBusy;
+    if (busy) return;
+    const setBusy =
+      target.kind === "consultation"
+        ? setConsultationActionBusy
+        : setAppointmentActionBusy;
+
+    setBusy(true);
+    try {
+      if (target.kind === "consultation") {
+        await reviewConsultationCancel(target.id, reply === "accept", accessToken);
+      } else {
+        const action =
+          target.change === "reschedule"
+            ? reply === "accept"
+              ? "reschedule_accepted"
+              : "reschedule_declined"
+            : reply === "accept"
+              ? "cancel_approved"
+              : "cancel_declined";
+        const row = await sendAppointmentAction(accessToken, id, {
+          appointment_id: target.id,
+          action,
+          date: "",
+          time: "",
+        });
+        const msg = mapMessageRow(row, id, profile.id);
+        useChatStore.setState((s) => {
+          const thread = s.messages[id] ?? [];
+          if (thread.some((m) => m.id === msg.id)) return s;
+          return { messages: { ...s.messages, [id]: [...thread, msg] } };
+        });
+      }
+      jumpToLatest();
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تعذر تحديث الطلب"
+            : "Could not answer the request",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Either side can propose a new slot; the other confirms it. */
+  const openReschedule = useCallback(
+    async (appointmentId: string) => {
+      setRescheduleAppointmentId(appointmentId);
+      // The picker reads the doctor's schedule; a doctor needs their own id.
+      if (isDoctor && !selfDoctorEntityId && accessToken && role) {
+        try {
+          const account = await fetchAccountProfile(accessToken, role);
+          setSelfDoctorEntityId(account.doctorEntityId ?? null);
+        } catch {
+          // Falls back to no slots; the dialog shows its own error.
+        }
+      }
+    },
+    [isDoctor, selfDoctorEntityId, accessToken, role],
+  );
+
+  const submitReschedule = async (date: string, time: string) => {
+    if (!accessToken || !id || !profile?.id || !rescheduleAppointmentId) return;
+    const row = await sendAppointmentAction(accessToken, id, {
+      appointment_id: rescheduleAppointmentId,
+      action: "reschedule_request",
+      date: "",
+      time: "",
+      proposed_date: date,
+      proposed_time: time,
+    });
+    const msg = mapMessageRow(row, id, profile.id);
+    useChatStore.setState((s) => {
+      const thread = s.messages[id] ?? [];
+      if (thread.some((m) => m.id === msg.id)) return s;
+      return { messages: { ...s.messages, [id]: [...thread, msg] } };
+    });
+    setRescheduleAppointmentId(null);
+    jumpToLatest();
+  };
+
   const handleIntakeExamAssigned = async (
     instance: Awaited<ReturnType<typeof import("@/domains/intake-exams/api").assignIntakeExam>>,
   ) => {
@@ -1323,7 +1430,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         <AppBackButton
           color={colors.foreground}
           style={styles.backBtn}
-          fallback={openedFrom === "doctors" ? "/(tabs)" : "/(tabs)/history"}
+          fallback={
+            isAdmin
+              ? "/admin/chats"
+              : openedFrom === "doctors"
+                ? "/(tabs)"
+                : "/(tabs)/history"
+          }
           accessibilityLabel={isRTL ? "رجوع" : "Back"}
         />
 
@@ -1594,6 +1707,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   }
                   consultationActionBusy={consultationActionBusy}
                   onPaymentReply={handlePaymentReply}
+                  onChangeReply={handleChangeReply}
+                  onRescheduleRequest={(appointmentId) =>
+                    void openReschedule(appointmentId)
+                  }
                   onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
                   highlighted={
                     editingMessage?.id === item.id ||
@@ -1817,6 +1934,23 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         onClose={closeMedicalPicker}
         onSelect={(record, note) => void handleMedicalPickerSelect(record, note)}
       />
+
+      {id && accessToken && profile?.id && rescheduleAppointmentId ? (
+        <BookAppointmentDialog
+          visible
+          mode="reschedule"
+          isRTL={isRTL}
+          token={accessToken}
+          selfId={profile.id}
+          doctorUserId={isPatient ? id : profile.id}
+          doctorEntityId={
+            (isPatient ? peer?.doctorEntityId : selfDoctorEntityId) ?? ""
+          }
+          onSubmitSlot={submitReschedule}
+          onClose={() => setRescheduleAppointmentId(null)}
+          onBooked={() => undefined}
+        />
+      ) : null}
 
       {isPatient && id && accessToken && profile?.id && peer?.doctorEntityId ? (
         <BookAppointmentDialog

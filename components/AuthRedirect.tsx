@@ -71,7 +71,8 @@ export function AuthRedirect() {
         router.replace("/welcome");
         return;
       }
-      if (!isAdminRoute) {
+      const isChatRoute = root === "chat";
+      if (!isAdminRoute && !isChatRoute) {
         router.replace("/admin");
       }
       return;

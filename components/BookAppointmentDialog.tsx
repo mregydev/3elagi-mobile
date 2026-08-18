@@ -34,6 +34,13 @@ interface Props {
   doctorUserId: string;
   doctorEntityId: string;
   videoConsultationPrice?: number;
+  /**
+   * "reschedule" reuses the same slot picker to propose a new time for an
+   * existing appointment: no credits are charged and `onSubmitSlot` runs
+   * instead of booking.
+   */
+  mode?: "book" | "reschedule";
+  onSubmitSlot?: (date: string, time: string) => Promise<void>;
   onClose: () => void;
   onBooked: () => void;
 }
@@ -49,6 +56,8 @@ export function BookAppointmentDialog({
   doctorUserId,
   doctorEntityId,
   videoConsultationPrice = 1,
+  mode = "book",
+  onSubmitSlot,
   onClose,
   onBooked,
 }: Props) {
@@ -59,7 +68,8 @@ export function BookAppointmentDialog({
   const loadPoints = usePointsStore((s) => s.loadPoints);
   const balance = selectPointsBalance(pointsSummary);
   const price = Math.min(100_000, Math.max(1, videoConsultationPrice));
-  const hasEnoughCredits = balance >= price;
+  // Moving an appointment costs nothing — it was already paid for.
+  const hasEnoughCredits = mode === "reschedule" || balance >= price;
 
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -125,8 +135,12 @@ export function BookAppointmentDialog({
     setBooking(true);
     setError(null);
     try {
-      await bookChatAppointment(token, doctorUserId, selectedDate, selectedTime);
-      await loadPoints(token);
+      if (mode === "reschedule") {
+        await onSubmitSlot?.(selectedDate, selectedTime);
+      } else {
+        await bookChatAppointment(token, doctorUserId, selectedDate, selectedTime);
+        await loadPoints(token);
+      }
       onBooked();
       onClose();
     } catch (e) {
@@ -313,7 +327,13 @@ export function BookAppointmentDialog({
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.bookBtnText}>
-                {isRTL ? "إرسال طلب الحجز" : "Send booking request"}
+                {mode === "reschedule"
+                  ? isRTL
+                    ? "اقتراح موعد جديد"
+                    : "Propose new time"
+                  : isRTL
+                    ? "إرسال طلب الحجز"
+                    : "Send booking request"}
               </Text>
             )}
           </Pressable>
