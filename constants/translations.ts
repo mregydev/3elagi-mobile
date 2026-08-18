@@ -497,7 +497,7 @@ const en = {
   mobileApp: {
     linkLabel: "Get the Android app",
     modalTitle: "Download 3elagi for Android",
-    modalSubtitle: "Scan the QR code or open the link on your phone.",
+    modalSubtitle: "Scan the QR code with your phone to download the app.",
     mobileWebSubtitle: "Tap the button below to download the Android app.",
     openLink: "Open Android download link",
     close: "Close",
@@ -1379,7 +1379,7 @@ const ar: typeof en = {
   mobileApp: {
     linkLabel: "حمّل تطبيق أندرويد",
     modalTitle: "حمّل تطبيق 3elagi لأندرويد",
-    modalSubtitle: "امسح رمز QR أو افتح الرابط على هاتفك.",
+    modalSubtitle: "امسح رمز QR بهاتفك لتحميل التطبيق.",
     mobileWebSubtitle: "اضغط الزر أدناه لتحميل تطبيق أندرويد.",
     openLink: "فتح رابط تحميل أندرويد",
     close: "إغلاق",
@@ -2264,7 +2264,7 @@ const de: typeof en = {
   mobileApp: {
     linkLabel: "Android-App herunterladen",
     modalTitle: "3elagi für Android herunterladen",
-    modalSubtitle: "Scannen Sie den QR-Code oder öffnen Sie den Link auf Ihrem Telefon.",
+    modalSubtitle: "Scannen Sie den QR-Code mit Ihrem Telefon, um die App herunterzuladen.",
     mobileWebSubtitle: "Tippen Sie unten auf die Schaltfläche, um die Android-App herunterzuladen.",
     openLink: "Android-Download-Link öffnen",
     close: "Schließen",
@@ -3149,7 +3149,7 @@ const es: typeof en = {
   mobileApp: {
     linkLabel: "Obtener la app de Android",
     modalTitle: "Descargar 3elagi para Android",
-    modalSubtitle: "Escanea el código QR o abre el enlace en tu teléfono.",
+    modalSubtitle: "Escanea el código QR con tu teléfono para descargar la app.",
     mobileWebSubtitle: "Toca el botón de abajo para descargar la app de Android.",
     openLink: "Abrir enlace de descarga para Android",
     close: "Cerrar",

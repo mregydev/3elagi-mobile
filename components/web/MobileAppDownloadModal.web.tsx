@@ -5,8 +5,6 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { ANDROID_APP_QR } from "@/constants/mobileApp";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useWebLayout } from "@/hooks/useWebLayout";
-import { openAndroidAppDownload } from "@/utils/openAndroidAppDownload";
 import { alignText } from "@/utils/rtl";
 import { viewportPortal } from "@/utils/viewportPortal";
 
@@ -18,7 +16,6 @@ type Props = {
 export function MobileAppDownloadModal({ visible, onClose }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
   const textAlign = alignText(isRTL);
 
   if (!visible) return null;
@@ -55,24 +52,8 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
         </View>
 
         <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
-          {isDesktop ? t.mobileApp.modalSubtitle : t.mobileApp.mobileWebSubtitle}
+          {t.mobileApp.modalSubtitle}
         </Text>
-
-        <Pressable
-          onPress={openAndroidAppDownload}
-          accessibilityRole="link"
-          accessibilityLabel={t.mobileApp.openLink}
-          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-            styles.downloadBtn,
-            {
-              backgroundColor: colors.primary,
-              opacity: pressed || hovered ? 0.9 : 1,
-            },
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text style={styles.downloadBtnText}>{t.mobileApp.openLink}</Text>
-        </Pressable>
 
         <View style={[styles.qrWrap, { borderColor: colors.border }]}>
           <Image
@@ -143,23 +124,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  downloadBtn: {
-    minHeight: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    cursor: "pointer" as "auto",
-  },
-  downloadBtnText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  pressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.99 }],
   },
   qrWrap: {
     alignSelf: "center",
