@@ -26,6 +26,7 @@ import { AccentPicker } from "@/components/AccentPicker";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
+  APP_NAV_GROUP_ICONS,
   filterAppNavItems,
   groupAppNavItems,
   HOME_NAV_RESET_EVENT,
@@ -255,35 +256,56 @@ export function AppSidebarNav({
                 <View style={[styles.railDivider, { backgroundColor: colors.border }]} />
               ) : null}
               {section.group && !collapsed ? (
-                <Pressable
-                  onPress={() => toggleGroup(section.group!)}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded }}
-                  accessibilityLabel={t.tabs[section.group]}
-                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                    styles.sectionHeaderRow,
-                    {
-                      flexDirection: dir,
-                      backgroundColor: pressed || hovered ? colors.muted : "transparent",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.sectionHeader,
-                      { color: colors.mutedForeground, textAlign, flex: 1 },
-                    ]}
-                  >
-                    {t.tabs[section.group]}
-                  </Text>
-                  {expanded ? (
-                    <ChevronDown size={14} color={colors.mutedForeground} />
-                  ) : isRTL ? (
-                    <ChevronLeft size={14} color={colors.mutedForeground} />
-                  ) : (
-                    <ChevronRight size={14} color={colors.mutedForeground} />
-                  )}
-                </Pressable>
+                // Reads as a menu item like any other, with a chevron marking
+                // that it opens rather than navigates.
+                (() => {
+                  const GroupIcon = APP_NAV_GROUP_ICONS[section.group];
+                  return (
+                    <Pressable
+                      onPress={() => toggleGroup(section.group!)}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded }}
+                      accessibilityLabel={t.tabs[section.group]}
+                      style={({
+                        pressed,
+                        hovered,
+                      }: {
+                        pressed: boolean;
+                        hovered?: boolean;
+                      }) => [
+                        styles.navItem,
+                        {
+                          flexDirection: dir,
+                          backgroundColor:
+                            pressed || hovered ? colors.muted : "transparent",
+                        },
+                      ]}
+                    >
+                      <GroupIcon size={18} color={colors.mutedForeground} strokeWidth={2} />
+                      <Text
+                        style={[
+                          styles.navLabel,
+                          {
+                            color: colors.foreground,
+                            textAlign,
+                            writingDirection: isRTL ? "rtl" : "ltr",
+                            fontSize: navFontSize,
+                            fontWeight: "500",
+                          },
+                        ]}
+                      >
+                        {t.tabs[section.group]}
+                      </Text>
+                      {expanded ? (
+                        <ChevronDown size={16} color={colors.mutedForeground} />
+                      ) : isRTL ? (
+                        <ChevronLeft size={16} color={colors.mutedForeground} />
+                      ) : (
+                        <ChevronRight size={16} color={colors.mutedForeground} />
+                      )}
+                    </Pressable>
+                  );
+                })()
               ) : null}
               {expanded
                 ? section.items.map(renderNavItem)
@@ -507,20 +529,6 @@ const styles = StyleSheet.create({
   },
   navSection: {
     gap: 2,
-  },
-  sectionHeaderRow: {
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 4,
-    borderRadius: 10,
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
   },
   railDivider: {
     height: StyleSheet.hairlineWidth,

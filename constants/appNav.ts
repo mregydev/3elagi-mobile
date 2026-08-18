@@ -1,5 +1,6 @@
 import type { Href } from "expo-router";
 import {
+  Activity,
   Bell,
   Bot,
   CalendarClock,
@@ -20,6 +21,11 @@ import type { Translations } from "@/constants/translations";
 
 /** Section headers in the side menu. */
 export type AppNavGroup = "activity";
+
+/** Icon shown on the group's own row, like any other menu item. */
+export const APP_NAV_GROUP_ICONS: Record<AppNavGroup, LucideIcon> = {
+  activity: Activity,
+};
 
 export type AppNavItem = {
   href: Href;

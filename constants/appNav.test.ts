@@ -7,6 +7,7 @@ vi.mock("lucide-react-native", () => ({
   default: {},
   ...Object.fromEntries(
     [
+      "Activity",
       "Bell",
       "Bot",
       "CalendarClock",
