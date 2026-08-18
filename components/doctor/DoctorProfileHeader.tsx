@@ -12,6 +12,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { formatEgpPerUnit } from "@/utils/credits";
+import { DoctorFeeLines } from "@/components/doctor/DoctorFeeLines";
 import { flexRow } from "@/utils/rtl";
 
 const HEADER_MIN_H = 196;
@@ -158,18 +159,17 @@ export function DoctorProfileHeader({
         !isMobile && { alignItems: isRTL ? "flex-start" : "flex-end" },
       ]}
     >
-      <Text
-        style={[
-          styles.price,
-          isMobile && styles.priceMobile,
-          {
-            color: colors.foreground,
-            textAlign: isMobile ? textAlign : isRTL ? "left" : "right",
-          },
-        ]}
-      >
-        {formatEgpPerUnit(doctor.consultationPrice, t)}
-      </Text>
+      <DoctorFeeLines
+        doctor={{
+          country: doctor.country,
+          textPriceLocal: doctor.textPriceLocal,
+          textPriceUsd: doctor.textPriceUsd,
+          videoPriceLocal: doctor.videoPriceLocal,
+          videoPriceUsd: doctor.videoPriceUsd,
+        }}
+        isRTL={isRTL}
+        fallback={formatEgpPerUnit(doctor.consultationPrice, t)}
+      />
       {action ? <View style={styles.actionSlot}>{action}</View> : null}
     </View>
   );

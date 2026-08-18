@@ -30,6 +30,10 @@ export interface SpecialityDoctorRow {
   rating_average?: number | null;
   rating_total?: number | null;
   consultation_price?: number | null;
+  text_price_local?: number | null;
+  text_price_usd?: number | null;
+  video_price_local?: number | null;
+  video_price_usd?: number | null;
   immediate_call_enabled?: boolean | null;
   on_call?: boolean | null;
   role: "doctor";
@@ -65,6 +69,11 @@ export interface SpecialityDoctor {
   ratingAverage?: number | null;
   ratingTotal?: number | null;
   consultationPrice?: number | null;
+  /** Cash fees the doctor set; which one applies depends on the viewer. */
+  textPriceLocal?: number | null;
+  textPriceUsd?: number | null;
+  videoPriceLocal?: number | null;
+  videoPriceUsd?: number | null;
   immediateCallEnabled?: boolean;
   onCall?: boolean;
 }
@@ -116,6 +125,10 @@ function mapDoctor(row: SpecialityDoctorRow): SpecialityDoctor {
     ratingAverage: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
     consultationPrice: row.consultation_price ?? 1,
+    textPriceLocal: row.text_price_local ?? null,
+    textPriceUsd: row.text_price_usd ?? null,
+    videoPriceLocal: row.video_price_local ?? null,
+    videoPriceUsd: row.video_price_usd ?? null,
     immediateCallEnabled: !!row.immediate_call_enabled,
     onCall: !!row.on_call,
   };

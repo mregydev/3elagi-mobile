@@ -251,11 +251,13 @@ export async function updateAccountProfile(
         iban: payload.iban ?? undefined,
         account_holder_full_name: payload.accountHolderFullName ?? undefined,
         national_id: payload.nationalId ?? undefined,
-        text_price_local: payload.textPriceLocal ?? null,
-        text_price_usd: payload.textPriceUsd ?? null,
-        video_price_local: payload.videoPriceLocal ?? null,
-        video_price_usd: payload.videoPriceUsd ?? null,
-        payment_link: payload.paymentLink ?? null,
+        // Left out of the payload when undefined, so a partial update (the
+        // availability toggle, say) cannot wipe prices it never carried.
+        text_price_local: payload.textPriceLocal,
+        text_price_usd: payload.textPriceUsd,
+        video_price_local: payload.videoPriceLocal,
+        video_price_usd: payload.videoPriceUsd,
+        payment_link: payload.paymentLink,
       }),
     });
     return {

@@ -107,6 +107,13 @@ function ConversationRow({
               isRTL={isRTL}
               rating={item.user.rating}
               consultationPrice={item.user.consultationPrice}
+              fees={{
+                country: item.user.country,
+                textPriceLocal: item.user.textPriceLocal,
+                textPriceUsd: item.user.textPriceUsd,
+                videoPriceLocal: item.user.videoPriceLocal,
+                videoPriceUsd: item.user.videoPriceUsd,
+              }}
             />
           ) : null}
         </View>

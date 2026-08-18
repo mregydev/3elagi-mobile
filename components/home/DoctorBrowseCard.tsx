@@ -17,6 +17,7 @@ import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { formatEgpPerUnit } from "@/utils/credits";
+import { DoctorFeeLines } from "@/components/doctor/DoctorFeeLines";
 import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 import { flexRow } from "@/utils/rtl";
 
@@ -175,9 +176,17 @@ export function DoctorBrowseCard({
               : { alignItems: isRTL ? "flex-start" : "flex-end" },
           ]}
         >
-          <Text style={[styles.price, { color: colors.foreground, textAlign: isRTL ? "left" : "right" }]}>
-            {formatEgpPerUnit(price, t)}
-          </Text>
+          <DoctorFeeLines
+            doctor={{
+              country: item.user.country,
+              textPriceLocal: item.user.textPriceLocal,
+              textPriceUsd: item.user.textPriceUsd,
+              videoPriceLocal: item.user.videoPriceLocal,
+              videoPriceUsd: item.user.videoPriceUsd,
+            }}
+            isRTL={isRTL}
+            fallback={formatEgpPerUnit(price, t)}
+          />
           <Pressable
             onPress={onStartConsultation}
             accessibilityRole="button"

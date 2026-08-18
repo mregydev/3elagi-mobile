@@ -20,6 +20,12 @@ export interface PublicDoctorProfile {
   experienceYears?: number | null;
   consultationFeeEgp?: number | null;
   consultationPrice: number;
+  /** Doctor's own country + cash fees, for pricing by the viewer's country. */
+  country?: string | null;
+  textPriceLocal?: number | null;
+  textPriceUsd?: number | null;
+  videoPriceLocal?: number | null;
+  videoPriceUsd?: number | null;
   specialty?: string | null;
   specialtyAr?: string | null;
   ratingAverage: number;
@@ -93,6 +99,11 @@ export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorP
     experienceYears: (data.experience_years as number | null) ?? null,
     consultationFeeEgp: (data.consultation_fee_egp as number | null) ?? null,
     consultationPrice: Number(data.consultation_price ?? 1),
+    country: (data.country as string | null) ?? null,
+    textPriceLocal: (data.text_price_local as number | null) ?? null,
+    textPriceUsd: (data.text_price_usd as number | null) ?? null,
+    videoPriceLocal: (data.video_price_local as number | null) ?? null,
+    videoPriceUsd: (data.video_price_usd as number | null) ?? null,
     specialty: (data.specialty as string | null) ?? null,
     specialtyAr: (data.specialty_ar as string | null) ?? null,
     ratingAverage: Number(data.rating_average ?? 0),

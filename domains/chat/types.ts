@@ -135,6 +135,11 @@ export interface ChatUser {
   ratingTotal?: number;
   consultationPrice?: number;
   videoConsultationPrice?: number;
+  /** Cash fees: local currency at home, USD abroad — see domains/doctor/fees. */
+  textPriceLocal?: number | null;
+  textPriceUsd?: number | null;
+  videoPriceLocal?: number | null;
+  videoPriceUsd?: number | null;
   /** Doctor takes immediate calls from the chat. */
   immediateCallEnabled?: boolean;
   /** Doctor's call line was busy when this was fetched (live updates via presence). */
