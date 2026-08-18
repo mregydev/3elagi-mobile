@@ -73,6 +73,7 @@ interface Props {
   onCancelEdit?: () => void;
   onEdit?: (messageId: string, content: string) => Promise<void>;
   onComposerFocus?: () => void;
+  onComposerBlur?: () => void;
   disabled?: boolean;
   disabledHint?: string;
   /** Replaces the disabled hint with centered call-to-action buttons. */
@@ -161,6 +162,7 @@ export function ChatComposer({
   onCancelEdit,
   onEdit,
   onComposerFocus,
+  onComposerBlur,
   disabled = false,
   disabledHint,
   disabledActions,
@@ -790,7 +792,10 @@ export function ChatComposer({
         else stopTyping();
       }}
       onFocus={onComposerFocus}
-      onBlur={stopTyping}
+      onBlur={() => {
+        stopTyping();
+        onComposerBlur?.();
+      }}
       placeholder={
         pendingAttachment
           ? isRTL

@@ -18,11 +18,13 @@ import {
 import React from "react";
 import {
   Alert,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from "react-native";
 import Animated, {
@@ -55,6 +57,13 @@ import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type Props = {
   onNavigate?: () => void;
@@ -103,17 +112,37 @@ export function AppSidebarNav({
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
   const [preferencesOpen, setPreferencesOpen] = React.useState(false);
   const [prefMeasuredHeight, setPrefMeasuredHeight] = React.useState(0);
+  const scrollRef = React.useRef<ScrollView>(null);
   const prefBodyHeight = useSharedValue(0);
   const prefExpand = useSharedValue(0);
 
   const isGroupExpanded = (group: string, hasActive: boolean) =>
     group in openGroups ? openGroups[group] : hasActive;
 
+  const togglePreferences = () => {
+    if (Platform.OS !== "web") {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+    setPreferencesOpen((open) => !open);
+  };
+
+  React.useEffect(() => {
+    if (!preferencesOpen || Platform.OS === "web") return;
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [preferencesOpen]);
+
   const toggleGroup = (group: string, hasActive: boolean) =>
     setOpenGroups((prev) => {
       const expanded = group in prev ? prev[group] : hasActive;
       return { ...prev, [group]: !expanded };
     });
+
+  const onPrefBodyLayout = (height: number) => {
+    if (height > 0) setPrefMeasuredHeight(height);
+  };
 
   React.useEffect(() => {
     if (Platform.OS !== "web") return;
@@ -327,6 +356,7 @@ export function AppSidebarNav({
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.root}
       contentContainerStyle={[styles.content, collapsed && styles.contentRail]}
       showsVerticalScrollIndicator={false}
@@ -454,7 +484,7 @@ export function AppSidebarNav({
               ]}
             >
               <Pressable
-                onPress={() => setPreferencesOpen((open) => !open)}
+                onPress={togglePreferences}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: preferencesOpen }}
                 accessibilityLabel={t.settings.preferences}
@@ -509,8 +539,7 @@ export function AppSidebarNav({
                   >
                     <View
                       onLayout={(event) => {
-                        const height = event.nativeEvent.layout.height;
-                        if (height > 0) setPrefMeasuredHeight(height);
+                        onPrefBodyLayout(event.nativeEvent.layout.height);
                       }}
                     >
                       {renderPreferenceRows()}
@@ -525,9 +554,33 @@ export function AppSidebarNav({
                     </Animated.View>
                   </Animated.View>
                 </>
-              ) : preferencesOpen ? (
-                <View>{renderPreferenceRows()}</View>
-              ) : null}
+              ) : (
+                <>
+                  <View
+                    pointerEvents="none"
+                    style={styles.prefMeasure}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  >
+                    <View
+                      onLayout={(event) => {
+                        onPrefBodyLayout(event.nativeEvent.layout.height);
+                      }}
+                    >
+                      {renderPreferenceRows()}
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.prefBodyClip,
+                      { height: preferencesOpen ? prefMeasuredHeight : 0 },
+                    ]}
+                    pointerEvents={preferencesOpen ? "auto" : "none"}
+                  >
+                    {renderPreferenceRows()}
+                  </View>
+                </>
+              )}
             </View>
 
             <Pressable
@@ -798,6 +851,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
     borderRadius: 12,
+    minWidth: 0,
   },
   logoutBtn: {
     alignItems: "center",

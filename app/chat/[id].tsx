@@ -1,4 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -119,18 +120,25 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const keyboardHeight = useKeyboardState((s) => s.height);
+  const [composerFocused, setComposerFocused] = useState(false);
   const role = useAuthStore((s) => s.role);
 
-  // Opening this screen from a push notification can land on a keyboard state
-  // left over from wherever the app was before — KeyboardStickyView then lifts
-  // the composer by a keyboard height that is not on screen, parking the input
-  // mid-screen. Dismissing on mount resets that to zero.
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-    if (KeyboardController.isVisible()) {
-      void KeyboardController.dismiss().catch(() => undefined);
-    }
-  }, []);
+  // Opening from a push notification can inherit a stale keyboard height — only
+  // reserve list padding once the composer is actually focused.
+  const layoutKeyboardVisible =
+    Platform.OS !== "web" && composerFocused && keyboardVisible;
+  const layoutKeyboardHeight = layoutKeyboardVisible ? keyboardHeight : 0;
+
+  // Reset keyboard lift whenever this thread gains focus (e.g. notification tap).
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === "web") return;
+      setComposerFocused(false);
+      if (KeyboardController.isVisible()) {
+        void KeyboardController.dismiss().catch(() => undefined);
+      }
+    }, []),
+  );
   const {
     id: rawPeerId,
     consultationId: rawConsultationId,
@@ -509,10 +517,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   // Opening the keyboard means the user is about to type — put them on the
   // newest message, whatever they had scrolled to.
   useEffect(() => {
-    if (!keyboardVisible || Platform.OS === "web") return;
+    if (!layoutKeyboardVisible || Platform.OS === "web") return;
     stickToBottomRef.current = true;
     scrollToLatest(false);
-  }, [keyboardVisible, scrollToLatest]);
+  }, [layoutKeyboardVisible, scrollToLatest]);
 
   // Deep-link from the doctor's consultation list: scroll to and highlight it.
   useEffect(() => {
@@ -1343,7 +1351,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   // Drop home-indicator padding while keyboard is open — sticky view sits on the keyboard.
   const composerBottomInset = desktopLayout
     ? 12
-    : keyboardVisible
+    : layoutKeyboardVisible
       ? 0
       : Math.max(insets.bottom, 0);
   const listPadding = desktopLayout
@@ -1357,7 +1365,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         // KeyboardStickyView rather than shrinking it, so with the keyboard up
         // the list has to reserve that height itself — otherwise the message
         // just sent sits underneath the input and the keys.
-        paddingTop: keyboardVisible ? keyboardHeight + 14 : 14,
+        paddingTop: layoutKeyboardHeight + 14,
       };
 
   // With no consultation open the composer is disabled anyway, so "start" is
@@ -1829,6 +1837,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         peerId={id}
         sending={sending}
         bottomInset={composerBottomInset}
+        onComposerFocus={() => setComposerFocused(true)}
+        onComposerBlur={() => setComposerFocused(false)}
         onSend={handleSend}
         onAddPending={(msg) => addPendingMessage(id, msg)}
         onFailPending={(tempId) => failPendingMessage(id, tempId)}

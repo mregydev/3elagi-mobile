@@ -555,10 +555,13 @@ export function ChatMessageBubble({
           styles.documentRequestCard,
           {
             flexDirection: rowDir,
+            alignItems: "flex-start",
             opacity: pressed ? 0.88 : 1,
             backgroundColor: `${colors.primary}14`,
             borderColor: `${colors.primary}55`,
-            width: medicalBubbleWidth,
+            width: "100%",
+            maxWidth: "100%",
+            alignSelf: "stretch",
           },
         ]}
       >
@@ -1216,7 +1219,7 @@ export function ChatMessageBubble({
     isConsultationAction && styles.medicalBubble,
     bubbleColors,
     isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" as const },
-    isDocumentRequest && { width: compactCardWidth, maxWidth: "100%" as const },
+    isDocumentRequest && { width: "100%", maxWidth: "100%" as const },
     isConsultationAction && {
       width: consultationBubbleWidth,
       maxWidth: "100%" as const,
