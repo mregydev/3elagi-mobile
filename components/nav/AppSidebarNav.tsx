@@ -102,21 +102,35 @@ export function AppSidebarNav({
   // Groups start closed; opening one is a per-session preference.
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
   const [preferencesOpen, setPreferencesOpen] = React.useState(false);
+  const [prefMeasuredHeight, setPrefMeasuredHeight] = React.useState(0);
   const prefBodyHeight = useSharedValue(0);
   const prefExpand = useSharedValue(0);
-  const toggleGroup = (group: string) =>
-    setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+
+  const isGroupExpanded = (group: string, hasActive: boolean) =>
+    group in openGroups ? openGroups[group] : hasActive;
+
+  const toggleGroup = (group: string, hasActive: boolean) =>
+    setOpenGroups((prev) => {
+      const expanded = group in prev ? prev[group] : hasActive;
+      return { ...prev, [group]: !expanded };
+    });
 
   React.useEffect(() => {
+    if (Platform.OS !== "web") return;
     prefExpand.value = withTiming(preferencesOpen ? 1 : 0, {
       duration: UI.duration.normal,
       easing: Easing.out(Easing.cubic),
     });
   }, [preferencesOpen, prefExpand]);
 
+  React.useEffect(() => {
+    if (prefMeasuredHeight > 0) {
+      prefBodyHeight.value = prefMeasuredHeight;
+    }
+  }, [prefMeasuredHeight, prefBodyHeight]);
+
   const prefBodyAnimatedStyle = useAnimatedStyle(() => ({
     height: prefExpand.value * prefBodyHeight.value,
-    overflow: "hidden",
   }));
 
   const prefInnerAnimatedStyle = useAnimatedStyle(() => ({
@@ -235,6 +249,82 @@ export function AppSidebarNav({
     );
   };
 
+  const renderPreferenceRows = () => (
+    <>
+      <View
+        style={[
+          styles.prefNavItem,
+          { flexDirection: dir, backgroundColor: "transparent" },
+        ]}
+      >
+        <Languages size={18} color={colors.mutedForeground} strokeWidth={2} />
+        <Text
+          style={[
+            styles.navLabel,
+            {
+              color: colors.foreground,
+              textAlign,
+              writingDirection: isRTL ? "rtl" : "ltr",
+              fontSize: navFontSize,
+              fontWeight: "500",
+            },
+          ]}
+        >
+          {t.settings.language}
+        </Text>
+        <LanguageDropdown compact placement="bottom" />
+      </View>
+
+      <View
+        style={[
+          styles.prefNavItem,
+          { flexDirection: dir, backgroundColor: "transparent" },
+        ]}
+      >
+        <SunMoon size={18} color={colors.mutedForeground} strokeWidth={2} />
+        <Text
+          style={[
+            styles.navLabel,
+            {
+              color: colors.foreground,
+              textAlign,
+              writingDirection: isRTL ? "rtl" : "ltr",
+              fontSize: navFontSize,
+              fontWeight: "500",
+            },
+          ]}
+        >
+          {t.settings.theme}
+        </Text>
+        <ThemeToggle />
+      </View>
+
+      <View
+        style={[
+          styles.prefNavItem,
+          { flexDirection: dir, backgroundColor: "transparent" },
+        ]}
+      >
+        <Palette size={18} color={colors.mutedForeground} strokeWidth={2} />
+        <Text
+          style={[
+            styles.navLabel,
+            {
+              color: colors.foreground,
+              textAlign,
+              writingDirection: isRTL ? "rtl" : "ltr",
+              fontSize: navFontSize,
+              fontWeight: "500",
+            },
+          ]}
+        >
+          {t.settings.accentColor}
+        </Text>
+        <AccentPicker />
+      </View>
+    </>
+  );
+
   return (
     <ScrollView
       style={styles.root}
@@ -282,11 +372,11 @@ export function AppSidebarNav({
 
       <View style={styles.nav}>
         {sections.map((section) => {
-          // Collapsed by default; the current page forces its group open so the
-          // active item is never hidden behind a closed header.
           const hasActive = section.items.some((item) => item.active);
           const expanded =
-            !section.group || collapsed || hasActive || !!openGroups[section.group];
+            !section.group ||
+            collapsed ||
+            (section.group ? isGroupExpanded(section.group, hasActive) : false);
 
           return (
             <View key={String(section.items[0].href)} style={styles.navSection}>
@@ -301,7 +391,7 @@ export function AppSidebarNav({
                   const GroupIcon = APP_NAV_GROUP_ICONS[section.group];
                   return (
                     <Pressable
-                      onPress={() => toggleGroup(section.group!)}
+                      onPress={() => toggleGroup(section.group!, hasActive)}
                       accessibilityRole="button"
                       accessibilityState={{ expanded }}
                       accessibilityLabel={t.tabs[section.group]}
@@ -392,98 +482,52 @@ export function AppSidebarNav({
                 >
                   {t.settings.preferences}
                 </Text>
-              <Animated.View style={prefChevronStyle}>
-                <ChevronDown size={16} color={colors.mutedForeground} />
-              </Animated.View>
-            </Pressable>
-
-            <Animated.View
-              style={prefBodyAnimatedStyle}
-              pointerEvents={preferencesOpen ? "auto" : "none"}
-            >
-              <Animated.View
-                style={prefInnerAnimatedStyle}
-                onLayout={(event) => {
-                  prefBodyHeight.value = event.nativeEvent.layout.height;
-                }}
-              >
-                <View
-                  style={[
-                    styles.prefNavItem,
-                    { flexDirection: dir, backgroundColor: "transparent" },
-                  ]}
-                >
-                  <Languages
-                    size={18}
+                {Platform.OS === "web" ? (
+                  <Animated.View style={prefChevronStyle}>
+                    <ChevronDown size={16} color={colors.mutedForeground} />
+                  </Animated.View>
+                ) : preferencesOpen ? (
+                  <ChevronDown size={16} color={colors.mutedForeground} />
+                ) : (
+                  <ChevronDown
+                    size={16}
                     color={colors.mutedForeground}
-                    strokeWidth={2}
+                    style={{
+                      transform: [{ rotate: isRTL ? "90deg" : "-90deg" }],
+                    }}
                   />
-                  <Text
-                    style={[
-                      styles.navLabel,
-                      {
-                        color: colors.foreground,
-                        textAlign,
-                        writingDirection: isRTL ? "rtl" : "ltr",
-                        fontSize: navFontSize,
-                        fontWeight: "500",
-                      },
-                    ]}
-                  >
-                    {t.settings.language}
-                  </Text>
-                  <LanguageDropdown compact placement="bottom" />
-                </View>
+                )}
+              </Pressable>
 
-                <View
-                  style={[
-                    styles.prefNavItem,
-                    { flexDirection: dir, backgroundColor: "transparent" },
-                  ]}
-                >
-                  <SunMoon size={18} color={colors.mutedForeground} strokeWidth={2} />
-                  <Text
-                    style={[
-                      styles.navLabel,
-                      {
-                        color: colors.foreground,
-                        textAlign,
-                        writingDirection: isRTL ? "rtl" : "ltr",
-                        fontSize: navFontSize,
-                        fontWeight: "500",
-                      },
-                    ]}
+              {Platform.OS === "web" ? (
+                <>
+                  <View
+                    pointerEvents="none"
+                    style={styles.prefMeasure}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
                   >
-                    {t.settings.theme}
-                  </Text>
-                  <ThemeToggle />
-                </View>
-
-                <View
-                  style={[
-                    styles.prefNavItem,
-                    { flexDirection: dir, backgroundColor: "transparent" },
-                  ]}
-                >
-                  <Palette size={18} color={colors.mutedForeground} strokeWidth={2} />
-                  <Text
-                    style={[
-                      styles.navLabel,
-                      {
-                        color: colors.foreground,
-                        textAlign,
-                        writingDirection: isRTL ? "rtl" : "ltr",
-                        fontSize: navFontSize,
-                        fontWeight: "500",
-                      },
-                    ]}
+                    <View
+                      onLayout={(event) => {
+                        const height = event.nativeEvent.layout.height;
+                        if (height > 0) setPrefMeasuredHeight(height);
+                      }}
+                    >
+                      {renderPreferenceRows()}
+                    </View>
+                  </View>
+                  <Animated.View
+                    style={[styles.prefBodyClip, prefBodyAnimatedStyle]}
+                    pointerEvents={preferencesOpen ? "auto" : "none"}
                   >
-                    {t.settings.accentColor}
-                  </Text>
-                  <AccentPicker />
-                </View>
-              </Animated.View>
-            </Animated.View>
+                    <Animated.View style={prefInnerAnimatedStyle}>
+                      {renderPreferenceRows()}
+                    </Animated.View>
+                  </Animated.View>
+                </>
+              ) : preferencesOpen ? (
+                <View>{renderPreferenceRows()}</View>
+              ) : null}
             </View>
 
             <Pressable
@@ -736,6 +780,17 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  prefMeasure: {
+    position: "absolute",
+    opacity: 0,
+    width: "100%",
+    left: 0,
+    top: 0,
+    zIndex: -1,
+  },
+  prefBodyClip: {
+    overflow: "hidden",
   },
   prefNavItem: {
     alignItems: "center",
