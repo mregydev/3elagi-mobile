@@ -74,7 +74,7 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
           <Text style={styles.downloadBtnText}>{t.mobileApp.openLink}</Text>
         </Pressable>
 
-        <View style={styles.qrWrap}>
+        <View style={[styles.qrWrap, { borderColor: colors.border }]}>
           <Image
             source={ANDROID_APP_QR}
             style={styles.qr}
@@ -163,15 +163,14 @@ const styles = StyleSheet.create({
   },
   qrWrap: {
     alignSelf: "center",
-    padding: 8,
-    backgroundColor: "#2a2a2a",
+    padding: 12,
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#3a3a3a",
     overflow: "hidden",
   },
   qr: {
     width: 220,
-    height: 220,
+    aspectRatio: 552 / 536,
   },
 });
