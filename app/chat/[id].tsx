@@ -64,6 +64,7 @@ import {
   markChatMessageUnread,
 } from "@/domains/chat/api";
 import { sendAppointmentAction } from "@/domains/appointments/api";
+import { isAppointmentStartInFuture } from "@/domains/appointments/roomWindow";
 import {
   acceptConsultation,
   rejectConsultation,
@@ -415,6 +416,27 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         meetingLink: meta.meeting_link,
         pendingBy: meta.pending_by ?? null,
       });
+    }
+    return map;
+  }, [messages]);
+  /** Unanswered reschedule/cancel request per appointment → message id. */
+  const openAppointmentChangeRequests = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const message of messages) {
+      const meta = message.appointmentAction;
+      if (!meta) continue;
+      const apptId = meta.appointment_id;
+      if (meta.action === "reschedule_request" || meta.action === "cancel_request") {
+        map.set(apptId, message.id);
+      }
+      if (
+        meta.action === "reschedule_accepted" ||
+        meta.action === "reschedule_declined" ||
+        meta.action === "cancel_approved" ||
+        meta.action === "cancel_declined"
+      ) {
+        map.delete(apptId);
+      }
     }
     return map;
   }, [messages]);
@@ -1129,6 +1151,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   /** Either side can propose a new slot; the other confirms it. */
   const openReschedule = useCallback(
     async (appointmentId: string) => {
+      const latestMsgId = latestAppointmentMessageIds.get(appointmentId);
+      const latestMeta = messages.find((m) => m.id === latestMsgId)?.appointmentAction;
+      if (!isAppointmentStartInFuture(latestMeta?.date ?? "", latestMeta?.time ?? null)) {
+        Alert.alert(
+          isRTL ? "غير متاح" : "Not available",
+          isRTL
+            ? "لا يمكن تغيير الموعد بعد بدء الاجتماع"
+            : "The meeting time cannot be changed after it has started",
+        );
+        return;
+      }
       setRescheduleAppointmentId(appointmentId);
       // The picker reads the doctor's schedule; a doctor needs their own id.
       if (isDoctor && !selfDoctorEntityId && accessToken && role) {
@@ -1140,7 +1173,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         }
       }
     },
-    [isDoctor, selfDoctorEntityId, accessToken, role],
+    [isDoctor, selfDoctorEntityId, accessToken, role, isRTL, latestAppointmentMessageIds, messages],
   );
 
   const submitReschedule = async (date: string, time: string) => {
@@ -1640,6 +1673,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               const showAppointmentControls = apptId
                 ? latestAppointmentMessageIds.get(apptId) === item.id
                 : false;
+              const showPendingChangePanel = apptId
+                ? openAppointmentChangeRequests.get(apptId) === item.id
+                : false;
               return (
                 <ChatMessageBubble
                   item={item}
@@ -1653,6 +1689,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   selfUserId={profile?.id}
                   appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
                   showAppointmentControls={showAppointmentControls}
+                  showPendingChangePanel={showPendingChangePanel}
                   onAppointmentAction={(appointmentId, action) =>
                     void handleAppointmentAction(appointmentId, action)
                   }

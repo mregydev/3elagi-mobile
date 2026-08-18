@@ -33,7 +33,10 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { formatEgp } from "@/utils/credits";
-import { appointmentRoomState } from "@/domains/appointments/roomWindow";
+import {
+  appointmentRoomState,
+  isAppointmentStartInFuture,
+} from "@/domains/appointments/roomWindow";
 
 interface Props {
   item: ChatMessage;
@@ -56,6 +59,8 @@ interface Props {
   ) => void;
   appointmentActionBusy?: boolean;
   showAppointmentControls?: boolean;
+  /** True only on the unanswered reschedule/cancel request message. */
+  showPendingChangePanel?: boolean;
   /** Doctor answering a pending consultation request from the thread. */
   onConsultationAction?: (
     consultationId: string,
@@ -99,6 +104,7 @@ export function ChatMessageBubble({
   onAppointmentAction,
   appointmentActionBusy = false,
   showAppointmentControls = false,
+  showPendingChangePanel = false,
   onConsultationAction,
   onPaymentReply,
   onChangeReply,
@@ -1014,7 +1020,10 @@ export function ChatMessageBubble({
       appointmentStatus?.pendingBy ?? meta.pending_by
     );
     const canReschedule =
-      showAppointmentControls && status === "confirmed" && !hasPendingChange;
+      showAppointmentControls &&
+      status === "confirmed" &&
+      !hasPendingChange &&
+      isAppointmentStartInFuture(meta.date, meta.time);
     const canCancel =
       showAppointmentControls &&
       (status === "pending" || status === "confirmed") &&
@@ -1073,7 +1082,8 @@ export function ChatMessageBubble({
               </Text>
             </View>
           ) : null}
-          {meta.action === "reschedule_request" || meta.action === "cancel_request" ? (
+          {showPendingChangePanel &&
+          (meta.action === "reschedule_request" || meta.action === "cancel_request") ? (
             <PendingChangePanel
               meta={meta}
               kind={meta.action === "reschedule_request" ? "reschedule" : "cancel"}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appointmentRoomState } from "./roomWindow";
+import { appointmentRoomState, isAppointmentStartInFuture } from "./roomWindow";
 
 const DATE = "2026-08-16";
 
@@ -20,5 +20,12 @@ describe("appointmentRoomState", () => {
     expect(appointmentRoomState(DATE, "14:00", undefined, new Date(2026, 7, 16, 14, 29))).toBe("open");
     expect(appointmentRoomState(DATE, "14:00", undefined, new Date(2026, 7, 16, 14, 31))).toBe("over");
     expect(appointmentRoomState(DATE, null, 30)).toBe("unscheduled");
+  });
+});
+
+describe("isAppointmentStartInFuture", () => {
+  it("is true before start and false once the slot begins", () => {
+    expect(isAppointmentStartInFuture(DATE, "14:00", new Date(2026, 7, 16, 13, 59))).toBe(true);
+    expect(isAppointmentStartInFuture(DATE, "14:00", new Date(2026, 7, 16, 14, 0))).toBe(false);
   });
 });

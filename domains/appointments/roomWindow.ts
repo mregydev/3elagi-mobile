@@ -24,6 +24,17 @@ export function appointmentRoomState(
   return "open";
 }
 
+/** True while the scheduled start is still in the future (reschedule allowed). */
+export function isAppointmentStartInFuture(
+  date: string,
+  time: string | null,
+  now: Date = new Date(),
+): boolean {
+  const startsAt = appointmentStart(date, time);
+  if (!startsAt) return false;
+  return startsAt.getTime() > now.getTime();
+}
+
 /** `date` is YYYY-MM-DD and `time` HH:mm (24h); null time means unscheduled. */
 export function appointmentStart(date: string, time: string | null): Date | null {
   if (!date || !time) return null;
