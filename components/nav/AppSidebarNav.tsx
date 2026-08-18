@@ -22,7 +22,11 @@ import { Logo3elagi } from "@/components/Logo3elagi";
 import { AccentPicker } from "@/components/AccentPicker";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { filterAppNavItems, HOME_NAV_RESET_EVENT } from "@/constants/appNav";
+import {
+  filterAppNavItems,
+  groupAppNavItems,
+  HOME_NAV_RESET_EVENT,
+} from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
@@ -78,6 +82,7 @@ export function AppSidebarNav({
     ...item,
     active: item.match(pathname),
   }));
+  const sections = groupAppNavItems(items);
 
   const handleLogout = () => {
     const confirmed =
@@ -228,7 +233,29 @@ export function AppSidebarNav({
         </View>
       ) : null}
 
-      <View style={styles.nav}>{items.map(renderNavItem)}</View>
+      <View style={styles.nav}>
+        {sections.map((section) => (
+          <View key={String(section.items[0].href)} style={styles.navSection}>
+            {/* The rail has no room for headers; a divider keeps the grouping. */}
+            {section.group && collapsed ? (
+              <View style={[styles.railDivider, { backgroundColor: colors.border }]} />
+            ) : null}
+            {section.group && !collapsed ? (
+              <Text
+                style={[
+                  styles.sectionHeader,
+                  { color: colors.mutedForeground, textAlign },
+                ]}
+              >
+                {t.tabs[section.group]}
+              </Text>
+            ) : null}
+            {section.items.map((item) =>
+              renderNavItem(item as (typeof items)[number]),
+            )}
+          </View>
+        ))}
+      </View>
 
       <View style={styles.footer}>
         {!collapsed ? (
@@ -441,6 +468,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
+  },
+  navSection: {
+    gap: 2,
+  },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  railDivider: {
+    height: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    marginVertical: 8,
   },
   nav: { gap: 2 },
   navItem: {

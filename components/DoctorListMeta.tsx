@@ -72,6 +72,7 @@ export function DoctorTrailingMeta({
         doctor={fees ?? {}}
         isRTL={isRTL}
         compact
+        align="end"
         fallback={formatEgpPerUnit(price, t)}
       />
     </View>
@@ -100,17 +101,5 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 11,
     lineHeight: 14,
-  },
-  priceLine: {
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  priceValue: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  priceUnit: {
-    fontSize: 11,
-    fontWeight: "500",
   },
 });

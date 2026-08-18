@@ -18,6 +18,9 @@ import {
 } from "lucide-react-native";
 import type { Translations } from "@/constants/translations";
 
+/** Section headers in the side menu. */
+export type AppNavGroup = "activity";
+
 export type AppNavItem = {
   href: Href;
   labelKey: keyof Translations["tabs"];
@@ -30,6 +33,8 @@ export type AppNavItem = {
   guestOnly?: boolean;
   /** Hidden when AI is switched off in the profile. */
   aiOnly?: boolean;
+  /** Items sharing a group render under one section header. */
+  group?: AppNavGroup;
   match: (path: string) => boolean;
 };
 
@@ -106,12 +111,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     match: (path) => pathHas(path, "notifications"),
   },
   {
-    href: "/(tabs)/history",
-    labelKey: "history",
-    Icon: History,
-    match: (path) => pathHas(path, "history"),
-  },
-  {
     href: "/(tabs)/patients",
     labelKey: "patients",
     Icon: Users,
@@ -132,16 +131,26 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     doctorOnly: true,
     match: (path) => pathHas(path, "intake"),
   },
+  // Grouped under the "Activity" header, in this order.
+  {
+    href: "/(tabs)/history",
+    labelKey: "history",
+    Icon: History,
+    group: "activity",
+    match: (path) => pathHas(path, "history"),
+  },
   {
     href: "/(tabs)/appointments",
     labelKey: "appointments",
     Icon: CalendarClock,
+    group: "activity",
     match: (path) => pathHas(path, "appointments"),
   },
   {
     href: "/(tabs)/consultations",
     labelKey: "consultations",
     Icon: MessageSquare,
+    group: "activity",
     match: (path) => pathHas(path, "consultations"),
   },
   {
@@ -149,6 +158,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "records",
     Icon: ClipboardList,
     patientOnly: true,
+    group: "activity",
     match: (path) => pathHas(path, "records") || path.includes("/medical"),
   },
   {
@@ -181,4 +191,27 @@ export function filterAppNavItems(
     if (item.patientOnly && isDoctor) return false;
     return true;
   });
+}
+
+export type AppNavSection = {
+  /** Header label; absent for the ungrouped items at the top. */
+  group?: AppNavGroup;
+  items: AppNavItem[];
+};
+
+/**
+ * Split a filtered nav list into render sections, preserving order. Grouped
+ * items are contiguous in APP_NAV_ITEMS, so one pass is enough.
+ */
+export function groupAppNavItems(items: AppNavItem[]): AppNavSection[] {
+  const sections: AppNavSection[] = [];
+  for (const item of items) {
+    const last = sections[sections.length - 1];
+    if (last && last.group === item.group) {
+      last.items.push(item);
+      continue;
+    }
+    sections.push({ group: item.group, items: [item] });
+  }
+  return sections;
 }

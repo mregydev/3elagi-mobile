@@ -165,6 +165,20 @@ export function DoctorBrowseCard({
                 </Text>
               </View>
             </View>
+
+            <View style={styles.feePillSpacing}>
+              <DoctorFeeLines
+                doctor={{
+                  country: item.user.country,
+                  textPriceLocal: item.user.textPriceLocal,
+                  textPriceUsd: item.user.textPriceUsd,
+                  videoPriceLocal: item.user.videoPriceLocal,
+                  videoPriceUsd: item.user.videoPriceUsd,
+                }}
+                isRTL={isRTL}
+                fallback={formatEgpPerUnit(price, t)}
+              />
+            </View>
           </View>
         </Pressable>
 
@@ -176,17 +190,6 @@ export function DoctorBrowseCard({
               : { alignItems: isRTL ? "flex-start" : "flex-end" },
           ]}
         >
-          <DoctorFeeLines
-            doctor={{
-              country: item.user.country,
-              textPriceLocal: item.user.textPriceLocal,
-              textPriceUsd: item.user.textPriceUsd,
-              videoPriceLocal: item.user.videoPriceLocal,
-              videoPriceUsd: item.user.videoPriceUsd,
-            }}
-            isRTL={isRTL}
-            fallback={formatEgpPerUnit(price, t)}
-          />
           <Pressable
             onPress={onStartConsultation}
             accessibilityRole="button"
@@ -298,15 +301,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 132,
   },
+  // Prices belong with the doctor's details, not floating over the button.
+  feePillSpacing: {
+    marginTop: 8,
+  },
   actionsStacked: {
     alignItems: "center",
     justifyContent: "space-between",
     minWidth: 0,
-  },
-  price: {
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
   },
   cta: {
     gap: 6,

@@ -25,7 +25,7 @@ vi.mock("lucide-react-native", () => ({
   ),
 }));
 
-const { filterAppNavItems } = await import("@/constants/appNav");
+const { filterAppNavItems, groupAppNavItems } = await import("@/constants/appNav");
 
 const hrefs = (items: { href: unknown }[]) => items.map((i) => String(i.href));
 
@@ -52,5 +52,36 @@ describe("filterAppNavItems", () => {
     const patient = hrefs(filterAppNavItems("patient", { aiEnabled: false }));
     expect(patient).toContain("/(tabs)/records");
     expect(patient).not.toContain("/(tabs)/patients");
+  });
+});
+
+describe("groupAppNavItems", () => {
+  it("puts chat history, appointments, consultations and records under Activity", () => {
+    const sections = groupAppNavItems(filterAppNavItems("patient"));
+    const activity = sections.find((s) => s.group === "activity");
+    expect(activity && hrefs(activity.items)).toEqual([
+      "/(tabs)/history",
+      "/(tabs)/appointments",
+      "/(tabs)/consultations",
+      "/(tabs)/records",
+    ]);
+  });
+
+  it("keeps every named group in one section and loses no item", () => {
+    for (const role of ["patient", "doctor"]) {
+      const items = filterAppNavItems(role);
+      const sections = groupAppNavItems(items);
+      // Order and membership survive the split. Ungrouped items may form more
+      // than one section (before and after Activity); named groups may not.
+      expect(sections.flatMap((s) => hrefs(s.items))).toEqual(hrefs(items));
+      const named = sections.map((s) => s.group).filter(Boolean);
+      expect(new Set(named).size).toBe(named.length);
+    }
+  });
+
+  it("drops medical records from a doctor's Activity section", () => {
+    const sections = groupAppNavItems(filterAppNavItems("doctor"));
+    const activity = sections.find((s) => s.group === "activity");
+    expect(activity && hrefs(activity.items)).not.toContain("/(tabs)/records");
   });
 });

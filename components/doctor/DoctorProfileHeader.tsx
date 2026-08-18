@@ -168,6 +168,7 @@ export function DoctorProfileHeader({
           videoPriceUsd: doctor.videoPriceUsd,
         }}
         isRTL={isRTL}
+        align={isMobile ? "start" : "end"}
         fallback={formatEgpPerUnit(doctor.consultationPrice, t)}
       />
       {action ? <View style={styles.actionSlot}>{action}</View> : null}
@@ -300,14 +301,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: UI.space.md,
     paddingBottom: UI.space.md,
     width: "100%",
-  },
-  price: {
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 19,
-  },
-  priceMobile: {
-    fontSize: 15,
   },
   actionSlot: {
     alignSelf: "stretch",
