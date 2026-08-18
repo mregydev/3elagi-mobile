@@ -9,6 +9,7 @@ import { PushNotificationsBootstrap } from "@/components/PushNotificationsBootst
 import { WebChatNotificationsBootstrap } from "@/components/WebChatNotificationsBootstrap";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
+import { MobileAppDownloadHost } from "@/components/web/MobileAppDownloadHost";
 import { AppointmentNotifications } from "@/components/AppointmentNotifications";
 import { AppointmentSync } from "@/components/AppointmentSync";
 import { IntakeExamNotifications } from "@/components/IntakeExamNotifications";
@@ -154,6 +155,7 @@ function AppRoot() {
             </Stack>
             <NavLoadingOverlay />
             <AppToast />
+          <MobileAppDownloadHost />
             <Ask3elagiAiWidget />
             <GuestAuthRequiredDialog />
           </View>

@@ -116,8 +116,10 @@ export async function acceptConsultation(
   token: string,
   requirePayment = false,
 ): Promise<{ consultation: Consultation }> {
+  const geo = await detectCountryFromIp().catch(() => null);
   return authJson(`/consultations/${consultationId}/accept`, token, {
     method: "POST",
+    headers: geo ? { "x-client-geo-country": geo } : undefined,
     body: JSON.stringify({ require_payment: requirePayment }),
   });
 }

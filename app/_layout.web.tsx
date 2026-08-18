@@ -7,6 +7,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppSplash } from "@/components/SplashScreen";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
+import { MobileAppDownloadHost } from "@/components/web/MobileAppDownloadHost";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { GuestAuthRequiredDialog } from "@/components/auth/GuestAuthRequiredDialog";
 import { SessionTransferBootstrap } from "@/components/auth/SessionTransferBootstrap";
@@ -164,6 +165,7 @@ export default function RootLayout() {
             <Stack.Screen name="points/checkout" />
           </Stack>
           <AppToast />
+          <MobileAppDownloadHost />
           <Ask3elagiAiWidget />
           <GuestAuthRequiredDialog />
         </View>

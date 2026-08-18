@@ -11,6 +11,8 @@ type Props = {
   meta: PaymentActionMeta;
   isDoctor: boolean;
   busy?: boolean;
+  /** When true, hide pay / attach / approve controls (e.g. cancelled appointment). */
+  inactive?: boolean;
   onReply?: (reply: PaymentReply) => void;
 };
 
@@ -18,7 +20,7 @@ type Props = {
  * The money half of an appointment / consultation card: what is owed, where to
  * pay it, and the receipt the doctor has to approve before anything opens.
  */
-export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
+export function PaymentActionPanel({ meta, isDoctor, busy, inactive, onReply }: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
   const status = meta.payment_status ?? "none";
@@ -32,7 +34,11 @@ export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
       : null;
 
   const headline =
-    status === "paid"
+    inactive
+      ? isRTL
+        ? "تم إلغاء الموعد"
+        : "This appointment was cancelled"
+      : status === "paid"
       ? isRTL
         ? "تم تأكيد الدفع"
         : "Payment confirmed"
@@ -63,7 +69,7 @@ export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
 
       {/* The doctor's own payment URL, shown in full so the patient can read,
           copy or open it — not hidden behind a button. */}
-      {status === "awaiting_payment" && meta.payment_link ? (
+      {!inactive && status === "awaiting_payment" && meta.payment_link ? (
         <Pressable
           onPress={() =>
             void Linking.openURL(meta.payment_link!).catch(() => undefined)
@@ -79,7 +85,7 @@ export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
           </Text>
         </Pressable>
       ) : null}
-      {status === "awaiting_payment" && !meta.payment_link ? (
+      {!inactive && status === "awaiting_payment" && !meta.payment_link ? (
         <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
           {isDoctor
             ? isRTL
@@ -92,14 +98,14 @@ export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
       ) : null}
 
       <View style={[styles.actions, { flexDirection: dir }]}>
-        {!isDoctor && status === "awaiting_payment" && meta.payment_link ? (
+        {!inactive && !isDoctor && status === "awaiting_payment" && meta.payment_link ? (
           <LinkButton
             label={isRTL ? "ادفع الآن" : "Pay now"}
             url={meta.payment_link}
             color={colors.primary}
           />
         ) : null}
-        {!isDoctor && status === "awaiting_payment" ? (
+        {!inactive && !isDoctor && status === "awaiting_payment" ? (
           <ActionButton
             label={isRTL ? "إرفاق الإيصال" : "Attach receipt"}
             filled
@@ -116,7 +122,7 @@ export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
             icon="receipt"
           />
         ) : null}
-        {isDoctor && status === "proof_submitted" ? (
+        {!inactive && isDoctor && status === "proof_submitted" ? (
           <>
             <ActionButton
               label={isRTL ? "اعتماد" : "Approve"}

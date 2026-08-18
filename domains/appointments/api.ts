@@ -1,6 +1,12 @@
 import { API_BASE } from "@/constants/api";
 import type { MessageRow } from "@/domains/chat/api";
 import type { AppointmentActionMeta } from "@/domains/chat/types";
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
+
+async function clientGeoHeaders(): Promise<Record<string, string> | undefined> {
+  const geo = await detectCountryFromIp().catch(() => null);
+  return geo ? { "x-client-geo-country": geo } : undefined;
+}
 
 export interface UpcomingAppointment {
   id: string;
@@ -58,11 +64,13 @@ export async function bookChatAppointment(
   time: string,
   extra?: { reason?: string; patientInsight?: string },
 ): Promise<ChatBookResult> {
+  const geoHeaders = await clientGeoHeaders();
   const res = await fetch(`${API_BASE}/appointments/chat-book`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...geoHeaders,
     },
     body: JSON.stringify({
       doctor_user_id: doctorUserId,
@@ -86,11 +94,13 @@ export async function sendAppointmentAction(
   recipientId: string,
   meta: AppointmentActionMeta,
 ): Promise<MessageRow> {
+  const geoHeaders = await clientGeoHeaders();
   const res = await fetch(`${API_BASE}/messages`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...geoHeaders,
     },
     body: JSON.stringify({
       recipient_id: recipientId,

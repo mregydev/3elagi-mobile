@@ -1031,6 +1031,7 @@ export function ChatMessageBubble({
             meta={meta}
             isDoctor={isDoctor}
             busy={appointmentActionBusy}
+            inactive={status === "cancelled" || status === "rejected"}
             onReply={(reply) =>
               onPaymentReply?.(
                 { kind: "appointment", id: meta.appointment_id },

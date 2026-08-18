@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
-import { MobileAppDownloadModal } from "@/components/web/MobileAppDownloadModal.web";
 import { useAppSidebar } from "@/contexts/AppSidebarContext";
+import { useMobileAppDownloadStore } from "@/domains/mobileApp/downloadStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
@@ -44,11 +44,13 @@ export function MobileAppLink({ variant = "link" }: Props) {
   const { t, isRTL } = useI18n();
   const { closeSidebar } = useAppSidebar();
   const dir = flexRow(isRTL);
-  const [open, setOpen] = useState(false);
+  const openStore = useMobileAppDownloadStore((s) => s.openDownload);
 
   const openDownload = () => {
+    // Order matters only for looks: the dialog is mounted at the root, so
+    // closing the drawer no longer takes it down with the link.
+    openStore();
     closeSidebar();
-    setOpen(true);
   };
 
   const iconSize =
@@ -73,40 +75,37 @@ export function MobileAppLink({ variant = "link" }: Props) {
           : styles.link;
 
   return (
-    <>
-      <Pressable
-        onPress={openDownload}
-        accessibilityRole="button"
-        accessibilityLabel={t.mobileApp.linkLabel}
-        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-          baseStyle,
-          variant === "nav"
+    <Pressable
+      onPress={openDownload}
+      accessibilityRole="button"
+      accessibilityLabel={t.mobileApp.linkLabel}
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        baseStyle,
+        variant === "nav"
+          ? {
+              flexDirection: dir,
+              borderColor: colors.border,
+              backgroundColor: pressed || hovered ? colors.muted : "transparent",
+            }
+          : variant === "button" || variant === "toolbar"
             ? {
                 flexDirection: dir,
                 borderColor: colors.border,
-                backgroundColor: pressed || hovered ? colors.muted : "transparent",
+                backgroundColor: pressed || hovered ? colors.muted : colors.card,
               }
-            : variant === "button" || variant === "toolbar"
-              ? {
-                  flexDirection: dir,
-                  borderColor: colors.border,
-                  backgroundColor: pressed || hovered ? colors.muted : colors.card,
-                }
-              : {
-                  flexDirection: dir,
-                  backgroundColor: pressed || hovered ? `${colors.primary}10` : "transparent",
-                },
-          pressed && styles.pressed,
-        ]}
-      >
-        <AndroidRobot size={iconSize + 2} color={colors.primary} />
-        <Text style={[labelStyle, { color: labelColor }]}>
-          {t.mobileApp.linkLabel}
-        </Text>
-      </Pressable>
-
-      <MobileAppDownloadModal visible={open} onClose={() => setOpen(false)} />
-    </>
+            : {
+                flexDirection: dir,
+                backgroundColor:
+                  pressed || hovered ? `${colors.primary}10` : "transparent",
+              },
+        pressed && styles.pressed,
+      ]}
+    >
+      <AndroidRobot size={iconSize + 2} color={colors.primary} />
+      <Text style={[labelStyle, { color: labelColor }]}>
+        {t.mobileApp.linkLabel}
+      </Text>
+    </Pressable>
   );
 }
 
