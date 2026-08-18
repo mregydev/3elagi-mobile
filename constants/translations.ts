@@ -889,6 +889,8 @@ const en = {
     cancel: "Cancel",
     save: "Save",
     ok: "OK",
+    today: "Today",
+    yesterday: "Yesterday",
   },
 };
 
@@ -1768,6 +1770,8 @@ const ar: typeof en = {
     cancel: "إلغاء",
     save: "حفظ",
     ok: "حسناً",
+    today: "اليوم",
+    yesterday: "أمس",
   },
 };
 
@@ -2656,6 +2660,8 @@ const de: typeof en = {
     cancel: "Abbrechen",
     save: "Speichern",
     ok: "OK",
+    today: "Heute",
+    yesterday: "Gestern",
   },
 };
 
@@ -3545,6 +3551,8 @@ const es: typeof en = {
     cancel: "Cancelar",
     save: "Guardar",
     ok: "OK",
+    today: "Hoy",
+    yesterday: "Ayer",
   },
 };
 

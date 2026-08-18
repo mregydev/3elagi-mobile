@@ -26,6 +26,7 @@ import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { ArchivedMessagesToggle } from "@/components/chat/ArchivedMessagesToggle";
+import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
 import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
@@ -58,6 +59,11 @@ import {
   type DoctorPatientAccessStatus,
 } from "@/domains/chat/access";
 import type { ChatMessage, MedicalLinkMeta, SendMessageInput } from "@/domains/chat/types";
+import {
+  chatListItemKey,
+  injectChatDateSeparators,
+  type ChatListItem,
+} from "@/domains/chat/dateSeparators";
 import {
   mapMessageRow,
   markChatMessageRead,
@@ -98,8 +104,6 @@ import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
-type ChatListItem = { kind: "message"; message: ChatMessage };
-
 function canReactToMessage(message: ChatMessage): boolean {
   return !message.pending && !message.failed && !message.id.startsWith("pending-");
 }
@@ -111,7 +115,7 @@ interface ChatScreenProps {
 
 export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const colors = useColors();
-  const { isRTL, t } = useI18n();
+  const { isRTL, t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const keyboardHeight = useKeyboardState((s) => s.height);
@@ -374,20 +378,23 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     activeConsultationId,
   ]);
 
+  const dateLabels = useMemo(
+    () => ({ today: t.common.today, yesterday: t.common.yesterday }),
+    [t.common.today, t.common.yesterday],
+  );
+
   const listData = useMemo((): ChatListItem[] => {
     if (!archiveSplit) {
-      return chatMessages.map((message) => ({ kind: "message", message }));
+      return injectChatDateSeparators(chatMessages, locale, dateLabels);
     }
-    const currentRev = [...archiveSplit.current]
-      .reverse()
-      .map((message) => ({ kind: "message" as const, message }));
-    if (!archiveExpanded) return currentRev;
-    const archivedRev = [...archiveSplit.archived]
-      .reverse()
-      .map((message) => ({ kind: "message" as const, message }));
+    const currentRev = [...archiveSplit.current].reverse();
+    if (!archiveExpanded) {
+      return injectChatDateSeparators(currentRev, locale, dateLabels);
+    }
+    const archivedRev = [...archiveSplit.archived].reverse();
     // Inverted list: archived block sits above current messages; toggle is ListFooter (visual top).
-    return [...currentRev, ...archivedRev];
-  }, [archiveSplit, archiveExpanded, chatMessages]);
+    return injectChatDateSeparators([...currentRev, ...archivedRev], locale, dateLabels);
+  }, [archiveSplit, archiveExpanded, chatMessages, locale, dateLabels]);
 
   useEffect(() => {
     setArchiveExpanded(false);
@@ -1604,7 +1611,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           ref={listRef}
           data={listData}
           inverted={listInverted}
-          keyExtractor={(row) => row.message.id}
+          keyExtractor={chatListItemKey}
           extraData={`${reactionTarget?.id ?? ""}:${messages.length}:${archiveExpanded}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           keyboardShouldPersistTaps="handled"
@@ -1667,6 +1674,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             </View>
           }
           renderItem={({ item: row, index }) => {
+            if (row.kind === "date") {
+              return <ChatDateSeparator label={row.label} />;
+            }
             const item = row.message;
             if (item.type === "access_action" || item.type === "appointment_action") {
               const apptId = item.appointmentAction?.appointment_id;

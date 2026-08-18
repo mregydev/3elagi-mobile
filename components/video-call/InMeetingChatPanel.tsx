@@ -18,6 +18,7 @@ import {
 } from "react-native-keyboard-controller";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
+import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
@@ -33,6 +34,11 @@ import type {
   MedicalLinkMeta,
   SendMessageInput,
 } from "@/domains/chat/types";
+import {
+  chatListItemKey,
+  injectChatDateSeparators,
+  type ChatListItem,
+} from "@/domains/chat/dateSeparators";
 import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
@@ -49,8 +55,6 @@ import {
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 const SIDE_PANEL_WIDTH = 380;
-
-type ChatListItem = { kind: "message"; message: ChatMessage };
 
 interface Props {
   peerId: string;
@@ -76,7 +80,7 @@ export function InMeetingChatPanel({
   renderMedicalPicker,
 }: Props) {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const rowDir = chatFlexRow();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
@@ -119,13 +123,20 @@ export function InMeetingChatPanel({
   // written after the panel opened show up, so nobody re-reads old history
   // mid-consultation.
   const joinedAtRef = useRef(new Date().toISOString());
+  const dateLabels = useMemo(
+    () => ({ today: t.common.today, yesterday: t.common.yesterday }),
+    [t.common.today, t.common.yesterday],
+  );
   const listData = useMemo<ChatListItem[]>(
     () =>
-      [...messages]
-        .filter((message) => message.createdAt >= joinedAtRef.current)
-        .reverse()
-        .map((message) => ({ kind: "message", message })),
-    [messages],
+      injectChatDateSeparators(
+        [...messages]
+          .filter((message) => message.createdAt >= joinedAtRef.current)
+          .reverse(),
+        locale,
+        dateLabels,
+      ),
+    [messages, locale, dateLabels],
   );
   const listInverted = listData.length > 0;
 
@@ -382,7 +393,7 @@ export function InMeetingChatPanel({
             ref={listRef}
             data={listData}
             inverted={listInverted}
-            keyExtractor={(row) => row.message.id}
+            keyExtractor={chatListItemKey}
             style={[styles.messageList, { backgroundColor: colors.muted }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
@@ -424,6 +435,9 @@ export function InMeetingChatPanel({
               </View>
             }
             renderItem={({ item: row }) => {
+              if (row.kind === "date") {
+                return <ChatDateSeparator label={row.label} />;
+              }
               const item = row.message;
               const mine = item.senderId === "me";
               return (
