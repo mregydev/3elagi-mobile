@@ -131,7 +131,20 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     doctorOnly: true,
     match: (path) => pathHas(path, "intake"),
   },
-  // Grouped under the "Activity" header, in this order.
+  {
+    href: "/(tabs)/points",
+    labelKey: "points",
+    Icon: Coins,
+    patientOnly: true,
+    match: (path) => pathHas(path, "points"),
+  },
+  {
+    href: "/(tabs)/profile",
+    labelKey: "profile",
+    Icon: User,
+    match: (path) => pathHas(path, "profile"),
+  },
+  // Grouped under the "Activity" header at the bottom, in this order.
   {
     href: "/(tabs)/history",
     labelKey: "history",
@@ -161,19 +174,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     group: "activity",
     match: (path) => pathHas(path, "records") || path.includes("/medical"),
   },
-  {
-    href: "/(tabs)/points",
-    labelKey: "points",
-    Icon: Coins,
-    patientOnly: true,
-    match: (path) => pathHas(path, "points"),
-  },
-  {
-    href: "/(tabs)/profile",
-    labelKey: "profile",
-    Icon: User,
-    match: (path) => pathHas(path, "profile"),
-  },
 ];
 
 export function filterAppNavItems(
@@ -193,18 +193,20 @@ export function filterAppNavItems(
   });
 }
 
-export type AppNavSection = {
+export type AppNavSection<T extends AppNavItem = AppNavItem> = {
   /** Header label; absent for the ungrouped items at the top. */
   group?: AppNavGroup;
-  items: AppNavItem[];
+  items: T[];
 };
 
 /**
  * Split a filtered nav list into render sections, preserving order. Grouped
  * items are contiguous in APP_NAV_ITEMS, so one pass is enough.
  */
-export function groupAppNavItems(items: AppNavItem[]): AppNavSection[] {
-  const sections: AppNavSection[] = [];
+export function groupAppNavItems<T extends AppNavItem>(
+  items: T[],
+): AppNavSection<T>[] {
+  const sections: AppNavSection<T>[] = [];
   for (const item of items) {
     const last = sections[sections.length - 1];
     if (last && last.group === item.group) {

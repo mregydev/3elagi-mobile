@@ -79,6 +79,22 @@ async function authJson<T>(path: string, token: string, init?: RequestInit): Pro
   return data as T;
 }
 
+/** Approved doctors, for resolving a /doctor/name/[name] link. */
+export async function fetchPublicDoctors(): Promise<
+  { id: string; userId: string; name: string }[]
+> {
+  const res = await fetch(`${API_BASE}/public/doctors`);
+  const data = (await res.json().catch(() => [])) as Record<string, unknown>[];
+  if (!res.ok || !Array.isArray(data)) {
+    throw new Error(`Failed to load doctors (${res.status})`);
+  }
+  return data.map((d) => ({
+    id: String(d.id ?? ""),
+    userId: String(d.user_id ?? ""),
+    name: String(d.name ?? ""),
+  }));
+}
+
 export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorProfile> {
   const res = await fetch(`${API_BASE}/public/doctors/${doctorId}`);
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown> & { message?: string };

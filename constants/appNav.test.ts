@@ -79,6 +79,11 @@ describe("groupAppNavItems", () => {
     }
   });
 
+  it("keeps Activity last in the menu", () => {
+    const sections = groupAppNavItems(filterAppNavItems("patient"));
+    expect(sections[sections.length - 1].group).toBe("activity");
+  });
+
   it("drops medical records from a doctor's Activity section", () => {
     const sections = groupAppNavItems(filterAppNavItems("doctor"));
     const activity = sections.find((s) => s.group === "activity");

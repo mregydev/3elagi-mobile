@@ -1,6 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Href, usePathname, useRouter } from "expo-router";
 import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   LogIn,
   LogOut,
   Mail,
@@ -83,6 +86,10 @@ export function AppSidebarNav({
     active: item.match(pathname),
   }));
   const sections = groupAppNavItems(items);
+  // Groups start closed; opening one is a per-session preference.
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
+  const toggleGroup = (group: string) =>
+    setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
 
   const handleLogout = () => {
     const confirmed =
@@ -234,27 +241,56 @@ export function AppSidebarNav({
       ) : null}
 
       <View style={styles.nav}>
-        {sections.map((section) => (
-          <View key={String(section.items[0].href)} style={styles.navSection}>
-            {/* The rail has no room for headers; a divider keeps the grouping. */}
-            {section.group && collapsed ? (
-              <View style={[styles.railDivider, { backgroundColor: colors.border }]} />
-            ) : null}
-            {section.group && !collapsed ? (
-              <Text
-                style={[
-                  styles.sectionHeader,
-                  { color: colors.mutedForeground, textAlign },
-                ]}
-              >
-                {t.tabs[section.group]}
-              </Text>
-            ) : null}
-            {section.items.map((item) =>
-              renderNavItem(item as (typeof items)[number]),
-            )}
-          </View>
-        ))}
+        {sections.map((section) => {
+          // Collapsed by default; the current page forces its group open so the
+          // active item is never hidden behind a closed header.
+          const hasActive = section.items.some((item) => item.active);
+          const expanded =
+            !section.group || collapsed || hasActive || !!openGroups[section.group];
+
+          return (
+            <View key={String(section.items[0].href)} style={styles.navSection}>
+              {/* The rail has no room for headers; a divider keeps the grouping. */}
+              {section.group && collapsed ? (
+                <View style={[styles.railDivider, { backgroundColor: colors.border }]} />
+              ) : null}
+              {section.group && !collapsed ? (
+                <Pressable
+                  onPress={() => toggleGroup(section.group!)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={t.tabs[section.group]}
+                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                    styles.sectionHeaderRow,
+                    {
+                      flexDirection: dir,
+                      backgroundColor: pressed || hovered ? colors.muted : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.sectionHeader,
+                      { color: colors.mutedForeground, textAlign, flex: 1 },
+                    ]}
+                  >
+                    {t.tabs[section.group]}
+                  </Text>
+                  {expanded ? (
+                    <ChevronDown size={14} color={colors.mutedForeground} />
+                  ) : isRTL ? (
+                    <ChevronLeft size={14} color={colors.mutedForeground} />
+                  ) : (
+                    <ChevronRight size={14} color={colors.mutedForeground} />
+                  )}
+                </Pressable>
+              ) : null}
+              {expanded
+                ? section.items.map(renderNavItem)
+                : null}
+            </View>
+          );
+        })}
       </View>
 
       <View style={styles.footer}>
@@ -472,14 +508,19 @@ const styles = StyleSheet.create({
   navSection: {
     gap: 2,
   },
+  sectionHeaderRow: {
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderRadius: 10,
+  },
   sectionHeader: {
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.6,
     textTransform: "uppercase",
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 4,
   },
   railDivider: {
     height: StyleSheet.hairlineWidth,

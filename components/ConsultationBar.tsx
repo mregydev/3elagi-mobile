@@ -174,12 +174,18 @@ export function ConsultationBar({
   // Sync with realtime consultation_action messages arriving in the thread.
   useEffect(() => {
     if (!latestAction) return;
-    if (latestAction.action === "start" || latestAction.action === "accept") {
-      const status = latestAction.action === "accept" ? "open" : "pending";
+    // Payment steps keep the consultation alive: it is pending until the
+    // doctor approves the receipt, and open the moment they do.
+    const OPENS = ["accept", "payment_approved"];
+    const PENDS = ["start", "payment_request", "payment_submitted", "payment_rejected"];
+    const opens = OPENS.includes(latestAction.action);
+    if (opens || PENDS.includes(latestAction.action)) {
+      const status = opens ? "open" : "pending";
       setActive((prev) =>
         prev?.id === latestAction.consultation_id && prev.status === status
           ? prev
           : ({
+              ...(prev?.id === latestAction.consultation_id ? prev : {}),
               id: latestAction.consultation_id,
               status,
               reserved_points: latestAction.reserved_points ?? 0,

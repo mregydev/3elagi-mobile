@@ -615,6 +615,35 @@ export function ChatMessageBubble({
 
   if (isConsultationAction && item.consultationAction) {
     const meta = item.consultationAction;
+    const CONSULTATION_TITLES: Record<string, { en: string; ar: string }> = {
+      accept: {
+        en: "Doctor accepted the consultation",
+        ar: "قبل الطبيب الاستشارة",
+      },
+      reject: {
+        en: "Doctor declined the consultation request",
+        ar: "رفض الطبيب طلب الاستشارة",
+      },
+      end: { en: "Consultation ended", ar: "انتهت الاستشارة" },
+      cancel: { en: "Consultation cancelled", ar: "أُلغيت الاستشارة" },
+      payment_request: {
+        en: "Payment required to start the consultation",
+        ar: "مطلوب الدفع لبدء الاستشارة",
+      },
+      payment_submitted: {
+        en: "Payment receipt sent",
+        ar: "تم إرسال إيصال الدفع",
+      },
+      payment_approved: {
+        en: "Payment approved — consultation started",
+        ar: "تم اعتماد الدفع — بدأت الاستشارة",
+      },
+      payment_rejected: {
+        en: "Payment receipt rejected",
+        ar: "تم رفض إيصال الدفع",
+      },
+    };
+    const titleCopy = CONSULTATION_TITLES[meta.action] ?? CONSULTATION_TITLES.cancel;
     const title =
       meta.action === "start"
         ? // A request now waits for the doctor rather than starting outright.
@@ -625,21 +654,9 @@ export function ChatMessageBubble({
           : isRTL
             ? "بدأت الاستشارة"
             : "Consultation started"
-        : meta.action === "accept"
-          ? isRTL
-            ? "قبل الطبيب الاستشارة"
-            : "Doctor accepted the consultation"
-          : meta.action === "reject"
-            ? isRTL
-              ? "رفض الطبيب طلب الاستشارة"
-              : "Doctor declined the consultation request"
-            : meta.action === "end"
-              ? isRTL
-                ? "انتهت الاستشارة"
-                : "Consultation ended"
-              : isRTL
-                ? "أُلغيت الاستشارة"
-                : "Consultation cancelled";
+        : isRTL
+          ? titleCopy.ar
+          : titleCopy.en;
     const reasonType = meta.cancel_reason_type;
     const reasonLabel =
       reasonType === "video_consultation"
@@ -656,9 +673,11 @@ export function ChatMessageBubble({
               : "Other reason"
             : null;
     const accent =
-      meta.action === "cancel" || meta.action === "reject"
+      meta.action === "cancel" ||
+      meta.action === "reject" ||
+      meta.action === "payment_rejected"
         ? "#dc2626"
-        : meta.action === "accept"
+        : meta.action === "accept" || meta.action === "payment_approved"
           ? "#10b981"
           : meta.action === "end"
             ? "#0d9488"

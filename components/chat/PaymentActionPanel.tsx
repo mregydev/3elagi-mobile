@@ -61,6 +61,36 @@ export function PaymentActionPanel({ meta, isDoctor, busy, onReply }: Props) {
         <Text style={[styles.amount, { color: colors.primary, textAlign }]}>{amount}</Text>
       ) : null}
 
+      {/* The doctor's own payment URL, shown in full so the patient can read,
+          copy or open it — not hidden behind a button. */}
+      {status === "awaiting_payment" && meta.payment_link ? (
+        <Pressable
+          onPress={() =>
+            void Linking.openURL(meta.payment_link!).catch(() => undefined)
+          }
+          accessibilityRole="link"
+          accessibilityLabel={meta.payment_link}
+        >
+          <Text
+            style={[styles.link, { color: colors.primary, textAlign }]}
+            numberOfLines={2}
+          >
+            {meta.payment_link}
+          </Text>
+        </Pressable>
+      ) : null}
+      {status === "awaiting_payment" && !meta.payment_link ? (
+        <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+          {isDoctor
+            ? isRTL
+              ? "أضف رابط الدفع في ملفك ليتمكن المريض من الدفع."
+              : "Add a payment link to your profile so the patient can pay."
+            : isRTL
+              ? "لم يضف الطبيب رابط دفع بعد — اسأله عن طريقة الدفع."
+              : "The doctor has not added a payment link yet — ask them how to pay."}
+        </Text>
+      ) : null}
+
       <View style={[styles.actions, { flexDirection: dir }]}>
         {!isDoctor && status === "awaiting_payment" && meta.payment_link ? (
           <LinkButton
@@ -171,6 +201,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   headline: { fontSize: 13, fontWeight: "700" },
+  link: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+    lineHeight: 17,
+  },
+  hint: { fontSize: 12, lineHeight: 16 },
   amount: { fontSize: 15, fontWeight: "800" },
   actions: { gap: 8, flexWrap: "wrap", marginTop: 2 },
   btn: {

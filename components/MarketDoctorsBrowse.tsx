@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,9 +16,6 @@ import {
   patientCountryLabel,
   type MarketCountryCode,
 } from "@/constants/patientCountries";
-import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
-import { useAuthStore } from "@/domains/auth/store";
-import { isSignedIn } from "@/domains/auth/session";
 import {
   fetchDoctorsBySpeciality,
   fetchSpecialities,
@@ -30,6 +26,7 @@ import {
 } from "@/domains/home/api";
 import { onDoctorRegistered } from "@/domains/presence/socket";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
+import { useOpenDoctor } from "@/hooks/useOpenDoctor";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -47,9 +44,7 @@ export function MarketDoctorsBrowse({
 }: Props) {
   const colors = useColors();
   const { isRTL } = useI18n();
-  const profile = useAuthStore((s) => s.profile);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const signedIn = isSignedIn(profile, accessToken);
+  const { openDoctorProfile, startConsultationWithDoctor } = useOpenDoctor();
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
     null,
@@ -125,42 +120,6 @@ export function MarketDoctorsBrowse({
     clearSpeciality();
     return true;
   }, !!selectedSpeciality);
-
-  const openDoctorProfile = useCallback(
-    (doctorUserId: string, doctorEntityId?: string) => {
-      if (!signedIn) {
-        promptAuthForConsultation(`/chat/${doctorUserId}`);
-        return;
-      }
-      if (!doctorEntityId) {
-        router.push({
-          pathname: "/chat/[id]",
-          // Remembered for the no-history case: back returns to the doctor list.
-          params: { id: doctorUserId, from: "doctors" },
-        });
-        return;
-      }
-      router.push({
-        pathname: "/doctor/[doctorId]",
-        params: { doctorId: doctorEntityId, userId: doctorUserId },
-      });
-    },
-    [signedIn],
-  );
-
-  const startConsultationWithDoctor = useCallback(
-    (doctorUserId: string) => {
-      if (!signedIn) {
-        promptAuthForConsultation(`/chat/${doctorUserId}`);
-        return;
-      }
-      router.push({
-        pathname: "/chat/[id]",
-        params: { id: doctorUserId, from: "doctors" },
-      });
-    },
-    [signedIn],
-  );
 
   if (loadingHome && specialities.length === 0) {
     return (

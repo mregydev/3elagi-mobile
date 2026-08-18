@@ -57,6 +57,21 @@ export async function fetchAdminDoctors(token: string): Promise<AdminDoctorRow[]
   return Array.isArray(data) ? data : [];
 }
 
+export interface AdminPatientRow {
+  user_id: string;
+  name: string;
+  phone?: string | null;
+  country?: string | null;
+  photo_url?: string | null;
+}
+
+export async function fetchAdminPatients(
+  token: string,
+): Promise<AdminPatientRow[]> {
+  const data = await authJson<AdminPatientRow[]>("/admin/patients", token);
+  return Array.isArray(data) ? data : [];
+}
+
 export async function setDoctorApproval(
   token: string,
   doctorId: string,

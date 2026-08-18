@@ -5,6 +5,7 @@ import {
   FileWarning,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Stethoscope,
 } from "lucide-react-native";
 import React from "react";
@@ -16,7 +17,13 @@ import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 
-type AdminNavKey = "doctors" | "specialities" | "pricing" | "rag" | "complaints";
+type AdminNavKey =
+  | "doctors"
+  | "chats"
+  | "specialities"
+  | "pricing"
+  | "rag"
+  | "complaints";
 
 const NAV: {
   key: AdminNavKey;
@@ -25,6 +32,7 @@ const NAV: {
   Icon: React.ComponentType<{ size?: number; color?: string }>;
 }[] = [
   { key: "doctors", label: "Doctors", href: "/admin", Icon: Stethoscope },
+  { key: "chats", label: "Chats", href: "/admin/chats", Icon: MessageSquare },
   {
     key: "specialities",
     label: "Specialities",
@@ -47,6 +55,7 @@ const NAV: {
 ];
 
 function activeKey(pathname: string): AdminNavKey {
+  if (pathname.includes("/admin/chats")) return "chats";
   if (pathname.includes("/admin/specialities")) return "specialities";
   if (pathname.includes("/admin/pricing")) return "pricing";
   if (pathname.includes("/admin/rag")) return "rag";
