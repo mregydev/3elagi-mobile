@@ -25,6 +25,13 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { AccentPicker } from "@/components/AccentPicker";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
@@ -36,6 +43,7 @@ import {
   HOME_NAV_RESET_EVENT,
 } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
+import { UI } from "@/constants/uiTokens";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -94,8 +102,34 @@ export function AppSidebarNav({
   // Groups start closed; opening one is a per-session preference.
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
   const [preferencesOpen, setPreferencesOpen] = React.useState(false);
+  const prefBodyHeight = useSharedValue(0);
+  const prefExpand = useSharedValue(0);
   const toggleGroup = (group: string) =>
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+
+  React.useEffect(() => {
+    prefExpand.value = withTiming(preferencesOpen ? 1 : 0, {
+      duration: UI.duration.normal,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [preferencesOpen, prefExpand]);
+
+  const prefBodyAnimatedStyle = useAnimatedStyle(() => ({
+    height: prefExpand.value * prefBodyHeight.value,
+    overflow: "hidden",
+  }));
+
+  const prefInnerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(prefExpand.value, [0, 0.25, 1], [0, 1, 1]),
+  }));
+
+  const prefChevronStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        rotate: `${interpolate(prefExpand.value, [0, 1], [isRTL ? 90 : -90, 0])}deg`,
+      },
+    ],
+  }));
 
   const handleLogout = () => {
     const confirmed =
@@ -358,96 +392,98 @@ export function AppSidebarNav({
                 >
                   {t.settings.preferences}
                 </Text>
-                {preferencesOpen ? (
-                  <ChevronDown size={16} color={colors.mutedForeground} />
-                ) : (
-                  <ChevronDown
-                    size={16}
+              <Animated.View style={prefChevronStyle}>
+                <ChevronDown size={16} color={colors.mutedForeground} />
+              </Animated.View>
+            </Pressable>
+
+            <Animated.View
+              style={prefBodyAnimatedStyle}
+              pointerEvents={preferencesOpen ? "auto" : "none"}
+            >
+              <Animated.View
+                style={prefInnerAnimatedStyle}
+                onLayout={(event) => {
+                  prefBodyHeight.value = event.nativeEvent.layout.height;
+                }}
+              >
+                <View
+                  style={[
+                    styles.prefNavItem,
+                    { flexDirection: dir, backgroundColor: "transparent" },
+                  ]}
+                >
+                  <Languages
+                    size={18}
                     color={colors.mutedForeground}
-                    style={{ transform: [{ rotate: isRTL ? "90deg" : "-90deg" }] }}
+                    strokeWidth={2}
                   />
-                )}
-              </Pressable>
-
-              {preferencesOpen ? (
-                <>
-                  <View
+                  <Text
                     style={[
-                      styles.prefNavItem,
-                      { flexDirection: dir, backgroundColor: "transparent" },
+                      styles.navLabel,
+                      {
+                        color: colors.foreground,
+                        textAlign,
+                        writingDirection: isRTL ? "rtl" : "ltr",
+                        fontSize: navFontSize,
+                        fontWeight: "500",
+                      },
                     ]}
                   >
-                    <Languages
-                      size={18}
-                      color={colors.mutedForeground}
-                      strokeWidth={2}
-                    />
-                    <Text
-                      style={[
-                        styles.navLabel,
-                        {
-                          color: colors.foreground,
-                          textAlign,
-                          writingDirection: isRTL ? "rtl" : "ltr",
-                          fontSize: navFontSize,
-                          fontWeight: "500",
-                        },
-                      ]}
-                    >
-                      {t.settings.language}
-                    </Text>
-                    <LanguageDropdown compact placement="bottom" />
-                  </View>
+                    {t.settings.language}
+                  </Text>
+                  <LanguageDropdown compact placement="bottom" />
+                </View>
 
-                  <View
+                <View
+                  style={[
+                    styles.prefNavItem,
+                    { flexDirection: dir, backgroundColor: "transparent" },
+                  ]}
+                >
+                  <SunMoon size={18} color={colors.mutedForeground} strokeWidth={2} />
+                  <Text
                     style={[
-                      styles.prefNavItem,
-                      { flexDirection: dir, backgroundColor: "transparent" },
+                      styles.navLabel,
+                      {
+                        color: colors.foreground,
+                        textAlign,
+                        writingDirection: isRTL ? "rtl" : "ltr",
+                        fontSize: navFontSize,
+                        fontWeight: "500",
+                      },
                     ]}
                   >
-                    <SunMoon size={18} color={colors.mutedForeground} strokeWidth={2} />
-                    <Text
-                      style={[
-                        styles.navLabel,
-                        {
-                          color: colors.foreground,
-                          textAlign,
-                          writingDirection: isRTL ? "rtl" : "ltr",
-                          fontSize: navFontSize,
-                          fontWeight: "500",
-                        },
-                      ]}
-                    >
-                      {t.settings.theme}
-                    </Text>
-                    <ThemeToggle />
-                  </View>
+                    {t.settings.theme}
+                  </Text>
+                  <ThemeToggle />
+                </View>
 
-                  <View
+                <View
+                  style={[
+                    styles.prefNavItem,
+                    { flexDirection: dir, backgroundColor: "transparent" },
+                  ]}
+                >
+                  <Palette size={18} color={colors.mutedForeground} strokeWidth={2} />
+                  <Text
                     style={[
-                      styles.prefNavItem,
-                      { flexDirection: dir, backgroundColor: "transparent" },
+                      styles.navLabel,
+                      {
+                        color: colors.foreground,
+                        textAlign,
+                        writingDirection: isRTL ? "rtl" : "ltr",
+                        fontSize: navFontSize,
+                        fontWeight: "500",
+                      },
                     ]}
                   >
-                    <Palette size={18} color={colors.mutedForeground} strokeWidth={2} />
-                    <Text
-                      style={[
-                        styles.navLabel,
-                        {
-                          color: colors.foreground,
-                          textAlign,
-                          writingDirection: isRTL ? "rtl" : "ltr",
-                          fontSize: navFontSize,
-                          fontWeight: "500",
-                        },
-                      ]}
-                    >
-                      {t.settings.accentColor}
-                    </Text>
-                    <AccentPicker />
-                  </View>
-                </>
-              ) : null}
+                    {t.settings.accentColor}
+                  </Text>
+                  <AccentPicker />
+                </View>
+              </Animated.View>
+            </Animated.View>
             </View>
 
             <Pressable
