@@ -45,7 +45,11 @@ interface Props {
   patientUserId?: string;
   canOpenMedicalLink?: boolean;
   isDoctor?: boolean;
-  appointmentStatus?: { status: string; meetingLink?: string | null };
+  appointmentStatus?: {
+    status: string;
+    meetingLink?: string | null;
+    pendingBy?: string | null;
+  };
   onAppointmentAction?: (
     appointmentId: string,
     action: "confirm" | "reject" | "cancel",
@@ -1006,8 +1010,15 @@ export function ChatMessageBubble({
     const joinableStatuses = new Set(["confirmed", "waiting", "active"]);
     const canRespond =
       meta.action === "request" && status === "pending" && isDoctor && !mine;
+    const hasPendingChange = !!(
+      appointmentStatus?.pendingBy ?? meta.pending_by
+    );
+    const canReschedule =
+      showAppointmentControls && status === "confirmed" && !hasPendingChange;
     const canCancel =
-      showAppointmentControls && (status === "pending" || status === "confirmed");
+      showAppointmentControls &&
+      (status === "pending" || status === "confirmed") &&
+      !hasPendingChange;
     // Past its slot the room is closed server-side, so drop the join link
     // rather than offering a dead door.
     const roomState = appointmentRoomState(meta.date, meta.time, meta.duration_minutes);
@@ -1111,7 +1122,7 @@ export function ChatMessageBubble({
               </Pressable>
             </View>
           ) : null}
-          {canCancel && onRescheduleRequest ? (
+          {canReschedule && onRescheduleRequest ? (
             <Pressable
               disabled={appointmentActionBusy}
               onPress={() => onRescheduleRequest(meta.appointment_id)}
@@ -1129,7 +1140,13 @@ export function ChatMessageBubble({
               style={[styles.apptBtnOutline, { borderColor: colors.destructive }]}
             >
               <Text style={{ color: colors.destructive, fontWeight: "700", fontSize: 12 }}>
-                {isRTL ? "إلغاء الموعد" : "Cancel appointment"}
+                {status === "confirmed"
+                  ? isRTL
+                    ? "طلب إلغاء الموعد"
+                    : "Request cancellation"
+                  : isRTL
+                    ? "إلغاء الموعد"
+                    : "Cancel appointment"}
               </Text>
             </Pressable>
           ) : null}

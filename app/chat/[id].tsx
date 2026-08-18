@@ -403,12 +403,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return map;
   }, [messages]);
   const appointmentStatuses = useMemo(() => {
-    const map = new Map<string, { status: string; meetingLink?: string | null }>();
+    const map = new Map<
+      string,
+      { status: string; meetingLink?: string | null; pendingBy?: string | null }
+    >();
     for (const message of messages) {
       if (message.type !== "appointment_action" || !message.appointmentAction) continue;
-      map.set(message.appointmentAction.appointment_id, {
-        status: message.appointmentAction.status ?? "pending",
-        meetingLink: message.appointmentAction.meeting_link,
+      const meta = message.appointmentAction;
+      map.set(meta.appointment_id, {
+        status: meta.status ?? "pending",
+        meetingLink: meta.meeting_link,
+        pendingBy: meta.pending_by ?? null,
       });
     }
     return map;
@@ -1645,6 +1650,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   conversationPeerId={id}
                   canOpenMedicalLink={canOpenSharedMedicalLinks}
                   isDoctor={isDoctor}
+                  selfUserId={profile?.id}
                   appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
                   showAppointmentControls={showAppointmentControls}
                   onAppointmentAction={(appointmentId, action) =>
@@ -1652,6 +1658,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   }
                   appointmentActionBusy={appointmentActionBusy}
                   onPaymentReply={(target, reply) => void handlePaymentReply(target, reply)}
+                  onChangeReply={handleChangeReply}
+                  onRescheduleRequest={(appointmentId) => void openReschedule(appointmentId)}
                 />
               );
             }
