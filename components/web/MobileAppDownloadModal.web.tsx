@@ -1,11 +1,14 @@
 import { Image } from "expo-image";
 import { X } from "lucide-react-native";
 import React from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { ANDROID_APP_QR } from "@/constants/mobileApp";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
+import { openAndroidAppDownload } from "@/utils/openAndroidAppDownload";
 import { alignText } from "@/utils/rtl";
+import { viewportPortal } from "@/utils/viewportPortal";
 
 type Props = {
   visible: boolean;
@@ -15,56 +18,75 @@ type Props = {
 export function MobileAppDownloadModal({ visible, onClose }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const textAlign = alignText(isRTL);
 
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View style={styles.overlay} accessibilityViewIsModal>
+  if (!visible) return null;
+
+  const content = (
+    <View style={styles.overlay} accessibilityViewIsModal>
+      <Pressable
+        style={styles.backdrop}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel={t.mobileApp.close}
+      />
+      <View
+        style={[
+          styles.dialog,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
+            {t.mobileApp.modalTitle}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={styles.closeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t.mobileApp.close}
+          >
+            <X size={20} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
+        <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
+          {isDesktop ? t.mobileApp.modalSubtitle : t.mobileApp.mobileWebSubtitle}
+        </Text>
+
         <Pressable
-          style={styles.backdrop}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel={t.mobileApp.close}
-        />
-        <View
-          style={[
-            styles.dialog,
+          onPress={openAndroidAppDownload}
+          accessibilityRole="link"
+          accessibilityLabel={t.mobileApp.openLink}
+          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+            styles.downloadBtn,
             {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
+              backgroundColor: colors.primary,
+              opacity: pressed || hovered ? 0.9 : 1,
             },
+            pressed && styles.pressed,
           ]}
         >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
-              {t.mobileApp.modalTitle}
-            </Text>
-            <Pressable
-              onPress={onClose}
-              style={styles.closeBtn}
-              accessibilityRole="button"
-              accessibilityLabel={t.mobileApp.close}
-            >
-              <X size={20} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
+          <Text style={styles.downloadBtnText}>{t.mobileApp.openLink}</Text>
+        </Pressable>
 
-          <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
-            {t.mobileApp.modalSubtitle}
-          </Text>
-
-          <View style={styles.qrWrap}>
-            <Image
-              source={ANDROID_APP_QR}
-              style={styles.qr}
-              contentFit="contain"
-              accessibilityLabel={t.mobileApp.qrAlt}
-            />
-          </View>
+        <View style={styles.qrWrap}>
+          <Image
+            source={ANDROID_APP_QR}
+            style={styles.qr}
+            contentFit="contain"
+            accessibilityLabel={t.mobileApp.qrAlt}
+          />
         </View>
       </View>
-    </Modal>
+    </View>
   );
+
+  return viewportPortal(content);
 }
 
 const styles = StyleSheet.create({
@@ -81,7 +103,7 @@ const styles = StyleSheet.create({
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 1000,
+          zIndex: 10000,
         } as object)
       : null),
   },
@@ -121,6 +143,23 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  downloadBtn: {
+    minHeight: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    cursor: "pointer" as "auto",
+  },
+  downloadBtnText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  pressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.99 }],
   },
   qrWrap: {
     alignSelf: "center",

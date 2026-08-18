@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Linking, Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { MobileAppDownloadModal } from "@/components/web/MobileAppDownloadModal.web";
-import { ANDROID_APP_URL } from "@/constants/mobileApp";
+import { useAppSidebar } from "@/contexts/AppSidebarContext";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
 type Props = {
@@ -43,18 +42,13 @@ function AndroidRobot({ size, color }: { size: number; color: string }) {
 export function MobileAppLink({ variant = "link" }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { closeSidebar } = useAppSidebar();
   const dir = flexRow(isRTL);
   const [open, setOpen] = useState(false);
 
-  // Desktop shows a QR to scan with the phone; on a phone that is useless, so
-  // the link opens the download directly.
   const openDownload = () => {
-    if (isDesktop) {
-      setOpen(true);
-      return;
-    }
-    void Linking.openURL(ANDROID_APP_URL);
+    closeSidebar();
+    setOpen(true);
   };
 
   const iconSize =

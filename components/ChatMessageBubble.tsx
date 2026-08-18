@@ -21,6 +21,10 @@ import type { MessageEmotionType } from "@/domains/emotions/types";
 import { ChatInlineVideo } from "@/components/chat/ChatInlineVideo";
 import { VoiceMessagePlayer } from "@/components/chat/VoiceMessagePlayer";
 import { MessageEmotionsBar } from "@/components/MessageEmotionsBar";
+import {
+  PaymentActionPanel,
+  type PaymentReply,
+} from "@/components/chat/PaymentActionPanel";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -47,7 +51,12 @@ interface Props {
   /** Doctor answering a pending consultation request from the thread. */
   onConsultationAction?: (
     consultationId: string,
-    action: "accept" | "reject",
+    action: "accept" | "accept_paid" | "reject",
+  ) => void;
+  /** Patient sends a receipt, doctor approves or rejects it. */
+  onPaymentReply?: (
+    target: { kind: "appointment" | "consultation"; id: string },
+    reply: PaymentReply,
   ) => void;
   consultationActionBusy?: boolean;
   onImagePress?: (uri: string) => void;
@@ -72,6 +81,7 @@ export function ChatMessageBubble({
   appointmentActionBusy = false,
   showAppointmentControls = false,
   onConsultationAction,
+  onPaymentReply,
   consultationActionBusy = false,
   onImagePress,
   onVideoPress,
@@ -805,6 +815,17 @@ export function ChatMessageBubble({
               {isRTL ? "اضغط لعرض التشخيص" : "Tap to view diagnosis"}
             </Text>
           ) : null}
+          <PaymentActionPanel
+            meta={meta}
+            isDoctor={isDoctor}
+            busy={consultationActionBusy}
+            onReply={(reply) =>
+              onPaymentReply?.(
+                { kind: "consultation", id: meta.consultation_id },
+                reply,
+              )
+            }
+          />
         </View>
         {canOpenDiagnosis ? <ChevronRight size={18} color={accent} /> : null}
       </>
@@ -859,6 +880,25 @@ export function ChatMessageBubble({
               ]}
             >
               <Text style={styles.apptBtnText}>{isRTL ? "قبول" : "Accept"}</Text>
+            </Pressable>
+            <Pressable
+              disabled={consultationActionBusy}
+              onPress={() =>
+                onConsultationAction?.(meta.consultation_id, "accept_paid")
+              }
+              style={[
+                styles.apptBtn,
+                {
+                  backgroundColor: "transparent",
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                  opacity: consultationActionBusy ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Text style={[styles.apptBtnText, { color: colors.primary }]}>
+                {isRTL ? "قبول مع طلب الدفع" : "Accept & request payment"}
+              </Text>
             </Pressable>
             <Pressable
               disabled={consultationActionBusy}
@@ -968,6 +1008,17 @@ export function ChatMessageBubble({
               </Text>
             </View>
           ) : null}
+          <PaymentActionPanel
+            meta={meta}
+            isDoctor={isDoctor}
+            busy={appointmentActionBusy}
+            onReply={(reply) =>
+              onPaymentReply?.(
+                { kind: "appointment", id: meta.appointment_id },
+                reply,
+              )
+            }
+          />
           {canRespond ? (
             <View style={[styles.apptActions, { flexDirection: rowDir }]}>
               <Pressable

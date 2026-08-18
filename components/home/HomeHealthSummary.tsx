@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ClipboardList, Coins, MessageSquare, Video } from "lucide-react-native";
+import { ClipboardList, MessageSquare, Receipt, Video } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
@@ -8,8 +8,11 @@ import { useAuthStore } from "@/domains/auth/store";
 import { fetchMyAppointments } from "@/domains/appointments/api";
 import { countUpcomingVideoCalls } from "@/domains/appointments/upcomingVideoCalls";
 import { fetchPatientConsultations } from "@/domains/consultations/api";
+import {
+  formatPaidTotals,
+  paidConsultationTotals,
+} from "@/domains/consultations/paidTotals";
 import { useMedicalStore } from "@/domains/medical/store";
-import { selectPointsBalance, usePointsStore } from "@/domains/points/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -26,11 +29,10 @@ export function HomeHealthSummary({ signedIn }: Props) {
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const records = useMedicalStore((s) => s.records);
-  const pointsSummary = usePointsStore((s) => s.summary);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const credits = selectPointsBalance(pointsSummary);
   const recordCount = records.length;
   const [openConsultations, setOpenConsultations] = useState(0);
+  const [paidTotal, setPaidTotal] = useState("0");
   const [upcomingVideoCalls, setUpcomingVideoCalls] = useState(0);
 
   const loadOpenConsultations = useCallback(async () => {
@@ -38,6 +40,7 @@ export function HomeHealthSummary({ signedIn }: Props) {
     try {
       const list = await fetchPatientConsultations(accessToken);
       setOpenConsultations(list.filter((c) => c.status === "open").length);
+      setPaidTotal(formatPaidTotals(paidConsultationTotals(list)));
     } catch {
       // Keep the last count if refresh fails.
     }
@@ -83,11 +86,11 @@ export function HomeHealthSummary({ signedIn }: Props) {
       onPress: () => router.push("/(tabs)/records"),
     },
     {
-      key: "credits",
-      label: t.home.creditsStat,
-      value: String(credits),
-      icon: Coins,
-      onPress: () => router.push("/(tabs)/points"),
+      key: "consultations-paid",
+      label: t.home.consultationsPaidStat,
+      value: paidTotal,
+      icon: Receipt,
+      onPress: () => router.push("/(tabs)/consultations"),
     },
     {
       key: "consultations",

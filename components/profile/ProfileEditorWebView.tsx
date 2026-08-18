@@ -14,6 +14,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
+import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
 import {
   normalizeMarketCountry,
   PATIENT_COUNTRY_CODES,
@@ -150,6 +151,16 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setAccountHolderFullName,
     nationalId,
     setNationalId,
+    textPriceLocal,
+    setTextPriceLocal,
+    textPriceUsd,
+    setTextPriceUsd,
+    videoPriceLocal,
+    setVideoPriceLocal,
+    videoPriceUsd,
+    setVideoPriceUsd,
+    paymentLink,
+    setPaymentLink,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -389,6 +400,28 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
               </View>
             </View>
             </View>
+
+            {isDoctor ? (
+              <View style={[...cardBase, fullStyle]}>
+                <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
+                  {isRTL ? "أسعار الاستشارة" : "Consultation prices"}
+                </Text>
+                <DoctorFeesFields
+                  country={country}
+                  textLocal={textPriceLocal}
+                  onTextLocal={setTextPriceLocal}
+                  textUsd={textPriceUsd}
+                  onTextUsd={setTextPriceUsd}
+                  videoLocal={videoPriceLocal}
+                  onVideoLocal={setVideoPriceLocal}
+                  videoUsd={videoPriceUsd}
+                  onVideoUsd={setVideoPriceUsd}
+                  paymentLink={paymentLink}
+                  onPaymentLink={setPaymentLink}
+                  disabled={saving}
+                />
+              </View>
+            ) : null}
 
             {isDoctor ? (
               <>

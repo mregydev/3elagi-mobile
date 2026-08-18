@@ -210,7 +210,9 @@ export default function TabsLayoutWeb() {
               name="points"
               options={{
                 title: t.tabs.points,
-                href: !signedIn || isDoctor ? null : undefined,
+                // Credits are gone from navigation — consultations are paid in
+                // cash through the doctor's own payment link.
+                href: null,
                 tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
               }}
             />

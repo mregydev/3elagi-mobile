@@ -66,10 +66,13 @@ import { sendAppointmentAction } from "@/domains/appointments/api";
 import {
   acceptConsultation,
   rejectConsultation,
+  reviewConsultationPayment,
+  submitConsultationPaymentProof,
 } from "@/domains/consultations/api";
+import * as DocumentPicker from "expo-document-picker";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
-import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
+import { createDiagnosis, fetchAllMedicalHistory, uploadFile } from "@/domains/medical/api";
 import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { useMedicalStore } from "@/domains/medical/store";
@@ -940,13 +943,17 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
   const handleConsultationAction = async (
     consultationId: string,
-    action: "accept" | "reject",
+    action: "accept" | "accept_paid" | "reject",
   ) => {
     if (!accessToken || consultationActionBusy) return;
     setConsultationActionBusy(true);
     try {
-      if (action === "accept") {
-        await acceptConsultation(consultationId, accessToken);
+      if (action === "accept" || action === "accept_paid") {
+        await acceptConsultation(
+          consultationId,
+          accessToken,
+          action === "accept_paid",
+        );
       } else {
         await rejectConsultation(consultationId, accessToken);
       }
@@ -963,6 +970,84 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       );
     } finally {
       setConsultationActionBusy(false);
+    }
+  };
+
+  /**
+   * Money changes hands outside the app: the patient uploads the receipt, the
+   * doctor approves it, and only then does the visit or chat open.
+   */
+  const handlePaymentReply = async (
+    target: { kind: "appointment" | "consultation"; id: string },
+    reply: "submit" | "approve" | "reject",
+  ) => {
+    if (!accessToken || !id || !profile?.id) return;
+    const busy =
+      target.kind === "consultation" ? consultationActionBusy : appointmentActionBusy;
+    if (busy) return;
+    const setBusy =
+      target.kind === "consultation"
+        ? setConsultationActionBusy
+        : setAppointmentActionBusy;
+
+    setBusy(true);
+    try {
+      let proofUrl = "";
+      if (reply === "submit") {
+        const picked = await DocumentPicker.getDocumentAsync({
+          type: ["image/*", "application/pdf"],
+          copyToCacheDirectory: true,
+        });
+        if (picked.canceled || !picked.assets[0]) return;
+        const asset = picked.assets[0];
+        const uploaded = await uploadFile(
+          asset.uri,
+          asset.mimeType ?? "image/jpeg",
+          asset.name || `receipt-${Date.now()}`,
+          accessToken,
+          asset.file,
+        );
+        proofUrl = uploaded.url;
+      }
+
+      if (target.kind === "consultation") {
+        if (reply === "submit") {
+          await submitConsultationPaymentProof(target.id, proofUrl, accessToken);
+        } else {
+          await reviewConsultationPayment(target.id, reply === "approve", accessToken);
+        }
+      } else {
+        const row = await sendAppointmentAction(accessToken, id, {
+          appointment_id: target.id,
+          action:
+            reply === "submit"
+              ? "payment_submitted"
+              : reply === "approve"
+                ? "payment_approved"
+                : "payment_rejected",
+          date: "",
+          time: "",
+          ...(reply === "submit" ? { payment_proof_url: proofUrl } : {}),
+        });
+        const msg = mapMessageRow(row, id, profile.id);
+        useChatStore.setState((s) => {
+          const thread = s.messages[id] ?? [];
+          if (thread.some((m) => m.id === msg.id)) return s;
+          return { messages: { ...s.messages, [id]: [...thread, msg] } };
+        });
+      }
+      jumpToLatest();
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تعذر تحديث الدفع"
+            : "Could not update the payment",
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1507,6 +1592,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                       : undefined
                   }
                   consultationActionBusy={consultationActionBusy}
+                  onPaymentReply={handlePaymentReply}
                   onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
                   highlighted={
                     editingMessage?.id === item.id ||

@@ -18,6 +18,16 @@ import {
 import { uploadFile } from "@/domains/medical/api";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
+/** Blank stays blank — an unset fee is not a free one. */
+function feeText(value: number | null | undefined): string {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function feeValue(text: string): number | null {
+  const n = Number(text.trim());
+  return text.trim() && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 interface Options {
   accessToken: string;
   role: string;
@@ -62,6 +72,12 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [iban, setIban] = useState("");
   const [accountHolderFullName, setAccountHolderFullName] = useState("");
   const [nationalId, setNationalId] = useState("");
+  // Cash fees are free text so the doctor can clear the field while typing.
+  const [textPriceLocal, setTextPriceLocal] = useState("");
+  const [textPriceUsd, setTextPriceUsd] = useState("");
+  const [videoPriceLocal, setVideoPriceLocal] = useState("");
+  const [videoPriceUsd, setVideoPriceUsd] = useState("");
+  const [paymentLink, setPaymentLink] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [photoDirty, setPhotoDirty] = useState(false);
@@ -100,6 +116,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setIban(data.iban ?? "");
       setAccountHolderFullName(data.accountHolderFullName ?? "");
       setNationalId(data.nationalId ?? "");
+      setTextPriceLocal(feeText(data.textPriceLocal));
+      setTextPriceUsd(feeText(data.textPriceUsd));
+      setVideoPriceLocal(feeText(data.videoPriceLocal));
+      setVideoPriceUsd(feeText(data.videoPriceUsd));
+      setPaymentLink(data.paymentLink ?? "");
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
@@ -257,6 +278,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         iban: isDoctor ? iban : undefined,
         accountHolderFullName: isDoctor ? accountHolderFullName : undefined,
         nationalId: isDoctor ? nationalId : undefined,
+        textPriceLocal: isDoctor ? feeValue(textPriceLocal) : undefined,
+        textPriceUsd: isDoctor ? feeValue(textPriceUsd) : undefined,
+        videoPriceLocal: isDoctor ? feeValue(videoPriceLocal) : undefined,
+        videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
+        paymentLink: isDoctor ? paymentLink.trim() : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
 
@@ -327,6 +353,16 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setAccountHolderFullName,
     nationalId,
     setNationalId,
+    textPriceLocal,
+    setTextPriceLocal,
+    textPriceUsd,
+    setTextPriceUsd,
+    videoPriceLocal,
+    setVideoPriceLocal,
+    videoPriceUsd,
+    setVideoPriceUsd,
+    paymentLink,
+    setPaymentLink,
     isDoctor,
     displayPhoto: photoUri ?? photoUrl,
     pickPhoto,

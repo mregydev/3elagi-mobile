@@ -66,6 +66,11 @@ interface RawDoctor {
   iban?: string | null;
   account_holder_full_name?: string | null;
   national_id?: string | null;
+  text_price_local?: string | number | null;
+  text_price_usd?: string | number | null;
+  video_price_local?: string | number | null;
+  video_price_usd?: string | number | null;
+  payment_link?: string | null;
 }
 
 export interface DoctorCertification {
@@ -97,8 +102,22 @@ export interface AccountProfile {
   iban?: string;
   accountHolderFullName?: string;
   nationalId?: string;
+  /** Cash fees: home currency for patients in the doctor's country, USD abroad. */
+  textPriceLocal?: number | null;
+  textPriceUsd?: number | null;
+  videoPriceLocal?: number | null;
+  videoPriceUsd?: number | null;
+  /** Where patients pay the doctor. */
+  paymentLink?: string;
   photoUrl?: string;
   role: string;
+}
+
+/** Money columns arrive as numeric strings from Postgres. */
+function toFee(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function pickPhoto(user: RawUser, roleRow: { photo_url?: string | null }) {
@@ -145,6 +164,11 @@ export async function fetchAccountProfile(
       iban: doctor.iban ?? undefined,
       accountHolderFullName: doctor.account_holder_full_name ?? undefined,
       nationalId: doctor.national_id ?? undefined,
+      textPriceLocal: toFee(doctor.text_price_local),
+      textPriceUsd: toFee(doctor.text_price_usd),
+      videoPriceLocal: toFee(doctor.video_price_local),
+      videoPriceUsd: toFee(doctor.video_price_usd),
+      paymentLink: doctor.payment_link ?? undefined,
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
     };
@@ -185,6 +209,11 @@ export async function updateAccountProfile(
     iban?: string;
     accountHolderFullName?: string;
     nationalId?: string;
+    textPriceLocal?: number | null;
+    textPriceUsd?: number | null;
+    videoPriceLocal?: number | null;
+    videoPriceUsd?: number | null;
+    paymentLink?: string;
     photoUrl?: string | null;
   },
 ): Promise<PatientProfile> {
@@ -222,6 +251,11 @@ export async function updateAccountProfile(
         iban: payload.iban ?? undefined,
         account_holder_full_name: payload.accountHolderFullName ?? undefined,
         national_id: payload.nationalId ?? undefined,
+        text_price_local: payload.textPriceLocal ?? null,
+        text_price_usd: payload.textPriceUsd ?? null,
+        video_price_local: payload.videoPriceLocal ?? null,
+        video_price_usd: payload.videoPriceUsd ?? null,
+        payment_link: payload.paymentLink ?? null,
       }),
     });
     return {

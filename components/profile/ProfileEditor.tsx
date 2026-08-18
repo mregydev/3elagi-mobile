@@ -27,6 +27,7 @@ import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
+import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
@@ -113,6 +114,16 @@ export function ProfileEditor({
     setAccountHolderFullName,
     nationalId,
     setNationalId,
+    textPriceLocal,
+    setTextPriceLocal,
+    textPriceUsd,
+    setTextPriceUsd,
+    videoPriceLocal,
+    setVideoPriceLocal,
+    videoPriceUsd,
+    setVideoPriceUsd,
+    paymentLink,
+    setPaymentLink,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -313,6 +324,29 @@ export function ProfileEditor({
                   onChange={setConsultationPrice}
                   label={t.auth.consultationPrice}
                   compact
+                />
+              </SectionCard>
+            ) : null}
+
+            {isDoctor ? (
+              <SectionCard
+                title={isRTL ? "أسعار الاستشارة" : "Consultation prices"}
+                colors={colors}
+                textAlign={textAlign}
+              >
+                <DoctorFeesFields
+                  country={country}
+                  textLocal={textPriceLocal}
+                  onTextLocal={setTextPriceLocal}
+                  textUsd={textPriceUsd}
+                  onTextUsd={setTextPriceUsd}
+                  videoLocal={videoPriceLocal}
+                  onVideoLocal={setVideoPriceLocal}
+                  videoUsd={videoPriceUsd}
+                  onVideoUsd={setVideoPriceUsd}
+                  paymentLink={paymentLink}
+                  onPaymentLink={setPaymentLink}
+                  disabled={saving}
                 />
               </SectionCard>
             ) : null}

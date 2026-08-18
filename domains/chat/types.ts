@@ -25,7 +25,11 @@ export type ConsultationActionType =
   | "accept"
   | "reject"
   | "end"
-  | "cancel";
+  | "cancel"
+  | "payment_request"
+  | "payment_submitted"
+  | "payment_approved"
+  | "payment_rejected";
 export type ConsultationCancelReasonType =
   | "video_consultation"
   | "onsite_visit"
@@ -42,7 +46,7 @@ export interface ConsultationDiagnosisSummary {
   }[];
 }
 
-export interface ConsultationActionMeta {
+export interface ConsultationActionMeta extends PaymentActionMeta {
   consultation_id: string;
   action: ConsultationActionType;
   status: ConsultationStatus;
@@ -67,9 +71,27 @@ export interface AccessActionMeta {
   action: AccessActionType;
 }
 
-export type AppointmentActionType = "request" | "confirm" | "reject" | "cancel";
+export type AppointmentActionType =
+  | "request"
+  | "confirm"
+  | "reject"
+  | "cancel"
+  | "payment_request"
+  | "payment_submitted"
+  | "payment_approved"
+  | "payment_rejected";
 
-export interface AppointmentActionMeta {
+/** Cash the doctor asked for, paid outside the app. */
+export interface PaymentActionMeta {
+  payment_status?: "none" | "awaiting_payment" | "proof_submitted" | "paid";
+  payment_amount?: number | null;
+  payment_currency?: string | null;
+  /** The doctor's own payment link. */
+  payment_link?: string | null;
+  payment_proof_url?: string | null;
+}
+
+export interface AppointmentActionMeta extends PaymentActionMeta {
   appointment_id: string;
   action: AppointmentActionType;
   date: string;

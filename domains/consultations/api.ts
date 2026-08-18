@@ -13,6 +13,10 @@ export interface Consultation {
   diagnosis_id: string | null;
   cancel_reason_type: ConsultationCancelReasonType | null;
   cancel_reason: string | null;
+  payment_status?: "none" | "awaiting_payment" | "proof_submitted" | "paid";
+  payment_amount?: number | null;
+  payment_currency?: string | null;
+  payment_proof_url?: string | null;
   /** ISO country the patient consulted from (their IP at request time). */
   patient_country?: string | null;
   /** USD per credit for that country when the request was made (admin-set). */
@@ -106,13 +110,39 @@ export async function startConsultation(
   });
 }
 
-/** Doctor answers a pending request. */
+/** Doctor answers a pending request; `requirePayment` asks the patient to pay first. */
 export async function acceptConsultation(
   consultationId: string,
   token: string,
+  requirePayment = false,
 ): Promise<{ consultation: Consultation }> {
   return authJson(`/consultations/${consultationId}/accept`, token, {
     method: "POST",
+    body: JSON.stringify({ require_payment: requirePayment }),
+  });
+}
+
+/** Patient attaches the receipt for a consultation the doctor priced. */
+export async function submitConsultationPaymentProof(
+  consultationId: string,
+  proofUrl: string,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/payment-proof`, token, {
+    method: "POST",
+    body: JSON.stringify({ proof_url: proofUrl }),
+  });
+}
+
+/** Doctor approves or rejects that receipt. */
+export async function reviewConsultationPayment(
+  consultationId: string,
+  approve: boolean,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/payment-review`, token, {
+    method: "POST",
+    body: JSON.stringify({ approve }),
   });
 }
 
