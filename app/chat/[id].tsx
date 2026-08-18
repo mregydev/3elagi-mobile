@@ -1532,6 +1532,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                     void handleAppointmentAction(appointmentId, action)
                   }
                   appointmentActionBusy={appointmentActionBusy}
+                  onPaymentReply={(target, reply) => void handlePaymentReply(target, reply)}
                 />
               );
             }
