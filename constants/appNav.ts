@@ -75,7 +75,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
         !pathHas(path, "activity") &&
         !pathHas(path, "notifications") &&
         !pathHas(path, "about-us") &&
-        !pathHas(path, "pricing") &&
         !pathHas(path, "faq") &&
         !pathHas(path, "for-doctors")),
   },
@@ -94,13 +93,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     guestAllowed: true,
     aiOnly: true,
     match: (path) => pathHas(path, "assistant"),
-  },
-  {
-    href: "/(tabs)/pricing",
-    labelKey: "pricing",
-    Icon: Coins,
-    guestAllowed: true,
-    match: (path) => pathHas(path, "pricing"),
   },
   {
     href: "/(tabs)/for-doctors",

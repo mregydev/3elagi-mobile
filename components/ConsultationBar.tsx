@@ -58,7 +58,6 @@ import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import type { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
-import { formatEgp } from "@/utils/credits";
 import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -369,10 +368,7 @@ export function ConsultationBar({
       setDescription("");
       setSelectedRecords([]);
       setMedia([]);
-      showSuccessToast(
-        t.consultations.consultationStarted,
-        t.consultations.reservedToast(formatEgp(res.consultation.reserved_points, t)),
-      );
+      showSuccessToast(t.consultations.consultationStarted);
       // The request lands in the thread — put the patient on it.
       onThreadUpdated?.();
     } catch (e) {

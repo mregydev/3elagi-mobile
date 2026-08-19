@@ -5,7 +5,6 @@ export const GUEST_ALLOWED_TABS = new Set([
   "index",
   "about-us",
   "assistant",
-  "pricing",
   "faq",
   "for-doctors",
 ]);

@@ -32,7 +32,6 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { formatEgp } from "@/utils/credits";
 import {
   appointmentRoomState,
   isAppointmentStartInFuture,
@@ -722,10 +721,7 @@ export function ChatMessageBubble({
           : meta.action === "end"
             ? "#0d9488"
             : colors.primary;
-    const detail =
-      meta.action === "start" && meta.reserved_points
-        ? t.consultations.reservedInThread(formatEgp(meta.reserved_points, t))
-        : reasonLabel;
+    const detail = meta.action === "start" ? null : reasonLabel;
     // Where the patient actually was when they asked (resolved from their IP).
     const patientCountryCode: string = meta.patient_country?.trim() ?? "";
     // patientCountryLabel() defaults to Egypt for unknown codes — show the raw

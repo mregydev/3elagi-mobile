@@ -110,6 +110,7 @@ export default function TabsLayoutWeb() {
               name="pricing"
               options={{
                 title: t.tabs.pricing,
+                href: null,
                 tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
               }}
             />

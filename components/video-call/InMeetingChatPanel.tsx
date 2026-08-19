@@ -119,23 +119,13 @@ export function InMeetingChatPanel({
   const isPatient = !isDoctor;
   const patientUserIdForLinks = isDoctor ? peerId : profile?.id;
 
-  // The panel is a call-scoped conversation, not the thread: only messages
-  // written after the panel opened show up, so nobody re-reads old history
-  // mid-consultation.
-  const joinedAtRef = useRef(new Date().toISOString());
   const dateLabels = useMemo(
     () => ({ today: t.common.today, yesterday: t.common.yesterday }),
     [t.common.today, t.common.yesterday],
   );
   const listData = useMemo<ChatListItem[]>(
     () =>
-      injectChatDateSeparators(
-        [...messages]
-          .filter((message) => message.createdAt >= joinedAtRef.current)
-          .reverse(),
-        locale,
-        dateLabels,
-      ),
+      injectChatDateSeparators([...messages].reverse(), locale, dateLabels),
     [messages, locale, dateLabels],
   );
   const listInverted = listData.length > 0;

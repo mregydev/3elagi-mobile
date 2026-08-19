@@ -361,6 +361,15 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return () => onChatAccessUpdated(null);
   }, [id]);
 
+  // Consultation start grants record access on the server — refresh in case the
+  // socket event was missed while the app was backgrounded.
+  useEffect(() => {
+    if (!id || !accessToken || !isDoctorPatientChat || !consultationOpen) return;
+    void fetchDoctorPatientAccess(accessToken, id)
+      .then(setAccessStatus)
+      .catch(() => undefined);
+  }, [id, accessToken, isDoctorPatientChat, consultationOpen, activeConsultationId]);
+
   const chatMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   // When a consultation is open, everything before its "start" card is archived.
