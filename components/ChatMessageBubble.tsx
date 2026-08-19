@@ -199,6 +199,13 @@ export function ChatMessageBubble({
   // Consultation cards (request / started / ended / rejected) match the medical
   // record card so the thread has one card width.
   const consultationBubbleWidth = wideCardWidth;
+  // Lab / x-ray request cards need a definite width — percentage widths collapse
+  // when the message column shrink-wraps under alignItems: flex-end on native.
+  const documentCardWidth = Math.min(
+    maxBubbleWidth,
+    Math.round(screenWidth * 0.76),
+    340,
+  );
   const videoWidth = imageWidth;
   const videoHeight = Math.round(imageWidth * 0.75);
   const responsiveMediaWidth = useMemo(() => {
@@ -546,92 +553,95 @@ export function ChatMessageBubble({
     };
 
     body = (
-      <Pressable
-        onPress={openRequest}
-        onLongPress={onLongPress}
-        delayLongPress={400}
-        style={({ pressed }) => [
-          styles.medicalCard,
-          styles.documentRequestCard,
-          {
-            flexDirection: rowDir,
-            alignItems: "flex-start",
-            opacity: pressed ? 0.88 : 1,
-            backgroundColor: `${colors.primary}14`,
-            borderColor: `${colors.primary}55`,
-            width: "100%",
-            maxWidth: "100%",
-            alignSelf: "stretch",
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.medicalIconWrap,
-            { backgroundColor: `${colors.primary}22` },
+      <View style={styles.medicalBody}>
+        <Pressable
+          onPress={openRequest}
+          onLongPress={onLongPress}
+          delayLongPress={400}
+          style={({ pressed }) => [
+            styles.medicalCard,
+            styles.documentRequestCard,
+            {
+              flexDirection: rowDir,
+              alignItems: "flex-start",
+              opacity: pressed ? 0.88 : 1,
+              backgroundColor: `${colors.primary}14`,
+              borderColor: `${colors.primary}55`,
+            },
           ]}
         >
-          <RecordIcon size={20} color={colors.primary} />
-        </View>
+          <View
+            style={[
+              styles.medicalIconWrap,
+              { backgroundColor: `${colors.primary}22` },
+            ]}
+          >
+            <RecordIcon size={20} color={colors.primary} />
+          </View>
 
-        <View style={styles.medicalTextWrap}>
-          <Text
-            style={[
-              styles.medicalType,
-              { color: colors.primary, textAlign: isRTL ? "right" : "left" },
-            ]}
-          >
-            {typeLabel}
-          </Text>
-          <Text
-            style={[
-              styles.medicalTitle,
-              { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-            ]}
-            numberOfLines={2}
-          >
-            {title}
-          </Text>
-          {desc ? (
+          <View style={styles.medicalTextWrap}>
+            <Text
+              style={[
+                styles.medicalType,
+                { color: colors.primary, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {typeLabel}
+            </Text>
+            <Text
+              style={[
+                styles.medicalTitle,
+                { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+              ]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+            {desc ? (
+              <Text
+                style={[
+                  styles.medicalHint,
+                  {
+                    color: colors.mutedForeground,
+                    textAlign: isRTL ? "right" : "left",
+                    marginTop: 4,
+                  },
+                ]}
+                numberOfLines={3}
+              >
+                {desc}
+              </Text>
+            ) : null}
             <Text
               style={[
                 styles.medicalHint,
-                {
-                  color: colors.mutedForeground,
-                  textAlign: isRTL ? "right" : "left",
-                  marginTop: 4,
-                },
+                { color: colors.primary, textAlign: isRTL ? "right" : "left", marginTop: 6 },
               ]}
-              numberOfLines={3}
             >
-              {desc}
-            </Text>
-          ) : null}
-          <Text
-            style={[
-              styles.medicalHint,
-              { color: colors.primary, textAlign: isRTL ? "right" : "left", marginTop: 6 },
-            ]}
-          >
-            {req.status === "fulfilled"
-              ? isRTL
-                ? "تم رفع النتيجة — اضغط للعرض"
-                : "Result uploaded — tap to view"
-              : req.status === "cancelled"
+              {req.status === "fulfilled"
                 ? isRTL
-                  ? "تم إلغاء الطلب"
-                  : "Request cancelled"
-                : isRTL
-                  ? "اضغط لعرض التفاصيل"
-                  : "Tap to view details"}
-          </Text>
-        </View>
+                  ? "تم رفع النتيجة — اضغط للعرض"
+                  : "Result uploaded — tap to view"
+                : req.status === "cancelled"
+                  ? isRTL
+                    ? "تم إلغاء الطلب"
+                    : "Request cancelled"
+                  : isRTL
+                    ? "اضغط لعرض التفاصيل"
+                    : "Tap to view details"}
+            </Text>
+          </View>
 
-        {req.status === "cancelled" ||
-        (req.status === "fulfilled" && !req.fulfilled_document_id?.trim()) ? null : (
-          <ChevronRight size={18} color={colors.primary} />
-        )}
-      </Pressable>
+          {req.status === "cancelled" ||
+          (req.status === "fulfilled" && !req.fulfilled_document_id?.trim()) ? null : (
+            <ChevronRight
+              size={18}
+              color={colors.primary}
+              style={styles.documentRequestChevron}
+            />
+          )}
+        </Pressable>
+      </View>
     );
   }
 
@@ -1219,7 +1229,11 @@ export function ChatMessageBubble({
     isConsultationAction && styles.medicalBubble,
     bubbleColors,
     isMedicalLink && { width: medicalBubbleWidth, maxWidth: "100%" as const },
-    isDocumentRequest && { width: "100%", maxWidth: "100%" as const },
+    isDocumentRequest && {
+      width: documentCardWidth,
+      maxWidth: "100%" as const,
+      flexShrink: 0,
+    },
     isConsultationAction && {
       width: consultationBubbleWidth,
       maxWidth: "100%" as const,
@@ -1261,10 +1275,12 @@ export function ChatMessageBubble({
         styles.wrap,
         {
           alignSelf: mine ? "flex-end" : "flex-start",
-          maxWidth:
-            (isMedicalLink || isConsultationAction) && wideActionCards
+          maxWidth: isDocumentRequest
+            ? documentCardWidth
+            : (isMedicalLink || isConsultationAction) && wideActionCards
               ? cardBubbleWidth
               : maxBubbleWidth,
+          ...(isDocumentRequest ? { width: documentCardWidth } : null),
         },
         (item.emotions?.length ?? 0) > 0 && styles.wrapWithReactions,
       ]}
@@ -1409,10 +1425,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   documentRequestCard: {
+    alignItems: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1.5,
+  },
+  documentRequestChevron: {
+    flexShrink: 0,
+    marginTop: 2,
   },
   medicalIconWrap: {
     width: 40,

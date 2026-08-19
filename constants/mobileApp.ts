@@ -1,3 +1,5 @@
+import { Image, Platform } from "react-native";
+
 export const ANDROID_APP_PACKAGE = "com.threelagi.mobile";
 
 export const ANDROID_APP_URL =
@@ -6,14 +8,38 @@ export const ANDROID_APP_URL =
 
 export const ANDROID_APP_QR = require("@/assets/images/android-app-qr.png");
 
-/** Resolved URI for web/mobile-web where bundled `require()` can fail to paint. */
-export const ANDROID_APP_QR_URI: string | undefined = (() => {
-  try {
-    const { Image } = require("react-native") as typeof import("react-native");
-    return Image.resolveAssetSource(ANDROID_APP_QR)?.uri;
-  } catch {
-    return undefined;
-  }
-})();
+type BundledAsset = number | { uri?: string; width?: number; height?: number };
 
-export const ANDROID_APP_QR_SIZE = { width: 220, height: Math.round(220 * (536 / 552)) };
+function readBundledAsset(asset: BundledAsset) {
+  if (typeof asset === "object" && asset !== null) {
+    return {
+      uri: asset.uri,
+      width: asset.width,
+      height: asset.height,
+    };
+  }
+  try {
+    const resolved = Image.resolveAssetSource(asset);
+    return {
+      uri: resolved?.uri,
+      width: resolved?.width,
+      height: resolved?.height,
+    };
+  } catch {
+    return { uri: undefined, width: undefined, height: undefined };
+  }
+}
+
+const qrAsset = readBundledAsset(ANDROID_APP_QR as BundledAsset);
+
+/** Resolved URI for web/mobile-web where bundled PNGs need a direct src. */
+export const ANDROID_APP_QR_URI = qrAsset.uri;
+
+const qrNativeWidth = qrAsset.width ?? 566;
+const qrNativeHeight = qrAsset.height ?? 576;
+const QR_DISPLAY_WIDTH = Platform.OS === "web" ? 220 : 200;
+
+export const ANDROID_APP_QR_SIZE = {
+  width: QR_DISPLAY_WIDTH,
+  height: Math.round(QR_DISPLAY_WIDTH * (qrNativeHeight / qrNativeWidth)),
+};

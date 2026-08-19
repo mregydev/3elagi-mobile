@@ -1,8 +1,8 @@
-import { Image } from "expo-image";
 import { X } from "lucide-react-native";
-import React from "react";
+import React, { createElement } from "react";
 import {
   Image as RNImage,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -14,6 +14,7 @@ import {
   ANDROID_APP_QR,
   ANDROID_APP_QR_SIZE,
   ANDROID_APP_QR_URI,
+  ANDROID_APP_URL,
 } from "@/constants/mobileApp";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -26,14 +27,14 @@ type Props = {
   onClose: () => void;
 };
 
-function QrCodeImage({ alt }: { alt: string }) {
+function WebQrImage({ alt }: { alt: string }) {
   const { width, height } = ANDROID_APP_QR_SIZE;
+  const src = ANDROID_APP_QR_URI;
 
-  // Mobile browsers often fail to paint expo-image for bundled PNGs — use <img>.
-  if (Platform.OS === "web" && ANDROID_APP_QR_URI) {
+  if (!src) {
     return (
       <RNImage
-        source={{ uri: ANDROID_APP_QR_URI }}
+        source={ANDROID_APP_QR}
         style={{ width, height }}
         accessibilityLabel={alt}
         resizeMode="contain"
@@ -41,12 +42,36 @@ function QrCodeImage({ alt }: { alt: string }) {
     );
   }
 
+  // Native <img> is the most reliable path on mobile browsers (Safari/Chrome).
+  return createElement("img", {
+    src,
+    alt,
+    width,
+    height,
+    decoding: "async",
+    style: {
+      objectFit: "contain",
+      display: "block",
+      width,
+      height,
+      maxWidth: "100%",
+    },
+  });
+}
+
+function QrCodeImage({ alt }: { alt: string }) {
+  const { width, height } = ANDROID_APP_QR_SIZE;
+
+  if (Platform.OS === "web") {
+    return <WebQrImage alt={alt} />;
+  }
+
   return (
-    <Image
+    <RNImage
       source={ANDROID_APP_QR}
       style={{ width, height }}
-      contentFit="contain"
       accessibilityLabel={alt}
+      resizeMode="contain"
     />
   );
 }
@@ -58,6 +83,16 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
   const textAlign = alignText(isRTL);
 
   if (!visible) return null;
+
+  const openDownload = () => {
+    void Linking.openURL(ANDROID_APP_URL).catch(() => undefined);
+  };
+
+  const qrBlock = (
+    <View style={[styles.qrWrap, { borderColor: colors.border }]}>
+      <QrCodeImage alt={t.mobileApp.qrAlt} />
+    </View>
+  );
 
   const content = (
     <View style={styles.overlay} accessibilityViewIsModal>
@@ -72,10 +107,12 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
         contentContainerStyle={styles.dialogScrollContent}
         keyboardShouldPersistTaps="handled"
         bounces={false}
+        showsVerticalScrollIndicator={isMobile}
       >
         <View
           style={[
             styles.dialog,
+            isMobile && styles.dialogMobile,
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
@@ -97,12 +134,40 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
           </View>
 
           <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
-            {t.mobileApp.modalSubtitle}
+            {isMobile ? t.mobileApp.mobileWebSubtitle : t.mobileApp.modalSubtitle}
           </Text>
 
-          <View style={[styles.qrWrap, { borderColor: colors.border }]}>
-            <QrCodeImage alt={t.mobileApp.qrAlt} />
-          </View>
+          {isMobile ? (
+            <Pressable
+              onPress={openDownload}
+              accessibilityRole="link"
+              accessibilityLabel={t.mobileApp.openLink}
+              style={({ pressed }) => [pressed && styles.qrPressed]}
+            >
+              {qrBlock}
+            </Pressable>
+          ) : (
+            qrBlock
+          )}
+
+          {isMobile ? (
+            <Pressable
+              onPress={openDownload}
+              accessibilityRole="link"
+              accessibilityLabel={t.mobileApp.openLink}
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.openLinkBtn,
+                {
+                  borderColor: colors.primary,
+                  backgroundColor: pressed || hovered ? `${colors.primary}12` : "transparent",
+                },
+              ]}
+            >
+              <Text style={[styles.openLinkText, { color: colors.primary, textAlign }]}>
+                {t.mobileApp.openLink}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -138,11 +203,14 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   dialogScrollMobile: {
-    maxHeight: "90%",
+    maxHeight: "92%",
+    width: "100%",
+    maxWidth: 340,
   },
   dialogScrollContent: {
     flexGrow: 1,
     justifyContent: "center",
+    paddingVertical: 8,
   },
   dialog: {
     width: "100%",
@@ -156,6 +224,10 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 8,
     marginHorizontal: 8,
+  },
+  dialogMobile: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   header: {
     flexDirection: "row",
@@ -184,5 +256,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
+  },
+  qrPressed: {
+    opacity: 0.92,
+  },
+  openLinkBtn: {
+    alignSelf: "stretch",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    cursor: "pointer" as "auto",
+  },
+  openLinkText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
