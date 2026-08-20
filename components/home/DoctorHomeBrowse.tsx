@@ -5,11 +5,10 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  View,
 } from "react-native";
 import { DoctorConsultationQueue } from "@/components/home/DoctorConsultationQueue";
-import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { HomeDoctorHeader } from "@/components/home/HomeDoctorHeader";
+import { HomeHeroWithTvVideo } from "@/components/home/HomeHeroWithTvVideo";
 import { HomeDoctorSummary } from "@/components/home/HomeDoctorSummary";
 import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { updateAccountProfile } from "@/domains/auth/profile-api";
@@ -103,13 +102,15 @@ export function DoctorHomeBrowse() {
         <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.primary} />
       }
     >
-      <HomeDoctorHeader
-        metrics={metrics}
-        immediateCallEnabled={!!account?.immediateCallEnabled}
-        togglingAvailability={togglingAvailability}
-        onToggleAvailability={(next) => void handleToggleAvailability(next)}
-      />
-      <HomeBannerVideo />
+      <HomeHeroWithTvVideo>
+        <HomeDoctorHeader
+          metrics={metrics}
+          immediateCallEnabled={!!account?.immediateCallEnabled}
+          togglingAvailability={togglingAvailability}
+          besideMedia
+          onToggleAvailability={(next) => void handleToggleAvailability(next)}
+        />
+      </HomeHeroWithTvVideo>
       <HomeDoctorSummary metrics={metrics} />
       <DoctorConsultationQueue consultations={consultations} />
     </ScrollView>

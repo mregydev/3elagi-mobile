@@ -16,13 +16,13 @@ import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { DoctorChatRoster } from "@/components/DoctorChatRoster";
+import { HomeHeroWithTvVideo } from "@/components/home/HomeHeroWithTvVideo";
 import { HomePatientHeader } from "@/components/home/HomePatientHeader";
 import { HomeHealthSummary } from "@/components/home/HomeHealthSummary";
 import { DoctorHomeBrowse } from "@/components/home/DoctorHomeBrowse";
 import { LandingWaveFooter } from "@/components/marketing/LandingWaveFooter";
 import { PublicLandingSections } from "@/components/marketing/PublicLandingSections";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
-import { HomeBannerVideo } from "@/components/HomeBannerVideo";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
 import { HOME_NAV_RESET_EVENT } from "@/constants/appNav";
 import { patientCountryLabel } from "@/constants/patientCountries";
@@ -253,14 +253,16 @@ function ChatsHomeBrowse() {
         <PublicLandingSections />
       ) : (
         <>
-          <HomePatientHeader
-            aiEnabled={aiEnabled}
-            signedIn={signedIn}
-            onFindDoctor={openDoctorDirectory}
-            onVideoConsultation={openDoctorDirectory}
-          />
+          <HomeHeroWithTvVideo>
+            <HomePatientHeader
+              aiEnabled={aiEnabled}
+              signedIn={signedIn}
+              besideMedia
+              onFindDoctor={openDoctorDirectory}
+              onVideoConsultation={openDoctorDirectory}
+            />
+          </HomeHeroWithTvVideo>
           <HomeHealthSummary signedIn={signedIn} />
-          <HomeBannerVideo />
         </>
       )}
       {domainMarket ? (

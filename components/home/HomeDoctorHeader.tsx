@@ -48,6 +48,8 @@ interface Props {
   immediateCallEnabled: boolean;
   togglingAvailability?: boolean;
   onToggleAvailability: (next: boolean) => void;
+  /** Desktop hero row with TV video — stack actions in the narrow copy column. */
+  besideMedia?: boolean;
 }
 
 export function HomeDoctorHeader({
@@ -55,11 +57,12 @@ export function HomeDoctorHeader({
   immediateCallEnabled,
   togglingAvailability = false,
   onToggleAvailability,
+  besideMedia = false,
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isMobile, isDesktop } = useWebLayout();
-  const stackActions = Platform.OS !== "web" || isMobile;
+  const stackActions = Platform.OS !== "web" || isMobile || (besideMedia && isDesktop);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const { width } = useWindowDimensions();
@@ -121,7 +124,7 @@ export function HomeDoctorHeader({
   ];
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, besideMedia && isDesktop && styles.wrapBesideMedia]}>
       <View
         style={[
           styles.banner,
@@ -276,6 +279,12 @@ const styles = StyleSheet.create({
     paddingTop: UI.space.sm,
     paddingBottom: UI.space.xs,
     gap: UI.space.md,
+  },
+  wrapBesideMedia: {
+    paddingHorizontal: 0,
+    paddingTop: UI.space.xs,
+    justifyContent: "center",
+    flex: 1,
   },
   banner: {
     padding: UI.space.md,
