@@ -44,7 +44,6 @@ import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { surfaceCard, UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useWebLayout } from "@/hooks/useWebLayout";
 import { on } from "@/utils/eventBus";
 import { alignText } from "@/utils/rtl";
 
@@ -52,7 +51,6 @@ function ChatsHomeBrowse() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const textAlign = alignText(isRTL);
-  const { isDesktop } = useWebLayout();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
@@ -262,7 +260,7 @@ function ChatsHomeBrowse() {
             onVideoConsultation={openDoctorDirectory}
           />
           <HomeHealthSummary signedIn={signedIn} />
-          {!isDesktop ? <HomeBannerVideo /> : null}
+          <HomeBannerVideo />
         </>
       )}
       {domainMarket ? (
