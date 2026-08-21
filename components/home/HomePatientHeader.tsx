@@ -39,6 +39,8 @@ interface Props {
   onVideoConsultation?: () => void;
   /** Desktop hero row with TV video — stack actions in the narrow copy column. */
   besideMedia?: boolean;
+  /** Native mobile: TV banner inserted between greeting and quick actions. */
+  mediaAfterGreeting?: React.ReactNode;
 }
 
 export function HomePatientHeader({
@@ -47,6 +49,7 @@ export function HomePatientHeader({
   onFindDoctor,
   onVideoConsultation,
   besideMedia = false,
+  mediaAfterGreeting,
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
@@ -123,6 +126,8 @@ export function HomePatientHeader({
           {t.home.subtitle}
         </Text>
       </View>
+
+      {mediaAfterGreeting}
 
       <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
         {t.home.quickActions}

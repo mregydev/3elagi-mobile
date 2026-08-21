@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { PublicHeroMediaSection } from "@/components/marketing/PublicHeroMediaSection";
 import { TvFramedVideo } from "@/components/marketing/TvFramedVideo";
 import { useI18n } from "@/hooks/useI18n";
@@ -10,11 +10,20 @@ interface Props {
   children: React.ReactNode;
 }
 
+function NativeTvBanner() {
+  return (
+    <View style={styles.nativeTvInline}>
+      <TvFramedVideo />
+    </View>
+  );
+}
+
 /** Signed-in home hero: dashboard copy beside (desktop) or above (mobile) the TV banner video. */
 export function HomeHeroWithTvVideo({ children }: Props) {
   const { isDesktop } = useWebLayout();
   const { isRTL } = useI18n();
   const dir = flexRow(isRTL);
+  const nativeTvBanner = <NativeTvBanner />;
 
   if (isDesktop) {
     return (
@@ -23,6 +32,15 @@ export function HomeHeroWithTvVideo({ children }: Props) {
         <View style={styles.visualDesktop}>
           <TvFramedVideo />
         </View>
+      </View>
+    );
+  }
+
+  // Native: TV sits right under the greeting, before quick actions.
+  if (Platform.OS !== "web" && React.isValidElement(children)) {
+    return (
+      <View style={styles.shellMobile}>
+        {React.cloneElement(children, { mediaAfterGreeting: nativeTvBanner })}
       </View>
     );
   }
@@ -54,5 +72,9 @@ const styles = StyleSheet.create({
   },
   shellMobile: {
     gap: 4,
+  },
+  nativeTvInline: {
+    marginTop: 4,
+    marginBottom: 8,
   },
 });

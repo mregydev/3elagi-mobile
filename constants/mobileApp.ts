@@ -35,8 +35,8 @@ const qrAsset = readBundledAsset(ANDROID_APP_QR as BundledAsset);
 /** Resolved URI for web/mobile-web where bundled PNGs need a direct src. */
 export const ANDROID_APP_QR_URI = qrAsset.uri;
 
-const qrNativeWidth = qrAsset.width ?? 566;
-const qrNativeHeight = qrAsset.height ?? 576;
+const qrNativeWidth = qrAsset.width ?? 578;
+const qrNativeHeight = qrAsset.height ?? 580;
 const QR_DISPLAY_WIDTH = Platform.OS === "web" ? 220 : 200;
 
 export const ANDROID_APP_QR_SIZE = {

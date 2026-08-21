@@ -50,6 +50,8 @@ interface Props {
   onToggleAvailability: (next: boolean) => void;
   /** Desktop hero row with TV video — stack actions in the narrow copy column. */
   besideMedia?: boolean;
+  /** Native mobile: TV banner inserted between greeting and quick actions. */
+  mediaAfterGreeting?: React.ReactNode;
 }
 
 export function HomeDoctorHeader({
@@ -58,6 +60,7 @@ export function HomeDoctorHeader({
   togglingAvailability = false,
   onToggleAvailability,
   besideMedia = false,
+  mediaAfterGreeting,
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
@@ -157,6 +160,8 @@ export function HomeDoctorHeader({
           </View>
         ) : null}
       </View>
+
+      {mediaAfterGreeting}
 
       <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
         {t.doctorDashboard.quickActions}
