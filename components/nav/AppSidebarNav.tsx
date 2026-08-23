@@ -110,11 +110,11 @@ export function AppSidebarNav({
   const sections = groupAppNavItems(items);
   // Groups start closed; opening one is a per-session preference.
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
-  const [preferencesOpen, setPreferencesOpen] = React.useState(false);
+  const [preferencesOpen, setPreferencesOpen] = React.useState(true);
   const [prefMeasuredHeight, setPrefMeasuredHeight] = React.useState(0);
   const scrollRef = React.useRef<ScrollView>(null);
   const prefBodyHeight = useSharedValue(0);
-  const prefExpand = useSharedValue(0);
+  const prefExpand = useSharedValue(1);
 
   const isGroupExpanded = (group: string, hasActive: boolean) =>
     group in openGroups ? openGroups[group] : hasActive;
