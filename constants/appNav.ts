@@ -5,7 +5,6 @@ import {
   Bot,
   CalendarClock,
   ClipboardList,
-  Coins,
   History,
   Home,
   Info,
@@ -128,13 +127,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     Icon: ListChecks,
     doctorOnly: true,
     match: (path) => pathHas(path, "intake"),
-  },
-  {
-    href: "/(tabs)/points",
-    labelKey: "points",
-    Icon: Coins,
-    patientOnly: true,
-    match: (path) => pathHas(path, "points"),
   },
   {
     href: "/(tabs)/profile",
