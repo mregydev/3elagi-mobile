@@ -20,7 +20,6 @@ import { HomeHeroWithTvVideo } from "@/components/home/HomeHeroWithTvVideo";
 import { HomePatientHeader } from "@/components/home/HomePatientHeader";
 import { HomeHealthSummary } from "@/components/home/HomeHealthSummary";
 import { DoctorHomeBrowse } from "@/components/home/DoctorHomeBrowse";
-import { LandingWaveFooter } from "@/components/marketing/LandingWaveFooter";
 import { PublicLandingSections } from "@/components/marketing/PublicLandingSections";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
@@ -325,7 +324,6 @@ function ChatsHomeBrowse() {
         </>
       )}
       </View>
-      <LandingWaveFooter />
     </ScrollView>
   );
 }
@@ -344,7 +342,7 @@ export default function ChatsTab() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1, gap: 8, paddingBottom: 0 },
+  scrollContent: { flexGrow: 1, gap: 8, paddingBottom: 24 },
   pageContent: { flexGrow: 1, gap: 8 },
   guestContent: { flexGrow: 1, width: "95%", alignSelf: "center", gap: 8 },
   specialitiesHeading: { marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
