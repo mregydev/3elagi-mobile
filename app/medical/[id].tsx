@@ -30,6 +30,8 @@ import { navigateBack } from "@/utils/appNavigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { MedicalPdfViewer, type MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
+import { confirmDestructiveAction } from "@/utils/confirmDestructiveAction";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -67,7 +69,7 @@ import {
 } from "@/components/intake/IntakeExamTaker";
 import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
-import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
+import { isMedicalImageAttachment, isMedicalPdfAttachment } from "@/components/medical/medicalRecordMeta";
 import { useMedicalStore } from "@/domains/medical/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import {
@@ -136,6 +138,7 @@ export default function MedicalRecordDetail() {
   const [editingDiagnosis, setEditingDiagnosis] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
   const [generatingInsight, setGeneratingInsight] = useState(false);
   const [intakeAnswersDraft, setIntakeAnswersDraft] = useState<Record<string, string[]>>({});
   const [savingIntake, setSavingIntake] = useState(false);
@@ -530,6 +533,7 @@ export default function MedicalRecordDetail() {
   const isPrescription = record.category === "prescription";
   const isLabOrXray = record.category === "lab" || record.category === "xray";
   const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
+  const isDocPdf = isMedicalPdfAttachment(record.fileUrl, record.fileName);
   const canEditLabDetails = isLabOrXray && !isDoctorView && !!accessToken;
   const canPrintPrescription =
     isPrescription &&
@@ -653,41 +657,42 @@ export default function MedicalRecordDetail() {
     }
   };
 
+  const performDelete = async () => {
+    if (!accessToken) {
+      Alert.alert(
+        isRTL ? "فشل الحذف" : "Delete failed",
+        isRTL ? "يجب تسجيل الدخول." : "You must be signed in.",
+      );
+      return;
+    }
+
+    try {
+      if (record.category === "lab" || record.category === "xray") {
+        await deletePatientMedicalDocument(record.id, accessToken);
+      } else if (record.category === "intake") {
+        await deleteIntakeExamInstance(record.id, accessToken);
+      } else {
+        throw new Error(
+          isRTL ? "لا يمكن حذف هذا النوع من السجلات." : "This record type cannot be deleted.",
+        );
+      }
+      await refetchListsAfterChange();
+      remove(profile!.id, record.id);
+      navigateBack(router, "/(tabs)/records");
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحذف" : "Delete failed", (e as Error).message);
+    }
+  };
+
   const confirmDelete = () => {
     if (!canDeleteRecord) return;
-    Alert.alert(
-      isRTL ? "حذف السجل" : "Delete record",
-      isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
-      [
-        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-        {
-          text: isRTL ? "حذف" : "Delete",
-          style: "destructive",
-          onPress: () => {
-            void (async () => {
-              try {
-                if (
-                  (record.category === "lab" || record.category === "xray") &&
-                  accessToken
-                ) {
-                  await deletePatientMedicalDocument(record.id, accessToken);
-                } else if (record.category === "intake" && accessToken) {
-                  await deleteIntakeExamInstance(record.id, accessToken);
-                }
-                await refetchListsAfterChange();
-                remove(profile!.id, record.id);
-                navigateBack(router, "/(tabs)/records");
-              } catch (e) {
-                Alert.alert(
-                  isRTL ? "فشل الحذف" : "Delete failed",
-                  (e as Error).message,
-                );
-              }
-            })();
-          },
-        },
-      ],
-    );
+    confirmDestructiveAction({
+      title: isRTL ? "حذف السجل" : "Delete record",
+      message: isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
+      confirmLabel: isRTL ? "حذف" : "Delete",
+      cancelLabel: isRTL ? "إلغاء" : "Cancel",
+      onConfirm: performDelete,
+    });
   };
 
   return (
@@ -773,7 +778,21 @@ export default function MedicalRecordDetail() {
           </Pressable>
         )}
 
-        {(isLabOrXray || isPrescription) && record.fileUrl && !isDocImage && (
+        {(isLabOrXray || isPrescription) && record.fileUrl && isDocPdf && (
+          <Pressable
+            onPress={() =>
+              setPdfView({ uri: record.fileUrl!, fileName: record.fileName })
+            }
+            style={[styles.fileLinkCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <FileText size={32} color={color} />
+            <Text style={{ color: colors.primary, fontWeight: "600", textAlign }}>
+              {record.fileName?.trim() || (isRTL ? "عرض PDF" : "View PDF")}
+            </Text>
+          </Pressable>
+        )}
+
+        {(isLabOrXray || isPrescription) && record.fileUrl && !isDocImage && !isDocPdf && (
           <Pressable
             onPress={() => Linking.openURL(record.fileUrl!)}
             style={[styles.fileLinkCard, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -1517,6 +1536,11 @@ export default function MedicalRecordDetail() {
       <FullscreenImageViewer
         uri={zoomImageUri}
         onClose={() => setZoomImageUri(null)}
+      />
+      <MedicalPdfViewer
+        view={pdfView}
+        onClose={() => setPdfView(null)}
+        isRTL={isRTL}
       />
     </View>
   );

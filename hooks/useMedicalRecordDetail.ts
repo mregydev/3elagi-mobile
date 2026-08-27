@@ -1,8 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
-import { isMedicalImageAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
+import { isMedicalImageAttachment, isMedicalPdfAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
+import type { MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
 import { navigateBack } from "@/utils/appNavigation";
+import { confirmDestructiveAction } from "@/utils/confirmDestructiveAction";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -84,6 +86,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const [editingDiagnosis, setEditingDiagnosis] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
   const [editingLabDetails, setEditingLabDetails] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -377,6 +380,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         isPrescription: false,
         isLabOrXray: false,
         isDocImage: false,
+        isDocPdf: false,
         isIntakeExam: false,
         canTakeIntakeExam: false,
         canPrintPrescription: false,
@@ -389,6 +393,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     const isPrescription = record.category === "prescription";
     const isLabOrXray = record.category === "lab" || record.category === "xray";
     const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
+    const isDocPdf = isMedicalPdfAttachment(record.fileUrl, record.fileName);
 
     return {
       meta,
@@ -402,6 +407,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       isPrescription,
       isLabOrXray,
       isDocImage,
+      isDocPdf,
       canPrintPrescription:
         isPrescription &&
         !!accessToken &&
@@ -505,41 +511,43 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     }
   };
 
+  const performDelete = async () => {
+    if (!record || !profile) return;
+    if (!accessToken) {
+      showAppAlert(
+        isRTL ? "فشل الحذف" : "Delete failed",
+        isRTL ? "يجب تسجيل الدخول." : "You must be signed in.",
+      );
+      return;
+    }
+
+    try {
+      if (record.category === "lab" || record.category === "xray") {
+        await deletePatientMedicalDocument(record.id, accessToken);
+      } else if (record.category === "intake") {
+        await deleteIntakeExamInstance(record.id, accessToken);
+      } else {
+        throw new Error(
+          isRTL ? "لا يمكن حذف هذا النوع من السجلات." : "This record type cannot be deleted.",
+        );
+      }
+      await refetchListsAfterChange();
+      remove(profile.id, record.id);
+      navigateBack(router, "/(tabs)/records");
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحذف" : "Delete failed", (e as Error).message);
+    }
+  };
+
   const confirmDelete = () => {
     if (!record || !derived.canDeleteRecord || !profile) return;
-    Alert.alert(
-      isRTL ? "حذف السجل" : "Delete record",
-      isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
-      [
-        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-        {
-          text: isRTL ? "حذف" : "Delete",
-          style: "destructive",
-          onPress: () => {
-            void (async () => {
-              try {
-                if (
-                  (record.category === "lab" || record.category === "xray") &&
-                  accessToken
-                ) {
-                  await deletePatientMedicalDocument(record.id, accessToken);
-                } else if (record.category === "intake" && accessToken) {
-                  await deleteIntakeExamInstance(record.id, accessToken);
-                }
-                await refetchListsAfterChange();
-                remove(profile.id, record.id);
-                navigateBack(router, "/(tabs)/records");
-              } catch (e) {
-                Alert.alert(
-                  isRTL ? "فشل الحذف" : "Delete failed",
-                  (e as Error).message,
-                );
-              }
-            })();
-          },
-        },
-      ],
-    );
+    confirmDestructiveAction({
+      title: isRTL ? "حذف السجل" : "Delete record",
+      message: isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
+      confirmLabel: isRTL ? "حذف" : "Delete",
+      cancelLabel: isRTL ? "إلغاء" : "Cancel",
+      onConfirm: performDelete,
+    });
   };
 
   const updateIntakeAnswersDraft = useCallback((answers: Record<string, string[]>) => {
@@ -758,6 +766,12 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     savingDiagnosis,
     zoomImageUri,
     setZoomImageUri,
+    pdfView,
+    setPdfView,
+    openPdfAttachment: () => {
+      if (!record?.fileUrl) return;
+      setPdfView({ uri: record.fileUrl, fileName: record.fileName });
+    },
     editingLabDetails,
     setEditingLabDetails,
     editTitle,

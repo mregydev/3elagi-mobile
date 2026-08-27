@@ -79,7 +79,8 @@ const CATEGORIES: {
 ];
 
 const SEARCHABLE_CATEGORIES: MedicalCategory[] = ["diagnosis", "lab", "xray", "prescription"];
-import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
+import { isMedicalImageAttachment, isMedicalPdfAttachment } from "@/components/medical/medicalRecordMeta";
+import { MedicalPdfViewer, type MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
 
 export interface MedicalHistoryListProps {
   records: MedicalRecord[];
@@ -113,6 +114,7 @@ export function MedicalHistoryList({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
+  const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
   const [requestDialog, setRequestDialog] = useState<"lab" | "xray" | null>(null);
   const [filters, setFilters] = useState<MedicalHistoryFilters>(EMPTY_MEDICAL_FILTERS);
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
@@ -365,6 +367,9 @@ export function MedicalHistoryList({
                   const isImg =
                     !!item.fileUrl &&
                     isMedicalImageAttachment(item.fileUrl, item.fileName);
+                  const isPdf =
+                    !!item.fileUrl &&
+                    isMedicalPdfAttachment(item.fileUrl, item.fileName);
                   return (
                     <View
                       key={item.id}
@@ -383,7 +388,20 @@ export function MedicalHistoryList({
                           />
                         </Pressable>
                       )}
-                      {item.fileUrl && !isImg && (
+                      {item.fileUrl && !isImg && isPdf && (
+                        <Pressable
+                          onPress={() =>
+                            setPdfView({ uri: item.fileUrl!, fileName: item.fileName })
+                          }
+                          style={[styles.recordPdfBox, { backgroundColor: colors.muted }]}
+                        >
+                          <FileText size={36} color={colors.primary} />
+                          <Text style={[styles.recordPdfLabel, { color: colors.mutedForeground, textAlign }]}>
+                            {item.fileName ?? (isRTL ? "عرض PDF" : "View PDF")}
+                          </Text>
+                        </Pressable>
+                      )}
+                      {item.fileUrl && !isImg && !isPdf && (
                         <Pressable
                           onPress={() => Linking.openURL(item.fileUrl!)}
                           style={[styles.recordPdfBox, { backgroundColor: colors.muted }]}
@@ -730,6 +748,12 @@ export function MedicalHistoryList({
           )}
         </View>
       </Modal>
+
+      <MedicalPdfViewer
+        view={pdfView}
+        onClose={() => setPdfView(null)}
+        isRTL={isRTL}
+      />
     </View>
   );
 }

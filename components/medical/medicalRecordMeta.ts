@@ -45,6 +45,7 @@ export const MEDICAL_RECORD_CATEGORY_META: Record<
 };
 
 export const IMAGE_EXTS = /\.(jpe?g|png|gif|webp|avif|heic|heif)(\?.*)?$/i;
+export const PDF_EXT = /\.pdf(\?.*)?$/i;
 
 export function isMedicalImageAttachment(
   fileUrl?: string | null,
@@ -52,4 +53,12 @@ export function isMedicalImageAttachment(
 ): boolean {
   if (!fileUrl) return false;
   return IMAGE_EXTS.test(fileUrl) || IMAGE_EXTS.test(fileName ?? "");
+}
+
+export function isMedicalPdfAttachment(
+  fileUrl?: string | null,
+  fileName?: string | null,
+): boolean {
+  if (!fileUrl) return false;
+  return PDF_EXT.test(fileUrl) || PDF_EXT.test(fileName ?? "");
 }

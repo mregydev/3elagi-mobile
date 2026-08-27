@@ -30,6 +30,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
 import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { MedicalPdfViewer } from "@/components/medical/MedicalPdfViewer";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
 import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import {
@@ -175,6 +176,7 @@ export function MedicalRecordWebView() {
     isPrescription,
     isLabOrXray,
     isDocImage,
+    isDocPdf,
     isDoctorView,
     canEditLabDetails,
     newSymptom,
@@ -187,6 +189,9 @@ export function MedicalRecordWebView() {
     savingDiagnosis,
     zoomImageUri,
     setZoomImageUri,
+    pdfView,
+    setPdfView,
+    openPdfAttachment,
     editingLabDetails,
     setEditingLabDetails,
     editTitle,
@@ -319,6 +324,23 @@ export function MedicalRecordWebView() {
           <MedicalRecordAttachmentImage uri={record.fileUrl} style={mediaImageStyle} />
           <Text style={[styles.mediaHint, { color: colors.mutedForeground, textAlign }]}>
             {isRTL ? "اضغط للتكبير" : "Click to zoom"}
+          </Text>
+        </Pressable>
+      );
+    }
+    if (isDocPdf) {
+      return (
+        <Pressable
+          testID="medical-record-pdf"
+          onPress={openPdfAttachment}
+          style={[styles.fileCard, { borderColor: colors.border, backgroundColor: colors.card }]}
+        >
+          <FileText size={36} color={color} />
+          <Text style={{ color: colors.primary, fontWeight: "600", textAlign }}>
+            {record.fileName?.trim() || (isRTL ? "عرض PDF" : "View PDF")}
+          </Text>
+          <Text style={[styles.mediaHint, { color: colors.mutedForeground, textAlign }]}>
+            {isRTL ? "اضغط للعرض" : "Click to view"}
           </Text>
         </Pressable>
       );
@@ -1134,6 +1156,11 @@ export function MedicalRecordWebView() {
       <FullscreenImageViewer
         uri={zoomImageUri}
         onClose={() => setZoomImageUri(null)}
+      />
+      <MedicalPdfViewer
+        view={pdfView}
+        onClose={() => setPdfView(null)}
+        isRTL={isRTL}
       />
     </View>
   );
