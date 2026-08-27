@@ -30,6 +30,13 @@ export interface SignupInput extends Credentials {
   graduationCert?: SignupFile;
   workPermit?: SignupFile;
   specialityId?: string;
+  /** Cash fees: home currency for patients in the doctor's country, USD abroad. */
+  textPriceLocal?: number | null;
+  textPriceUsd?: number | null;
+  videoPriceLocal?: number | null;
+  videoPriceUsd?: number | null;
+  paymentLink?: string;
+  /** @deprecated Legacy points price — defaults on the server when omitted. */
   consultationPrice?: number;
   /** ISO country code — patients: residence; doctors: EG or JO. */
   country?: string;

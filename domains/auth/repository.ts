@@ -264,6 +264,11 @@ export const authRepository = {
           country: (input.country ?? "EG").trim().toUpperCase(),
           speciality_id: input.specialityId,
           consultation_price: input.consultationPrice ?? 1,
+          text_price_local: input.textPriceLocal ?? undefined,
+          text_price_usd: input.textPriceUsd ?? undefined,
+          video_price_local: input.videoPriceLocal ?? undefined,
+          video_price_usd: input.videoPriceUsd ?? undefined,
+          payment_link: input.paymentLink?.trim() || undefined,
         })
       : await post<RawAuthResponse>("/auth/register/patient", {
           email,

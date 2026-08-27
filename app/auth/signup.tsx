@@ -27,7 +27,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 
 import { AuthFormBody } from "@/components/auth/AuthFormBody";
-import { EgpPriceInput } from "@/components/EgpPriceInput";
+import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
@@ -35,13 +35,15 @@ import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
 import { DoctorSignupMarketField } from "@/components/auth/DoctorSignupMarketField";
+import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
   PATIENT_COUNTRY_CODES,
+  type MarketCountryCode,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
+import { defaultDoctorFeeFormValues, feeValue } from "@/domains/doctor/fees";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
-import { specialityLabel } from "@/domains/home/specialityLabel";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
@@ -69,7 +71,7 @@ function initialSignupCountry(): PatientCountryCode {
 export default function SignupScreen() {
   const colors = useColors();
   const accentGradient = useAccentGradient();
-  const { t, isRTL, locale } = useI18n();
+  const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
@@ -96,7 +98,14 @@ export default function SignupScreen() {
   const [workPermit, setWorkPermit] = useState<LocalFile | null>(null);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState<string>("");
-  const [consultationPrice, setConsultationPrice] = useState(1);
+  const initialDoctorMarket = getDoctorSignupMarket() ?? "EG";
+  const initialDoctorFees = defaultDoctorFeeFormValues(initialDoctorMarket);
+  const [doctorMarket, setDoctorMarket] = useState<MarketCountryCode>(initialDoctorMarket);
+  const [textPriceLocal, setTextPriceLocal] = useState(initialDoctorFees.textLocal);
+  const [textPriceUsd, setTextPriceUsd] = useState(initialDoctorFees.textUsd);
+  const [videoPriceLocal, setVideoPriceLocal] = useState(initialDoctorFees.videoLocal);
+  const [videoPriceUsd, setVideoPriceUsd] = useState(initialDoctorFees.videoUsd);
+  const [paymentLink, setPaymentLink] = useState("");
   const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [formOpen, setFormOpen] = useState(true);
@@ -127,13 +136,19 @@ export default function SignupScreen() {
       ? t.auth.phonePlaceholderJordan
       : t.auth.phonePlaceholder;
 
+  const applyDoctorMarket = (market: MarketCountryCode) => {
+    setDoctorMarket(market);
+    const fees = defaultDoctorFeeFormValues(market);
+    setTextPriceLocal(fees.textLocal);
+    setTextPriceUsd(fees.textUsd);
+    setVideoPriceLocal(fees.videoLocal);
+    setVideoPriceUsd(fees.videoUsd);
+  };
+
   useEffect(() => {
     if (!isDoctor) return;
     void fetchSpecialities()
-      .then((rows) => {
-        setSpecialities(rows);
-        if (rows[0] && !specialityId) setSpecialityId(rows[0].id);
-      })
+      .then(setSpecialities)
       .catch(() => setSpecialities([]));
   }, [isDoctor]);
   const dir = isRTL ? "row-reverse" : "row";
@@ -275,7 +290,11 @@ export default function SignupScreen() {
         graduationCert: isDoctor ? graduationCert ?? undefined : undefined,
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
-        consultationPrice: isDoctor ? consultationPrice : undefined,
+        textPriceLocal: isDoctor ? feeValue(textPriceLocal) : undefined,
+        textPriceUsd: isDoctor ? feeValue(textPriceUsd) : undefined,
+        videoPriceLocal: isDoctor ? feeValue(videoPriceLocal) : undefined,
+        videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
+        paymentLink: isDoctor ? paymentLink.trim() : undefined,
         country: doctorCountry,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
@@ -520,7 +539,8 @@ export default function SignupScreen() {
               isRTL={isRTL}
               disabled={loading}
               error={fieldErrors.country}
-              onMarketChange={() => {
+              onMarketChange={(market) => {
+                if (market) applyDoctorMarket(market);
                 if (fieldErrors.country) {
                   setFieldErrors((prev) => ({ ...prev, country: undefined }));
                 }
@@ -530,46 +550,35 @@ export default function SignupScreen() {
 
           {isDoctor && (
             <View style={{ gap: 12, marginTop: 4 }}>
+              <SpecialitySelectField
+                label={t.auth.speciality}
+                value={specialityId}
+                onChange={(id) => {
+                  setSpecialityId(id);
+                  if (fieldErrors.specialityId) {
+                    setFieldErrors((prev) => ({ ...prev, specialityId: undefined }));
+                  }
+                }}
+                specialities={specialities}
+                error={fieldErrors.specialityId}
+                disabled={loading}
+              />
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                {t.auth.speciality}
+                {isRTL ? "أسعار الاستشارة" : "Consultation prices"}
               </Text>
-              <View style={[styles.specialityRow, { flexDirection: dir }]}>
-                {specialities.map((spec) => {
-                  const active = specialityId === spec.id;
-                  const label = specialityLabel(spec, locale);
-                  return (
-                    <Pressable
-                      key={spec.id}
-                      onPress={() => {
-                        setSpecialityId(spec.id);
-                        if (fieldErrors.specialityId) {
-                          setFieldErrors((prev) => ({ ...prev, specialityId: undefined }));
-                        }
-                      }}
-                      style={[
-                        styles.specialityChip,
-                        {
-                          backgroundColor: active ? `${colors.primary}18` : colors.muted,
-                          borderColor: active ? colors.primary : colors.border,
-                        },
-                      ]}
-                    >
-                      <Text style={{ color: active ? colors.primary : colors.foreground, fontWeight: "700", fontSize: 13 }}>
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {fieldErrors.specialityId ? (
-                <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
-                  {fieldErrors.specialityId}
-                </Text>
-              ) : null}
-              <EgpPriceInput
-                value={consultationPrice}
-                onChange={setConsultationPrice}
-                label={t.auth.consultationPrice}
+              <DoctorFeesFields
+                country={doctorMarket}
+                textLocal={textPriceLocal}
+                onTextLocal={setTextPriceLocal}
+                textUsd={textPriceUsd}
+                onTextUsd={setTextPriceUsd}
+                videoLocal={videoPriceLocal}
+                onVideoLocal={setVideoPriceLocal}
+                videoUsd={videoPriceUsd}
+                onVideoUsd={setVideoPriceUsd}
+                paymentLink={paymentLink}
+                onPaymentLink={setPaymentLink}
+                disabled={loading}
               />
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
                 {t.auth.documentsOptional}
@@ -837,13 +846,6 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   sectionLabel: { fontSize: 14, fontWeight: "800" },
-  specialityRow: { flexWrap: "wrap", gap: 8 },
-  specialityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-  },
   docRow: {
     alignItems: "center",
     gap: 10,

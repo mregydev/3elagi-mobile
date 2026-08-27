@@ -16,17 +16,8 @@ import {
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { uploadFile } from "@/domains/medical/api";
+import { feeText, feeValue } from "@/domains/doctor/fees";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
-
-/** Blank stays blank — an unset fee is not a free one. */
-function feeText(value: number | null | undefined): string {
-  return value === null || value === undefined ? "" : String(value);
-}
-
-function feeValue(text: string): number | null {
-  const n = Number(text.trim());
-  return text.trim() && Number.isFinite(n) && n >= 0 ? n : null;
-}
 
 interface Options {
   accessToken: string;
