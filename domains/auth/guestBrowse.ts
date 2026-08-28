@@ -19,6 +19,7 @@ export function isGuestAllowedRoot(
     root === "welcome" ||
     root === "auth" ||
     root === "contact" ||
+    root === "demo" ||
     // Doctor directory: browsing is public, starting a consultation still prompts.
     root === "doctors"
   ) {

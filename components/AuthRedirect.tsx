@@ -48,6 +48,7 @@ export function AuthRedirect() {
       authScreen === "verify-email";
     const isAdminRoute = root === "admin";
     const isPendingRoute = root === "doctor-pending";
+    const isDemoRoute = root === "demo";
 
     if (!signedIn) {
       if (!isGuestAllowedRoot(root, second)) {
@@ -75,6 +76,10 @@ export function AuthRedirect() {
       if (!isAdminRoute && !isChatRoute) {
         router.replace("/admin");
       }
+      return;
+    }
+
+    if (isDemoRoute) {
       return;
     }
 

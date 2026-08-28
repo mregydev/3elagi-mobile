@@ -9,6 +9,11 @@ import { applyLocaleAfterAuth } from "@/domains/i18n/store";
 import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
 import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
 import { readAndStripSessionTransferFromUrl } from "@/domains/auth/sessionTransfer";
+import {
+  authPersistKeyForDemoSlot,
+  persistDemoSlot,
+  resolveInitialDemoSlot,
+} from "@/domains/auth/demoSession";
 
 interface AuthState {
   profile: PatientProfile | null;
@@ -196,7 +201,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "3elagi-auth",
+      name: authPersistKeyForDemoSlot(resolveInitialDemoSlot()),
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
         profile: s.profile,
@@ -209,8 +214,10 @@ export const useAuthStore = create<AuthState>()(
         emailVerified: s.emailVerified,
       }),
       onRehydrateStorage: () => (state) => {
-        // Market subdomain hops pass `_st`; apply before AuthRedirect sees hydrated.
+        // Demo iframe panels use namespaced storage keys.
         if (state && Platform.OS === "web") {
+          const slot = resolveInitialDemoSlot();
+          if (slot) persistDemoSlot(slot);
           const transferred = readAndStripSessionTransferFromUrl();
           if (transferred) {
             state.profile = transferred.profile;

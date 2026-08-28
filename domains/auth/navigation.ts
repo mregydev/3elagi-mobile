@@ -90,7 +90,9 @@ export function isPublicWebPath(pathname: string): boolean {
     pathname === "/doctors" ||
     pathname.startsWith("/doctors/") ||
     pathname === "/contact" ||
-    pathname.startsWith("/contact/")
+    pathname.startsWith("/contact/") ||
+    pathname === "/demo" ||
+    pathname.startsWith("/demo/")
   ) {
     return true;
   }
