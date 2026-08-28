@@ -10,6 +10,7 @@ import {
   Paperclip,
   Square,
   Stethoscope,
+  Trash2,
   Video as VideoIcon,
   X,
 } from "lucide-react-native";
@@ -60,6 +61,7 @@ import type { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { useI18n } from "@/hooks/useI18n";
+import { useRemoveConsultation } from "@/hooks/useRemoveConsultation";
 
 type SelectedRecord = { record: MedicalRecord; note?: string };
 type MediaAttachment = ConsultationMediaItem;
@@ -93,6 +95,8 @@ interface Props {
    */
   menuOnly?: boolean;
   onMenuActionsChange?: (actions: ChatAction[]) => void;
+  /** Explicit consultation to remove (e.g. from consultations list deep link). */
+  removeConsultationId?: string | null;
 }
 
 const CANCEL_REASONS: {
@@ -122,8 +126,10 @@ export function ConsultationBar({
   compact = false,
   menuOnly = false,
   onMenuActionsChange,
+  removeConsultationId,
 }: Props) {
   const { t } = useI18n();
+  const { remove: removeConsultationById } = useRemoveConsultation();
   const sendMessage = useChatStore((s) => s.sendMessage);
   const [active, setActive] = useState<Consultation | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -484,6 +490,25 @@ export function ConsultationBar({
   // Waiting on the doctor: the patient cannot start another, and the doctor
   // gets accept / decline instead of "end".
   const isPending = active?.status === "pending";
+  const removableConsultationId =
+    removeConsultationId ?? active?.id ?? latestAction?.consultation_id ?? null;
+
+  const handleRemoveConsultation = useCallback(() => {
+    if (!removableConsultationId) return;
+    removeConsultationById(removableConsultationId, peerId, () => {
+      setActive(null);
+      onOpenChange?.(false);
+      onActiveChange?.(null);
+      onThreadUpdated?.();
+    });
+  }, [
+    removableConsultationId,
+    removeConsultationById,
+    peerId,
+    onOpenChange,
+    onActiveChange,
+    onThreadUpdated,
+  ]);
   const complaintLabel =
     complaintStatus === "pending"
       ? label("Complaint under review", "الشكوى قيد المراجعة")
@@ -550,6 +575,15 @@ export function ConsultationBar({
         onPress: () => setModal("end"),
       });
     }
+    if (removableConsultationId) {
+      next.push({
+        key: "consult-remove",
+        label: t.consultations.removeConsultation,
+        Icon: Trash2,
+        color: "#dc2626",
+        onPress: handleRemoveConsultation,
+      });
+    }
     onMenuActionsChange(next);
   }, [
     onMenuActionsChange,
@@ -559,6 +593,9 @@ export function ConsultationBar({
     isPending,
     endedConsultationId,
     complaintLabel,
+    removableConsultationId,
+    handleRemoveConsultation,
+    t.consultations.removeConsultation,
     colors.primary,
     isRTL,
   ]);

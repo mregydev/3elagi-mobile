@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, MessageCircle } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, MessageCircle, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
@@ -9,12 +9,14 @@ import { surfaceCard, UI } from "@/constants/uiTokens";
 import type { PatientConsultation } from "@/domains/consultations/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useRemoveConsultation } from "@/hooks/useRemoveConsultation";
 import { formatEgp } from "@/utils/credits";
 import { flexRow } from "@/utils/rtl";
 
 type Props = {
   item: PatientConsultation;
   locale: string;
+  onRemoved?: () => void;
 };
 
 function statusMeta(
@@ -37,9 +39,10 @@ function statusMeta(
   }
 }
 
-export function PatientConsultationCard({ item, locale }: Props) {
+export function PatientConsultationCard({ item, locale, onRemoved }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { remove } = useRemoveConsultation();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const [hovered, setHovered] = useState(false);
@@ -122,6 +125,23 @@ export function PatientConsultationCard({ item, locale }: Props) {
             <MessageCircle size={14} color={colors.primary} />
           </View>
         ) : null}
+        <Pressable
+          accessibilityLabel={t.consultations.removeConsultation}
+          onPress={(event) => {
+            event.stopPropagation?.();
+            remove(item.id, item.doctor_id, onRemoved);
+          }}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.removeBtn,
+            {
+              borderColor: colors.border,
+              backgroundColor: pressed ? `${colors.destructive}14` : colors.card,
+            },
+          ]}
+        >
+          <Trash2 size={14} color={colors.destructive} />
+        </Pressable>
         <Chevron size={16} color={colors.mutedForeground} />
       </View>
     </Pressable>
@@ -176,6 +196,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: UI.radius.icon,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: UI.radius.icon,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },

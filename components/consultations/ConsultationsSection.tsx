@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,6 +22,7 @@ import { countryFlagEmoji } from "@/constants/patientCountries";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useRemoveConsultation } from "@/hooks/useRemoveConsultation";
 import { webConfirm } from "@/utils/webConfirm";
 import { showErrorToast } from "@/utils/toast";
 import { flexRow } from "@/utils/rtl";
@@ -30,6 +31,7 @@ export function ConsultationsSection() {
   const colors = useColors();
   const { t, isRTL, locale } = useI18n();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const { remove } = useRemoveConsultation();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
@@ -170,6 +172,23 @@ export function ConsultationsSection() {
                 </View>
               ) : null}
             </View>
+            <Pressable
+              accessibilityLabel={t.consultations.removeConsultation}
+              onPress={(event) => {
+                event.stopPropagation?.();
+                remove(item.id, item.patient_id, () => void load());
+              }}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.removeBtn,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: pressed ? "#dc262614" : colors.card,
+                },
+              ]}
+            >
+              <Trash2 size={16} color="#dc2626" />
+            </Pressable>
             <Chevron size={18} color={colors.mutedForeground} />
           </Pressable>
         );
@@ -214,6 +233,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
+  },
+  removeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   empty: { textAlign: "center", marginTop: 32, fontSize: 14 },
 });

@@ -21,6 +21,13 @@ let onMessageNew: IncomingMessageHandler | null = null;
 let onMessageDeletedHandler:
   | ((payload: { message_id: string; peer_id: string }) => void)
   | null = null;
+let onConsultationRemovedHandler:
+  | ((payload: {
+      consultation_id: string;
+      peer_id: string;
+      message_ids?: string[];
+    }) => void)
+  | null = null;
 let onMessageUpdatedHandler:
   | ((payload: { message: MessageRow; peer_id: string }) => void)
   | null = null;
@@ -116,6 +123,18 @@ export function onChatMessageDeleted(
   handler: ((payload: { message_id: string; peer_id: string }) => void) | null,
 ) {
   onMessageDeletedHandler = handler;
+}
+
+export function onConsultationRemoved(
+  handler:
+    | ((payload: {
+        consultation_id: string;
+        peer_id: string;
+        message_ids?: string[];
+      }) => void)
+    | null,
+) {
+  onConsultationRemovedHandler = handler;
 }
 
 export function onChatMessageUpdated(
@@ -346,6 +365,22 @@ function bindListeners(client: Socket) {
   client.on("message:deleted", (payload: { message_id: string; peer_id: string }) => {
     if (payload?.message_id && payload?.peer_id) onMessageDeletedHandler?.(payload);
   });
+
+  client.on(
+    "consultation:removed",
+    (payload: {
+      consultation_id?: string;
+      peer_id?: string;
+      message_ids?: string[];
+    }) => {
+      if (!payload?.consultation_id || !payload?.peer_id) return;
+      onConsultationRemovedHandler?.({
+        consultation_id: payload.consultation_id,
+        peer_id: payload.peer_id,
+        message_ids: payload.message_ids,
+      });
+    },
+  );
 
   client.on(
     "messages:read",

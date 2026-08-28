@@ -79,6 +79,16 @@ interface ChatState {
     token: string | null,
     selfId: string | null,
   ) => void;
+  handleConsultationRemoved: (
+    payload: {
+      consultation_id: string;
+      peer_id: string;
+      message_ids?: string[];
+    },
+    token: string | null,
+    selfId: string | null,
+    selfRole: string | null,
+  ) => void;
   removeMessage: (peerId: string, messageId: string) => void;
   deleteMessage: (
     peerId: string,
@@ -603,6 +613,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
     get().removeMessage(peerId, payload.message_id);
     if (token) {
       void get().loadConversations(token, selfId, null);
+    }
+  },
+
+  handleConsultationRemoved: (payload, token, selfId, selfRole) => {
+    if (!selfId) return;
+    const peerId = payload.peer_id;
+    const consultationId = payload.consultation_id;
+    const idSet = new Set(payload.message_ids ?? []);
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [peerId]: (s.messages[peerId] || []).filter((m) => {
+          if (idSet.size > 0 && idSet.has(m.id)) return false;
+          if (m.consultationAction?.consultation_id === consultationId) {
+            return false;
+          }
+          return true;
+        }),
+      },
+    }));
+    if (token) {
+      void get().loadConversations(token, selfId, selfRole);
     }
   },
 

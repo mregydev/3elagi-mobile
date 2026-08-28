@@ -210,7 +210,13 @@ export function PatientConsultationsSection() {
           <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>{emptyMessage}</Text>
         </View>
       }
-      renderItem={({ item }) => <PatientConsultationCard item={item} locale={locale} />}
+      renderItem={({ item }) => (
+        <PatientConsultationCard
+          item={item}
+          locale={locale}
+          onRemoved={() => void load()}
+        />
+      )}
       ItemSeparatorComponent={() => <View style={{ height: UI.space.sm }} />}
     />
   );

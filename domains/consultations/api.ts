@@ -221,3 +221,13 @@ export async function cancelConsultation(
     body: JSON.stringify(payload),
   });
 }
+
+export async function removeConsultation(
+  consultationId: string,
+  token: string,
+): Promise<{ ok: boolean; consultation_id: string; deleted_message_ids: string[] }> {
+  return authJson(`/consultations/${consultationId}/remove`, token, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}

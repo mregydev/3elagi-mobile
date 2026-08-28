@@ -65,6 +65,7 @@ Notifications.setNotificationHandler({
     }
     if (
       data?.type === "system_notification" ||
+      data?.type === "consultation_removed" ||
       data?.type === "appointment_reminder" ||
       data?.type === "appointment_status"
     ) {

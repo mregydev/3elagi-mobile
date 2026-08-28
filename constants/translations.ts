@@ -764,6 +764,11 @@ const en = {
     couldNotStart: "Could not start",
     archivedMessages: "Archived messages",
     archivedCount: (count: number) => `(${count})`,
+    removeConsultation: "Remove consultation",
+    removeConsultationConfirm:
+      "This permanently deletes the consultation and all related chat messages. The other person will be notified.",
+    removeConsultationSuccess: "Consultation removed",
+    removeConsultationFailed: "Could not remove consultation",
   },
   doctor: {
     egpPerConsultation: "points/consultation",
@@ -1646,6 +1651,11 @@ const ar: typeof en = {
     couldNotStart: "تعذر البدء",
     archivedMessages: "الرسائل المؤرشفة",
     archivedCount: (count: number) => `(${count})`,
+    removeConsultation: "إزالة الاستشارة",
+    removeConsultationConfirm:
+      "سيؤدي هذا إلى حذف الاستشارة وجميع رسائل المحادثة المرتبطة بها نهائيًا. سيتم إخطار الطرف الآخر.",
+    removeConsultationSuccess: "تمت إزالة الاستشارة",
+    removeConsultationFailed: "تعذر إزالة الاستشارة",
   },
   doctor: {
     egpPerConsultation: "نقطة/استشارة",
@@ -2535,6 +2545,11 @@ const de: typeof en = {
     couldNotStart: "Konnte nicht gestartet werden",
     archivedMessages: "Archivierte Nachrichten",
     archivedCount: (count: number) => `(${count})`,
+    removeConsultation: "Beratung entfernen",
+    removeConsultationConfirm:
+      "Dies löscht die Beratung und alle zugehörigen Chat-Nachrichten dauerhaft. Die andere Person wird benachrichtigt.",
+    removeConsultationSuccess: "Beratung entfernt",
+    removeConsultationFailed: "Beratung konnte nicht entfernt werden",
   },
   doctor: {
     egpPerConsultation: "Punkte/Beratung",
@@ -3422,6 +3437,11 @@ const es: typeof en = {
     couldNotStart: "No se pudo iniciar",
     archivedMessages: "Mensajes archivados",
     archivedCount: (count: number) => `(${count})`,
+    removeConsultation: "Eliminar consulta",
+    removeConsultationConfirm:
+      "Esto elimina permanentemente la consulta y todos los mensajes relacionados. Se notificará a la otra persona.",
+    removeConsultationSuccess: "Consulta eliminada",
+    removeConsultationFailed: "No se pudo eliminar la consulta",
   },
   doctor: {
     egpPerConsultation: "puntos/consulta",

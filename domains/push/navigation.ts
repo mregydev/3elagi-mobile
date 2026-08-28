@@ -13,6 +13,9 @@ export function getPushNotificationPath(data: PushNotificationData): string {
   if (data.type === "appointment_status") {
     return "/(tabs)/appointments";
   }
+  if (data.type === "consultation_removed") {
+    return `/chat/${data.chatId}`;
+  }
   if (data.type === "system_notification") {
     return "/(tabs)";
   }
@@ -45,6 +48,11 @@ export function navigateFromPushNotification(
 
   if (data.type === "appointment_status") {
     router.push("/(tabs)/appointments");
+    return;
+  }
+
+  if (data.type === "consultation_removed") {
+    router.push(`/chat/${data.chatId}`);
     return;
   }
 

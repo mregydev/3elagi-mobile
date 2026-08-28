@@ -1872,6 +1872,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               onOpenChange={setConsultationOpen}
               onActiveChange={handleConsultationActiveChange}
               onThreadUpdated={jumpToLatest}
+              removeConsultationId={consultationId ?? undefined}
             />
           ) : null
         }
