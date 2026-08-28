@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { RefreshCw, RotateCcw } from "lucide-react-native";
+import { Monitor, RefreshCw, RotateCcw, Smartphone } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type LayoutChangeEvent,
@@ -17,7 +17,10 @@ import {
   DEMO_SLOT_LABELS,
   type DemoSlot,
 } from "@/constants/demo";
-import { demoFrameName } from "@/domains/auth/demoSession";
+import {
+  type DemoDevice,
+  demoFrameName,
+} from "@/domains/auth/demoSession";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -25,7 +28,12 @@ import { alignText, flexRow } from "@/utils/rtl";
 const H_PAD = 16;
 const PANEL_GAP = 12;
 const HEADER_BLOCK = 96;
-const DEFAULT_MOBILE_SHARE = 0.2;
+/** Relative panel widths; a laptop panel is worth four phones. */
+const DEVICE_WIDTH_WEIGHT: Record<DemoDevice, number> = { phone: 1, laptop: 4 };
+const DEFAULT_DEVICES: Record<DemoSlot, DemoDevice> = {
+  mobile: "phone",
+  laptop: "laptop",
+};
 /** Logical device viewports; each iframe renders at this width and is scaled to fit. */
 const PHONE_VIEWPORT_W = 390;
 const LAPTOP_VIEWPORT_W = 1280;
@@ -39,6 +47,8 @@ const IFRAME_FILL: React.CSSProperties = {
 
 type PanelFrameProps = {
   slot: DemoSlot;
+  device: DemoDevice;
+  onDeviceChange: (device: DemoDevice) => void;
   src: string;
   label: string;
   width: number;
@@ -53,12 +63,14 @@ type PanelFrameProps = {
 
 function PanelContent({
   slot,
+  device,
   src,
   label,
   onIframeRef,
   style,
 }: {
   slot: DemoSlot;
+  device: DemoDevice;
   src: string;
   label: string;
   onIframeRef: (node: HTMLIFrameElement | null) => void;
@@ -69,7 +81,7 @@ function PanelContent({
     <iframe
       ref={(node) => onIframeRef(node as HTMLIFrameElement | null)}
       title={label}
-      name={demoFrameName(slot)}
+      name={demoFrameName(slot, device)}
       src={src}
       style={style ?? IFRAME_FILL}
     />
@@ -102,20 +114,70 @@ function useScaledViewport(viewportWidth: number) {
   return { ready: screen.w > 0, onLayout, iframeStyle };
 }
 
+function DeviceSwitch({
+  device,
+  colors,
+  onDeviceChange,
+}: {
+  device: DemoDevice;
+  colors: ReturnType<typeof useColors>;
+  onDeviceChange: (device: DemoDevice) => void;
+}) {
+  const options: { value: DemoDevice; Icon: typeof Smartphone; label: string }[] = [
+    { value: "phone", Icon: Smartphone, label: "Show as phone" },
+    { value: "laptop", Icon: Monitor, label: "Show as laptop" },
+  ];
+
+  return (
+    <View style={[styles.deviceSwitch, { borderColor: colors.border }]}>
+      {options.map(({ value, Icon, label }) => {
+        const active = device === value;
+        return (
+          <Pressable
+            key={value}
+            accessibilityLabel={label}
+            accessibilityRole="button"
+            onPress={() => onDeviceChange(value)}
+            style={({ pressed, hovered }) => [
+              styles.deviceSwitchBtn,
+              {
+                backgroundColor: active
+                  ? colors.primary
+                  : pressed || hovered
+                    ? colors.muted
+                    : colors.card,
+              },
+            ]}
+          >
+            <Icon
+              size={13}
+              color={active ? colors.primaryForeground : colors.mutedForeground}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function PanelToolbar({
   label,
+  device,
   isRTL,
   focused,
   colors,
   onFocus,
   onReload,
+  onDeviceChange,
 }: {
   label: string;
+  device: DemoDevice;
   isRTL: boolean;
   focused: boolean;
   colors: ReturnType<typeof useColors>;
   onFocus: () => void;
   onReload: () => void;
+  onDeviceChange: (device: DemoDevice) => void;
 }) {
   const dir = flexRow(isRTL);
 
@@ -143,6 +205,11 @@ function PanelToolbar({
             </Text>
           </Pressable>
         </View>
+        <DeviceSwitch
+          device={device}
+          colors={colors}
+          onDeviceChange={onDeviceChange}
+        />
         <Pressable
           accessibilityLabel="Reload panel"
           onPress={onReload}
@@ -163,6 +230,8 @@ function PanelToolbar({
 
 function PhoneDeviceFrame({
   slot,
+  device,
+  onDeviceChange,
   src,
   label,
   width,
@@ -189,11 +258,13 @@ function PhoneDeviceFrame({
     >
       <PanelToolbar
         label={label}
+        device={device}
         isRTL={isRTL}
         focused={focused}
         colors={colors}
         onFocus={onFocus}
         onReload={onReload}
+        onDeviceChange={onDeviceChange}
       />
       <Pressable onPress={onFocus} style={{ flex: 1, minHeight: 0 }}>
         <View
@@ -219,6 +290,7 @@ function PhoneDeviceFrame({
               {viewport.ready ? (
                 <PanelContent
                   slot={slot}
+                  device={device}
                   src={src}
                   label={label}
                   onIframeRef={onIframeRef}
@@ -238,6 +310,8 @@ function PhoneDeviceFrame({
 
 function LaptopDeviceFrame({
   slot,
+  device,
+  onDeviceChange,
   src,
   label,
   width,
@@ -265,11 +339,13 @@ function LaptopDeviceFrame({
     >
       <PanelToolbar
         label={label}
+        device={device}
         isRTL={isRTL}
         focused={focused}
         colors={colors}
         onFocus={onFocus}
         onReload={onReload}
+        onDeviceChange={onDeviceChange}
       />
       <Pressable onPress={onFocus} style={{ flex: 1, minHeight: 0 }}>
         <View style={styles.laptopStack}>
@@ -295,6 +371,7 @@ function LaptopDeviceFrame({
               {viewport.ready ? (
                 <PanelContent
                   slot={slot}
+                  device={device}
                   src={src}
                   label={label}
                   onIframeRef={onIframeRef}
@@ -322,7 +399,7 @@ function LaptopDeviceFrame({
 }
 
 function PanelFrame(props: PanelFrameProps) {
-  if (props.slot === "mobile") {
+  if (props.device === "phone") {
     return <PhoneDeviceFrame {...props} />;
   }
   return <LaptopDeviceFrame {...props} />;

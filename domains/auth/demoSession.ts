@@ -16,27 +16,48 @@ export function readDemoSlotFromPathname(pathname: string): DemoSlot | null {
   return slot && isDemoSlot(slot) ? slot : null;
 }
 
+/** Which device chrome a panel shows; independent of which session (slot) it runs. */
+export type DemoDevice = "phone" | "laptop";
+
+export function isDemoDevice(value: string): value is DemoDevice {
+  return value === "phone" || value === "laptop";
+}
+
 /**
- * Per-frame slot marker. `window.name` belongs to the individual iframe and survives
- * same-origin navigation; sessionStorage is shared by every frame in the tab, so the
- * two demo panels used to clobber each other's slot (and each other's auth key).
+ * Per-frame marker `<key>:<slot>[:<device>]`. `window.name` belongs to the individual
+ * iframe and survives same-origin navigation; sessionStorage is shared by every frame in
+ * the tab, so the two demo panels would clobber each other's slot (and each other's auth key).
  */
+function readFrameMarker(): [DemoSlot | null, DemoDevice | null] {
+  if (Platform.OS !== "web" || typeof window === "undefined") return [null, null];
+  if (!window.name.startsWith(`${DEMO_SLOT_STORAGE_KEY}:`)) return [null, null];
+  const [slot, device] = window.name
+    .slice(DEMO_SLOT_STORAGE_KEY.length + 1)
+    .split(":");
+  return [
+    slot && isDemoSlot(slot) ? slot : null,
+    device && isDemoDevice(device) ? device : null,
+  ];
+}
+
 export function readPersistedDemoSlot(): DemoSlot | null {
-  if (Platform.OS !== "web" || typeof window === "undefined") return null;
-  const stored = window.name.startsWith(`${DEMO_SLOT_STORAGE_KEY}:`)
-    ? window.name.slice(DEMO_SLOT_STORAGE_KEY.length + 1)
-    : "";
-  return isDemoSlot(stored) ? stored : null;
+  return readFrameMarker()[0];
+}
+
+export function readPersistedDemoDevice(): DemoDevice | null {
+  return readFrameMarker()[1];
 }
 
 export function persistDemoSlot(slot: DemoSlot): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
-  window.name = `${DEMO_SLOT_STORAGE_KEY}:${slot}`;
+  const device = readPersistedDemoDevice();
+  window.name = demoFrameName(slot, device ?? undefined);
 }
 
 /** Iframe `name` attribute the demo shell sets, so the slot is known before any JS runs. */
-export function demoFrameName(slot: DemoSlot): string {
-  return `${DEMO_SLOT_STORAGE_KEY}:${slot}`;
+export function demoFrameName(slot: DemoSlot, device?: DemoDevice): string {
+  const marker = `${DEMO_SLOT_STORAGE_KEY}:${slot}`;
+  return device ? `${marker}:${device}` : marker;
 }
 
 /** Resolved once per page load before auth store rehydrates. */
@@ -61,6 +82,8 @@ export function isDemoEmbedPath(pathname: string): boolean {
 /** Force mobile or desktop web chrome inside demo iframe panels. */
 export function readDemoWebLayoutOverride(): "mobile" | "desktop" | null {
   if (Platform.OS !== "web") return null;
+  const device = readPersistedDemoDevice();
+  if (device) return device === "phone" ? "mobile" : "desktop";
   const slot = resolveInitialDemoSlot();
   if (slot === "mobile") return "mobile";
   if (slot === "laptop") return "desktop";
