@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Monitor, RefreshCw, RotateCcw, Smartphone } from "lucide-react-native";
+import { RefreshCw, RotateCcw } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type LayoutChangeEvent,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
+import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import {
   DEMO_ENABLED,
@@ -30,8 +31,6 @@ const PANEL_GAP = 12;
 const HEADER_BLOCK = 96;
 /** Default split: mobile panel gets 20% width, laptop gets 80%. */
 const DEFAULT_MOBILE_SHARE = 0.2;
-/** Relative panel widths; a laptop panel is worth four phones. */
-const DEVICE_WIDTH_WEIGHT: Record<DemoDevice, number> = { phone: 1, laptop: 4 };
 const DEFAULT_DEVICES: Record<DemoSlot, DemoDevice> = {
   mobile: "phone",
   laptop: "laptop",
@@ -49,8 +48,6 @@ const IFRAME_FILL: React.CSSProperties = {
 
 type PanelFrameProps = {
   slot: DemoSlot;
-  device: DemoDevice;
-  onDeviceChange: (device: DemoDevice) => void;
   src: string;
   label: string;
   width: number;
@@ -116,70 +113,20 @@ function useScaledViewport(viewportWidth: number) {
   return { ready: screen.w > 0, onLayout, iframeStyle };
 }
 
-function DeviceSwitch({
-  device,
-  colors,
-  onDeviceChange,
-}: {
-  device: DemoDevice;
-  colors: ReturnType<typeof useColors>;
-  onDeviceChange: (device: DemoDevice) => void;
-}) {
-  const options: { value: DemoDevice; Icon: typeof Smartphone; label: string }[] = [
-    { value: "phone", Icon: Smartphone, label: "Show as phone" },
-    { value: "laptop", Icon: Monitor, label: "Show as laptop" },
-  ];
-
-  return (
-    <View style={[styles.deviceSwitch, { borderColor: colors.border }]}>
-      {options.map(({ value, Icon, label }) => {
-        const active = device === value;
-        return (
-          <Pressable
-            key={value}
-            accessibilityLabel={label}
-            accessibilityRole="button"
-            onPress={() => onDeviceChange(value)}
-            style={({ pressed, hovered }) => [
-              styles.deviceSwitchBtn,
-              {
-                backgroundColor: active
-                  ? colors.primary
-                  : pressed || hovered
-                    ? colors.muted
-                    : colors.card,
-              },
-            ]}
-          >
-            <Icon
-              size={13}
-              color={active ? colors.primaryForeground : colors.mutedForeground}
-            />
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 function PanelToolbar({
   label,
-  device,
   isRTL,
   focused,
   colors,
   onFocus,
   onReload,
-  onDeviceChange,
 }: {
   label: string;
-  device: DemoDevice;
   isRTL: boolean;
   focused: boolean;
   colors: ReturnType<typeof useColors>;
   onFocus: () => void;
   onReload: () => void;
-  onDeviceChange: (device: DemoDevice) => void;
 }) {
   const dir = flexRow(isRTL);
 
@@ -207,11 +154,6 @@ function PanelToolbar({
             </Text>
           </Pressable>
         </View>
-        <DeviceSwitch
-          device={device}
-          colors={colors}
-          onDeviceChange={onDeviceChange}
-        />
         <Pressable
           accessibilityLabel="Reload panel"
           onPress={onReload}
@@ -233,7 +175,6 @@ function PanelToolbar({
 function PhoneDeviceFrame({
   slot,
   device,
-  onDeviceChange,
   src,
   label,
   width,
@@ -244,7 +185,7 @@ function PhoneDeviceFrame({
   onFocus,
   onReload,
   onIframeRef,
-}: PanelFrameProps) {
+}: PanelFrameProps & { device: DemoDevice }) {
   const bezel = "#1a1a1e";
   const screenRadius = Math.min(22, width * 0.06);
   // ponytail: CSS scale of a real phone viewport, not per-screen responsive fixes.
@@ -260,13 +201,11 @@ function PhoneDeviceFrame({
     >
       <PanelToolbar
         label={label}
-        device={device}
         isRTL={isRTL}
         focused={focused}
         colors={colors}
         onFocus={onFocus}
         onReload={onReload}
-        onDeviceChange={onDeviceChange}
       />
       <Pressable onPress={onFocus} style={{ flex: 1, minHeight: 0 }}>
         <View
@@ -313,7 +252,6 @@ function PhoneDeviceFrame({
 function LaptopDeviceFrame({
   slot,
   device,
-  onDeviceChange,
   src,
   label,
   width,
@@ -324,7 +262,7 @@ function LaptopDeviceFrame({
   onFocus,
   onReload,
   onIframeRef,
-}: PanelFrameProps) {
+}: PanelFrameProps & { device: DemoDevice }) {
   const lidHeight = height - 28;
   const bezel = "#2b2b30";
   const baseWidth = width + 24;
@@ -341,13 +279,11 @@ function LaptopDeviceFrame({
     >
       <PanelToolbar
         label={label}
-        device={device}
         isRTL={isRTL}
         focused={focused}
         colors={colors}
         onFocus={onFocus}
         onReload={onReload}
-        onDeviceChange={onDeviceChange}
       />
       <Pressable onPress={onFocus} style={{ flex: 1, minHeight: 0 }}>
         <View style={styles.laptopStack}>
@@ -401,10 +337,11 @@ function LaptopDeviceFrame({
 }
 
 function PanelFrame(props: PanelFrameProps) {
-  if (props.device === "phone") {
-    return <PhoneDeviceFrame {...props} />;
+  const device = DEFAULT_DEVICES[props.slot];
+  if (device === "phone") {
+    return <PhoneDeviceFrame {...props} device={device} />;
   }
-  return <LaptopDeviceFrame {...props} />;
+  return <LaptopDeviceFrame {...props} device={device} />;
 }
 
 function embedUrl(origin: string, slot: DemoSlot, reset = false) {
@@ -528,6 +465,7 @@ export default function DemoScreen() {
         </View>
 
         <View style={[styles.headerActions, { flexDirection: dir }]}>
+          <LanguageDropdown compact />
           <Pressable
             onPress={() => bootPanels(true)}
             style={({ pressed, hovered }) => [
