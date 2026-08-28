@@ -16,32 +16,38 @@ export function readDemoSlotFromPathname(pathname: string): DemoSlot | null {
   return slot && isDemoSlot(slot) ? slot : null;
 }
 
-export function readDemoSlotFromSessionStorage(): DemoSlot | null {
-  if (Platform.OS !== "web" || typeof sessionStorage === "undefined") return null;
-  try {
-    const stored = sessionStorage.getItem(DEMO_SLOT_STORAGE_KEY);
-    return stored && isDemoSlot(stored) ? stored : null;
-  } catch {
-    return null;
-  }
+/**
+ * Per-frame slot marker. `window.name` belongs to the individual iframe and survives
+ * same-origin navigation; sessionStorage is shared by every frame in the tab, so the
+ * two demo panels used to clobber each other's slot (and each other's auth key).
+ */
+export function readPersistedDemoSlot(): DemoSlot | null {
+  if (Platform.OS !== "web" || typeof window === "undefined") return null;
+  const stored = window.name.startsWith(`${DEMO_SLOT_STORAGE_KEY}:`)
+    ? window.name.slice(DEMO_SLOT_STORAGE_KEY.length + 1)
+    : "";
+  return isDemoSlot(stored) ? stored : null;
 }
 
 export function persistDemoSlot(slot: DemoSlot): void {
-  if (Platform.OS !== "web" || typeof sessionStorage === "undefined") return;
-  try {
-    sessionStorage.setItem(DEMO_SLOT_STORAGE_KEY, slot);
-  } catch {
-    /* ignore quota / privacy mode */
-  }
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  window.name = `${DEMO_SLOT_STORAGE_KEY}:${slot}`;
+}
+
+/** Iframe `name` attribute the demo shell sets, so the slot is known before any JS runs. */
+export function demoFrameName(slot: DemoSlot): string {
+  return `${DEMO_SLOT_STORAGE_KEY}:${slot}`;
 }
 
 /** Resolved once per page load before auth store rehydrates. */
 export function resolveInitialDemoSlot(): DemoSlot | null {
   if (Platform.OS !== "web" || typeof window === "undefined") return null;
-  return (
-    readDemoSlotFromPathname(window.location.pathname) ??
-    readDemoSlotFromSessionStorage()
-  );
+  const fromPath = readDemoSlotFromPathname(window.location.pathname);
+  if (fromPath) {
+    persistDemoSlot(fromPath);
+    return fromPath;
+  }
+  return readPersistedDemoSlot();
 }
 
 export function isDemoShellPath(pathname: string): boolean {
@@ -50,4 +56,34 @@ export function isDemoShellPath(pathname: string): boolean {
 
 export function isDemoEmbedPath(pathname: string): boolean {
   return /^\/demo\/embed\/(mobile|laptop)\/?$/.test(pathname);
+}
+
+/** Force mobile or desktop web chrome inside demo iframe panels. */
+export function readDemoWebLayoutOverride(): "mobile" | "desktop" | null {
+  if (Platform.OS !== "web") return null;
+  const slot = resolveInitialDemoSlot();
+  if (slot === "mobile") return "mobile";
+  if (slot === "laptop") return "desktop";
+  return null;
+}
+
+/** Clears isolated auth storage for a demo iframe panel (web reload / reset). */
+export function clearDemoSlotPersistedAuth(slot: DemoSlot): void {
+  if (Platform.OS !== "web" || typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(authPersistKeyForDemoSlot(slot));
+  } catch {
+    /* ignore quota / privacy mode */
+  }
+}
+
+export function stripDemoEmbedResetFromUrl(): boolean {
+  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("reset") !== "1") return false;
+  params.delete("reset");
+  const query = params.toString();
+  const next = `${window.location.pathname}${query ? `?${query}` : ""}`;
+  window.history.replaceState(null, "", next);
+  return true;
 }

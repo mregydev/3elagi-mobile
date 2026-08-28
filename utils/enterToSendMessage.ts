@@ -1,6 +1,7 @@
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from "react-native";
 import { Dimensions, Platform } from "react-native";
 import { WEB_BREAKPOINTS } from "@/constants/webLayout";
+import { readDemoWebLayoutOverride } from "@/domains/auth/demoSession";
 
 /**
  * Enter sends only on desktop web, where there is a real keyboard and Shift+Enter
@@ -11,6 +12,9 @@ import { WEB_BREAKPOINTS } from "@/constants/webLayout";
  */
 export function shouldSendOnEnter(): boolean {
   if (Platform.OS !== "web") return false;
+  const demoLayout = readDemoWebLayoutOverride();
+  if (demoLayout === "mobile") return false;
+  if (demoLayout === "desktop") return true;
   return Dimensions.get("window").width >= WEB_BREAKPOINTS.desktop;
 }
 

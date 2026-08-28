@@ -13,7 +13,6 @@ import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { MobileAppLink } from "@/components/web/MobileAppLink.web";
 import { LOGO_HEIGHT } from "@/constants/brand";
-import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import { AUTH_EVENTS } from "@/domains/auth/events";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
@@ -32,7 +31,7 @@ export default function WelcomeScreenWeb() {
   const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
-  const { isDesktop, isMobile, isTablet } = useWebLayout();
+  const { isDesktop, isMobile, isTablet, width: layoutWidth } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const stackVertical = !isTablet;
@@ -137,7 +136,13 @@ export default function WelcomeScreenWeb() {
           {panel === "home" ? (
             <View style={styles.actionContent}>
               <Logo3elagi
-                height={isDesktop ? LOGO_HEIGHT.welcomeDesktop : LOGO_HEIGHT.welcomeHero}
+                height={
+                  isDesktop
+                    ? LOGO_HEIGHT.welcomeDesktop
+                    : layoutWidth < 340
+                      ? LOGO_HEIGHT.welcomeBarMobile
+                      : LOGO_HEIGHT.welcomeHero
+                }
                 centered
               />
 
@@ -264,6 +269,8 @@ const styles = StyleSheet.create({
   actionPaneFull: {
     width: "100%",
     flex: 1,
+    minWidth: 0,
+    maxWidth: "100%" as unknown as number,
   },
   actionTopBar: {
     paddingBottom: 4,
@@ -281,7 +288,10 @@ const styles = StyleSheet.create({
   actionTopSpacer: { flex: 1 },
   topActions: {
     alignItems: "center",
-    gap: 10,
+    gap: 8,
+    flexShrink: 1,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
   actionScroll: {
     flex: 1,

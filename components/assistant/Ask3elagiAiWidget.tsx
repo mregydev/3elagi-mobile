@@ -32,7 +32,7 @@ import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
   isDemoShellPath,
-  readDemoSlotFromSessionStorage,
+  readPersistedDemoSlot,
 } from "@/domains/auth/demoSession";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -124,7 +124,7 @@ function shouldHideOnRoute(pathname: string | null, segments: string[]): boolean
   if (root === "demo") return true;
   if (Platform.OS === "web") {
     if (pathname && isDemoShellPath(pathname)) return true;
-    if (readDemoSlotFromSessionStorage()) return true;
+    if (readPersistedDemoSlot()) return true;
   }
   if (pathname?.includes("/assistant") || segments.includes("assistant")) {
     return true;

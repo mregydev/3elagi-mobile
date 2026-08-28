@@ -14,6 +14,7 @@ import { SessionTransferBootstrap } from "@/components/auth/SessionTransferBoots
 import { WebLogoutRedirect } from "@/components/auth/WebLogoutRedirect";
 import { LocaleBootstrap } from "@/components/LocaleBootstrap";
 import { GlobalWebStyles } from "@/components/web/GlobalWebStyles";
+import { DemoEmbedViewport } from "@/components/web/DemoEmbedViewport";
 import { NativeWebViewAuthBridge } from "@/components/web/NativeWebViewAuthBridge.web";
 import { NativeWebViewPushNavigation } from "@/components/web/NativeWebViewPushNavigation.web";
 import { AppointmentNotifications } from "@/components/AppointmentNotifications";
@@ -112,6 +113,7 @@ export default function RootLayout() {
         <View style={[styles.root, { backgroundColor: colors.background }]}>
           <ThemeBootstrap />
           <GlobalWebStyles />
+          <DemoEmbedViewport />
           <LocaleBootstrap />
           <MedicalDataLoader />
           <PointsDataLoader />

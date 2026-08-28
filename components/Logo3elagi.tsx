@@ -2,6 +2,7 @@ import React from "react";
 import { View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
+import { useWebLayout } from "@/hooks/useWebLayout";
 
 interface Props {
   height?: number;
@@ -21,6 +22,7 @@ export function Logo3elagi({
   style,
 }: Props) {
   const colors = useColors();
+  const { isMobile } = useWebLayout();
   // Follows the selected accent (green / blue / red) rather than a fixed brand hex.
   const stroke = dark ? "#ffffff" : colors.primary;
   const fill = dark ? "rgba(255,255,255,0.12)" : `${colors.primary}14`;
@@ -95,7 +97,7 @@ export function Logo3elagi({
 
   if (!centered) return shell;
 
-  const opticalOffsetX = markOnly ? 0 : width / 6;
+  const opticalOffsetX = markOnly || isMobile ? 0 : width / 6;
 
   return (
     <View

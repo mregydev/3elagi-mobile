@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { RefreshCw, RotateCcw } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
+  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -15,31 +15,36 @@ import { LOGO_HEIGHT } from "@/constants/brand";
 import {
   DEMO_ENABLED,
   DEMO_SLOT_LABELS,
-  DEMO_SLOTS,
   type DemoSlot,
 } from "@/constants/demo";
-import {
-  fetchDemoPanelSessions,
-  type DemoPanelSessions,
-} from "@/domains/auth/demoApi";
-import { encodeSessionTransfer } from "@/domains/auth/sessionTransfer";
+import { demoFrameName } from "@/domains/auth/demoSession";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
 
 const H_PAD = 16;
-const PANEL_GAP = 20;
+const PANEL_GAP = 12;
 const HEADER_BLOCK = 96;
+const DEFAULT_MOBILE_SHARE = 0.2;
+/** Logical device viewports; each iframe renders at this width and is scaled to fit. */
+const PHONE_VIEWPORT_W = 390;
+const LAPTOP_VIEWPORT_W = 1280;
+const IFRAME_FILL: React.CSSProperties = {
+  border: 0,
+  width: "100%",
+  height: "100%",
+  maxWidth: "100%",
+  display: "block",
+};
 
 type PanelFrameProps = {
   slot: DemoSlot;
-  src: string | null;
+  src: string;
   label: string;
   width: number;
   height: number;
   isRTL: boolean;
   focused: boolean;
-  ready: boolean;
   colors: ReturnType<typeof useColors>;
   onFocus: () => void;
   onReload: () => void;
@@ -47,39 +52,60 @@ type PanelFrameProps = {
 };
 
 function PanelContent({
+  slot,
   src,
   label,
-  colors,
   onIframeRef,
+  style,
 }: {
-  src: string | null;
+  slot: DemoSlot;
+  src: string;
   label: string;
-  colors: ReturnType<typeof useColors>;
   onIframeRef: (node: HTMLIFrameElement | null) => void;
+  style?: React.CSSProperties;
 }) {
-  if (src) {
-    return (
-      // eslint-disable-next-line react/no-unknown-property
-      <iframe
-        ref={(node) => onIframeRef(node as HTMLIFrameElement | null)}
-        title={label}
-        src={src}
-        style={styles.iframe as unknown as import("react-native").ViewStyle}
-      />
-    );
-  }
   return (
-    <View style={styles.panelLoading}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
+    // eslint-disable-next-line react/no-unknown-property
+    <iframe
+      ref={(node) => onIframeRef(node as HTMLIFrameElement | null)}
+      title={label}
+      name={demoFrameName(slot)}
+      src={src}
+      style={style ?? IFRAME_FILL}
+    />
   );
+}
+
+/** Measures the device screen box and scales a fixed logical viewport into it. */
+function useScaledViewport(viewportWidth: number) {
+  const [screen, setScreen] = useState({ w: 0, h: 0 });
+  const scale = screen.w > 0 ? Math.min(1, screen.w / viewportWidth) : 1;
+
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width: w, height: h } = event.nativeEvent.layout;
+    setScreen((prev) =>
+      Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1 ? prev : { w, h },
+    );
+  }, []);
+
+  const iframeStyle: React.CSSProperties = {
+    border: 0,
+    display: "block",
+    // Flex item in a column parent shrinks back to the container height, undoing the scale.
+    flexShrink: 0,
+    width: viewportWidth,
+    height: screen.h / scale,
+    transform: `scale(${scale})`,
+    transformOrigin: "top left",
+  };
+
+  return { ready: screen.w > 0, onLayout, iframeStyle };
 }
 
 function PanelToolbar({
   label,
   isRTL,
   focused,
-  ready,
   colors,
   onFocus,
   onReload,
@@ -87,7 +113,6 @@ function PanelToolbar({
   label: string;
   isRTL: boolean;
   focused: boolean;
-  ready: boolean;
   colors: ReturnType<typeof useColors>;
   onFocus: () => void;
   onReload: () => void;
@@ -101,7 +126,7 @@ function PanelToolbar({
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: ready ? "#22c55e" : colors.mutedForeground },
+              { backgroundColor: focused ? "#22c55e" : colors.mutedForeground },
             ]}
           />
           <Pressable onPress={onFocus}>
@@ -144,7 +169,6 @@ function PhoneDeviceFrame({
   height,
   isRTL,
   focused,
-  ready,
   colors,
   onFocus,
   onReload,
@@ -152,6 +176,8 @@ function PhoneDeviceFrame({
 }: PanelFrameProps) {
   const bezel = "#1a1a1e";
   const screenRadius = Math.min(22, width * 0.06);
+  // ponytail: CSS scale of a real phone viewport, not per-screen responsive fixes.
+  const viewport = useScaledViewport(PHONE_VIEWPORT_W);
 
   return (
     <View
@@ -165,7 +191,6 @@ function PhoneDeviceFrame({
         label={label}
         isRTL={isRTL}
         focused={focused}
-        ready={ready}
         colors={colors}
         onFocus={onFocus}
         onReload={onReload}
@@ -187,13 +212,19 @@ function PhoneDeviceFrame({
             <View style={styles.phoneNotchRow}>
               <View style={styles.phoneNotch} />
             </View>
-            <View style={[styles.phoneScreen, { backgroundColor: colors.background }]}>
-              <PanelContent
-                src={src}
-                label={label}
-                colors={colors}
-                onIframeRef={onIframeRef}
-              />
+            <View
+              style={[styles.phoneScreen, { backgroundColor: colors.background }]}
+              onLayout={viewport.onLayout}
+            >
+              {viewport.ready ? (
+                <PanelContent
+                  slot={slot}
+                  src={src}
+                  label={label}
+                  onIframeRef={onIframeRef}
+                  style={viewport.iframeStyle}
+                />
+              ) : null}
             </View>
             <View style={styles.phoneHomeRow}>
               <View style={styles.phoneHomeIndicator} />
@@ -213,7 +244,6 @@ function LaptopDeviceFrame({
   height,
   isRTL,
   focused,
-  ready,
   colors,
   onFocus,
   onReload,
@@ -222,6 +252,8 @@ function LaptopDeviceFrame({
   const lidHeight = height - 28;
   const bezel = "#2b2b30";
   const baseWidth = width + 24;
+  // ponytail: same fixed-viewport scale as the phone, so desktop chrome never flips to mobile.
+  const viewport = useScaledViewport(LAPTOP_VIEWPORT_W);
 
   return (
     <View
@@ -235,7 +267,6 @@ function LaptopDeviceFrame({
         label={label}
         isRTL={isRTL}
         focused={focused}
-        ready={ready}
         colors={colors}
         onFocus={onFocus}
         onReload={onReload}
@@ -257,13 +288,19 @@ function LaptopDeviceFrame({
             <View style={styles.laptopCameraRow}>
               <View style={styles.laptopCamera} />
             </View>
-            <View style={[styles.laptopScreen, { backgroundColor: colors.background }]}>
-              <PanelContent
-                src={src}
-                label={label}
-                colors={colors}
-                onIframeRef={onIframeRef}
-              />
+            <View
+              style={[styles.laptopScreen, { backgroundColor: colors.background }]}
+              onLayout={viewport.onLayout}
+            >
+              {viewport.ready ? (
+                <PanelContent
+                  slot={slot}
+                  src={src}
+                  label={label}
+                  onIframeRef={onIframeRef}
+                  style={viewport.iframeStyle}
+                />
+              ) : null}
             </View>
           </View>
           <View
@@ -291,9 +328,11 @@ function PanelFrame(props: PanelFrameProps) {
   return <LaptopDeviceFrame {...props} />;
 }
 
-function embedUrl(origin: string, slot: DemoSlot, session: DemoPanelSessions[DemoSlot]) {
-  const st = encodeURIComponent(encodeSessionTransfer(session));
-  return `${origin}/demo/embed/${slot}?_st=${st}`;
+function embedUrl(origin: string, slot: DemoSlot, reset = false) {
+  const params = new URLSearchParams();
+  if (reset) params.set("reset", "1");
+  params.set("t", String(Date.now()));
+  return `${origin}/demo/embed/${slot}?${params.toString()}`;
 }
 
 export default function DemoScreen() {
@@ -304,14 +343,11 @@ export default function DemoScreen() {
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const iframeRefs = useRef<Partial<Record<DemoSlot, HTMLIFrameElement>>>({});
-  const sessionsRef = useRef<DemoPanelSessions | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [focusedPanel, setFocusedPanel] = useState<DemoSlot>("mobile");
-  const [panelSrc, setPanelSrc] = useState<Record<DemoSlot, string | null>>({
-    mobile: null,
-    laptop: null,
+  const [panelSrc, setPanelSrc] = useState<Record<DemoSlot, string>>({
+    mobile: "",
+    laptop: "",
   });
 
   const layout = useMemo(() => {
@@ -320,9 +356,12 @@ export default function DemoScreen() {
       vh - insets.top - insets.bottom - HEADER_BLOCK - 12,
       400,
     );
+    const mobileWidth = usableW * DEFAULT_MOBILE_SHARE;
+    const laptopWidth = usableW * (1 - DEFAULT_MOBILE_SHARE);
     return {
-      mobileWidth: usableW / 3,
-      laptopWidth: (usableW * 2) / 3,
+      usableW,
+      mobileWidth,
+      laptopWidth,
       panelHeight: usableH,
     };
   }, [vw, vh, insets.top, insets.bottom]);
@@ -332,63 +371,35 @@ export default function DemoScreen() {
     return window.location.origin;
   }, []);
 
-  const applySessions = useCallback(
-    (sessions: DemoPanelSessions) => {
-      sessionsRef.current = sessions;
+  const bootPanels = useCallback(
+    (reset = false) => {
+      if (!origin) return;
       setPanelSrc({
-        mobile: embedUrl(origin, "mobile", sessions.mobile),
-        laptop: embedUrl(origin, "laptop", sessions.laptop),
+        mobile: embedUrl(origin, "mobile", reset),
+        laptop: embedUrl(origin, "laptop", reset),
       });
     },
     [origin],
   );
 
-  const loadPanels = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setPanelSrc({ mobile: null, laptop: null });
-    iframeRefs.current = {};
-    try {
-      const sessions = await fetchDemoPanelSessions();
-      applySessions(sessions);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [applySessions]);
-
   const reloadPanel = useCallback(
     (slot: DemoSlot) => {
-      const sessions = sessionsRef.current;
-      if (!sessions) {
-        void loadPanels();
-        return;
-      }
-      setPanelSrc((prev) => ({ ...prev, [slot]: null }));
+      if (!origin) return;
+      setPanelSrc((prev) => ({ ...prev, [slot]: "" }));
       iframeRefs.current[slot] = undefined;
       requestAnimationFrame(() => {
         setPanelSrc((prev) => ({
           ...prev,
-          [slot]: embedUrl(origin, slot, sessions[slot]),
+          [slot]: embedUrl(origin, slot, true),
         }));
       });
     },
-    [loadPanels, origin],
+    [origin],
   );
 
   useEffect(() => {
-    if (!DEMO_ENABLED) {
-      setError(
-        isRTL
-          ? "مسار العرض التجريبي غير مفعّل."
-          : "Demo route is disabled on this build.",
-      );
-      setLoading(false);
-      return;
-    }
-    void loadPanels();
-  }, [isRTL, loadPanels]);
+    bootPanels(false);
+  }, [bootPanels]);
 
   if (!DEMO_ENABLED) {
     return (
@@ -414,7 +425,7 @@ export default function DemoScreen() {
     >
       <View style={[styles.header, { flexDirection: dir, paddingHorizontal: H_PAD }]}>
         <Pressable
-          onPress={() => void loadPanels()}
+          onPress={() => bootPanels(true)}
           style={({ pressed, hovered }) => [
             styles.logoBtn,
             { opacity: pressed || hovered ? 0.85 : 1 },
@@ -432,28 +443,26 @@ export default function DemoScreen() {
             numberOfLines={2}
           >
             {isRTL
-              ? "كل جهاز له جلسة مستقلة — لا حاجة لتسجيل الدخول."
-              : "Each device has its own session — no login required."}
+              ? "سجّل الدخول أو أنشئ حسابًا في كل جهاز — كل جلسة مستقلة."
+              : "Sign in or sign up on each device — each session stays independent."}
           </Text>
         </View>
 
         <View style={[styles.headerActions, { flexDirection: dir }]}>
           <Pressable
-            onPress={() => void loadPanels()}
-            disabled={loading}
+            onPress={() => bootPanels(true)}
             style={({ pressed, hovered }) => [
               styles.reloadBtn,
               {
                 flexDirection: dir,
                 borderColor: colors.border,
                 backgroundColor: pressed || hovered ? colors.muted : colors.card,
-                opacity: loading ? 0.6 : 1,
               },
             ]}
           >
             <RefreshCw size={14} color={colors.primary} />
             <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {loading ? (isRTL ? "…" : "…") : isRTL ? "تحديث" : "Reload"}
+              {isRTL ? "إعادة تعيين" : "Reset all"}
             </Text>
           </Pressable>
           <Pressable
@@ -473,23 +482,6 @@ export default function DemoScreen() {
         </View>
       </View>
 
-      {error ? (
-        <View
-          style={[
-            styles.errorBox,
-            {
-              borderColor: colors.destructive,
-              backgroundColor: `${colors.destructive}12`,
-              marginHorizontal: H_PAD,
-            },
-          ]}
-        >
-          <Text style={{ color: colors.destructive, textAlign, fontWeight: "600", fontSize: 13 }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
       <View
         style={[
           styles.panelsRow,
@@ -497,28 +489,42 @@ export default function DemoScreen() {
             flexDirection: dir,
             paddingHorizontal: H_PAD,
             height: layout.panelHeight,
+            gap: PANEL_GAP,
           },
         ]}
       >
-        {DEMO_SLOTS.map((slot) => (
-          <PanelFrame
-            key={slot}
-            slot={slot}
-            src={panelSrc[slot]}
-            label={isRTL ? DEMO_SLOT_LABELS[slot].ar : DEMO_SLOT_LABELS[slot].en}
-            width={slot === "mobile" ? layout.mobileWidth : layout.laptopWidth}
-            height={layout.panelHeight}
-            isRTL={isRTL}
-            focused={focusedPanel === slot}
-            ready={!!panelSrc[slot]}
-            colors={colors}
-            onFocus={() => setFocusedPanel(slot)}
-            onReload={() => reloadPanel(slot)}
-            onIframeRef={(node) => {
-              if (node) iframeRefs.current[slot] = node;
-            }}
-          />
-        ))}
+        <PanelFrame
+          key="mobile"
+          slot="mobile"
+          src={panelSrc.mobile}
+          label={isRTL ? DEMO_SLOT_LABELS.mobile.ar : DEMO_SLOT_LABELS.mobile.en}
+          width={layout.mobileWidth}
+          height={layout.panelHeight}
+          isRTL={isRTL}
+          focused={focusedPanel === "mobile"}
+          colors={colors}
+          onFocus={() => setFocusedPanel("mobile")}
+          onReload={() => reloadPanel("mobile")}
+          onIframeRef={(node) => {
+            if (node) iframeRefs.current.mobile = node;
+          }}
+        />
+        <PanelFrame
+          key="laptop"
+          slot="laptop"
+          src={panelSrc.laptop}
+          label={isRTL ? DEMO_SLOT_LABELS.laptop.ar : DEMO_SLOT_LABELS.laptop.en}
+          width={layout.laptopWidth}
+          height={layout.panelHeight}
+          isRTL={isRTL}
+          focused={focusedPanel === "laptop"}
+          colors={colors}
+          onFocus={() => setFocusedPanel("laptop")}
+          onReload={() => reloadPanel("laptop")}
+          onIframeRef={(node) => {
+            if (node) iframeRefs.current.laptop = node;
+          }}
+        />
       </View>
     </View>
   );
@@ -561,17 +567,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  errorBox: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
-  },
   panelsRow: {
-    gap: PANEL_GAP,
     alignItems: "stretch",
     justifyContent: "center",
     width: "100%",
+    position: "relative",
   },
   panelColumn: {
     gap: 8,
@@ -658,6 +658,7 @@ const styles = StyleSheet.create({
   phoneScreen: {
     flex: 1,
     minHeight: 0,
+    minWidth: 0,
     overflow: "hidden",
   },
   phoneHomeRow: {
@@ -729,15 +730,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  iframe: {
-    borderWidth: 0,
-    width: "100%",
-    height: "100%",
-  },
-  panelLoading: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 120,
-  },
 });

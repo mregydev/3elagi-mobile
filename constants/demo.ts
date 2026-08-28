@@ -10,17 +10,15 @@ export type DemoSlot = (typeof DEMO_SLOTS)[number];
 
 export const DEMO_SLOT_LABELS: Record<
   DemoSlot,
-  { en: string; ar: string; roleHint: string }
+  { en: string; ar: string }
 > = {
   mobile: {
-    en: "Patient (mobile)",
-    ar: "المريض (جوال)",
-    roleHint: "patient",
+    en: "Mobile",
+    ar: "جوال",
   },
   laptop: {
-    en: "Doctor (laptop)",
-    ar: "الطبيب (لابتوب)",
-    roleHint: "doctor",
+    en: "Desktop",
+    ar: "سطح المكتب",
   },
 };
 

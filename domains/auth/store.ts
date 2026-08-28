@@ -11,8 +11,10 @@ import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
 import { readAndStripSessionTransferFromUrl } from "@/domains/auth/sessionTransfer";
 import {
   authPersistKeyForDemoSlot,
+  clearDemoSlotPersistedAuth,
   persistDemoSlot,
   resolveInitialDemoSlot,
+  stripDemoEmbedResetFromUrl,
 } from "@/domains/auth/demoSession";
 
 interface AuthState {
@@ -217,7 +219,20 @@ export const useAuthStore = create<AuthState>()(
         // Demo iframe panels use namespaced storage keys.
         if (state && Platform.OS === "web") {
           const slot = resolveInitialDemoSlot();
-          if (slot) persistDemoSlot(slot);
+          if (slot) {
+            persistDemoSlot(slot);
+            if (stripDemoEmbedResetFromUrl()) {
+              clearDemoSlotPersistedAuth(slot);
+              state.profile = null;
+              state.accessToken = null;
+              state.role = null;
+              state.doctorId = null;
+              state.specialty = null;
+              state.specialityId = null;
+              state.doctorApprovalStatus = null;
+              state.emailVerified = true;
+            }
+          }
           const transferred = readAndStripSessionTransferFromUrl();
           if (transferred) {
             state.profile = transferred.profile;
