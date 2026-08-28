@@ -28,6 +28,8 @@ import { alignText, flexRow } from "@/utils/rtl";
 const H_PAD = 16;
 const PANEL_GAP = 12;
 const HEADER_BLOCK = 96;
+/** Default split: mobile panel gets 20% width, laptop gets 80%. */
+const DEFAULT_MOBILE_SHARE = 0.2;
 /** Relative panel widths; a laptop panel is worth four phones. */
 const DEVICE_WIDTH_WEIGHT: Record<DemoDevice, number> = { phone: 1, laptop: 4 };
 const DEFAULT_DEVICES: Record<DemoSlot, DemoDevice> = {
