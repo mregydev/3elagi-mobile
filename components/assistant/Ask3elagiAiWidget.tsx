@@ -31,8 +31,7 @@ import type { AiMessage } from "@/domains/ai/types";
 import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
-  isDemoShellPath,
-  readPersistedDemoSlot,
+  isDemoEmbedPath,
 } from "@/domains/auth/demoSession";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -121,11 +120,9 @@ function shouldHideOnRoute(pathname: string | null, segments: string[]): boolean
   if (root === "admin") return true;
   if (root === "video-call") return true;
   if (root === "doctor-pending") return true;
-  if (root === "demo") return true;
-  if (Platform.OS === "web") {
-    if (pathname && isDemoShellPath(pathname)) return true;
-    if (readPersistedDemoSlot()) return true;
-  }
+  // Outer dual-panel demo shell only — iframe apps (patient / doctor) keep Ask AI.
+  if (pathname === "/demo") return true;
+  if (pathname && isDemoEmbedPath(pathname)) return true;
   if (pathname?.includes("/assistant") || segments.includes("assistant")) {
     return true;
   }
