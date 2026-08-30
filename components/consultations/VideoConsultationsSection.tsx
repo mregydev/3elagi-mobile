@@ -18,9 +18,11 @@ import {
 } from "@/components/consultations/videoAppointmentPaymentMeta";
 import { emptyStateSurface, UI } from "@/constants/uiTokens";
 import {
+  fetchMyAppointments,
   fetchMyVideoConsultations,
   type UpcomingAppointment,
 } from "@/domains/appointments/api";
+import { mergeVideoConsultationLists } from "@/domains/appointments/upcomingVideoCalls";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -45,7 +47,11 @@ export function VideoConsultationsSection({ isDoctor }: Props) {
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      setItems(await fetchMyVideoConsultations(accessToken));
+      const [videoItems, myItems] = await Promise.all([
+        fetchMyVideoConsultations(accessToken).catch(() => [] as UpcomingAppointment[]),
+        fetchMyAppointments(accessToken).catch(() => [] as UpcomingAppointment[]),
+      ]);
+      setItems(mergeVideoConsultationLists(videoItems, myItems));
     } catch (e) {
       showErrorToast(t.common.error, (e as Error).message);
     } finally {
