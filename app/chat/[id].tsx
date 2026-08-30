@@ -79,7 +79,7 @@ import {
   reviewConsultationPayment,
   submitConsultationPaymentProof,
 } from "@/domains/consultations/api";
-import * as DocumentPicker from "expo-document-picker";
+import { pickPaymentReceipt } from "@/utils/pickPaymentReceipt";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory, uploadFile } from "@/domains/medical/api";
@@ -1049,16 +1049,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         ? setConsultationActionBusy
         : setAppointmentActionBusy;
 
-    setBusy(true);
-    try {
-      let proofUrl = "";
-      if (reply === "submit") {
-        const picked = await DocumentPicker.getDocumentAsync({
-          type: ["image/*", "application/pdf"],
-          copyToCacheDirectory: true,
-        });
-        if (picked.canceled || !picked.assets[0]) return;
-        const asset = picked.assets[0];
+    if (reply === "submit") {
+      const asset = await pickPaymentReceipt();
+      if (!asset) return;
+      setBusy(true);
+      try {
         const uploaded = await uploadFile(
           asset.uri,
           asset.mimeType ?? "image/jpeg",
@@ -1066,27 +1061,51 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           accessToken,
           asset.file,
         );
-        proofUrl = uploaded.url;
-      }
+        const proofUrl = uploaded.url;
 
-      if (target.kind === "consultation") {
-        if (reply === "submit") {
+        if (target.kind === "consultation") {
           await submitConsultationPaymentProof(target.id, proofUrl, accessToken);
         } else {
-          await reviewConsultationPayment(target.id, reply === "approve", accessToken);
+          const row = await sendAppointmentAction(accessToken, id, {
+            appointment_id: target.id,
+            action: "payment_submitted",
+            date: "",
+            time: "",
+            payment_proof_url: proofUrl,
+          });
+          const msg = mapMessageRow(row, id, profile.id);
+          useChatStore.setState((s) => {
+            const thread = s.messages[id] ?? [];
+            if (thread.some((m) => m.id === msg.id)) return s;
+            return { messages: { ...s.messages, [id]: [...thread, msg] } };
+          });
         }
+        jumpToLatest();
+      } catch (e) {
+        Alert.alert(
+          isRTL ? "خطأ" : "Error",
+          e instanceof Error
+            ? e.message
+            : isRTL
+              ? "تعذر تحديث الدفع"
+              : "Could not update the payment",
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (target.kind === "consultation") {
+        await reviewConsultationPayment(target.id, reply === "approve", accessToken);
       } else {
         const row = await sendAppointmentAction(accessToken, id, {
           appointment_id: target.id,
-          action:
-            reply === "submit"
-              ? "payment_submitted"
-              : reply === "approve"
-                ? "payment_approved"
-                : "payment_rejected",
+          action: reply === "approve" ? "payment_approved" : "payment_rejected",
           date: "",
           time: "",
-          ...(reply === "submit" ? { payment_proof_url: proofUrl } : {}),
         });
         const msg = mapMessageRow(row, id, profile.id);
         useChatStore.setState((s) => {

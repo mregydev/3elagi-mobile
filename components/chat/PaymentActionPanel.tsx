@@ -187,7 +187,10 @@ function ActionButton({
   return (
     <Pressable
       disabled={busy}
-      onPress={onPress}
+      onPress={(event) => {
+        event?.stopPropagation?.();
+        onPress();
+      }}
       style={({ pressed }) => [
         styles.btn,
         filled ? { backgroundColor: color } : [styles.btnOutline, { borderColor: color }],

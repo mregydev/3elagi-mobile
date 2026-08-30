@@ -773,6 +773,11 @@ const en = {
     awaitingPatientPayment: "Awaiting payment",
     receiptPending: "Receipt pending",
     reviewReceipt: "Review receipt",
+    textConsultations: "Text consultations",
+    videoConsultations: "Video consultations",
+    noVideoConsultations: "No video consultations",
+    noVideoConsultationsHint:
+      "Scheduled video visits with your doctor will appear here.",
   },
   doctor: {
     egpPerConsultation: "points/consultation",
@@ -1664,6 +1669,10 @@ const ar: typeof en = {
     awaitingPatientPayment: "بانتظار الدفع",
     receiptPending: "الإيصال قيد المراجعة",
     reviewReceipt: "مراجعة الإيصال",
+    textConsultations: "استشارات نصية",
+    videoConsultations: "استشارات فيديو",
+    noVideoConsultations: "لا توجد استشارات فيديو",
+    noVideoConsultationsHint: "ستظهر مواعيد الفيديو المجدولة مع طبيبك هنا.",
   },
   doctor: {
     egpPerConsultation: "نقطة/استشارة",
@@ -2562,6 +2571,11 @@ const de: typeof en = {
     awaitingPatientPayment: "Zahlung ausstehend",
     receiptPending: "Beleg ausstehend",
     reviewReceipt: "Beleg prüfen",
+    textConsultations: "Text-Beratungen",
+    videoConsultations: "Video-Beratungen",
+    noVideoConsultations: "Keine Video-Beratungen",
+    noVideoConsultationsHint:
+      "Geplante Video-Termine mit Ihrem Arzt erscheinen hier.",
   },
   doctor: {
     egpPerConsultation: "Punkte/Beratung",
@@ -3458,6 +3472,11 @@ const es: typeof en = {
     awaitingPatientPayment: "Esperando pago",
     receiptPending: "Recibo pendiente",
     reviewReceipt: "Revisar recibo",
+    textConsultations: "Consultas por chat",
+    videoConsultations: "Consultas por video",
+    noVideoConsultations: "Sin consultas por video",
+    noVideoConsultationsHint:
+      "Las citas de video programadas con tu médico aparecerán aquí.",
   },
   doctor: {
     egpPerConsultation: "puntos/consulta",

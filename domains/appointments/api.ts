@@ -22,6 +22,11 @@ export interface UpcomingAppointment {
   /** AI-written, doctor-facing insight (only returned to the doctor). */
   ai_patient_insight?: string | null;
   booked_via_app: boolean;
+  payment_status?: "none" | "awaiting_payment" | "proof_submitted" | "paid";
+  payment_amount?: number | null;
+  payment_currency?: string | null;
+  payment_proof_url?: string | null;
+  payment_link?: string | null;
 }
 
 export async function fetchMyAppointments(

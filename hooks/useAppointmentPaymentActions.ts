@@ -1,23 +1,23 @@
 import { useCallback, useState } from "react";
 import type { PaymentReply } from "@/components/chat/PaymentActionPanel";
-import {
-  reviewConsultationPayment,
-  submitConsultationPaymentProof,
-} from "@/domains/consultations/api";
+import { sendAppointmentAction } from "@/domains/appointments/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { uploadFile } from "@/domains/medical/api";
 import { useI18n } from "@/hooks/useI18n";
 import { pickPaymentReceipt } from "@/utils/pickPaymentReceipt";
 import { showErrorToast } from "@/utils/toast";
 
-export function useConsultationPaymentActions(onSuccess?: () => void) {
+export function useAppointmentPaymentActions(
+  peerUserId: string,
+  onSuccess?: () => void,
+) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { t, isRTL } = useI18n();
   const [busy, setBusy] = useState(false);
 
   const handlePaymentReply = useCallback(
-    async (consultationId: string, reply: PaymentReply) => {
-      if (!accessToken || busy) return;
+    async (appointmentId: string, reply: PaymentReply) => {
+      if (!accessToken || !peerUserId || busy) return;
 
       if (reply === "submit") {
         const asset = await pickPaymentReceipt();
@@ -31,11 +31,13 @@ export function useConsultationPaymentActions(onSuccess?: () => void) {
             accessToken,
             asset.file,
           );
-          await submitConsultationPaymentProof(
-            consultationId,
-            uploaded.url,
-            accessToken,
-          );
+          await sendAppointmentAction(accessToken, peerUserId, {
+            appointment_id: appointmentId,
+            action: "payment_submitted",
+            date: "",
+            time: "",
+            payment_proof_url: uploaded.url,
+          });
           onSuccess?.();
         } catch (e) {
           showErrorToast(
@@ -54,11 +56,12 @@ export function useConsultationPaymentActions(onSuccess?: () => void) {
 
       setBusy(true);
       try {
-        await reviewConsultationPayment(
-          consultationId,
-          reply === "approve",
-          accessToken,
-        );
+        await sendAppointmentAction(accessToken, peerUserId, {
+          appointment_id: appointmentId,
+          action: reply === "approve" ? "payment_approved" : "payment_rejected",
+          date: "",
+          time: "",
+        });
         onSuccess?.();
       } catch (e) {
         showErrorToast(
@@ -73,7 +76,7 @@ export function useConsultationPaymentActions(onSuccess?: () => void) {
         setBusy(false);
       }
     },
-    [accessToken, busy, isRTL, onSuccess, t.common.error],
+    [accessToken, busy, isRTL, onSuccess, peerUserId, t.common.error],
   );
 
   return { busy, handlePaymentReply };
