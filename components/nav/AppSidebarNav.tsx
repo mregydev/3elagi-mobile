@@ -527,7 +527,6 @@ export function AppSidebarNav({
             <View
               style={[
                 styles.prefPanel,
-                signedIn && styles.prefPanelAfterRateUs,
                 { backgroundColor: colors.muted, borderColor: colors.border },
               ]}
             >
@@ -912,14 +911,11 @@ const styles = StyleSheet.create({
   rateUsCta: {
     borderRadius: 12,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: 6,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.32,
     shadowRadius: 10,
     elevation: 4,
-  },
-  prefPanelAfterRateUs: {
-    marginTop: 4,
   },
   rateUsCtaRail: {
     marginBottom: 8,

@@ -1,7 +1,13 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
 import type { Locale } from "@/domains/i18n/store";
-import type { DiagnosisSymptom, MedicalAiInsight, MedicalRecord, PrescriptionMedication } from "./types";
+import type {
+  DiagnosisSymptom,
+  LinkedConsultationSummary,
+  MedicalAiInsight,
+  MedicalRecord,
+  PrescriptionMedication,
+} from "./types";
 import { parseBodyPart } from "./bodyParts";
 import { fetchIntakeExamsForPatient } from "@/domains/intake-exams/api";
 
@@ -24,6 +30,18 @@ interface RawPrescriptionMedication {
   notes?: string | null;
 }
 
+interface RawLinkedConsultation {
+  id: string;
+  status: LinkedConsultationSummary["status"];
+  created_at: string;
+  closed_at: string | null;
+  doctor_id: string;
+  patient_id: string;
+  diagnosis_id: string | null;
+  doctor_name: string;
+  patient_name: string;
+}
+
 interface RawPrescription {
   id: string;
   patient_user_id: string;
@@ -34,9 +52,27 @@ interface RawPrescription {
   pdf_url?: string | null;
   image_url?: string | null;
   created_at: string;
+  diagnosis_id?: string | null;
   medications?: RawPrescriptionMedication[];
   ai_insight?: MedicalAiInsight | null;
   body_part?: string | null;
+  linked_consultations?: RawLinkedConsultation[];
+}
+
+function mapLinkedConsultations(
+  raw: RawLinkedConsultation[] | undefined,
+): LinkedConsultationSummary[] {
+  return (raw ?? []).map((row) => ({
+    id: row.id,
+    status: row.status,
+    createdAt: row.created_at,
+    closedAt: row.closed_at,
+    doctorId: row.doctor_id,
+    patientId: row.patient_id,
+    diagnosisId: row.diagnosis_id,
+    doctorName: row.doctor_name,
+    patientName: row.patient_name,
+  }));
 }
 
 function mapPrescriptionMedication(raw: RawPrescriptionMedication): PrescriptionMedication {
@@ -69,6 +105,8 @@ function mapPrescription(raw: RawPrescription): MedicalRecord {
     fileName: imageUrl ? "prescription.jpg" : undefined,
     aiInsight: mapAiInsight(raw.ai_insight) ?? null,
     bodyPart: parseBodyPart(raw.body_part),
+    diagnosisId: raw.diagnosis_id ?? null,
+    linkedConsultations: mapLinkedConsultations(raw.linked_consultations),
   };
 }
 

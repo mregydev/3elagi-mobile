@@ -36,7 +36,7 @@ import {
 import type { IntakeExamTakerHandle } from "@/components/intake/IntakeExamTaker";
 import { useMedicalStore } from "@/domains/medical/store";
 import { getApiLang } from "@/domains/i18n/store";
-import type { MedicalRecord } from "@/domains/medical/types";
+import type { LinkedConsultationSummary, MedicalRecord } from "@/domains/medical/types";
 import {
   canAddDiagnosisSymptom,
   canDeleteMedicalRecord,
@@ -716,6 +716,11 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     }
   };
 
+  const openLinkedConsultation = (consultation: LinkedConsultationSummary) => {
+    const peerId = isDoctorView ? consultation.patientId : consultation.doctorId;
+    router.push({ pathname: "/chat/[id]", params: { id: peerId } });
+  };
+
   const printPrescription = async () => {
     if (!accessToken || !record || !derived.canPrintPrescription) return;
     const ownerId = record.ownerId || patientUserId || profile?.id;
@@ -796,6 +801,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     submitSymptom,
     confirmDelete,
     openLinkedDoc,
+    openLinkedConsultation,
     goBack: () => {
       navigateBack(router, "/(tabs)/records");
     },

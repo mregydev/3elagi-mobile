@@ -8,6 +8,7 @@ import {
   FileDown,
   FileText,
   Hash,
+  MessageCircle,
   Pill,
   ScanLine,
   Trash2,
@@ -78,8 +79,9 @@ import {
   canEditDiagnosis,
 } from "@/domains/medical/permissions";
 import { useColors } from "@/hooks/useColors";
-import { useI18n } from "@/hooks/useI18n";
+import type { LinkedConsultationSummary } from "@/domains/medical/types";
 import { useApiLang } from "@/hooks/useApiLang";
+import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
 import { showAppAlert } from "@/utils/appAlert";
 import { openBlankPdfTab, openPdfInNewTab } from "@/utils/openPdfInNewTab";
@@ -95,6 +97,25 @@ const CATEGORY_META: Record<
   prescription: { labelEn: "Prescription", labelAr: "روشتة", Icon: Pill, color: "#f59e0b" },
   intake:  { labelEn: "Intake Exam", labelAr: "فحص الاستقبال", Icon: ClipboardList, color: "#3057F2" },
 };
+
+function consultationStatusLabel(
+  status: LinkedConsultationSummary["status"],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  switch (status) {
+    case "open":
+      return t.consultations.open;
+    case "pending":
+      return t.consultations.waitingActive;
+    case "ended":
+      return t.consultations.completed;
+    case "cancelled":
+    case "rejected":
+      return t.consultations.cancelled;
+    default:
+      return status;
+  }
+}
 
 export default function MedicalRecordDetail() {
   const colors = useColors();
@@ -1482,6 +1503,60 @@ export default function MedicalRecordDetail() {
                 {isRTL ? "لا توجد أدوية مسجلة" : "No medications recorded"}
               </Text>
             )}
+          </View>
+        ) : null}
+
+        {isPrescription && record.linkedConsultations && record.linkedConsultations.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.cardHeader, { flexDirection: dir }]}>
+              <View style={[styles.cardIconWrap, { backgroundColor: `${colors.primary}18` }]}>
+                <MessageCircle size={18} color={colors.primary} />
+              </View>
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
+                {isRTL ? "استشارات مرتبطة" : "Linked consultations"}
+              </Text>
+            </View>
+            {record.linkedConsultations.map((consultation) => {
+              const peerId = isDoctorView ? consultation.patientId : consultation.doctorId;
+              const title = isDoctorView ? consultation.patientName : consultation.doctorName;
+              return (
+                <Pressable
+                  key={consultation.id}
+                  onPress={() => router.push({ pathname: "/chat/[id]", params: { id: peerId } })}
+                  style={[
+                    styles.linkedDocRow,
+                    { borderColor: colors.border, flexDirection: dir },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.linkedThumb,
+                      styles.linkedThumbPlaceholder,
+                      { backgroundColor: `${colors.primary}22` },
+                    ]}
+                  >
+                    <MessageCircle size={22} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={{ color: colors.foreground, fontWeight: "700", textAlign }}
+                      numberOfLines={2}
+                    >
+                      {title}
+                    </Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
+                      {consultationStatusLabel(consultation.status, t)}
+                      {" · "}
+                      {new Date(consultation.createdAt).toLocaleDateString(localeTag(isRTL), {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
 

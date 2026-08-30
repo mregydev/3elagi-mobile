@@ -9,6 +9,7 @@ import {
   FileDown,
   FileText,
   Hash,
+  MessageCircle,
   Pill,
   Trash2,
 } from "lucide-react-native";
@@ -44,6 +45,26 @@ import { useMedicalRecordDetail } from "@/hooks/useMedicalRecordDetail";
 import { useMobileWebTabBarHeight } from "@/hooks/useMobileWebTabBarHeight";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { localeTag } from "@/utils/rtl";
+import type { LinkedConsultationSummary } from "@/domains/medical/types";
+
+function consultationStatusLabel(
+  status: LinkedConsultationSummary["status"],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  switch (status) {
+    case "open":
+      return t.consultations.open;
+    case "pending":
+      return t.consultations.waitingActive;
+    case "ended":
+      return t.consultations.completed;
+    case "cancelled":
+    case "rejected":
+      return t.consultations.cancelled;
+    default:
+      return status;
+  }
+}
 
 function gridStyle(columns: number): ViewStyle {
   if (columns <= 1) {
@@ -219,6 +240,7 @@ export function MedicalRecordWebView() {
     printPrescription,
     accessToken,
     openLinkedDoc,
+    openLinkedConsultation,
     goBack,
   } = detail;
 
@@ -556,6 +578,65 @@ export function MedicalRecordWebView() {
             </Pressable>
           </View>
         )}
+      </SectionCard>
+    );
+  };
+
+  const renderLinkedConsultations = () => {
+    if (!isPrescription || !record?.linkedConsultations?.length) return null;
+
+    return (
+      <SectionCard
+        testID="medical-record-linked-consultations"
+        title={isRTL ? "استشارات مرتبطة" : "Linked consultations"}
+        icon={<MessageCircle size={18} color={colors.primary} />}
+        accent={colors.primary}
+        colors={colors}
+        textAlign={textAlign}
+        dir={dir}
+      >
+        <View style={styles.linkedList}>
+          {record.linkedConsultations.map((consultation) => {
+            const title = isDoctorView
+              ? consultation.patientName
+              : consultation.doctorName;
+            return (
+              <Pressable
+                key={consultation.id}
+                testID="medical-record-linked-consultation-row"
+                onPress={() => openLinkedConsultation(consultation)}
+                style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
+              >
+                <View
+                  style={[
+                    styles.linkedThumb,
+                    styles.linkedThumbPlaceholder,
+                    { backgroundColor: `${colors.primary}22` },
+                  ]}
+                >
+                  <MessageCircle size={22} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text
+                    style={{ color: colors.foreground, fontWeight: "700", textAlign }}
+                    numberOfLines={2}
+                  >
+                    {title}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
+                    {consultationStatusLabel(consultation.status, t)}
+                    {" · "}
+                    {new Date(consultation.createdAt).toLocaleDateString(localeTag(isRTL), {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </SectionCard>
     );
   };
@@ -1136,6 +1217,7 @@ export function MedicalRecordWebView() {
             {renderLinkedDiagnoses()}
             {renderSymptoms()}
             {renderMedications()}
+            {renderLinkedConsultations()}
           </View>
 
           {canDeleteRecord && !isDesktop ? (
