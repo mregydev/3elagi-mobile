@@ -23,6 +23,7 @@ import { NavLoadingOverlay } from "@/components/NavLoadingOverlay";
 import { SystemNotifications } from "@/components/SystemNotifications";
 import { SystemNotificationSync } from "@/components/SystemNotificationSync";
 import { ArabicFontBootstrap } from "@/components/ArabicFontBootstrap";
+import { ClarityBootstrap } from "@/components/ClarityBootstrap";
 import { LocaleBootstrap } from "@/components/LocaleBootstrap";
 import { LocaleAuthSync } from "@/components/LocaleAuthSync";
 import { AuthRedirect } from "@/components/AuthRedirect";
@@ -173,6 +174,7 @@ export default function RootLayout() {
 
   return (
     <>
+      <ClarityBootstrap />
       <PushNotificationsBootstrap />
       <WebChatNotificationsBootstrap />
       <PresenceSocket />
