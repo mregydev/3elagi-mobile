@@ -115,20 +115,6 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     match: (path) => pathHas(path, "patients"),
   },
   {
-    href: "/(tabs)/reviews",
-    labelKey: "reviews",
-    Icon: Star,
-    doctorOnly: true,
-    match: (path) => pathHas(path, "reviews"),
-  },
-  {
-    href: "/(tabs)/intake",
-    labelKey: "intake",
-    Icon: ListChecks,
-    doctorOnly: true,
-    match: (path) => pathHas(path, "intake"),
-  },
-  {
     href: "/(tabs)/profile",
     labelKey: "profile",
     Icon: User,
@@ -163,6 +149,22 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     patientOnly: true,
     group: "activity",
     match: (path) => pathHas(path, "records") || path.includes("/medical"),
+  },
+  {
+    href: "/(tabs)/reviews",
+    labelKey: "reviews",
+    Icon: Star,
+    doctorOnly: true,
+    group: "activity",
+    match: (path) => pathHas(path, "reviews"),
+  },
+  {
+    href: "/(tabs)/intake",
+    labelKey: "intake",
+    Icon: ListChecks,
+    doctorOnly: true,
+    group: "activity",
+    match: (path) => pathHas(path, "intake"),
   },
 ];
 
