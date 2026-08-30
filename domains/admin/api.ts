@@ -367,3 +367,32 @@ export async function fetchAdminDoctorRegistration(
     token,
   );
 }
+
+export interface AdminAppReviewRow {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string | null;
+  user_role: string | null;
+  rating: number;
+  comment?: string;
+  comment_preview: string;
+  improvement_tags: string[];
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchAdminAppReviews(
+  token: string,
+): Promise<AdminAppReviewRow[]> {
+  const data = await authJson<AdminAppReviewRow[]>("/admin/app-reviews", token);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchAdminAppReview(
+  token: string,
+  id: string,
+): Promise<AdminAppReviewRow> {
+  return authJson<AdminAppReviewRow>(`/admin/app-reviews/${id}`, token);
+}

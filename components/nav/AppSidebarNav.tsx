@@ -12,6 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Star,
   SunMoon,
   UserPlus,
 } from "lucide-react-native";
@@ -583,6 +584,49 @@ export function AppSidebarNav({
               )}
             </View>
 
+            {signedIn ? (
+              <Pressable
+                onPress={() => go("/rate-us")}
+                accessibilityRole="button"
+                accessibilityLabel={t.tabs.rateUs}
+                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                  styles.rateUsCta,
+                  collapsed && styles.authCtaRail,
+                  {
+                    shadowColor: "#B45309",
+                    opacity: pressed || hovered ? 0.92 : 1,
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={["#FDE68A", "#FBBF24", "#D97706"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[
+                    styles.rateUsGradient,
+                    { flexDirection: dir },
+                    collapsed && styles.authCtaGradientRail,
+                  ]}
+                >
+                  <Star size={18} color="#78350F" fill="#F59E0B" strokeWidth={2.2} />
+                  {collapsed ? null : (
+                    <Text
+                      style={[
+                        styles.rateUsText,
+                        {
+                          textAlign,
+                          writingDirection: isRTL ? "rtl" : "ltr",
+                          fontSize: navFontSize,
+                        },
+                      ]}
+                    >
+                      {t.tabs.rateUs}
+                    </Text>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            ) : null}
+
             <Pressable
               onPress={() => go("/contact")}
               accessibilityRole="button"
@@ -860,6 +904,29 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  rateUsCta: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  rateUsGradient: {
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.45)",
+  },
+  rateUsText: {
+    color: "#422006",
+    fontWeight: "800",
+    flex: 1,
+    letterSpacing: 0.15,
   },
   authCta: {
     borderRadius: 12,

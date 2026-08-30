@@ -7,6 +7,7 @@ import {
   LogOut,
   Mail,
   MessageSquare,
+  Star,
   Stethoscope,
 } from "lucide-react-native";
 import React from "react";
@@ -23,6 +24,7 @@ type AdminNavKey =
   | "chats"
   | "contact"
   | "doctorRegistrations"
+  | "appReviews"
   | "specialities"
   | "pricing"
   | "rag"
@@ -49,6 +51,12 @@ const NAV: {
     Icon: Stethoscope,
   },
   {
+    key: "appReviews",
+    label: "Rate us reviews",
+    href: "/admin/app-reviews",
+    Icon: Star,
+  },
+  {
     key: "specialities",
     label: "Specialities",
     href: "/admin/specialities",
@@ -73,6 +81,7 @@ function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/chats")) return "chats";
   if (pathname.includes("/admin/contact-messages")) return "contact";
   if (pathname.includes("/admin/doctor-registrations")) return "doctorRegistrations";
+  if (pathname.includes("/admin/app-reviews")) return "appReviews";
   if (pathname.includes("/admin/specialities")) return "specialities";
   if (pathname.includes("/admin/pricing")) return "pricing";
   if (pathname.includes("/admin/rag")) return "rag";

@@ -71,7 +71,7 @@ export function getHardwareBackAction(
     };
   }
 
-  if (path.includes("/contact") || path.includes("/register-with-us")) {
+  if (path.includes("/contact") || path.includes("/register-with-us") || path.includes("/rate-us")) {
     return () => {
       navigateBack(router, "/(tabs)");
     };
