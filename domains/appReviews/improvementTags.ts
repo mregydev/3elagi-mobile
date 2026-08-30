@@ -7,7 +7,6 @@ export const APP_REVIEW_IMPROVEMENT_TAGS = [
   "chat",
   "support",
   "features",
-  "pricing",
   "mobile",
   "arabic",
 ] as const;
