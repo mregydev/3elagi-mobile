@@ -12,6 +12,11 @@ import {
   View,
 } from "react-native";
 import { CalendarClock, X } from "lucide-react-native";
+import { VideoAppointmentPaymentPanel } from "@/components/consultations/VideoAppointmentPaymentPanel";
+import {
+  videoAppointmentNeedsPaymentPanel,
+  videoAppointmentPaymentBadge,
+} from "@/components/consultations/videoAppointmentPaymentMeta";
 import { AppHeader } from "@/components/AppHeader";
 import {
   cancelAppointment,
@@ -123,9 +128,21 @@ export default function AppointmentsTab() {
     });
     const sColor = STATUS_COLORS[item.status] ?? colors.mutedForeground;
     const isCancelling = cancelling === item.id;
+    const paymentBadge = videoAppointmentPaymentBadge(item, isDoctor, t, colors);
+    const showPayment = videoAppointmentNeedsPaymentPanel(item);
+    const statusColor = paymentBadge?.color ?? sColor;
 
     return (
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: dir }]}>
+      <View
+        style={[
+          styles.cardOuter,
+          {
+            backgroundColor: colors.card,
+            borderColor: paymentBadge ? `${paymentBadge.color}44` : colors.border,
+          },
+        ]}
+      >
+        <View style={[styles.card, { flexDirection: dir }]}>
         <View style={[styles.dateBox, { backgroundColor: `${colors.primary}12` }]}>
           <Text style={[styles.dateDay, { color: colors.primary }]}>{date.getDate()}</Text>
           <Text style={[styles.dateMonth, { color: colors.primary }]}>
@@ -139,9 +156,9 @@ export default function AppointmentsTab() {
             {dateStr}{item.time ? ` · ${item.time.slice(0, 5)}` : ""}
           </Text>
           <View style={[styles.statusRow, { flexDirection: dir }]}>
-            <View style={[styles.statusDot, { backgroundColor: sColor }]} />
-            <Text style={{ color: sColor, fontSize: 12, fontWeight: "600" }}>
-              {statusLabel(item.status, isRTL)}
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={{ color: statusColor, fontSize: 12, fontWeight: "600" }}>
+              {paymentBadge ? paymentBadge.label : statusLabel(item.status, isRTL)}
             </Text>
           </View>
           {item.ai_patient_insight ? (
@@ -238,6 +255,15 @@ export default function AppointmentsTab() {
             <X size={16} color="#ef4444" />
           )}
         </Pressable>
+        </View>
+
+        {showPayment ? (
+          <VideoAppointmentPaymentPanel
+            item={item}
+            isDoctor={isDoctor}
+            onUpdated={() => void load()}
+          />
+        ) : null}
       </View>
     );
   };
@@ -283,11 +309,14 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 32 },
   pageHeader: { alignItems: "center", gap: 8, marginVertical: 16 },
   pageTitle: { fontSize: 18, fontWeight: "800" },
-  card: {
+  cardOuter: {
     borderRadius: 14,
     borderWidth: 1,
     padding: 12,
     marginBottom: 10,
+    gap: 8,
+  },
+  card: {
     alignItems: "center",
     gap: 12,
   },
