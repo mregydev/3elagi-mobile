@@ -1,23 +1,53 @@
-import { useEffect } from "react";
+import { CLARITY_MOBILE_PROJECT_ID } from "@/constants/clarity";
+import { useAuthStore } from "@/domains/auth/store";
+import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
-/** Same project as the web tag in `public/index.html`. */
-const CLARITY_PROJECT_ID = "yak30uwjsp";
+let nativeClarityReady = false;
 
 /**
- * Microsoft Clarity on native. Web loads the tag from `public/index.html`, so
- * this is native-only — the SDK is a native module and does nothing (Expo Go
- * included) without a rebuilt dev/APK build.
+ * Microsoft Clarity on native (see @microsoft/react-native-clarity).
+ * Web uses the script tag in `public/index.html` / `+html.tsx`.
+ *
+ * Requires a rebuilt dev/APK build — does not run in Expo Go.
  */
 export function ClarityBootstrap() {
+  const userId = useAuthStore((s) => s.profile?.id);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+
   useEffect(() => {
     if (Platform.OS === "web") return;
-    // ponytail: inline require so the native module is never evaluated on web.
-    const Clarity = require("@microsoft/react-native-clarity");
-    Clarity.initialize(CLARITY_PROJECT_ID, {
+
+    // Inline require keeps the native module out of the web bundle.
+    const Clarity =
+      require("@microsoft/react-native-clarity") as typeof import("@microsoft/react-native-clarity");
+
+    Clarity.initialize(CLARITY_MOBILE_PROJECT_ID, {
       logLevel: __DEV__ ? Clarity.LogLevel.Verbose : Clarity.LogLevel.None,
     });
+    nativeClarityReady = true;
+
+    Clarity.setOnSessionStartedCallback(() => {
+      const id = userIdRef.current;
+      if (id) {
+        void Clarity.setCustomUserId(id);
+      }
+
+      if (__DEV__) {
+        void Clarity.getCurrentSessionUrl().then((url: string | undefined) => {
+          console.log("[clarity] session started:", url ?? "(url pending)");
+        });
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !nativeClarityReady || !userId) return;
+    const Clarity =
+      require("@microsoft/react-native-clarity") as typeof import("@microsoft/react-native-clarity");
+    void Clarity.setCustomUserId(userId);
+  }, [userId]);
 
   return null;
 }
