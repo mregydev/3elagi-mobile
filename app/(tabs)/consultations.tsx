@@ -26,19 +26,22 @@ export default function ConsultationsTab() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader />
       <ConsultationKindTabs kind={kind} onChange={setKind} />
-      {kind === "text" ? (
-        isDoctor ? (
-          <ConsultationsSection />
+      <View style={styles.body}>
+        {kind === "text" ? (
+          isDoctor ? (
+            <ConsultationsSection />
+          ) : (
+            <PatientConsultationsSection />
+          )
         ) : (
-          <PatientConsultationsSection />
-        )
-      ) : (
-        <VideoConsultationsSection isDoctor={isDoctor} />
-      )}
+          <VideoConsultationsSection isDoctor={isDoctor} />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  body: { flex: 1, minHeight: 0 },
 });

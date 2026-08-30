@@ -134,6 +134,7 @@ export function PatientConsultationsSection() {
 
   return (
     <FlatList
+      style={styles.list}
       data={filteredItems}
       keyExtractor={(c) => c.id}
       ListHeaderComponent={
@@ -224,6 +225,7 @@ export function PatientConsultationsSection() {
 }
 
 const styles = StyleSheet.create({
+  list: { flex: 1 },
   listContent: {
     padding: UI.space.md,
     paddingBottom: UI.space.lg,

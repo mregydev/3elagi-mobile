@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { Video } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,7 +18,7 @@ import {
 } from "@/components/consultations/videoAppointmentPaymentMeta";
 import { emptyStateSurface, UI } from "@/constants/uiTokens";
 import {
-  fetchMyAppointments,
+  fetchMyVideoConsultations,
   type UpcomingAppointment,
 } from "@/domains/appointments/api";
 import { useAuthStore } from "@/domains/auth/store";
@@ -45,7 +45,7 @@ export function VideoConsultationsSection({ isDoctor }: Props) {
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      setItems(await fetchMyAppointments(accessToken));
+      setItems(await fetchMyVideoConsultations(accessToken));
     } catch (e) {
       showErrorToast(t.common.error, (e as Error).message);
     } finally {
@@ -65,13 +65,40 @@ export function VideoConsultationsSection({ isDoctor }: Props) {
     setRefreshing(false);
   };
 
+  const sortedItems = useMemo(() => {
+    const rank = (item: UpcomingAppointment) => {
+      const pay = item.payment_status ?? "none";
+      if (pay === "awaiting_payment") return 0;
+      if (pay === "proof_submitted") return 1;
+      return 2;
+    };
+    return [...items].sort((a, b) => {
+      const byPayment = rank(a) - rank(b);
+      if (byPayment !== 0) return byPayment;
+      const dateCmp = a.date.localeCompare(b.date);
+      if (dateCmp !== 0) return dateCmp;
+      return (a.time ?? "").localeCompare(b.time ?? "");
+    });
+  }, [items]);
+
+  const statusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      pending: t.consultations.pending,
+      confirmed: isRTL ? "مؤكد" : "Confirmed",
+      waiting: isRTL ? "بالانتظار" : "Waiting",
+      active: isRTL ? "نشط" : "Active",
+    };
+    return map[status] ?? status;
+  };
+
   if (loading) {
     return <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />;
   }
 
   return (
     <FlatList
-      data={items}
+      style={styles.list}
+      data={sortedItems}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.listContent}
       refreshControl={
@@ -143,7 +170,13 @@ export function VideoConsultationsSection({ isDoctor }: Props) {
                     {paymentBadge.label}
                   </Text>
                 </View>
-              ) : null}
+              ) : (
+                <View style={[styles.badge, { backgroundColor: `${colors.primary}14` }]}>
+                  <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 11 }}>
+                    {statusLabel(item.status)}
+                  </Text>
+                </View>
+              )}
             </Pressable>
             {showPayment ? (
               <VideoAppointmentPaymentPanel
@@ -161,6 +194,7 @@ export function VideoConsultationsSection({ isDoctor }: Props) {
 }
 
 const styles = StyleSheet.create({
+  list: { flex: 1 },
   listContent: {
     padding: UI.space.md,
     paddingBottom: UI.space.lg,

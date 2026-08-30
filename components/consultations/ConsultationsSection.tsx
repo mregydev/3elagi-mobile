@@ -101,6 +101,7 @@ export function ConsultationsSection() {
 
   return (
     <FlatList
+      style={styles.list}
       data={items}
       keyExtractor={(c) => c.id}
       ListHeaderComponent={header}
@@ -230,6 +231,7 @@ export function ConsultationsSection() {
 }
 
 const styles = StyleSheet.create({
+  list: { flex: 1 },
   reimburseCard: {
     borderWidth: 1,
     borderRadius: 16,

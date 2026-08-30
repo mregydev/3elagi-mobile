@@ -39,6 +39,19 @@ export async function fetchMyAppointments(
   return res.json();
 }
 
+/** Video consultations for the consultations tab (includes payment phase). */
+export async function fetchMyVideoConsultations(
+  token: string,
+): Promise<UpcomingAppointment[]> {
+  const res = await fetch(`${API_BASE}/appointments/video-consultations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load video consultations (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function cancelAppointment(
   token: string,
   appointmentId: string,
