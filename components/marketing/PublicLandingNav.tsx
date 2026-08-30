@@ -39,6 +39,11 @@ export function PublicLandingNav() {
       onPress: () => router.push("/(tabs)/for-doctors"),
     },
     {
+      key: "register-with-us",
+      label: t.landing.navRegisterWithUs,
+      onPress: () => router.push("/register-with-us"),
+    },
+    {
       key: "faq",
       label: t.landing.navFaq,
       onPress: () => router.push("/(tabs)/faq"),

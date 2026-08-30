@@ -5,6 +5,7 @@ import {
   FileWarning,
   LayoutDashboard,
   LogOut,
+  Mail,
   MessageSquare,
   Stethoscope,
 } from "lucide-react-native";
@@ -20,6 +21,8 @@ import { useColors } from "@/hooks/useColors";
 type AdminNavKey =
   | "doctors"
   | "chats"
+  | "contact"
+  | "doctorRegistrations"
   | "specialities"
   | "pricing"
   | "rag"
@@ -33,6 +36,18 @@ const NAV: {
 }[] = [
   { key: "doctors", label: "Doctors", href: "/admin", Icon: Stethoscope },
   { key: "chats", label: "Chats", href: "/admin/chats", Icon: MessageSquare },
+  {
+    key: "contact",
+    label: "Contact inbox",
+    href: "/admin/contact-messages",
+    Icon: Mail,
+  },
+  {
+    key: "doctorRegistrations",
+    label: "Doctor registrations",
+    href: "/admin/doctor-registrations",
+    Icon: Stethoscope,
+  },
   {
     key: "specialities",
     label: "Specialities",
@@ -56,6 +71,8 @@ const NAV: {
 
 function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/chats")) return "chats";
+  if (pathname.includes("/admin/contact-messages")) return "contact";
+  if (pathname.includes("/admin/doctor-registrations")) return "doctorRegistrations";
   if (pathname.includes("/admin/specialities")) return "specialities";
   if (pathname.includes("/admin/pricing")) return "pricing";
   if (pathname.includes("/admin/rag")) return "rag";

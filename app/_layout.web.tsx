@@ -149,6 +149,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/reset-password" options={{ presentation: "modal" }} />
             <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
             <Stack.Screen name="contact" />
+            <Stack.Screen name="register-with-us" />
             <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="video-call" />
             <Stack.Screen name="ai/[id]" />
@@ -166,6 +167,8 @@ export default function RootLayout() {
             <Stack.Screen name="admin/specialities" />
             <Stack.Screen name="admin/rag" />
             <Stack.Screen name="admin/complaints" />
+            <Stack.Screen name="admin/contact-messages" />
+            <Stack.Screen name="admin/doctor-registrations" />
             <Stack.Screen name="doctor-pending" />
             <Stack.Screen name="points/checkout" />
           </Stack>

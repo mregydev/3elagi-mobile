@@ -138,6 +138,7 @@ function AppRoot() {
               <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
               <Stack.Screen name="auth/callback" />
               <Stack.Screen name="contact" />
+              <Stack.Screen name="register-with-us" />
               <Stack.Screen name="doctors" />
               <Stack.Screen name="chat/[id]" />
               <Stack.Screen name="video-call" />

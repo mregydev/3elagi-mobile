@@ -84,6 +84,7 @@ import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { createDiagnosis, fetchAllMedicalHistory, uploadFile } from "@/domains/medical/api";
 import { openAsk3elagiAi } from "@/domains/ai/widget-store";
+import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -168,6 +169,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const addPendingMessage = useChatStore((s) => s.addPendingMessage);
   const failPendingMessage = useChatStore((s) => s.failPendingMessage);
   const deleteMessage = useChatStore((s) => s.deleteMessage);
+  const removeAppointmentMessages = useChatStore((s) => s.removeAppointmentMessages);
   const editMessage = useChatStore((s) => s.editMessage);
   const editMedicalMessage = useChatStore((s) => s.editMedicalMessage);
   const updateMessageEmotions = useChatStore((s) => s.updateMessageEmotions);
@@ -978,6 +980,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         };
       });
     } catch (e) {
+      if (isAppointmentNotFoundError(e)) {
+        removeAppointmentMessages(id, appointmentId);
+      }
       Alert.alert(
         isRTL ? "خطأ" : "Error",
         e instanceof Error ? e.message : isRTL ? "تعذر تحديث الموعد" : "Could not update appointment",
@@ -1082,6 +1087,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         }
         jumpToLatest();
       } catch (e) {
+        if (target.kind === "appointment" && isAppointmentNotFoundError(e)) {
+          removeAppointmentMessages(id, target.id);
+        }
         Alert.alert(
           isRTL ? "خطأ" : "Error",
           e instanceof Error
@@ -1116,6 +1124,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       }
       jumpToLatest();
     } catch (e) {
+      if (target.kind === "appointment" && isAppointmentNotFoundError(e)) {
+        removeAppointmentMessages(id, target.id);
+      }
       Alert.alert(
         isRTL ? "خطأ" : "Error",
         e instanceof Error
@@ -1178,6 +1189,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       }
       jumpToLatest();
     } catch (e) {
+      if (target.kind === "appointment" && isAppointmentNotFoundError(e)) {
+        removeAppointmentMessages(id, target.id);
+      }
       Alert.alert(
         isRTL ? "خطأ" : "Error",
         e instanceof Error

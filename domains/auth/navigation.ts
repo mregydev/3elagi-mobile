@@ -91,6 +91,8 @@ export function isPublicWebPath(pathname: string): boolean {
     pathname.startsWith("/doctors/") ||
     pathname === "/contact" ||
     pathname.startsWith("/contact/") ||
+    pathname === "/register-with-us" ||
+    pathname.startsWith("/register-with-us/") ||
     pathname === "/demo" ||
     pathname.startsWith("/demo/")
   ) {

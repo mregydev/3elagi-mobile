@@ -297,3 +297,72 @@ export async function updatePointPrice(
     body: JSON.stringify({ price_per_point: pricePerPoint }),
   });
 }
+
+export interface AdminContactAttachment {
+  file_name: string;
+  mime_type: string;
+  url: string;
+  object_path?: string | null;
+}
+
+export interface AdminContactMessageRow {
+  id: string;
+  user_id: string | null;
+  sender_name: string;
+  sender_email: string | null;
+  sender_role: string | null;
+  message?: string;
+  message_preview: string;
+  attachments: AdminContactAttachment[];
+  read_at: string | null;
+  created_at: string;
+}
+
+export async function fetchAdminContactMessages(
+  token: string,
+): Promise<AdminContactMessageRow[]> {
+  const data = await authJson<AdminContactMessageRow[]>(
+    "/admin/contact-messages",
+    token,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchAdminContactMessage(
+  token: string,
+  id: string,
+): Promise<AdminContactMessageRow> {
+  return authJson<AdminContactMessageRow>(`/admin/contact-messages/${id}`, token);
+}
+
+export interface AdminDoctorRegistrationRow {
+  id: string;
+  doctor_name: string;
+  email: string;
+  phone: string;
+  speciality_id: string;
+  speciality_name_en: string;
+  speciality_name_ar: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export async function fetchAdminDoctorRegistrations(
+  token: string,
+): Promise<AdminDoctorRegistrationRow[]> {
+  const data = await authJson<AdminDoctorRegistrationRow[]>(
+    "/admin/doctor-registrations",
+    token,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchAdminDoctorRegistration(
+  token: string,
+  id: string,
+): Promise<AdminDoctorRegistrationRow> {
+  return authJson<AdminDoctorRegistrationRow>(
+    `/admin/doctor-registrations/${id}`,
+    token,
+  );
+}

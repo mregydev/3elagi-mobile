@@ -412,6 +412,8 @@ const en = {
     forDoctorsBody:
       "3elagi helps licensed physicians consult remotely, manage requests, and get paid through a transparent credits system.",
     forDoctorsCta: "Apply as a doctor",
+    registerWithUsCta: "Register with us",
+    navRegisterWithUs: "Register with us",
     forDoctorsPerk1: "Accept video consultations and chat requests from verified patients.",
     forDoctorsPerk2: "Manage appointments and availability from one professional dashboard.",
     forDoctorsPerk3: "Earn reimbursable credits with clear pricing you control.",
@@ -493,6 +495,17 @@ const en = {
     sendFailed: "Could not send your message",
     messageTooShort: "Please write a short message (at least 5 characters).",
     tooManyFiles: "You can attach up to 5 files.",
+  },
+  registerWithUs: {
+    title: "Register with us",
+    subtitle:
+      "Are you a doctor interested in joining 3elagi or testing the app? Send us your details and our team will reach out.",
+    nameLabel: "Doctor name",
+    emailLabel: "Email",
+    phoneLabel: "Phone number",
+    submit: "Submit request",
+    sent: "Request sent. We’ll contact you soon.",
+    sendFailed: "Could not send your request",
   },
   mobileApp: {
     linkLabel: "Get the Android app",
@@ -1317,6 +1330,8 @@ const ar: typeof en = {
     forDoctorsHeadline: "نمِّ ممارستك عبر الإنترنت",
     forDoctorsBody: "يساعد 3elagi الأطباء المعتمدين على الاستشارة عن بُعد وإدارة الطلبات والحصول على أجر شفاف.",
     forDoctorsCta: "قدّم كطبيب",
+    registerWithUsCta: "سجّل معنا",
+    navRegisterWithUs: "سجّل معنا",
     forDoctorsPerk1: "اقبل استشارات الفيديو وطلبات المحادثة من مرضى موثقين.",
     forDoctorsPerk2: "أدر المواعيد والتوفر من لوحة تحكم احترافية.",
     forDoctorsPerk3: "اكسب رصيداً قابلاً للاسترداد بأسعار تحددها أنت.",
@@ -1391,6 +1406,17 @@ const ar: typeof en = {
     sendFailed: "تعذر إرسال الرسالة",
     messageTooShort: "اكتب رسالة قصيرة (5 أحرف على الأقل).",
     tooManyFiles: "يمكنك إرفاق حتى 5 ملفات.",
+  },
+  registerWithUs: {
+    title: "سجّل معنا",
+    subtitle:
+      "هل أنت طبيب مهتم بالانضمام إلى 3elagi أو تجربة التطبيق؟ أرسل بياناتك وسيتواصل معك فريقنا.",
+    nameLabel: "اسم الطبيب",
+    emailLabel: "البريد الإلكتروني",
+    phoneLabel: "رقم الهاتف",
+    submit: "إرسال الطلب",
+    sent: "تم إرسال الطلب. سنتواصل معك قريبًا.",
+    sendFailed: "تعذر إرسال الطلب",
   },
   mobileApp: {
     linkLabel: "حمّل تطبيق أندرويد",
@@ -2215,6 +2241,8 @@ const de: typeof en = {
     forDoctorsHeadline: "Praxis online ausbauen",
     forDoctorsBody: "3elagi unterstützt lizenzierte Ärzte bei Fernberatung und transparenten Credits.",
     forDoctorsCta: "Als Arzt bewerben",
+    registerWithUsCta: "Bei uns registrieren",
+    navRegisterWithUs: "Bei uns registrieren",
     forDoctorsPerk1: "Video- und Chat-Anfragen von verifizierten Patienten annehmen.",
     forDoctorsPerk2: "Termine und Verfügbarkeit in einem Dashboard verwalten.",
     forDoctorsPerk3: "Erstattbare Credits mit von Ihnen festgelegten Preisen.",
@@ -2291,6 +2319,17 @@ const de: typeof en = {
     sendFailed: "Nachricht konnte nicht gesendet werden",
     messageTooShort: "Bitte schreiben Sie eine kurze Nachricht (mind. 5 Zeichen).",
     tooManyFiles: "Sie können bis zu 5 Dateien anhängen.",
+  },
+  registerWithUs: {
+    title: "Bei uns registrieren",
+    subtitle:
+      "Sind Sie Arzt und möchten 3elagi beitreten oder die App testen? Senden Sie uns Ihre Daten — unser Team meldet sich bei Ihnen.",
+    nameLabel: "Name des Arztes",
+    emailLabel: "E-Mail",
+    phoneLabel: "Telefonnummer",
+    submit: "Anfrage senden",
+    sent: "Anfrage gesendet. Wir melden uns bald bei Ihnen.",
+    sendFailed: "Anfrage konnte nicht gesendet werden",
   },
   mobileApp: {
     linkLabel: "Android-App herunterladen",
@@ -3117,6 +3156,8 @@ const es: typeof en = {
     forDoctorsHeadline: "Haz crecer tu consulta en línea",
     forDoctorsBody: "3elagi ayuda a médicos licenciados a consultar remotamente con créditos transparentes.",
     forDoctorsCta: "Registrarse como médico",
+    registerWithUsCta: "Regístrate con nosotros",
+    navRegisterWithUs: "Regístrate con nosotros",
     forDoctorsPerk1: "Acepta video y chat de pacientes verificados.",
     forDoctorsPerk2: "Gestiona citas y disponibilidad desde un panel profesional.",
     forDoctorsPerk3: "Gana créditos reembolsables con precios que tú defines.",
@@ -3192,6 +3233,17 @@ const es: typeof en = {
     sendFailed: "No se pudo enviar el mensaje",
     messageTooShort: "Escribe un mensaje breve (al menos 5 caracteres).",
     tooManyFiles: "Puedes adjuntar hasta 5 archivos.",
+  },
+  registerWithUs: {
+    title: "Regístrate con nosotros",
+    subtitle:
+      "¿Eres médico y te interesa unirte a 3elagi o probar la app? Envíanos tus datos y nuestro equipo se pondrá en contacto contigo.",
+    nameLabel: "Nombre del médico",
+    emailLabel: "Correo electrónico",
+    phoneLabel: "Teléfono",
+    submit: "Enviar solicitud",
+    sent: "Solicitud enviada. Nos pondremos en contacto pronto.",
+    sendFailed: "No se pudo enviar la solicitud",
   },
   mobileApp: {
     linkLabel: "Obtener la app de Android",

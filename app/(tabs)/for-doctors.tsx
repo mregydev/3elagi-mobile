@@ -99,22 +99,37 @@ export default function ForDoctorsScreen() {
               <Text style={[styles.body, { color: colors.mutedForeground, textAlign }]}>
                 {t.landing.forDoctorsBody}
               </Text>
-              <Pressable
-                onPress={() => router.push({ pathname: "/auth/signup", params: { role: "doctor" } })}
-                style={({ pressed }) => [
-                  primaryButton(),
-                  styles.cta,
-                  {
-                    alignSelf: isRTL ? "flex-end" : "flex-start",
-                    backgroundColor: colors.primary,
-                    opacity: pressed ? 0.92 : 1,
-                  },
-                ]}
-              >
-                <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
-                  {t.landing.forDoctorsCta}
-                </Text>
-              </Pressable>
+              <View style={[styles.ctaRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <Pressable
+                  onPress={() => router.push({ pathname: "/auth/signup", params: { role: "doctor" } })}
+                  style={({ pressed }) => [
+                    primaryButton(),
+                    styles.cta,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity: pressed ? 0.92 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
+                    {t.landing.forDoctorsCta}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push("/register-with-us")}
+                  style={({ pressed }) => [
+                    styles.ctaSecondary,
+                    {
+                      borderColor: colors.primary,
+                      backgroundColor: pressed ? `${colors.primary}12` : colors.card,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.ctaSecondaryText, { color: colors.primary }]}>
+                    {t.landing.registerWithUsCta}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
 
@@ -218,7 +233,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     minWidth: 180,
+  },
+  ctaRow: {
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 10,
     marginTop: 6,
+    alignSelf: "flex-start",
+  },
+  ctaSecondary: {
+    minWidth: 180,
+    borderWidth: 1,
+    borderRadius: UI.radius.inner,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaSecondaryText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
   ctaText: {
     fontSize: 15,

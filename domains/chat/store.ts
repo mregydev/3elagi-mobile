@@ -12,6 +12,10 @@ import {
   sendChatMessage,
   type MessageRow,
 } from "./api";
+import {
+  dropOrphanedAppointmentMessages,
+  withoutAppointmentMessages,
+} from "./appointmentMessages";
 import { canUseChat } from "./access";
 import { applyLivePresence } from "./presence";
 import { applyPresenceToConversations } from "./presenceConversations";
@@ -54,6 +58,7 @@ interface ChatState {
     token: string | null,
     selfId: string | null,
   ) => Promise<void>;
+  removeAppointmentMessages: (peerId: string, appointmentId: string) => void;
   sendMessage: (
     peerId: string,
     input: SendMessageInput | string,
@@ -496,10 +501,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const msgs = await fetchMessagesWithPeer(token, peerId, selfId);
       set((s) => {
         const live = s.messages[peerId] ?? [];
+        const cleanedLive = dropOrphanedAppointmentMessages(live, msgs);
         return {
           messages: {
             ...s.messages,
-            [peerId]: mergeMessagesById(live, msgs),
+            [peerId]: mergeMessagesById(cleanedLive, msgs),
           },
           messagesLoading: { ...s.messagesLoading, [peerId]: false },
         };
@@ -510,6 +516,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messagesLoading: { ...s.messagesLoading, [peerId]: false },
       }));
     }
+  },
+
+  removeAppointmentMessages: (peerId, appointmentId) => {
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [peerId]: withoutAppointmentMessages(
+          s.messages[peerId] ?? [],
+          appointmentId,
+        ),
+      },
+    }));
   },
 
   sendMessage: async (peerId, input, token, selfId, selfRole, replaceTempId) => {
