@@ -13,6 +13,11 @@ import {
   Text,
   View,
 } from "react-native";
+import { ConsultationListPaymentPanel } from "@/components/consultations/ConsultationListPaymentPanel";
+import {
+  consultationNeedsPaymentPanel,
+  consultationPaymentBadge,
+} from "@/components/consultations/consultationPaymentMeta";
 import {
   fetchMyConsultations,
   type DoctorConsultation,
@@ -110,10 +115,21 @@ export function ConsultationsSection() {
       }
       renderItem={({ item }) => {
         const s = statusMeta(item.status);
+        const paymentBadge = consultationPaymentBadge(item, true, t, colors);
+        const showPayment = consultationNeedsPaymentPanel(item);
         const refunded = item.complaint_status === "accepted";
         const date = new Date(item.created_at).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US");
         const Chevron = isRTL ? ChevronLeft : ChevronRight;
         return (
+          <View
+            style={[
+              styles.rowWrap,
+              {
+                backgroundColor: colors.card,
+                borderColor: paymentBadge ? `${paymentBadge.color}33` : colors.border,
+              },
+            ]}
+          >
           <Pressable
             onPress={() =>
               router.push({
@@ -124,8 +140,6 @@ export function ConsultationsSection() {
             style={({ pressed }) => [
               styles.row,
               {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
                 flexDirection: dir,
                 opacity: pressed ? 0.85 : 1,
               },
@@ -161,9 +175,17 @@ export function ConsultationsSection() {
               </Text>
             </View>
             <View style={styles.badges}>
+              {paymentBadge ? (
+                <View style={[styles.badge, { backgroundColor: `${paymentBadge.color}1F` }]}>
+                  <Text style={{ color: paymentBadge.color, fontWeight: "800", fontSize: 12 }}>
+                    {paymentBadge.label}
+                  </Text>
+                </View>
+              ) : (
               <View style={[styles.badge, { backgroundColor: `${s.color}1F` }]}>
                 <Text style={{ color: s.color, fontWeight: "800", fontSize: 12 }}>{s.text}</Text>
               </View>
+              )}
               {refunded ? (
                 <View style={[styles.badge, { backgroundColor: "#dc26261F" }]}>
                   <Text style={{ color: "#dc2626", fontWeight: "800", fontSize: 12 }}>
@@ -191,6 +213,16 @@ export function ConsultationsSection() {
             </Pressable>
             <Chevron size={18} color={colors.mutedForeground} />
           </Pressable>
+          {showPayment ? (
+            <View style={styles.paymentSection}>
+            <ConsultationListPaymentPanel
+              item={item}
+              isDoctor
+              onUpdated={() => void load()}
+            />
+            </View>
+          ) : null}
+          </View>
         );
       }}
     />
@@ -217,13 +249,20 @@ const styles = StyleSheet.create({
   },
   reimburseBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
   listTitle: { fontSize: 15, fontWeight: "800", marginTop: 6 },
+  rowWrap: {
+    borderWidth: 1,
+    borderRadius: 14,
+    marginBottom: 10,
+    overflow: "hidden",
+  },
   row: {
     alignItems: "center",
     gap: 12,
-    borderWidth: 1,
-    borderRadius: 14,
     padding: 14,
-    marginBottom: 10,
+  },
+  paymentSection: {
+    paddingHorizontal: 10,
+    paddingBottom: 10,
   },
   name: { fontSize: 15, fontWeight: "700" },
   desc: { fontSize: 13 },

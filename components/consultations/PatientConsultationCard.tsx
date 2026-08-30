@@ -3,6 +3,11 @@ import { ChevronLeft, ChevronRight, MessageCircle, Trash2 } from "lucide-react-n
 import React, { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
+import { ConsultationListPaymentPanel } from "@/components/consultations/ConsultationListPaymentPanel";
+import {
+  consultationNeedsPaymentPanel,
+  consultationPaymentBadge,
+} from "@/components/consultations/consultationPaymentMeta";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { countryFlagEmoji } from "@/constants/patientCountries";
 import { surfaceCard, UI } from "@/constants/uiTokens";
@@ -17,14 +22,18 @@ type Props = {
   item: PatientConsultation;
   locale: string;
   onRemoved?: () => void;
+  onPaymentUpdated?: () => void;
 };
 
 function statusMeta(
-  status: PatientConsultation["status"],
+  item: PatientConsultation,
   t: ReturnType<typeof useI18n>["t"],
   colors: ReturnType<typeof useColors>,
 ) {
-  switch (status) {
+  const paymentBadge = consultationPaymentBadge(item, false, t, colors);
+  if (paymentBadge) return paymentBadge;
+
+  switch (item.status) {
     case "open":
       return { label: t.consultations.open, color: colors.primary, prominent: true, muted: false };
     case "pending":
@@ -35,18 +44,24 @@ function statusMeta(
     case "rejected":
       return { label: t.consultations.cancelled, color: colors.mutedForeground, prominent: false, muted: true };
     default:
-      return { label: status, color: colors.mutedForeground, prominent: false, muted: false };
+      return { label: item.status, color: colors.mutedForeground, prominent: false, muted: false };
   }
 }
 
-export function PatientConsultationCard({ item, locale, onRemoved }: Props) {
+export function PatientConsultationCard({
+  item,
+  locale,
+  onRemoved,
+  onPaymentUpdated,
+}: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { remove } = useRemoveConsultation();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const [hovered, setHovered] = useState(false);
-  const meta = statusMeta(item.status, t, colors);
+  const meta = statusMeta(item, t, colors);
+  const showPayment = consultationNeedsPaymentPanel(item);
   const Chevron = isRTL ? ChevronLeft : ChevronRight;
   const isCancelled = item.status === "cancelled" || item.status === "rejected";
 
@@ -69,25 +84,31 @@ export function PatientConsultationCard({ item, locale, onRemoved }: Props) {
   };
 
   return (
-    <Pressable
-      onPress={openChat}
-      accessibilityRole="button"
-      // @ts-expect-error RN Web hover
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.card,
         surfaceCard(colors.card, colors.border),
         meta.prominent && !isCancelled
           ? { borderColor: `${meta.color}33` }
           : null,
-        Platform.OS === "web" && hovered ? UI.shadowHover : null,
-        {
-          flexDirection: dir,
-          opacity: isCancelled ? 0.58 : pressed ? 0.94 : 1,
-        },
+        { opacity: isCancelled ? 0.58 : 1 },
       ]}
     >
+      <Pressable
+        onPress={openChat}
+        accessibilityRole="button"
+        // @ts-expect-error RN Web hover
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={({ pressed }) => [
+          styles.cardRow,
+          {
+            flexDirection: dir,
+            opacity: pressed ? 0.94 : 1,
+          },
+          Platform.OS === "web" && hovered ? UI.shadowHover : null,
+        ]}
+      >
       <Avatar uri={null} seed={item.doctor_id} role="doctor" size={44} />
 
       <View style={styles.main}>
@@ -144,15 +165,28 @@ export function PatientConsultationCard({ item, locale, onRemoved }: Props) {
         </Pressable>
         <Chevron size={16} color={colors.mutedForeground} />
       </View>
-    </Pressable>
+      </Pressable>
+
+      {showPayment ? (
+        <ConsultationListPaymentPanel
+          item={item}
+          isDoctor={false}
+          paymentLink={item.payment_link}
+          onUpdated={onPaymentUpdated}
+        />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    alignItems: "center",
     gap: UI.space.sm,
     padding: UI.space.sm + 4,
+  },
+  cardRow: {
+    alignItems: "center",
+    gap: UI.space.sm,
   },
   main: {
     flex: 1,

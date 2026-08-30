@@ -769,6 +769,10 @@ const en = {
       "This permanently deletes the consultation and all related chat messages. The other person will be notified.",
     removeConsultationSuccess: "Consultation removed",
     removeConsultationFailed: "Could not remove consultation",
+    paymentRequired: "Payment required",
+    awaitingPatientPayment: "Awaiting payment",
+    receiptPending: "Receipt pending",
+    reviewReceipt: "Review receipt",
   },
   doctor: {
     egpPerConsultation: "points/consultation",
@@ -1656,6 +1660,10 @@ const ar: typeof en = {
       "سيؤدي هذا إلى حذف الاستشارة وجميع رسائل المحادثة المرتبطة بها نهائيًا. سيتم إخطار الطرف الآخر.",
     removeConsultationSuccess: "تمت إزالة الاستشارة",
     removeConsultationFailed: "تعذر إزالة الاستشارة",
+    paymentRequired: "الدفع مطلوب",
+    awaitingPatientPayment: "بانتظار الدفع",
+    receiptPending: "الإيصال قيد المراجعة",
+    reviewReceipt: "مراجعة الإيصال",
   },
   doctor: {
     egpPerConsultation: "نقطة/استشارة",
@@ -2550,6 +2558,10 @@ const de: typeof en = {
       "Dies löscht die Beratung und alle zugehörigen Chat-Nachrichten dauerhaft. Die andere Person wird benachrichtigt.",
     removeConsultationSuccess: "Beratung entfernt",
     removeConsultationFailed: "Beratung konnte nicht entfernt werden",
+    paymentRequired: "Zahlung erforderlich",
+    awaitingPatientPayment: "Zahlung ausstehend",
+    receiptPending: "Beleg ausstehend",
+    reviewReceipt: "Beleg prüfen",
   },
   doctor: {
     egpPerConsultation: "Punkte/Beratung",
@@ -3442,6 +3454,10 @@ const es: typeof en = {
       "Esto elimina permanentemente la consulta y todos los mensajes relacionados. Se notificará a la otra persona.",
     removeConsultationSuccess: "Consulta eliminada",
     removeConsultationFailed: "No se pudo eliminar la consulta",
+    paymentRequired: "Pago requerido",
+    awaitingPatientPayment: "Esperando pago",
+    receiptPending: "Recibo pendiente",
+    reviewReceipt: "Revisar recibo",
   },
   doctor: {
     egpPerConsultation: "puntos/consulta",

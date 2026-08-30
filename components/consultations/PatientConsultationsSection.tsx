@@ -215,6 +215,7 @@ export function PatientConsultationsSection() {
           item={item}
           locale={locale}
           onRemoved={() => void load()}
+          onPaymentUpdated={() => void load()}
         />
       )}
       ItemSeparatorComponent={() => <View style={{ height: UI.space.sm }} />}
