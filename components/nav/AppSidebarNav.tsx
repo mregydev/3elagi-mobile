@@ -520,8 +520,6 @@ export function AppSidebarNav({
       </View>
 
       <View style={styles.footer}>
-        {signedIn ? renderRateUsCta() : null}
-
         {!collapsed ? (
           <View style={styles.navSection}>
             <View
@@ -630,6 +628,8 @@ export function AppSidebarNav({
               )}
             </View>
 
+            {signedIn ? renderRateUsCta() : null}
+
             <Pressable
               onPress={() => go("/contact")}
               accessibilityRole="button"
@@ -659,6 +659,8 @@ export function AppSidebarNav({
               </Text>
             </Pressable>
           </View>
+        ) : signedIn ? (
+          renderRateUsCta()
         ) : null}
 
         {signedIn ? (
@@ -911,7 +913,8 @@ const styles = StyleSheet.create({
   rateUsCta: {
     borderRadius: 12,
     overflow: "hidden",
-    marginBottom: 6,
+    marginTop: 10,
+    marginBottom: 4,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.32,
     shadowRadius: 10,
