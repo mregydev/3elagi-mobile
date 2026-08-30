@@ -72,6 +72,26 @@ async function authPatch<T>(path: string, token: string, body: object): Promise<
   return data as T;
 }
 
+async function authPost<T>(path: string, token: string, body: object): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
+        data?.error ??
+        `Request failed (${res.status})`,
+    );
+  }
+  return data as T;
+}
+
 interface RawAuthResponse {
   access_token: string;
   role: string;
@@ -313,6 +333,17 @@ export const authRepository = {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     await post("/auth/reset-password", {
       token: token.trim(),
+      new_password: newPassword,
+    });
+  },
+
+  async changePassword(
+    token: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    await authPost("/auth/change-password", token, {
+      current_password: currentPassword,
       new_password: newPassword,
     });
   },

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import { CountrySelectField } from "@/components/auth/CountrySelectField";
+import { ProfileChangePasswordField } from "@/components/profile/ProfileChangePasswordField";
 import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
 import {
@@ -385,6 +386,13 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                   )}
                 </View>
               </View>
+            </View>
+
+            <View style={[...cardBase, halfStyle]}>
+              <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
+                {t.settings.changePassword}
+              </Text>
+              <ProfileChangePasswordField accessToken={accessToken} />
             </View>
 
             <View style={[...cardBase, halfStyle]}>

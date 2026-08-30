@@ -26,6 +26,7 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
+import { ProfileChangePasswordField } from "@/components/profile/ProfileChangePasswordField";
 import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
@@ -606,6 +607,14 @@ export function ProfileEditor({
                 </View>
               </SectionCard>
             ) : null}
+
+            <SectionCard
+              title={t.settings.changePassword}
+              colors={colors}
+              textAlign={textAlign}
+            >
+              <ProfileChangePasswordField accessToken={accessToken} />
+            </SectionCard>
 
             <SectionCard
               title={t.settings.preferences}

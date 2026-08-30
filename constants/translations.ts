@@ -63,6 +63,13 @@ const en = {
       "AI is used when adding medical records. It provides insights on lab results, X-rays, and possible conditions. It does not provide medical opinions.",
     aiAssistanceTooltipDoctor:
       "AI helps with diagnosis, prescriptions, X-ray suggestions, and medication recommendations.",
+    changePassword: "Change password",
+    changePasswordHint: "Enter your current password, then choose a new one.",
+    currentPassword: "Current password",
+    currentPasswordRequired: "Enter your current password",
+    changePasswordAction: "Update password",
+    changePasswordSuccess: "Password updated successfully.",
+    changePasswordFailed: "Could not update password",
   },
   prescription: {
     newTitle: "New Prescription",
@@ -1010,6 +1017,13 @@ const ar: typeof en = {
       "يُستخدم الذكاء الاصطناعي عند إضافة السجلات الطبية. يقدم رؤى عن نتائج المختبر والأشعة والحالات المحتملة. لا يقدم آراء طبية.",
     aiAssistanceTooltipDoctor:
       "يساعد الذكاء الاصطناعي في التشخيص وكتابة الروشتات واقتراح الأشعة والأدوية.",
+    changePassword: "تغيير كلمة المرور",
+    changePasswordHint: "أدخل كلمة المرور الحالية، ثم اختر كلمة مرور جديدة.",
+    currentPassword: "كلمة المرور الحالية",
+    currentPasswordRequired: "أدخل كلمة المرور الحالية",
+    changePasswordAction: "تحديث كلمة المرور",
+    changePasswordSuccess: "تم تحديث كلمة المرور بنجاح.",
+    changePasswordFailed: "تعذر تحديث كلمة المرور",
   },
   prescription: {
     newTitle: "روشتة جديدة",
@@ -1943,6 +1957,13 @@ const de: typeof en = {
       "KI wird beim Hinzufügen medizinischer Befunde genutzt. Sie liefert Einblicke zu Laborwerten, Röntgenbildern und möglichen Erkrankungen. Sie erteilt keine medizinischen Meinungen.",
     aiAssistanceTooltipDoctor:
       "KI unterstützt bei Diagnose, Rezepten, Röntgenempfehlungen und Medikamentenvorschlägen.",
+    changePassword: "Passwort ändern",
+    changePasswordHint: "Geben Sie Ihr aktuelles Passwort ein und wählen Sie ein neues.",
+    currentPassword: "Aktuelles Passwort",
+    currentPasswordRequired: "Geben Sie Ihr aktuelles Passwort ein",
+    changePasswordAction: "Passwort aktualisieren",
+    changePasswordSuccess: "Passwort erfolgreich aktualisiert.",
+    changePasswordFailed: "Passwort konnte nicht aktualisiert werden",
   },
   prescription: {
     newTitle: "Neues Rezept",
@@ -2882,6 +2903,13 @@ const es: typeof en = {
       "La IA se usa al añadir historiales médicos. Ofrece información sobre análisis, radiografías y posibles condiciones. No emite opiniones médicas.",
     aiAssistanceTooltipDoctor:
       "La IA ayuda con el diagnóstico, recetas, sugerencias de radiografías y recomendaciones de medicamentos.",
+    changePassword: "Cambiar contraseña",
+    changePasswordHint: "Introduce tu contraseña actual y elige una nueva.",
+    currentPassword: "Contraseña actual",
+    currentPasswordRequired: "Introduce tu contraseña actual",
+    changePasswordAction: "Actualizar contraseña",
+    changePasswordSuccess: "Contraseña actualizada correctamente.",
+    changePasswordFailed: "No se pudo actualizar la contraseña",
   },
   prescription: {
     newTitle: "Nueva receta",
