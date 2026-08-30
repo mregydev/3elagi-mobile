@@ -10,8 +10,13 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { DoctorSignupMarketField } from "@/components/auth/DoctorSignupMarketField";
 import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import { primaryButton, UI } from "@/constants/uiTokens";
+import {
+  DEFAULT_PATIENT_COUNTRY,
+  type MarketCountryCode,
+} from "@/constants/patientCountries";
 import { submitDoctorRegistration } from "@/domains/doctorRegistration/api";
 import { hasFieldErrors } from "@/domains/auth/validation";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
@@ -26,6 +31,7 @@ type FieldErrors = {
   doctorName?: string;
   email?: string;
   phone?: string;
+  country?: string;
   specialityId?: string;
 };
 
@@ -44,6 +50,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
   const [doctorName, setDoctorName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState<MarketCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [specialityId, setSpecialityId] = useState("");
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -63,6 +70,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
     if (!trimmedEmail) errors.email = t.auth.fieldRequired;
     else if (!EMAIL_RE.test(trimmedEmail)) errors.email = t.auth.invalidEmail;
     if (!phone.trim()) errors.phone = t.auth.fieldRequired;
+    if (!country) errors.country = t.auth.doctorMarketRequired;
     if (!specialityId) errors.specialityId = t.auth.specialityRequiredMsg;
     return errors;
   };
@@ -78,6 +86,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
         doctorName,
         email,
         phone,
+        country,
         specialityId,
       });
       setSent(true);
@@ -85,6 +94,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       setDoctorName("");
       setEmail("");
       setPhone("");
+      setCountry(DEFAULT_PATIENT_COUNTRY);
       setSpecialityId("");
     } catch (e) {
       showErrorToast(t.registerWithUs.sendFailed, (e as Error).message);
@@ -196,6 +206,19 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
             ]}
           />
         </FieldBlock>
+
+        <DoctorSignupMarketField
+          isRTL={isRTL}
+          value={country}
+          onChange={(code) => {
+            setCountry(code);
+            if (fieldErrors.country) {
+              setFieldErrors((prev) => ({ ...prev, country: undefined }));
+            }
+          }}
+          error={fieldErrors.country}
+          disabled={sending}
+        />
 
         <SpecialitySelectField
           label={t.auth.speciality}

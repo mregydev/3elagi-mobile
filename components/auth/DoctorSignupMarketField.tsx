@@ -18,6 +18,10 @@ type Props = {
   isRTL: boolean;
   disabled?: boolean;
   error?: string;
+  /** Controlled value (EG / JO). */
+  value?: MarketCountryCode | null;
+  /** Called when the user picks a market. */
+  onChange?: (market: MarketCountryCode) => void;
   /** Called when market is resolved (URL default or explicit pick). */
   onMarketChange?: (market: MarketCountryCode | null) => void;
 };
@@ -27,18 +31,24 @@ export function DoctorSignupMarketField({
   isRTL,
   disabled,
   error,
+  value,
+  onChange,
   onMarketChange,
 }: Props) {
   const colors = useColors();
   const { t } = useI18n();
   const dir = flexRow(isRTL);
-  const [market, setMarket] = useState<MarketCountryCode | null>(() =>
-    getDoctorSignupMarket(),
+  const [internalMarket, setInternalMarket] = useState<MarketCountryCode | null>(() =>
+    value ?? getDoctorSignupMarket(),
   );
+  const market = value ?? internalMarket;
 
   const pick = (code: MarketCountryCode) => {
-    setDoctorSignupMarketOverride(code);
-    setMarket(code);
+    if (value === undefined) {
+      setDoctorSignupMarketOverride(code);
+      setInternalMarket(code);
+    }
+    onChange?.(code);
     onMarketChange?.(code);
   };
 

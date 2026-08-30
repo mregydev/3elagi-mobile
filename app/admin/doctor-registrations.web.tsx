@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { AdminShell } from "@/components/admin/AdminShell.web";
+import { patientCountryLabel } from "@/constants/patientCountries";
 import {
   fetchAdminDoctorRegistration,
   fetchAdminDoctorRegistrations,
@@ -123,6 +124,8 @@ export default function AdminDoctorRegistrationsWeb() {
                       {" · "}
                       {item.phone}
                       {" · "}
+                      {patientCountryLabel(item.country, false)}
+                      {" · "}
                       {fmt(item.created_at)}
                     </Text>
                     {!open ? (
@@ -165,6 +168,12 @@ export default function AdminDoctorRegistrationsWeb() {
                         </Text>
                         <Text style={{ color: colors.foreground, fontWeight: "600" }}>
                           {row.phone}
+                        </Text>
+                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                          Country
+                        </Text>
+                        <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                          {patientCountryLabel(row.country, false)}
                         </Text>
                       </View>
                     )}

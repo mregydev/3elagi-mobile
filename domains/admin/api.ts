@@ -340,6 +340,7 @@ export interface AdminDoctorRegistrationRow {
   doctor_name: string;
   email: string;
   phone: string;
+  country: string;
   speciality_id: string;
   speciality_name_en: string;
   speciality_name_ar: string;
