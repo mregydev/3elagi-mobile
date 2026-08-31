@@ -25,6 +25,11 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
+  const tagList = useMemo(
+    () => doctor.tags.map((tag) => tag.trim()).filter(Boolean),
+    [doctor.tags],
+  );
+
   const rows = useMemo(() => {
     const items: InfoRow[] = [];
     const specialty = specialtyLabel.trim();
@@ -37,46 +42,70 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
         value: t.home.yearsExperience(doctor.experienceYears),
       });
     }
-    const languages = doctor.tags.map((tag) => tag.trim()).filter(Boolean);
-    if (languages.length > 0) {
-      items.push({ label: t.home.languages, value: languages.join(", ") });
-    }
     return items;
-  }, [doctor.experienceYears, doctor.tags, specialtyLabel, t]);
+  }, [doctor.experienceYears, specialtyLabel, t]);
 
-  if (rows.length === 0) return null;
+  if (rows.length === 0 && tagList.length === 0) return null;
 
   return (
     <DoctorProfileSection title={t.doctor.profile.professionalInfo} textAlign={textAlign} card>
-      <View style={styles.list}>
-        {rows.map((row, index) => (
-          <View
-            key={row.label}
-            style={[
-              styles.row,
-              isMobile ? styles.rowMobile : { flexDirection: dir },
-              index < rows.length - 1 && {
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: `${colors.border}66`,
-                paddingBottom: UI.space.sm,
-              },
-            ]}
-          >
-            <Text
+      {rows.length > 0 ? (
+        <View style={styles.list}>
+          {rows.map((row, index) => (
+            <View
+              key={row.label}
               style={[
-                styles.label,
-                isMobile && styles.labelMobile,
-                { color: colors.mutedForeground, textAlign },
+                styles.row,
+                isMobile ? styles.rowMobile : { flexDirection: dir },
+                index < rows.length - 1 && {
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: `${colors.border}66`,
+                  paddingBottom: UI.space.sm,
+                },
               ]}
             >
-              {row.label}
-            </Text>
-            <Text style={[styles.value, { color: colors.foreground, textAlign }]}>
-              {row.value}
-            </Text>
+              <Text
+                style={[
+                  styles.label,
+                  isMobile && styles.labelMobile,
+                  { color: colors.mutedForeground, textAlign },
+                ]}
+              >
+                {row.label}
+              </Text>
+              <Text style={[styles.value, { color: colors.foreground, textAlign }]}>
+                {row.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {tagList.length > 0 ? (
+        <View style={[styles.tagsBlock, rows.length > 0 && styles.tagsBlockSpaced]}>
+          <Text style={[styles.label, isMobile && styles.labelMobile, { color: colors.mutedForeground, textAlign }]}>
+            {t.doctor.profile.tags}
+          </Text>
+          <View style={[styles.tagChips, { flexDirection: dir }]}>
+            {tagList.map((tag) => (
+              <View
+                key={tag}
+                style={[
+                  styles.tagChip,
+                  {
+                    backgroundColor: `${colors.primary}14`,
+                    borderColor: `${colors.primary}55`,
+                  },
+                ]}
+              >
+                <Text style={[styles.tagChipText, { color: colors.primary, textAlign }]}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        </View>
+      ) : null}
     </DoctorProfileSection>
   );
 }
@@ -111,5 +140,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     lineHeight: 20,
+  },
+  tagsBlock: {
+    gap: UI.space.sm,
+  },
+  tagsBlockSpaced: {
+    marginTop: UI.space.sm,
+    paddingTop: UI.space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(148, 163, 184, 0.35)",
+  },
+  tagChips: {
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tagChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  tagChipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
   },
 });

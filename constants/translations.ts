@@ -70,6 +70,14 @@ const en = {
     changePasswordAction: "Update password",
     changePasswordSuccess: "Password updated successfully.",
     changePasswordFailed: "Could not update password",
+    doctorTags: "Profile tags",
+    doctorTagsHint:
+      "Add skills, focus areas, or languages patients should know about. Suggestions match your specialities.",
+    doctorTagsPlaceholder: "Search or add a tag…",
+    doctorTagsCreate: (tag: string) => `Add "${tag}"`,
+    doctorTagsEmpty: "No matching tags",
+    doctorTagsSpecialityBadge: "Speciality",
+    doctorTagsLimit: (max: number) => `Maximum ${max} tags reached`,
   },
   prescription: {
     newTitle: "New Prescription",
@@ -830,6 +838,7 @@ const en = {
     profile: {
       aboutDoctor: "About / Doctor info",
       professionalInfo: "Professional Information",
+      tags: "Tags",
       location: "Location",
       openInGoogleMaps: "Open in Google Maps",
     },
@@ -1024,6 +1033,14 @@ const ar: typeof en = {
     changePasswordAction: "تحديث كلمة المرور",
     changePasswordSuccess: "تم تحديث كلمة المرور بنجاح.",
     changePasswordFailed: "تعذر تحديث كلمة المرور",
+    doctorTags: "وسوم الملف",
+    doctorTagsHint:
+      "أضف مهارات أو مجالات اهتمام أو لغات يجب أن يعرفها المرضى. الاقتراحات مرتبطة بتخصصاتك.",
+    doctorTagsPlaceholder: "ابحث أو أضف وسمًا…",
+    doctorTagsCreate: (tag: string) => `إضافة "${tag}"`,
+    doctorTagsEmpty: "لا توجد وسوم مطابقة",
+    doctorTagsSpecialityBadge: "تخصص",
+    doctorTagsLimit: (max: number) => `تم الوصول إلى الحد الأقصى (${max} وسوم)`,
   },
   prescription: {
     newTitle: "روشتة جديدة",
@@ -1769,6 +1786,7 @@ const ar: typeof en = {
     profile: {
       aboutDoctor: "نبذة / معلومات الطبيب",
       professionalInfo: "المعلومات المهنية",
+      tags: "الوسوم",
       location: "الموقع",
       openInGoogleMaps: "فتح في خرائط Google",
     },
@@ -1964,6 +1982,14 @@ const de: typeof en = {
     changePasswordAction: "Passwort aktualisieren",
     changePasswordSuccess: "Passwort erfolgreich aktualisiert.",
     changePasswordFailed: "Passwort konnte nicht aktualisiert werden",
+    doctorTags: "Profil-Tags",
+    doctorTagsHint:
+      "Fügen Sie Fähigkeiten, Schwerpunkte oder Sprachen hinzu. Vorschläge passen zu Ihren Fachgebieten.",
+    doctorTagsPlaceholder: "Tag suchen oder hinzufügen…",
+    doctorTagsCreate: (tag: string) => `"${tag}" hinzufügen`,
+    doctorTagsEmpty: "Keine passenden Tags",
+    doctorTagsSpecialityBadge: "Fachgebiet",
+    doctorTagsLimit: (max: number) => `Maximal ${max} Tags erreicht`,
   },
   prescription: {
     newTitle: "Neues Rezept",
@@ -2716,6 +2742,7 @@ const de: typeof en = {
     profile: {
       aboutDoctor: "Über / Arztinfo",
       professionalInfo: "Berufliche Informationen",
+      tags: "Tags",
       location: "Standort",
       openInGoogleMaps: "In Google Maps öffnen",
     },
@@ -2910,6 +2937,14 @@ const es: typeof en = {
     changePasswordAction: "Actualizar contraseña",
     changePasswordSuccess: "Contraseña actualizada correctamente.",
     changePasswordFailed: "No se pudo actualizar la contraseña",
+    doctorTags: "Etiquetas del perfil",
+    doctorTagsHint:
+      "Añade habilidades, áreas de enfoque o idiomas. Las sugerencias coinciden con tus especialidades.",
+    doctorTagsPlaceholder: "Buscar o añadir etiqueta…",
+    doctorTagsCreate: (tag: string) => `Añadir "${tag}"`,
+    doctorTagsEmpty: "No hay etiquetas coincidentes",
+    doctorTagsSpecialityBadge: "Especialidad",
+    doctorTagsLimit: (max: number) => `Máximo de ${max} etiquetas alcanzado`,
   },
   prescription: {
     newTitle: "Nueva receta",
@@ -3661,6 +3696,7 @@ const es: typeof en = {
     profile: {
       aboutDoctor: "Acerca de / Info del médico",
       professionalInfo: "Información profesional",
+      tags: "Etiquetas",
       location: "Ubicación",
       openInGoogleMaps: "Abrir en Google Maps",
     },

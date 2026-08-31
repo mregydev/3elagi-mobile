@@ -2,6 +2,7 @@ import {
   isGoogleMapsUrl,
   parseGoogleMapsInput,
   resolveDoctorLocation,
+  googleMapsEmbedHtml,
 } from "@/components/doctor/doctorProfileLocation";
 
 const TERRACE_MALL =
@@ -50,5 +51,14 @@ describe("isGoogleMapsUrl", () => {
     expect(isGoogleMapsUrl(TERRACE_MALL)).toBe(true);
     expect(isGoogleMapsUrl("https://maps.app.goo.gl/abc")).toBe(true);
     expect(isGoogleMapsUrl("Nasr City")).toBe(false);
+  });
+});
+
+describe("googleMapsEmbedHtml", () => {
+  it("wraps the embed URL in an iframe for native WebView", () => {
+    const html = googleMapsEmbedHtml("30.1509886,31.6269635");
+    expect(html).toContain("<iframe");
+    expect(html).toContain("output=embed");
+    expect(html).toContain("30.1509886%2C31.6269635");
   });
 });

@@ -143,6 +143,25 @@ export function googleMapsEmbedUrl(query: string): string {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`;
 }
 
+/** HTML document for native WebView — Embed API requires an iframe, not a top-level navigation. */
+export function googleMapsEmbedHtml(query: string): string {
+  const src = googleMapsEmbedUrl(query).replace(/"/g, "&quot;");
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e8edf5; }
+  iframe { border: 0; width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<iframe src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen title="Clinic location map"></iframe>
+</body>
+</html>`;
+}
+
 export function googleMapsOpenUrl(query: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

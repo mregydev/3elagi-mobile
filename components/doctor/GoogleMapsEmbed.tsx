@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { UI } from "@/constants/uiTokens";
-import { googleMapsEmbedUrl } from "@/components/doctor/doctorProfileLocation";
+import { googleMapsEmbedHtml } from "@/components/doctor/doctorProfileLocation";
 
 type Props = {
   query: string;
@@ -13,10 +13,16 @@ export function GoogleMapsEmbed({ query, height = 200 }: Props) {
   return (
     <View style={[styles.root, { height, borderRadius: UI.radius.card }]}>
       <WebView
-        source={{ uri: googleMapsEmbedUrl(query) }}
+        source={{
+          html: googleMapsEmbedHtml(query),
+          baseUrl: "https://maps.google.com",
+        }}
         style={styles.webview}
         scrollEnabled={false}
         originWhitelist={["*"]}
+        javaScriptEnabled
+        domStorageEnabled
+        setSupportMultipleWindows={false}
       />
     </View>
   );

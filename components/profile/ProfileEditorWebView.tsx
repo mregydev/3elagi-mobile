@@ -29,6 +29,7 @@ import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField"
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
+import { DoctorTagsInput } from "@/components/profile/DoctorTagsInput";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { navigateToWelcome } from "@/domains/auth/navigation";
@@ -162,6 +163,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     setVideoPriceUsd,
     paymentLink,
     setPaymentLink,
+    tags,
+    setTags,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -500,6 +503,19 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                           isRTL={isRTL}
                           locale={locale}
                           colors={colors}
+                        />
+                      </View>
+                      <View>
+                        <Text style={[styles.sectionLabel, styles.sectionLabelTight, { color: colors.foreground, textAlign }]}>
+                          {t.settings.doctorTags}
+                        </Text>
+                        <DoctorTagsInput
+                          tags={tags}
+                          onChange={setTags}
+                          specialityIds={specialityIds}
+                          isRTL={isRTL}
+                          colors={colors}
+                          disabled={saving}
                         />
                       </View>
                     </View>

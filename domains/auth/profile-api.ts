@@ -71,6 +71,7 @@ interface RawDoctor {
   video_price_local?: string | number | null;
   video_price_usd?: string | number | null;
   payment_link?: string | null;
+  tags?: string[] | null;
 }
 
 export interface DoctorCertification {
@@ -111,6 +112,7 @@ export interface AccountProfile {
   videoPriceUsd?: number | null;
   /** Where patients pay the doctor. */
   paymentLink?: string;
+  tags?: string[];
   photoUrl?: string;
   role: string;
 }
@@ -172,6 +174,7 @@ export async function fetchAccountProfile(
       videoPriceLocal: toFee(doctor.video_price_local),
       videoPriceUsd: toFee(doctor.video_price_usd),
       paymentLink: doctor.payment_link ?? undefined,
+      tags: Array.isArray(doctor.tags) ? doctor.tags : [],
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
     };
@@ -217,6 +220,7 @@ export async function updateAccountProfile(
     videoPriceLocal?: number | null;
     videoPriceUsd?: number | null;
     paymentLink?: string;
+    tags?: string[];
     photoUrl?: string | null;
   },
 ): Promise<PatientProfile> {
@@ -261,6 +265,7 @@ export async function updateAccountProfile(
         video_price_local: payload.videoPriceLocal,
         video_price_usd: payload.videoPriceUsd,
         payment_link: payload.paymentLink,
+        tags: payload.tags,
       }),
     });
     return {

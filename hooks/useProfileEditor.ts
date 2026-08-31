@@ -69,6 +69,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [videoPriceLocal, setVideoPriceLocal] = useState("");
   const [videoPriceUsd, setVideoPriceUsd] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [photoDirty, setPhotoDirty] = useState(false);
@@ -112,6 +113,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setVideoPriceLocal(feeText(data.videoPriceLocal));
       setVideoPriceUsd(feeText(data.videoPriceUsd));
       setPaymentLink(data.paymentLink ?? "");
+      setTags(Array.isArray(data.tags) ? data.tags : []);
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
@@ -274,6 +276,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         videoPriceLocal: isDoctor ? feeValue(videoPriceLocal) : undefined,
         videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
         paymentLink: isDoctor ? paymentLink.trim() : undefined,
+        tags: isDoctor ? tags : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
 
@@ -354,6 +357,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setVideoPriceUsd,
     paymentLink,
     setPaymentLink,
+    tags,
+    setTags,
     isDoctor,
     displayPhoto: photoUri ?? photoUrl,
     pickPhoto,

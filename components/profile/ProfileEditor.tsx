@@ -33,6 +33,7 @@ import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField"
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
 import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
+import { DoctorTagsInput } from "@/components/profile/DoctorTagsInput";
 import {
   profileSaveChromeHeight,
   profileSaveDockBottomPad,
@@ -125,6 +126,8 @@ export function ProfileEditor({
     setVideoPriceUsd,
     paymentLink,
     setPaymentLink,
+    tags,
+    setTags,
     isDoctor,
     displayPhoto,
     pickPhoto,
@@ -318,6 +321,21 @@ export function ProfileEditor({
                     isRTL={isRTL}
                     locale={locale}
                     colors={colors}
+                  />
+                </View>
+                <View style={styles.block}>
+                  <Text
+                    style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
+                  >
+                    {t.settings.doctorTags}
+                  </Text>
+                  <DoctorTagsInput
+                    tags={tags}
+                    onChange={setTags}
+                    specialityIds={specialityIds}
+                    isRTL={isRTL}
+                    colors={colors}
+                    disabled={saving}
                   />
                 </View>
                 <EgpPriceInput
