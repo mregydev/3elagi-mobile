@@ -1,8 +1,7 @@
-import { X } from "lucide-react-native";
-import React, { createElement } from "react";
+import { Download, X } from "lucide-react-native";
+import React, { createElement, useEffect, useState } from "react";
 import {
   Image as RNImage,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -11,15 +10,16 @@ import {
   View,
 } from "react-native";
 import {
-  ANDROID_APP_QR,
-  ANDROID_APP_QR_SIZE,
-  ANDROID_APP_QR_URI,
   ANDROID_APP_URL,
+  ANDROID_INSTALL_PROMPT,
+  ANDROID_INSTALL_PROMPT_SIZE,
+  ANDROID_INSTALL_PROMPT_URI,
 } from "@/constants/mobileApp";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { alignText } from "@/utils/rtl";
+import { openAndroidAppDownload } from "@/utils/openAndroidAppDownload";
 import { viewportPortal } from "@/utils/viewportPortal";
 
 type Props = {
@@ -27,49 +27,32 @@ type Props = {
   onClose: () => void;
 };
 
-function WebQrImage({ alt }: { alt: string }) {
-  const { width, height } = ANDROID_APP_QR_SIZE;
-  const src = ANDROID_APP_QR_URI;
+function InstallPromptImage({ alt }: { alt: string }) {
+  const { width, height } = ANDROID_INSTALL_PROMPT_SIZE;
+  const src = ANDROID_INSTALL_PROMPT_URI;
 
-  if (!src) {
-    return (
-      <RNImage
-        source={ANDROID_APP_QR}
-        style={{ width, height }}
-        accessibilityLabel={alt}
-        resizeMode="contain"
-      />
-    );
-  }
-
-  // Native <img> is the most reliable path on mobile browsers (Safari/Chrome).
-  return createElement("img", {
-    src,
-    alt,
-    width,
-    height,
-    decoding: "async",
-    style: {
-      objectFit: "contain",
-      display: "block",
+  if (Platform.OS === "web" && src) {
+    return createElement("img", {
+      src,
+      alt,
       width,
       height,
-      maxWidth: "100%",
-    },
-  });
-}
-
-function QrCodeImage({ alt }: { alt: string }) {
-  const { width, height } = ANDROID_APP_QR_SIZE;
-
-  if (Platform.OS === "web") {
-    return <WebQrImage alt={alt} />;
+      decoding: "async",
+      style: {
+        objectFit: "contain",
+        display: "block",
+        width: "100%",
+        maxWidth: width,
+        height: "auto",
+        borderRadius: 12,
+      },
+    });
   }
 
   return (
     <RNImage
-      source={ANDROID_APP_QR}
-      style={{ width, height }}
+      source={ANDROID_INSTALL_PROMPT}
+      style={{ width, height, borderRadius: 12 }}
       accessibilityLabel={alt}
       resizeMode="contain"
     />
@@ -81,18 +64,18 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
   const { t, isRTL } = useI18n();
   const { isMobile } = useWebLayout();
   const textAlign = alignText(isRTL);
+  const [downloadStarted, setDownloadStarted] = useState(false);
+
+  useEffect(() => {
+    if (!visible) setDownloadStarted(false);
+  }, [visible]);
 
   if (!visible) return null;
 
-  const openDownload = () => {
-    void Linking.openURL(ANDROID_APP_URL).catch(() => undefined);
+  const startDownload = () => {
+    setDownloadStarted(true);
+    openAndroidAppDownload();
   };
-
-  const qrBlock = (
-    <View style={[styles.qrWrap, { borderColor: colors.border }]}>
-      <QrCodeImage alt={t.mobileApp.qrAlt} />
-    </View>
-  );
 
   const content = (
     <View style={styles.overlay} accessibilityViewIsModal>
@@ -134,39 +117,39 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
           </View>
 
           <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
-            {isMobile ? t.mobileApp.mobileWebSubtitle : t.mobileApp.modalSubtitle}
+            {t.mobileApp.modalSubtitle}
           </Text>
 
-          {isMobile ? (
-            <Pressable
-              onPress={openDownload}
-              accessibilityRole="link"
-              accessibilityLabel={t.mobileApp.openLink}
-              style={({ pressed }) => [pressed && styles.qrPressed]}
-            >
-              {qrBlock}
-            </Pressable>
-          ) : (
-            qrBlock
-          )}
+          <Pressable
+            onPress={startDownload}
+            accessibilityRole="link"
+            accessibilityLabel={t.mobileApp.downloadButton}
+            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+              styles.downloadBtn,
+              {
+                backgroundColor:
+                  pressed || hovered ? `${colors.primary}e6` : colors.primary,
+              },
+            ]}
+          >
+            <Download size={18} color={colors.primaryForeground} />
+            <Text style={[styles.downloadBtnText, { color: colors.primaryForeground, textAlign }]}>
+              {t.mobileApp.downloadButton}
+            </Text>
+          </Pressable>
 
-          {isMobile ? (
-            <Pressable
-              onPress={openDownload}
-              accessibilityRole="link"
-              accessibilityLabel={t.mobileApp.openLink}
-              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                styles.openLinkBtn,
-                {
-                  borderColor: colors.primary,
-                  backgroundColor: pressed || hovered ? `${colors.primary}12` : "transparent",
-                },
-              ]}
-            >
-              <Text style={[styles.openLinkText, { color: colors.primary, textAlign }]}>
-                {t.mobileApp.openLink}
+          {downloadStarted ? (
+            <View style={[styles.installBlock, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+              <Text style={[styles.installTitle, { color: colors.foreground, textAlign }]}>
+                {t.mobileApp.installTitle}
               </Text>
-            </Pressable>
+              <Text style={[styles.installHint, { color: colors.mutedForeground, textAlign }]}>
+                {t.mobileApp.installHint}
+              </Text>
+              <View style={[styles.installImageWrap, { borderColor: colors.border }]}>
+                <InstallPromptImage alt={t.mobileApp.installImageAlt} />
+              </View>
+            </View>
           ) : null}
         </View>
       </ScrollView>
@@ -199,13 +182,13 @@ const styles = StyleSheet.create({
   },
   dialogScroll: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 400,
     flexGrow: 0,
   },
   dialogScrollMobile: {
     maxHeight: "92%",
     width: "100%",
-    maxWidth: 340,
+    maxWidth: 360,
   },
   dialogScrollContent: {
     flexGrow: 1,
@@ -249,27 +232,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  qrWrap: {
-    alignSelf: "center",
-    padding: 12,
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  qrPressed: {
-    opacity: 0.92,
-  },
-  openLinkBtn: {
+  downloadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
     alignSelf: "stretch",
     borderRadius: 12,
-    borderWidth: 1.5,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     cursor: "pointer" as "auto",
   },
-  openLinkText: {
+  downloadBtnText: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  installBlock: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  installTitle: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
+    lineHeight: 21,
+  },
+  installHint: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  installImageWrap: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: ANDROID_INSTALL_PROMPT_SIZE.width,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    padding: 8,
   },
 });

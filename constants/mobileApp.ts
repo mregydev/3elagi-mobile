@@ -1,12 +1,13 @@
-import { Image, Platform } from "react-native";
+import { Image } from "react-native";
 
 export const ANDROID_APP_PACKAGE = "com.threelagi.mobile";
 
+/** Google Drive page for the latest Android APK build. */
 export const ANDROID_APP_URL =
   process.env.EXPO_PUBLIC_ANDROID_APP_URL ??
-  "https://exp-shell-app-assets.s3.us-west-1.amazonaws.com/android/%40abdallah_medhat%2Fpoints-app-fb3663b6a90847248e58f3316982626e-signed.apk";
+  "https://drive.google.com/file/d/1S5Eu8AWMWydfHR1vWPTpzZ_9Y6CqDw59/view";
 
-export const ANDROID_APP_QR = require("@/assets/images/android-app-qr.png");
+export const ANDROID_INSTALL_PROMPT = require("@/assets/images/android-install-prompt.png");
 
 type BundledAsset = number | { uri?: string; width?: number; height?: number };
 
@@ -30,16 +31,17 @@ function readBundledAsset(asset: BundledAsset) {
   }
 }
 
-const qrAsset = readBundledAsset(ANDROID_APP_QR as BundledAsset);
+const installAsset = readBundledAsset(ANDROID_INSTALL_PROMPT as BundledAsset);
 
-/** Resolved URI for web/mobile-web where bundled PNGs need a direct src. */
-export const ANDROID_APP_QR_URI = qrAsset.uri;
+export const ANDROID_INSTALL_PROMPT_URI = installAsset.uri;
 
-const qrNativeWidth = qrAsset.width ?? 578;
-const qrNativeHeight = qrAsset.height ?? 580;
-const QR_DISPLAY_WIDTH = Platform.OS === "web" ? 220 : 200;
+const installNativeWidth = installAsset.width ?? 720;
+const installNativeHeight = installAsset.height ?? 400;
+const INSTALL_DISPLAY_WIDTH = 280;
 
-export const ANDROID_APP_QR_SIZE = {
-  width: QR_DISPLAY_WIDTH,
-  height: Math.round(QR_DISPLAY_WIDTH * (qrNativeHeight / qrNativeWidth)),
+export const ANDROID_INSTALL_PROMPT_SIZE = {
+  width: INSTALL_DISPLAY_WIDTH,
+  height: Math.round(
+    INSTALL_DISPLAY_WIDTH * (installNativeHeight / installNativeWidth),
+  ),
 };
