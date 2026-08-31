@@ -15,6 +15,11 @@ import {
   setGuestAiSentCount,
 } from "@/domains/ai/guestSession";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
+import { isSignedIn } from "@/domains/auth/session";
+import {
+  isAuthErrorMessage,
+  logoutOnAuthFailure,
+} from "@/domains/auth/sessionFailure";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionItem, type MessageEmotionType, type AiFeedbackType } from "@/domains/emotions/types";
 import {
@@ -276,7 +281,8 @@ export function useAiAssistant() {
   const [canRetry, setCanRetry] = useState(true);
   const [lastQuestion, setLastQuestion] = useState<string | null>(null);
   const [guestSentCount, setGuestSentCount] = useState(0);
-  const isGuest = !accessToken;
+  const signedIn = isSignedIn(profile, accessToken);
+  const isGuest = !signedIn;
 
   const updateMessageEmotions = useCallback(
     (messageId: string, emotions: MessageEmotionItem[]) => {
@@ -298,7 +304,7 @@ export function useAiAssistant() {
   );
 
   const loadHistory = useCallback(async () => {
-    if (!accessToken) {
+    if (!signedIn || !accessToken) {
       setConversations([]);
       setActiveId(null);
       setLoadingHistory(false);
@@ -312,24 +318,26 @@ export function useAiAssistant() {
       setConversations(rows);
       setActiveId((current) => current ?? rows[0]?.id ?? null);
     } catch (err) {
-      setHistoryError(
-        err instanceof Error ? err.message : "Failed to load history",
-      );
+      const message = err instanceof Error ? err.message : "Failed to load history";
+      if (isAuthErrorMessage(message)) {
+        logoutOnAuthFailure();
+      }
+      setHistoryError(message);
     } finally {
       setLoadingHistory(false);
     }
-  }, [accessToken]);
+  }, [accessToken, signedIn]);
 
   // The AI chat has its own dedicated socket (separate from the presence/main
   // socket); connect while the assistant is mounted, tear down on leave.
   useEffect(() => {
-    if (!accessToken) {
+    if (!signedIn || !accessToken) {
       disconnectAiSocket();
       return;
     }
     connectAiSocket(accessToken);
     return () => disconnectAiSocket();
-  }, [accessToken]);
+  }, [accessToken, signedIn]);
 
   useEffect(() => {
     void loadHistory();
@@ -483,7 +491,7 @@ export function useAiAssistant() {
       },
     ) => {
       if (!text.trim() && !attachment) return;
-      if (!accessToken) {
+      if (!signedIn || !accessToken) {
         // Guests: text only — attachments need an account.
         if (attachment) promptAuthForConsultation();
         else await sendGuestMessage(text);
@@ -656,6 +664,9 @@ export function useAiAssistant() {
                 event.code,
                 t,
               );
+              if (isAuthErrorMessage(event.error) || isAuthErrorMessage(formatted.message)) {
+                logoutOnAuthFailure();
+              }
               setChatError(formatted.message);
               setRateLimitReached(formatted.isRateLimit);
               setCanRetry(formatted.canRetry);
@@ -699,6 +710,10 @@ export function useAiAssistant() {
         setRateLimitReached(formatted.isRateLimit);
         setCanRetry(formatted.canRetry);
 
+        if (isAuthErrorMessage(formatted.message) || isAuthErrorMessage(err instanceof Error ? err.message : undefined)) {
+          logoutOnAuthFailure();
+        }
+
         if (!ackReceived) {
           setConversations((prev) => {
             const next = prev
@@ -739,7 +754,7 @@ export function useAiAssistant() {
         setStreaming(false);
       }
     },
-    [accessToken, activeId, isRTL, sendGuestMessage],
+    [accessToken, activeId, isRTL, sendGuestMessage, signedIn, t],
   );
 
   useEffect(() => {

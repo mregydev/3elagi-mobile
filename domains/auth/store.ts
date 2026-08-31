@@ -12,6 +12,7 @@ import {
   refreshAuthSession,
   usesCookieAuth,
 } from "@/domains/auth/http";
+import { logoutOnAuthFailure } from "@/domains/auth/sessionFailure";
 import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
 import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
 import { readAndStripSessionTransferFromUrl } from "@/domains/auth/sessionTransfer";
@@ -170,6 +171,7 @@ export const useAuthStore = create<AuthState>()(
         set({
           profile: null,
           accessToken: null,
+          refreshToken: null,
           role: null,
           doctorId: null,
           specialty: null,
@@ -202,6 +204,7 @@ export const useAuthStore = create<AuthState>()(
         set({
           profile: null,
           accessToken: null,
+          refreshToken: null,
           role: null,
           doctorId: null,
           specialty: null,
@@ -271,19 +274,19 @@ export const useAuthStore = create<AuthState>()(
           void refreshAuthSession()
             .then(() => fetchWebAccessToken())
             .then((token) => useAuthStore.setState({ accessToken: token ?? null }))
-            .catch(() =>
+            .catch(() => logoutOnAuthFailure())
+            .finally(() => useAuthStore.setState({ hydrated: true }));
+          return;
+        }
+        if (state && !usesCookieAuth && state.refreshToken) {
+          void refreshAuthSession(state.refreshToken)
+            .then(({ accessToken, refreshToken }) =>
               useAuthStore.setState({
-                profile: null,
-                accessToken: null,
-                refreshToken: null,
-                role: null,
-                doctorId: null,
-                specialty: null,
-                specialityId: null,
-                doctorApprovalStatus: null,
-                emailVerified: true,
+                accessToken: accessToken ?? null,
+                refreshToken: refreshToken ?? state.refreshToken,
               }),
             )
+            .catch(() => logoutOnAuthFailure())
             .finally(() => useAuthStore.setState({ hydrated: true }));
           return;
         }

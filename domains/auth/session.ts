@@ -1,4 +1,3 @@
-import { Platform } from "react-native";
 import { getWebAccessToken, usesCookieAuth } from "@/domains/auth/http";
 
 /** True when the user has a persisted session that can call the API. */
@@ -7,8 +6,10 @@ export function isSignedIn(
   accessToken: string | null | undefined,
 ): boolean {
   if (!profile) return false;
-  if (usesCookieAuth) return true;
-  return !!accessToken;
+  const token = usesCookieAuth
+    ? getWebAccessToken() || accessToken?.trim()
+    : accessToken?.trim();
+  return !!token;
 }
 
 /** Token used for Bearer auth and WebSocket handshakes. */

@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
+import { logoutOnAuthFailure, isAuthHttpStatus } from "@/domains/auth/sessionFailure";
 
 export const usesCookieAuth = Platform.OS === "web";
 
@@ -51,6 +52,9 @@ export async function fetchWebAccessToken(): Promise<string | null> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     setWebAccessToken(null);
+    if (isAuthHttpStatus(res.status)) {
+      logoutOnAuthFailure();
+    }
     return null;
   }
   const token =

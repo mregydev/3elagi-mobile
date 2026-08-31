@@ -1,5 +1,5 @@
 import { usePathname, useSegments } from "expo-router";
-import { Bot, Minus, Plus, Send, X } from "lucide-react-native";
+import { Bot, Minus, Plus, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,7 +17,7 @@ import {
   useKeyboardState,
 } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AppTextInput } from "@/components/AppTextInput";
+import { AssistantComposer } from "@/components/assistant/AssistantComposer";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
 import { GuestAiLimitError, sendGuestAiChat } from "@/domains/ai/guestApi";
 import {
@@ -37,6 +37,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { getApiLang } from "@/domains/i18n/store";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
+import { useAiFileAttachment } from "@/hooks/useAiFileAttachment";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -156,8 +157,8 @@ function Ask3elagiAiPanel() {
   const scopedPatientUserId = useAsk3elagiAiWidgetStore((s) => s.patientUserId);
   const setPatientUserId = useAsk3elagiAiWidgetStore((s) => s.setPatientUserId);
   const assistant = useAiAssistant();
+  const aiFile = useAiFileAttachment();
   const listRef = useRef<FlatList>(null);
-  const [text, setText] = useState("");
   const [guestMessages, setGuestMessages] = useState<AiMessage[]>([]);
   const [guestSending, setGuestSending] = useState(false);
   const [guestSentCount, setGuestSentCountState] = useState(0);
@@ -306,19 +307,41 @@ function Ask3elagiAiPanel() {
     scrollToLatest(true);
   }, [messages.length, assistant.streaming, guestSending, scrollToLatest]);
 
-  const submit = () => {
-    const value = text.trim();
-    if (!value || busy) return;
-    setText("");
-    if (signedIn) {
-      void assistant.sendMessage(value, patientUserId ?? undefined);
-      return;
-    }
-    void sendGuestMessage(value);
-  };
+  const handleSend = useCallback(
+    (value: string) => {
+      const question = value.trim();
+      if (busy) return;
+
+      if (signedIn) {
+        if (!question && !aiFile.attachment) return;
+        void assistant.sendMessage(
+          question,
+          patientUserId ?? undefined,
+          aiFile.attachment ?? undefined,
+        );
+        aiFile.clear();
+        return;
+      }
+
+      if (aiFile.attachment) {
+        promptAuthForConsultation();
+        return;
+      }
+      if (!question) return;
+      void sendGuestMessage(question);
+    },
+    [
+      aiFile,
+      assistant,
+      busy,
+      patientUserId,
+      sendGuestMessage,
+      signedIn,
+    ],
+  );
 
   const onNewChat = () => {
-    setText("");
+    aiFile.clear();
     sentPendingRef.current = true; // don't auto-resend pending
     if (signedIn) {
       assistant.startNewChat();
@@ -497,53 +520,30 @@ function Ask3elagiAiPanel() {
       ) : null}
 
       <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
-        <View
-          style={[
-            styles.composer,
-            {
-              flexDirection: dir,
-              borderTopColor: colors.border,
-              backgroundColor: colors.secondary,
-            },
-          ]}
-        >
-          <AppTextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={t.records.ask3elagiAiPlaceholder}
-            style={[
-              styles.input,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderWidth: 1,
-              },
-            ]}
-            editable={!busy}
-            onSubmitEditing={submit}
-            returnKeyType="send"
-          />
-          <Pressable
-            onPress={submit}
-            disabled={busy || !text.trim()}
-            style={[
-              styles.sendBtn,
-              {
-                backgroundColor: colors.primary,
-                opacity: busy || !text.trim() ? 0.5 : 1,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-          >
-            {busy ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Send size={16} color="#fff" />
-            )}
-          </Pressable>
-        </View>
+        <AssistantComposer
+          key={signedIn ? (assistant.activeId ?? "widget-new") : "widget-guest"}
+          compact
+          isRTL={isRTL}
+          sending={busy}
+          disabled={loadingHistory}
+          placeholder={t.records.ask3elagiAiPlaceholder}
+          onSend={handleSend}
+          aiAttachment={
+            aiFile.attachment
+              ? {
+                  previewUri: aiFile.attachment.previewUri,
+                  name: aiFile.attachment.name,
+                  isPdf: aiFile.attachment.isPdf,
+                }
+              : null
+          }
+          onAttachAiFile={() => void aiFile.pickFile()}
+          onScanAiFile={
+            aiFile.canScan ? () => void aiFile.scanFile() : undefined
+          }
+          aiAttachLoading={aiFile.loading}
+          onRemoveAiAttachment={aiFile.clear}
+        />
       </KeyboardStickyView>
       </View>
     </PanelShell>
@@ -779,27 +779,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingHorizontal: 14,
     paddingTop: 6,
-  },
-  composer: {
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-  },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

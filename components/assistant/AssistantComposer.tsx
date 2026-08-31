@@ -291,6 +291,7 @@ export function AssistantComposer({
       >
         {aiAttachmentPreview}
         <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>
+          {aiAttachButton}
           {micButton}
           <AppTextInput
             value={text}
@@ -336,6 +337,7 @@ export function AssistantComposer({
       {aiAttachmentPreview}
       <View style={styles.composerRow}>
         {plusButton}
+        {compact ? aiAttachButton : null}
         {micButton}
         <AppTextInput
           value={text}

@@ -1,5 +1,9 @@
 import { API_BASE } from "@/constants/api";
 import { withAuthRequestInit } from "@/domains/auth/http";
+import {
+  isAuthHttpStatus,
+  logoutOnAuthFailure,
+} from "@/domains/auth/sessionFailure";
 import type { PatientProfile } from "./types";
 
 async function authJson<T>(
@@ -18,6 +22,9 @@ async function authJson<T>(
   );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (isAuthHttpStatus(res.status)) {
+      logoutOnAuthFailure();
+    }
     throw new Error(
       (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
         data?.error ??
