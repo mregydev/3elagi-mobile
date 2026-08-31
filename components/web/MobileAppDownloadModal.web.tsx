@@ -1,7 +1,6 @@
-import { Download, X } from "lucide-react-native";
+import { Download, Smartphone, X } from "lucide-react-native";
 import React, { createElement, useEffect, useState } from "react";
 import {
-  Image as RNImage,
   Platform,
   Pressable,
   ScrollView,
@@ -10,11 +9,10 @@ import {
   View,
 } from "react-native";
 import {
-  ANDROID_APP_URL,
-  ANDROID_INSTALL_PROMPT,
   ANDROID_INSTALL_PROMPT_SIZE,
-  ANDROID_INSTALL_PROMPT_URI,
+  ANDROID_INSTALL_PROMPT_URL,
 } from "@/constants/mobileApp";
+import { UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -27,16 +25,18 @@ type Props = {
   onClose: () => void;
 };
 
-function InstallPromptImage({ alt }: { alt: string }) {
-  const { width, height } = ANDROID_INSTALL_PROMPT_SIZE;
-  const src = ANDROID_INSTALL_PROMPT_URI;
+const MODAL_RADIUS = 20;
+const INNER_RADIUS = 16;
+const CONTROL_RADIUS = 14;
 
-  if (Platform.OS === "web" && src) {
+function InstallPromptImage({ alt }: { alt: string }) {
+  const { width } = ANDROID_INSTALL_PROMPT_SIZE;
+
+  if (Platform.OS === "web") {
     return createElement("img", {
-      src,
+      src: ANDROID_INSTALL_PROMPT_URL,
       alt,
-      width,
-      height,
+      loading: "lazy",
       decoding: "async",
       style: {
         objectFit: "contain",
@@ -44,19 +44,12 @@ function InstallPromptImage({ alt }: { alt: string }) {
         width: "100%",
         maxWidth: width,
         height: "auto",
-        borderRadius: 12,
+        borderRadius: INNER_RADIUS,
       },
     });
   }
 
-  return (
-    <RNImage
-      source={ANDROID_INSTALL_PROMPT}
-      style={{ width, height, borderRadius: 12 }}
-      accessibilityLabel={alt}
-      resizeMode="contain"
-    />
-  );
+  return null;
 }
 
 export function MobileAppDownloadModal({ visible, onClose }: Props) {
@@ -77,6 +70,27 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
     openAndroidAppDownload();
   };
 
+  const modalShadow =
+    Platform.OS === "web"
+      ? ({
+          boxShadow: `0 28px 70px rgba(15, 23, 42, 0.24), 0 10px 28px rgba(15, 23, 42, 0.12), 0 0 0 1px ${colors.border}`,
+        } as object)
+      : UI.shadowXl;
+
+  const downloadBtnShadow =
+    Platform.OS === "web"
+      ? ({
+          boxShadow: `0 10px 24px ${colors.primary}55, 0 2px 8px rgba(15, 23, 42, 0.12)`,
+          transition: "transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease",
+        } as object)
+      : {
+          shadowColor: colors.primary,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.28,
+          shadowRadius: 14,
+          elevation: 6,
+        };
+
   const content = (
     <View style={styles.overlay} accessibilityViewIsModal>
       <Pressable
@@ -86,33 +100,51 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
         accessibilityLabel={t.mobileApp.close}
       />
       <ScrollView
-        style={[styles.dialogScroll, isMobile && styles.dialogScrollMobile]}
+        style={[
+          styles.dialogScroll,
+          isMobile && styles.dialogScrollMobile,
+          modalShadow,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          },
+        ]}
         contentContainerStyle={styles.dialogScrollContent}
         keyboardShouldPersistTaps="handled"
         bounces={false}
         showsVerticalScrollIndicator={isMobile}
       >
-        <View
-          style={[
-            styles.dialog,
-            isMobile && styles.dialogMobile,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
-              {t.mobileApp.modalTitle}
-            </Text>
+        <View style={[styles.dialog, isMobile && styles.dialogMobile]}>
+          <View
+            style={[
+              styles.heroStrip,
+              { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}22` },
+            ]}
+          >
+            <View style={[styles.heroIcon, { backgroundColor: colors.primary }]}>
+              <Smartphone size={22} color={colors.primaryForeground} />
+            </View>
+            <View style={styles.heroCopy}>
+              <Text style={[styles.heroEyebrow, { color: colors.primary, textAlign }]}>
+                Android
+              </Text>
+              <Text style={[styles.heroTitle, { color: colors.foreground, textAlign }]}>
+                {t.mobileApp.modalTitle}
+              </Text>
+            </View>
             <Pressable
               onPress={onClose}
-              style={styles.closeBtn}
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.closeBtn,
+                {
+                  backgroundColor:
+                    pressed || hovered ? colors.muted : `${colors.muted}cc`,
+                },
+              ]}
               accessibilityRole="button"
               accessibilityLabel={t.mobileApp.close}
             >
-              <X size={20} color={colors.mutedForeground} />
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -126,9 +158,16 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
             accessibilityLabel={t.mobileApp.downloadButton}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
               styles.downloadBtn,
+              downloadBtnShadow,
               {
                 backgroundColor:
                   pressed || hovered ? `${colors.primary}e6` : colors.primary,
+                transform:
+                  Platform.OS === "web" && hovered && !pressed
+                    ? [{ translateY: -1 }]
+                    : pressed
+                      ? [{ scale: 0.99 }]
+                      : undefined,
               },
             ]}
           >
@@ -138,19 +177,40 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
             </Text>
           </Pressable>
 
-          {downloadStarted ? (
-            <View style={[styles.installBlock, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-              <Text style={[styles.installTitle, { color: colors.foreground, textAlign }]}>
-                {t.mobileApp.installTitle}
-              </Text>
-              <Text style={[styles.installHint, { color: colors.mutedForeground, textAlign }]}>
-                {t.mobileApp.installHint}
-              </Text>
-              <View style={[styles.installImageWrap, { borderColor: colors.border }]}>
-                <InstallPromptImage alt={t.mobileApp.installImageAlt} />
-              </View>
+          <View
+            style={[
+              styles.installBlock,
+              {
+                borderColor: `${colors.primary}28`,
+                backgroundColor: `${colors.primary}08`,
+              },
+              Platform.OS === "web"
+                ? ({
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65)",
+                  } as object)
+                : null,
+            ]}
+          >
+            <Text style={[styles.installTitle, { color: colors.foreground, textAlign }]}>
+              {downloadStarted ? t.mobileApp.installTitle : t.mobileApp.installPreviewTitle}
+            </Text>
+            <Text style={[styles.installHint, { color: colors.mutedForeground, textAlign }]}>
+              {t.mobileApp.installHint}
+            </Text>
+            <View
+              style={[
+                styles.installImageWrap,
+                {
+                  borderColor: colors.border,
+                  ...(Platform.OS === "web"
+                    ? ({ boxShadow: "0 8px 22px rgba(15, 23, 42, 0.1)" } as object)
+                    : UI.shadowMd),
+                },
+              ]}
+            >
+              <InstallPromptImage alt={t.mobileApp.installImageAlt} />
             </View>
-          ) : null}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -165,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: "rgba(15, 23, 42, 0.48)",
+    backgroundColor: "rgba(15, 23, 42, 0.58)",
     ...(Platform.OS === "web"
       ? ({
           position: "fixed",
@@ -174,6 +234,8 @@ const styles = StyleSheet.create({
           right: 0,
           bottom: 0,
           zIndex: 10000,
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
         } as object)
       : null),
   },
@@ -182,13 +244,17 @@ const styles = StyleSheet.create({
   },
   dialogScroll: {
     width: "100%",
-    maxWidth: 400,
+    maxWidth: 420,
     flexGrow: 0,
+    borderRadius: MODAL_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+    marginHorizontal: 8,
   },
   dialogScrollMobile: {
     maxHeight: "92%",
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 380,
   },
   dialogScrollContent: {
     flexGrow: 1,
@@ -197,40 +263,57 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: "100%",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 24,
-    gap: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
-    marginHorizontal: 8,
+    padding: 20,
+    gap: 18,
   },
   dialogMobile: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  header: {
+  heroStrip: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
+    padding: 14,
+    borderRadius: INNER_RADIUS,
+    borderWidth: 1,
   },
-  title: {
+  heroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroCopy: {
     flex: 1,
-    fontSize: 20,
+    gap: 2,
+    minWidth: 0,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    fontSize: 18,
     fontWeight: "800",
     letterSpacing: -0.3,
-    lineHeight: 26,
+    lineHeight: 24,
   },
   closeBtn: {
-    padding: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
     cursor: "pointer" as "auto",
   },
   subtitle: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
+    paddingHorizontal: 2,
   },
   downloadBtn: {
     flexDirection: "row",
@@ -238,20 +321,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     alignSelf: "stretch",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    borderRadius: CONTROL_RADIUS,
+    paddingVertical: 15,
+    paddingHorizontal: 18,
     cursor: "pointer" as "auto",
+    overflow: "hidden",
   },
   downloadBtnText: {
     fontSize: 16,
     fontWeight: "800",
+    letterSpacing: 0.1,
   },
   installBlock: {
-    borderRadius: 14,
+    borderRadius: INNER_RADIUS,
     borderWidth: 1,
     padding: 14,
     gap: 10,
+    overflow: "hidden",
   },
   installTitle: {
     fontSize: 15,
@@ -266,10 +352,10 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     width: "100%",
     maxWidth: ANDROID_INSTALL_PROMPT_SIZE.width,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: INNER_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
     backgroundColor: "#ffffff",
-    padding: 8,
+    padding: 10,
   },
 });
