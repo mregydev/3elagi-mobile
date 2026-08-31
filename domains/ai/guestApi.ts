@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import type { AiFileAttachment } from "@/hooks/useAiFileAttachment";
 
 export type GuestAiChatResult = {
   content: string;
@@ -19,17 +20,27 @@ export async function sendGuestAiChat(input: {
   message: string;
   history: Array<{ role: "user" | "assistant"; content: string }>;
   locale?: string;
+  attachment?: AiFileAttachment | null;
 }): Promise<GuestAiChatResult> {
+  const body: Record<string, unknown> = {
+    guestId: input.guestId,
+    message: input.message,
+    history: input.history,
+    locale: input.locale,
+  };
+  if (input.attachment?.data) {
+    body.attachment = {
+      data: input.attachment.data,
+      mimeType: input.attachment.mimeType,
+    };
+    body.fileName = input.attachment.name;
+  }
+
   const res = await fetch(`${API_BASE}/ai/guest/chat`, {
     method: "POST",
     credentials: "omit",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      guestId: input.guestId,
-      message: input.message,
-      history: input.history,
-      locale: input.locale,
-    }),
+    body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => ({}))) as {
     content?: string;

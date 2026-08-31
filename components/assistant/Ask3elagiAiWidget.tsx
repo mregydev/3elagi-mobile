@@ -1,5 +1,5 @@
 import { usePathname, useSegments } from "expo-router";
-import { Bot, Minus, Plus, X } from "lucide-react-native";
+import { Bot, History, Minus, Plus, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,16 +18,22 @@ import {
 } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssistantComposer } from "@/components/assistant/AssistantComposer";
+import { AssistantHistoryModal } from "@/components/assistant/AssistantHistoryModal";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
 import { GuestAiLimitError, sendGuestAiChat } from "@/domains/ai/guestApi";
 import {
   GUEST_AI_MAX_MESSAGES,
   getGuestAiSentCount,
   getGuestAiSessionId,
+  loadGuestActiveConversationId,
+  loadGuestConversations,
+  makeGuestConversationId,
+  saveGuestActiveConversationId,
+  saveGuestConversations,
   setGuestAiSentCount,
 } from "@/domains/ai/guestSession";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
-import type { AiMessage } from "@/domains/ai/types";
+import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
@@ -38,11 +44,12 @@ import { isSignedIn } from "@/domains/auth/session";
 import { getApiLang } from "@/domains/i18n/store";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useAiFileAttachment } from "@/hooks/useAiFileAttachment";
+import type { AiFileAttachment } from "@/hooks/useAiFileAttachment";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
-import { showErrorToast } from "@/utils/toast";
+import { AI_ATTACHMENT_ONLY_PLACEHOLDER } from "@/utils/aiMessageDisplay";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
@@ -161,16 +168,21 @@ function Ask3elagiAiPanel() {
   const assistant = useAiAssistant();
   const aiFile = useAiFileAttachment();
   const listRef = useRef<FlatList>(null);
-  const [guestMessages, setGuestMessages] = useState<AiMessage[]>([]);
+  const [guestConversations, setGuestConversations] = useState<AiConversation[]>([]);
+  const [guestActiveId, setGuestActiveId] = useState<string | null>(null);
   const [guestSending, setGuestSending] = useState(false);
   const [guestSentCount, setGuestSentCountState] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const sentPendingRef = useRef(false);
   const patientUserId =
     scopedPatientUserId ?? patientUserIdFromPath(pathname);
 
+  const guestActiveConversation = guestConversations.find(
+    (c) => c.id === guestActiveId,
+  );
   const messages = signedIn
     ? (assistant.activeConversation?.messages ?? [])
-    : guestMessages;
+    : (guestActiveConversation?.messages ?? []);
   const busy = signedIn
     ? assistant.sending || assistant.streaming
     : guestSending;
@@ -184,7 +196,63 @@ function Ask3elagiAiPanel() {
   useEffect(() => {
     if (signedIn) return;
     void getGuestAiSentCount().then(setGuestSentCountState);
+    void (async () => {
+      const [rows, activeId] = await Promise.all([
+        loadGuestConversations(),
+        loadGuestActiveConversationId(),
+      ]);
+      setGuestConversations(rows);
+      setGuestActiveId(activeId ?? rows[0]?.id ?? null);
+    })();
   }, [signedIn]);
+
+  const persistGuestState = useCallback(
+    (rows: AiConversation[], activeId: string | null) => {
+      setGuestConversations(rows);
+      setGuestActiveId(activeId);
+      void saveGuestConversations(rows);
+      void saveGuestActiveConversationId(activeId);
+    },
+    [],
+  );
+
+  const patchGuestConversation = useCallback(
+    (
+      conversationId: string,
+      patch: Partial<AiConversation> | ((c: AiConversation) => AiConversation),
+    ) => {
+      setGuestConversations((prev) => {
+        const rows = prev.map((c) => {
+          if (c.id !== conversationId) return c;
+          return typeof patch === "function" ? patch(c) : { ...c, ...patch };
+        });
+        void saveGuestConversations(rows);
+        return rows;
+      });
+    },
+    [],
+  );
+
+  const ensureGuestConversation = useCallback((): {
+    id: string;
+    messages: AiMessage[];
+  } => {
+    if (guestActiveId && guestConversations.some((c) => c.id === guestActiveId)) {
+      const conv = guestConversations.find((c) => c.id === guestActiveId)!;
+      return { id: guestActiveId, messages: conv.messages };
+    }
+    const id = makeGuestConversationId();
+    const draft: AiConversation = {
+      id,
+      title: "New chat",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    const rows = [draft, ...guestConversations];
+    persistGuestState(rows, id);
+    return { id, messages: [] };
+  }, [guestActiveId, guestConversations, persistGuestState]);
 
   const scrollToLatest = useCallback((animated = false) => {
     requestAnimationFrame(() => {
@@ -193,9 +261,9 @@ function Ask3elagiAiPanel() {
   }, []);
 
   const sendGuestMessage = useCallback(
-    async (value: string) => {
+    async (value: string, attachment?: AiFileAttachment | null) => {
       const question = value.trim();
-      if (!question || guestSending) return;
+      if ((!question && !attachment) || guestSending) return;
 
       const alreadySent = await getGuestAiSentCount();
       if (alreadySent >= GUEST_AI_MAX_MESSAGES) {
@@ -203,11 +271,25 @@ function Ask3elagiAiPanel() {
         return;
       }
 
+      const { id: conversationId, messages: priorMessages } = ensureGuestConversation();
+      const displayContent =
+        question || (attachment ? AI_ATTACHMENT_ONLY_PLACEHOLDER : "");
+      const attImageUri =
+        attachment && !attachment.isPdf && attachment.mimeType.startsWith("image/")
+          ? `data:${attachment.mimeType};base64,${attachment.data}`
+          : undefined;
+      const attFileName =
+        attachment && (attachment.isPdf || !attachment.mimeType.startsWith("image/"))
+          ? attachment.name
+          : undefined;
+
       const userMsg: AiMessage = {
         id: makeLocalId("guest-user"),
         role: "user",
-        content: question,
+        content: displayContent,
         createdAt: new Date().toISOString(),
+        imageUri: attImageUri,
+        fileName: attFileName,
       };
       const assistantLocalId = makeLocalId("guest-ai");
       const pendingAssistant: AiMessage = {
@@ -219,11 +301,19 @@ function Ask3elagiAiPanel() {
       };
 
       setGuestSending(true);
-      setGuestMessages((prev) => [...prev, userMsg, pendingAssistant]);
+      patchGuestConversation(conversationId, (c) => ({
+        ...c,
+        title:
+          c.title === "New chat" && displayContent
+            ? displayContent.slice(0, 80)
+            : c.title,
+        updatedAt: new Date().toISOString(),
+        messages: [...c.messages, userMsg, pendingAssistant],
+      }));
 
       try {
         const guestId = await getGuestAiSessionId();
-        const history = guestMessages
+        const history = priorMessages
           .filter((m) => m.role === "user" || m.role === "assistant")
           .filter((m) => !m.pending && m.content.trim())
           .map((m) => ({
@@ -232,41 +322,52 @@ function Ask3elagiAiPanel() {
           }));
         const result = await sendGuestAiChat({
           guestId,
-          message: question,
+          message: question || AI_ATTACHMENT_ONLY_PLACEHOLDER,
           history,
           locale: getApiLang(),
+          attachment,
         });
         await setGuestAiSentCount(result.used);
         setGuestSentCountState(result.used);
-        setGuestMessages((prev) =>
-          prev.map((m) =>
+        patchGuestConversation(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
             m.id === assistantLocalId
               ? { ...m, pending: false, content: result.content }
               : m,
           ),
-        );
+        }));
       } catch (e) {
         if (e instanceof GuestAiLimitError) {
-          setGuestMessages((prev) =>
-            prev.filter((m) => m.id !== userMsg.id && m.id !== assistantLocalId),
-          );
+          patchGuestConversation(conversationId, (c) => ({
+            ...c,
+            messages: c.messages.filter(
+              (m) => m.id !== userMsg.id && m.id !== assistantLocalId,
+            ),
+          }));
           promptAuthForConsultation();
           return;
         }
         const errText =
           e instanceof Error ? e.message : t.auth.genericError;
-        setGuestMessages((prev) =>
-          prev.map((m) =>
+        patchGuestConversation(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
             m.id === assistantLocalId
               ? { ...m, pending: false, content: errText }
               : m,
           ),
-        );
+        }));
       } finally {
         setGuestSending(false);
       }
     },
-    [guestMessages, guestSending, t.auth.genericError],
+    [
+      ensureGuestConversation,
+      guestSending,
+      patchGuestConversation,
+      t.auth.genericError,
+    ],
   );
 
   useEffect(() => {
@@ -325,14 +426,10 @@ function Ask3elagiAiPanel() {
         return;
       }
 
-      const hadAttachment = !!aiFile.attachment;
-      if (hadAttachment) {
-        aiFile.clear();
-        showErrorToast(t.ai.guestSignInForAttachments);
-        if (!question) return;
-      }
-      if (!question) return;
-      void sendGuestMessage(question);
+      if (!question && !aiFile.attachment) return;
+      const attachment = aiFile.attachment;
+      aiFile.clear();
+      void sendGuestMessage(question, attachment);
     },
     [
       aiFile,
@@ -341,18 +438,52 @@ function Ask3elagiAiPanel() {
       patientUserId,
       sendGuestMessage,
       signedIn,
-      t.ai.guestSignInForAttachments,
     ],
   );
 
   const onNewChat = () => {
     aiFile.clear();
-    sentPendingRef.current = true; // don't auto-resend pending
+    sentPendingRef.current = true;
+    setHistoryOpen(false);
     if (signedIn) {
       assistant.startNewChat();
       return;
     }
-    setGuestMessages([]);
+    const id = makeGuestConversationId();
+    const draft: AiConversation = {
+      id,
+      title: "New chat",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    persistGuestState([draft, ...guestConversations], id);
+  };
+
+  const historyConversations = signedIn
+    ? assistant.conversations
+    : guestConversations;
+  const historyActiveId = signedIn ? assistant.activeId : guestActiveId;
+  const historyLoading = signedIn ? assistant.loadingHistory : false;
+
+  const onSelectHistory = (id: string) => {
+    if (signedIn) {
+      assistant.setActiveId(id);
+      return;
+    }
+    setGuestActiveId(id);
+    void saveGuestActiveConversationId(id);
+  };
+
+  const onDeleteHistory = (id: string) => {
+    if (signedIn) {
+      void assistant.removeConversation(id);
+      return;
+    }
+    const next = guestConversations.filter((c) => c.id !== id);
+    const nextActive =
+      guestActiveId === id ? (next[0]?.id ?? null) : guestActiveId;
+    persistGuestState(next, nextActive);
   };
 
   const panelStyle = isDesktop
@@ -444,6 +575,15 @@ function Ask3elagiAiPanel() {
         </View>
         <View style={[styles.headerActions, { flexDirection: dir }]}>
           <Pressable
+            onPress={() => setHistoryOpen(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t.tabs.history}
+            style={styles.iconBtn}
+          >
+            <History size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+          </Pressable>
+          <Pressable
             onPress={onNewChat}
             hitSlop={8}
             accessibilityRole="button"
@@ -489,7 +629,7 @@ function Ask3elagiAiPanel() {
         <FlatList
           ref={listRef}
           data={messages}
-          key={signedIn ? (assistant.activeId ?? "new") : "guest"}
+          key={signedIn ? (assistant.activeId ?? "new") : (guestActiveId ?? "guest")}
           keyExtractor={(item) => item.id}
           style={[styles.chatList, { backgroundColor: colors.background }]}
           contentContainerStyle={styles.chatListContent}
@@ -553,6 +693,17 @@ function Ask3elagiAiPanel() {
           onRemoveAiAttachment={aiFile.clear}
         />
       </KeyboardStickyView>
+
+      <AssistantHistoryModal
+        visible={historyOpen}
+        conversations={historyConversations}
+        activeId={historyActiveId}
+        loading={historyLoading}
+        onClose={() => setHistoryOpen(false)}
+        onSelect={onSelectHistory}
+        onNewChat={onNewChat}
+        onDelete={onDeleteHistory}
+      />
       </View>
     </PanelShell>
   );

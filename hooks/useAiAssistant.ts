@@ -37,8 +37,9 @@ import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
 import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
-import { showErrorToast } from "@/utils/toast";
 import { formatMedicalRecordInsightReply } from "@/utils/medicalAiInsightChat";
+import { AI_ATTACHMENT_ONLY_PLACEHOLDER } from "@/utils/aiMessageDisplay";
+import type { AiFileAttachment } from "@/hooks/useAiFileAttachment";
 
 /** Single local conversation guests chat in (never persisted server-side). */
 const GUEST_CONVERSATION_ID = "guest-chat";
@@ -371,21 +372,34 @@ export function useAiAssistant() {
   );
 
   // Free tier: logged-out visitors get GUEST_AI_MAX_MESSAGES turns against the
-  // public /ai/guest/chat endpoint. No history, no attachments, no socket.
+  // public /ai/guest/chat endpoint.
   const sendGuestMessage = useCallback(
-    async (text: string) => {
+    async (text: string, attachment?: AiFileAttachment | null) => {
       const question = text.trim();
-      if (!question) return;
+      if (!question && !attachment) return;
       if ((await getGuestAiSentCount()) >= GUEST_AI_MAX_MESSAGES) {
         promptAuthForConsultation();
         return;
       }
 
+      const displayContent =
+        question || (attachment ? AI_ATTACHMENT_ONLY_PLACEHOLDER : "");
+      const attImageUri =
+        attachment && !attachment.isPdf && attachment.mimeType.startsWith("image/")
+          ? `data:${attachment.mimeType};base64,${attachment.data}`
+          : undefined;
+      const attFileName =
+        attachment && (attachment.isPdf || !attachment.mimeType.startsWith("image/"))
+          ? attachment.name
+          : undefined;
+
       const userMessage: AiMessage = {
         id: makeId("guest-user"),
         role: "user",
-        content: question,
+        content: displayContent,
         createdAt: new Date().toISOString(),
+        imageUri: attImageUri,
+        fileName: attFileName,
       };
       const assistantLocalId = makeId("guest-assistant");
       const assistantMessage: AiMessage = {
@@ -429,9 +443,10 @@ export function useAiAssistant() {
       try {
         const result = await sendGuestAiChat({
           guestId: await getGuestAiSessionId(),
-          message: question,
+          message: question || AI_ATTACHMENT_ONLY_PLACEHOLDER,
           history,
           locale: getApiLang(),
+          attachment,
         });
         await setGuestAiSentCount(result.used);
         setGuestSentCount(result.used);
@@ -493,11 +508,7 @@ export function useAiAssistant() {
     ) => {
       if (!text.trim() && !attachment) return;
       if (!signedIn || !accessToken) {
-        if (attachment) {
-          showErrorToast(t.ai.guestSignInForAttachments);
-          if (!text.trim()) return;
-        }
-        await sendGuestMessage(text);
+        await sendGuestMessage(text, attachment ?? null);
         return;
       }
       const question = text.trim();
