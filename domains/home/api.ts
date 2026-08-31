@@ -36,6 +36,7 @@ export interface SpecialityDoctorRow {
   video_price_usd?: number | null;
   immediate_call_enabled?: boolean | null;
   on_call?: boolean | null;
+  tags?: string[] | null;
   role: "doctor";
 }
 
@@ -76,6 +77,7 @@ export interface SpecialityDoctor {
   videoPriceUsd?: number | null;
   immediateCallEnabled?: boolean;
   onCall?: boolean;
+  tags?: string[];
 }
 
 function mapAdvertisement(row: AdvertisementRow): Advertisement {
@@ -131,6 +133,9 @@ function mapDoctor(row: SpecialityDoctorRow): SpecialityDoctor {
     videoPriceUsd: row.video_price_usd ?? null,
     immediateCallEnabled: !!row.immediate_call_enabled,
     onCall: !!row.on_call,
+    tags: Array.isArray(row.tags)
+      ? row.tags.map((t) => String(t).trim()).filter(Boolean)
+      : [],
   };
 }
 

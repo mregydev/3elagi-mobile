@@ -1,5 +1,5 @@
 import { MessageCircle, Star, Video } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -13,6 +13,7 @@ import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { cardShellSoft, primaryButton, UI } from "@/constants/uiTokens";
 import { patientCountryLabel, type MarketCountryCode } from "@/constants/patientCountries";
 import type { Conversation } from "@/domains/chat/types";
+import { doctorTagRowStyle, doctorTagTextStyle } from "@/domains/doctor/tagDisplay";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -48,6 +49,7 @@ function availabilityColor(
 interface Props {
   item: Conversation;
   isRTL: boolean;
+  tagDisplayMap?: Record<string, string>;
   onViewProfile: () => void;
   onStartConsultation: () => void;
 }
@@ -55,11 +57,12 @@ interface Props {
 export function DoctorBrowseCard({
   item,
   isRTL,
+  tagDisplayMap,
   onViewProfile,
   onStartConsultation,
 }: Props) {
   const colors = useColors();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const dir = flexRow(isRTL);
   const { width } = useWindowDimensions();
   // Side-by-side leaves ~100px for the name once the 148px CTA claims its
@@ -78,6 +81,17 @@ export function DoctorBrowseCard({
   const canCallNow = IMMEDIATE_VIDEO_CALL_ENABLED && !!item.user.immediateCallEnabled;
   const availColor = availabilityColor(isOnline, onCall, canCallNow, colors);
   const availLabel = availabilityLabel(isOnline, onCall, canCallNow, t);
+  const tagItems = useMemo(() => {
+    const tags = item.user.tags ?? [];
+    return tags
+      .map((canonical) => canonical.trim())
+      .filter(Boolean)
+      .map((canonical) => ({
+        canonical,
+        display: tagDisplayMap?.[canonical] ?? canonical,
+      }));
+  }, [item.user.tags, tagDisplayMap]);
+  const chipRowStyle = doctorTagRowStyle(isRTL);
 
   return (
     <View
@@ -165,6 +179,34 @@ export function DoctorBrowseCard({
                 </Text>
               </View>
             </View>
+
+            {tagItems.length > 0 ? (
+              <View style={[styles.tagChips, chipRowStyle, { flexDirection: dir }]}>
+                {tagItems.map(({ canonical, display }) => (
+                  <View
+                    key={canonical}
+                    style={[
+                      styles.tagChip,
+                      {
+                        backgroundColor: `${colors.primary}14`,
+                        borderColor: `${colors.primary}55`,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tagChipText,
+                        { color: colors.primary },
+                        doctorTagTextStyle(display, locale),
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {display}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.feePillSpacing}>
               <DoctorFeeLines
@@ -304,6 +346,23 @@ const styles = StyleSheet.create({
   // Prices belong with the doctor's details, not floating over the button.
   feePillSpacing: {
     marginTop: 8,
+  },
+  tagChips: {
+    marginTop: 6,
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  tagChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    maxWidth: "100%",
+  },
+  tagChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    lineHeight: 14,
   },
   actionsStacked: {
     alignItems: "center",

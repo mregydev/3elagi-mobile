@@ -166,6 +166,8 @@ export interface ChatUser {
   /** Doctor's call line was busy when this was fetched (live updates via presence). */
   onCall?: boolean;
   doctorEntityId?: string;
+  /** Profile tags (canonical labels). */
+  tags?: string[];
 }
 
 export interface ChatMessage {

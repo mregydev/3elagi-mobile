@@ -1,5 +1,6 @@
-import { ArrowLeft, ArrowRight } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react-native";
 import { DoctorBrowseCard } from "@/components/home/DoctorBrowseCard";
+import { AppTextInput } from "@/components/AppTextInput";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,6 +22,7 @@ import { doctorsToConversations } from "@/domains/home/doctorConversations";
 import { specialityLabel } from "@/domains/home/specialityLabel";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
+import { useDoctorTagLabels } from "@/hooks/useDoctorTagLabels";
 import { useI18n } from "@/hooks/useI18n";
 
 /** Country filter pill — doctors are listed from every market now. */
@@ -88,11 +90,12 @@ export function DoctorChatRoster({
   hideHeaderBorder = false,
 }: Props) {
   const colors = useColors();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const onlineUsers = usePresenceStore((s) => s.users);
   const [countryFilter, setCountryFilter] = useState<MarketCountryCode | "all">(
     "all",
   );
+  const [searchQuery, setSearchQuery] = useState("");
   const dir = isRTL ? "row-reverse" : "row";
   const label = specialityLabel(speciality, locale);
   const backLabel =
@@ -109,16 +112,49 @@ export function DoctorChatRoster({
     [doctors, onlineUsers],
   );
 
-  const filtered = useMemo(
-    () =>
+  const rosterTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const doctor of doctors) {
+      for (const tag of doctor.tags ?? []) {
+        const trimmed = tag.trim();
+        if (trimmed) set.add(trimmed);
+      }
+    }
+    return [...set];
+  }, [doctors]);
+
+  const tagLabelItems = useDoctorTagLabels(rosterTags, locale);
+  const tagDisplayMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of tagLabelItems) {
+      map[item.canonical] = item.display;
+    }
+    return map;
+  }, [tagLabelItems]);
+
+  const filtered = useMemo(() => {
+    let list =
       countryFilter === "all"
         ? conversations
         : conversations.filter(
             (c) =>
               (c.user.country?.trim().toUpperCase() || "EG") === countryFilter,
-          ),
-    [conversations, countryFilter],
-  );
+          );
+
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter((c) => {
+      if (c.user.name.toLowerCase().includes(q)) return true;
+      if (c.user.specialty?.toLowerCase().includes(q)) return true;
+      const tags = c.user.tags ?? [];
+      return tags.some((tag) => {
+        const canonical = tag.toLowerCase();
+        const display = (tagDisplayMap[tag] ?? tag).toLowerCase();
+        return canonical.includes(q) || display.includes(q);
+      });
+    });
+  }, [conversations, countryFilter, searchQuery, tagDisplayMap]);
 
   return (
     <View style={styles.root}>
@@ -170,30 +206,54 @@ export function DoctorChatRoster({
         </Text>
 
         {!loading ? (
-          <View
-            style={[
-              styles.filterRow,
-              { flexDirection: isRTL ? "row-reverse" : "row" },
-            ]}
-          >
-            <CountryChip
-              active={countryFilter === "all"}
-              label={isRTL ? "كل الدول" : "All countries"}
-              colors={colors}
-              onPress={() => setCountryFilter("all")}
-            />
-            {MARKET_COUNTRY_CODES.map((code) => (
-              <CountryChip
-                key={code}
-                active={countryFilter === code}
-                label={patientCountryLabel(code, isRTL)}
-                country={code}
-                colors={colors}
-                isRTL={isRTL}
-                onPress={() => setCountryFilter(code)}
+          <>
+            <View
+              style={[
+                styles.searchBar,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  flexDirection: dir,
+                },
+              ]}
+            >
+              <Search size={16} color={colors.mutedForeground} />
+              <AppTextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t.home.searchDoctors}
+                placeholderTextColor={colors.mutedForeground}
+                style={[
+                  styles.searchInput,
+                  { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+                ]}
               />
-            ))}
-          </View>
+            </View>
+            <View
+              style={[
+                styles.filterRow,
+                { flexDirection: isRTL ? "row-reverse" : "row" },
+              ]}
+            >
+              <CountryChip
+                active={countryFilter === "all"}
+                label={isRTL ? "كل الدول" : "All countries"}
+                colors={colors}
+                onPress={() => setCountryFilter("all")}
+              />
+              {MARKET_COUNTRY_CODES.map((code) => (
+                <CountryChip
+                  key={code}
+                  active={countryFilter === code}
+                  label={patientCountryLabel(code, isRTL)}
+                  country={code}
+                  colors={colors}
+                  isRTL={isRTL}
+                  onPress={() => setCountryFilter(code)}
+                />
+              ))}
+            </View>
+          </>
         ) : null}
       </View>
 
@@ -202,13 +262,17 @@ export function DoctorChatRoster({
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
-            {countryFilter === "all"
+            {searchQuery.trim()
               ? isRTL
-                ? "لا يوجد أطباء لهذا التخصص"
-                : "No doctors for this speciality"
-              : isRTL
-                ? "لا يوجد أطباء في هذه الدولة لهذا التخصص"
-                : "No doctors in this country for this speciality"}
+                ? "لا يوجد أطباء يطابقون البحث"
+                : "No doctors match your search"
+              : countryFilter === "all"
+                ? isRTL
+                  ? "لا يوجد أطباء لهذا التخصص"
+                  : "No doctors for this speciality"
+                : isRTL
+                  ? "لا يوجد أطباء في هذه الدولة لهذا التخصص"
+                  : "No doctors in this country for this speciality"}
           </Text>
         </View>
       ) : (
@@ -221,6 +285,7 @@ export function DoctorChatRoster({
             <DoctorBrowseCard
               item={item}
               isRTL={isRTL}
+              tagDisplayMap={tagDisplayMap}
               onViewProfile={() =>
                 onSelectDoctor(item.id, item.user.doctorEntityId)
               }
@@ -269,6 +334,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
   },
+  searchBar: {
+    marginTop: 12,
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  searchInput: { flex: 1, fontSize: 14, padding: 0 },
   filterRow: {
     marginTop: 12,
     alignItems: "center",

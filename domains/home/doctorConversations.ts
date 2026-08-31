@@ -24,6 +24,7 @@ export function doctorsToConversations(
       immediateCallEnabled: !!d.immediateCallEnabled,
       onCall: !!d.onCall,
       doctorEntityId: d.doctorId,
+      tags: d.tags?.length ? d.tags : undefined,
     }),
   );
 
