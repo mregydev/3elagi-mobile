@@ -2,8 +2,10 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { DoctorProfileSection } from "@/components/doctor/DoctorProfileSection";
 import { UI } from "@/constants/uiTokens";
+import { doctorTagRowStyle, doctorTagTextStyle } from "@/domains/doctor/tagDisplay";
 import type { PublicDoctorProfile } from "@/domains/doctor/api";
 import { useColors } from "@/hooks/useColors";
+import { useDoctorTagLabels } from "@/hooks/useDoctorTagLabels";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
@@ -20,15 +22,12 @@ type InfoRow = {
 
 export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Props) {
   const colors = useColors();
-  const { t, isRTL } = useI18n();
+  const { t, isRTL, locale } = useI18n();
   const { isMobile } = useWebLayout();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
-
-  const tagList = useMemo(
-    () => doctor.tags.map((tag) => tag.trim()).filter(Boolean),
-    [doctor.tags],
-  );
+  const tagItems = useDoctorTagLabels(doctor.tags, locale);
+  const chipRowStyle = doctorTagRowStyle(isRTL);
 
   const rows = useMemo(() => {
     const items: InfoRow[] = [];
@@ -45,7 +44,7 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
     return items;
   }, [doctor.experienceYears, specialtyLabel, t]);
 
-  if (rows.length === 0 && tagList.length === 0) return null;
+  if (rows.length === 0 && tagItems.length === 0) return null;
 
   return (
     <DoctorProfileSection title={t.doctor.profile.professionalInfo} textAlign={textAlign} card>
@@ -81,15 +80,27 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
         </View>
       ) : null}
 
-      {tagList.length > 0 ? (
-        <View style={[styles.tagsBlock, rows.length > 0 && styles.tagsBlockSpaced]}>
-          <Text style={[styles.label, isMobile && styles.labelMobile, { color: colors.mutedForeground, textAlign }]}>
+      {tagItems.length > 0 ? (
+        <View
+          style={[
+            styles.tagsBlock,
+            rows.length > 0 && styles.tagsBlockSpaced,
+            { alignItems: isRTL ? "flex-end" : "flex-start" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.label,
+              isMobile && styles.labelMobile,
+              { color: colors.mutedForeground, textAlign, width: "100%" },
+            ]}
+          >
             {t.doctor.profile.tags}
           </Text>
-          <View style={[styles.tagChips, { flexDirection: dir }]}>
-            {tagList.map((tag) => (
+          <View style={[styles.tagChips, chipRowStyle, { flexDirection: dir }]}>
+            {tagItems.map(({ canonical, display }) => (
               <View
-                key={tag}
+                key={canonical}
                 style={[
                   styles.tagChip,
                   {
@@ -98,8 +109,14 @@ export function DoctorProfileProfessionalSection({ doctor, specialtyLabel }: Pro
                   },
                 ]}
               >
-                <Text style={[styles.tagChipText, { color: colors.primary, textAlign }]}>
-                  {tag}
+                <Text
+                  style={[
+                    styles.tagChipText,
+                    { color: colors.primary },
+                    doctorTagTextStyle(display, locale),
+                  ]}
+                >
+                  {display}
                 </Text>
               </View>
             ))}
@@ -143,6 +160,7 @@ const styles = StyleSheet.create({
   },
   tagsBlock: {
     gap: UI.space.sm,
+    width: "100%",
   },
   tagsBlockSpaced: {
     marginTop: UI.space.sm,

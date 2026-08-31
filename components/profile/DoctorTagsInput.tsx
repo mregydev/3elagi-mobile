@@ -7,10 +7,12 @@ import {
   MAX_DOCTOR_TAGS,
   normalizeDoctorTag,
 } from "@/domains/doctor/tagSuggestions";
+import { doctorTagTextStyle } from "@/domains/doctor/tagDisplay";
 import {
   fetchDoctorTagSuggestions,
   type DoctorTagSuggestion,
 } from "@/domains/doctor/tags-api";
+import { useDoctorTagLabels } from "@/hooks/useDoctorTagLabels";
 import type { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -32,13 +34,14 @@ export function DoctorTagsInput({
   colors,
   disabled = false,
 }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<DoctorTagSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
+  const tagItems = useDoctorTagLabels(tags, locale);
 
   useEffect(() => {
     if (!open || disabled) return;
@@ -47,6 +50,7 @@ export function DoctorTagsInput({
       setLoadingSuggestions(true);
       void fetchDoctorTagSuggestions({
         specialityIds,
+        locale,
         q: query,
         limit: 8,
       })
@@ -54,7 +58,7 @@ export function DoctorTagsInput({
           if (cancelled) return;
           const selectedLower = new Set(tags.map((tag) => tag.toLowerCase()));
           setSuggestions(
-            rows.filter((row) => !selectedLower.has(row.label.toLowerCase())),
+            rows.filter((row) => !selectedLower.has(row.labelEn.toLowerCase())),
           );
         })
         .catch(() => {
@@ -69,7 +73,7 @@ export function DoctorTagsInput({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, disabled, query, specialityIds, tags]);
+  }, [open, disabled, query, specialityIds, tags, locale]);
 
   const createTag = useMemo(() => canCreateDoctorTag(query, tags), [query, tags]);
   const atLimit = tags.length >= MAX_DOCTOR_TAGS;
@@ -84,8 +88,8 @@ export function DoctorTagsInput({
     setOpen(false);
   };
 
-  const removeTag = (tag: string) => {
-    onChange(tags.filter((existing) => existing !== tag));
+  const removeTag = (canonical: string) => {
+    onChange(tags.filter((existing) => existing !== canonical));
   };
 
   const submitQuery = () => {
@@ -94,13 +98,13 @@ export function DoctorTagsInput({
 
   return (
     <View style={styles.wrap}>
-      {tags.length ? (
+      {tagItems.length ? (
         <View style={[styles.chips, { flexDirection: dir }]}>
-          {tags.map((tag) => (
+          {tagItems.map(({ canonical, display }) => (
             <Pressable
-              key={tag}
+              key={canonical}
               disabled={disabled}
-              onPress={() => removeTag(tag)}
+              onPress={() => removeTag(canonical)}
               style={[
                 styles.chip,
                 {
@@ -111,8 +115,13 @@ export function DoctorTagsInput({
                 },
               ]}
             >
-              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-                {tag}
+              <Text
+                style={[
+                  { color: colors.primary, fontWeight: "700", fontSize: 13 },
+                  doctorTagTextStyle(display, locale),
+                ]}
+              >
+                {display}
               </Text>
               <X size={14} color={colors.primary} />
             </Pressable>
@@ -181,10 +190,15 @@ export function DoctorTagsInput({
             suggestions.map((item) => (
               <Pressable
                 key={item.id}
-                onPress={() => addTag(item.label)}
+                onPress={() => addTag(item.labelEn)}
                 style={[styles.row, { borderBottomColor: colors.border, flexDirection: dir }]}
               >
-                <Text style={{ color: colors.foreground, fontWeight: "600", textAlign, flex: 1 }}>
+                <Text
+                  style={[
+                    { color: colors.foreground, fontWeight: "600", flex: 1 },
+                    doctorTagTextStyle(item.label, locale),
+                  ]}
+                >
                   {item.label}
                 </Text>
                 {item.source === "speciality" ? (

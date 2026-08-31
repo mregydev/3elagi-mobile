@@ -49,6 +49,7 @@ export type PreferredLocale = "ar" | "en" | "de" | "es";
 
 export interface AuthSession {
   accessToken: string;
+  refreshToken?: string;
   role: string;
   userId: string;
   profile: PatientProfile;

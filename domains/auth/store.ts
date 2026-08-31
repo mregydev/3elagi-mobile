@@ -6,6 +6,12 @@ import { authRepository } from "./repository";
 import { emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "./events";
 import { applyLocaleAfterAuth } from "@/domains/i18n/store";
+import {
+  fetchWebAccessToken,
+  logoutAuthSession,
+  refreshAuthSession,
+  usesCookieAuth,
+} from "@/domains/auth/http";
 import type { Credentials, DoctorApprovalStatus, PatientProfile, SignupInput } from "./types";
 import type { WebViewAuthSession } from "@/constants/nativeWebViewBridge";
 import { readAndStripSessionTransferFromUrl } from "@/domains/auth/sessionTransfer";
@@ -20,6 +26,7 @@ import {
 interface AuthState {
   profile: PatientProfile | null;
   accessToken: string | null;
+  refreshToken: string | null;
   role: string | null;
   doctorId: string | null;
   specialty: string | null;
@@ -58,6 +65,7 @@ function applySession(
   set({
     profile: session.profile,
     accessToken: session.accessToken,
+    refreshToken: session.refreshToken ?? null,
     role: session.role,
     doctorId: session.doctorId ?? null,
     specialty: session.specialty ?? null,
@@ -74,6 +82,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       profile: null,
       accessToken: null,
+      refreshToken: null,
       role: null,
       doctorId: null,
       specialty: null,
@@ -155,6 +164,8 @@ export const useAuthStore = create<AuthState>()(
       },
       setEmailVerified: (verified) => set({ emailVerified: verified }),
       logout: () => {
+        const { refreshToken } = useAuthStore.getState();
+        void logoutAuthSession(refreshToken);
         const userId = useAuthStore.getState().profile?.id;
         set({
           profile: null,
@@ -205,16 +216,23 @@ export const useAuthStore = create<AuthState>()(
     {
       name: authPersistKeyForDemoSlot(resolveInitialDemoSlot()),
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (s) => ({
-        profile: s.profile,
-        accessToken: s.accessToken,
-        role: s.role,
-        doctorId: s.doctorId,
-        specialty: s.specialty,
-        specialityId: s.specialityId,
-        doctorApprovalStatus: s.doctorApprovalStatus,
-        emailVerified: s.emailVerified,
-      }),
+      partialize: (s) => {
+        const shared = {
+          profile: s.profile,
+          role: s.role,
+          doctorId: s.doctorId,
+          specialty: s.specialty,
+          specialityId: s.specialityId,
+          doctorApprovalStatus: s.doctorApprovalStatus,
+          emailVerified: s.emailVerified,
+        };
+        if (usesCookieAuth) return shared;
+        return {
+          ...shared,
+          accessToken: s.accessToken,
+          refreshToken: s.refreshToken,
+        };
+      },
       onRehydrateStorage: () => (state) => {
         // Demo iframe panels use namespaced storage keys.
         if (state && Platform.OS === "web") {
@@ -246,6 +264,21 @@ export const useAuthStore = create<AuthState>()(
           }
         }
         if (state) state.hydrated = true;
+        if (state && usesCookieAuth && state.profile) {
+          void refreshAuthSession()
+            .then(() => fetchWebAccessToken())
+            .catch(() => {
+              state.profile = null;
+              state.accessToken = null;
+              state.refreshToken = null;
+              state.role = null;
+              state.doctorId = null;
+              state.specialty = null;
+              state.specialityId = null;
+              state.doctorApprovalStatus = null;
+              state.emailVerified = true;
+            });
+        }
       },
     },
   ),

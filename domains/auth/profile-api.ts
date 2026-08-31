@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import { withAuthRequestInit } from "@/domains/auth/http";
 import type { PatientProfile } from "./types";
 
 async function authJson<T>(
@@ -6,14 +7,15 @@ async function authJson<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  const res = await fetch(
+    `${API_BASE}${path}`,
+    withAuthRequestInit(token, {
+      ...init,
+      headers: {
+        ...init?.headers,
+      },
+    }),
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(

@@ -1,5 +1,10 @@
 import { API_BASE } from "@/constants/api";
 import { uploadFile } from "@/domains/medical";
+import {
+  fetchWebAccessToken,
+  usesCookieAuth,
+  withAuthRequestInit,
+} from "@/domains/auth/http";
 import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, SignupInput, SignupFile } from "./types";
 
 export class AuthApiError extends Error {
@@ -23,11 +28,13 @@ export class AuthApiError extends Error {
 }
 
 async function post<T>(path: string, body: object): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(
+    `${API_BASE}${path}`,
+    withAuthRequestInit(null, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const nested =
@@ -53,14 +60,13 @@ async function post<T>(path: string, body: object): Promise<T> {
 }
 
 async function authPatch<T>(path: string, token: string, body: object): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(
+    `${API_BASE}${path}`,
+    withAuthRequestInit(token, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(
@@ -73,14 +79,13 @@ async function authPatch<T>(path: string, token: string, body: object): Promise<
 }
 
 async function authPost<T>(path: string, token: string, body: object): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(
+    `${API_BASE}${path}`,
+    withAuthRequestInit(token, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(
@@ -93,7 +98,8 @@ async function authPost<T>(path: string, token: string, body: object): Promise<T
 }
 
 interface RawAuthResponse {
-  access_token: string;
+  access_token?: string;
+  refresh_token?: string;
   role: string;
   user_id: string;
   profile: Record<string, unknown>;
@@ -163,7 +169,8 @@ function toSession(raw: RawAuthResponse, fallbackEmail: string, photoUrl?: strin
     ? doctorSpecialtyFromProfile(profile)
     : {};
   return {
-    accessToken: raw.access_token,
+    accessToken: raw.access_token ?? "",
+    refreshToken: raw.refresh_token,
     role: raw.role,
     userId: raw.user_id,
     preferredLocale: raw.preferred_locale ?? null,
@@ -221,6 +228,14 @@ async function applySignupUploads(
   return photoUrl;
 }
 
+async function finalizeSession(session: AuthSession): Promise<AuthSession> {
+  if (usesCookieAuth) {
+    const token = await fetchWebAccessToken();
+    return { ...session, accessToken: token ?? "" };
+  }
+  return session;
+}
+
 export const authRepository = {
   /**
    * Google sign-in. The browser only ever holds the one-time `code`; the API
@@ -236,7 +251,7 @@ export const authRepository = {
       redirect_uri: input.redirectUri,
       medical_records_storage_consent: input.medicalRecordsConsent ?? false,
     });
-    return toSession(raw, "");
+    return finalizeSession(toSession(raw, ""));
   },
 
   /** Native: the device already holds a verified ID token, no code exchange. */
@@ -248,7 +263,7 @@ export const authRepository = {
       id_token: input.idToken,
       medical_records_storage_consent: input.medicalRecordsConsent ?? false,
     });
-    return toSession(raw, "");
+    return finalizeSession(toSession(raw, ""));
   },
 
   async login(creds: Credentials): Promise<AuthSession> {
@@ -258,7 +273,7 @@ export const authRepository = {
         email,
         password: creds.password,
       });
-      return toSession(raw, email);
+      return finalizeSession(toSession(raw, email));
     } catch (e) {
       if (e instanceof AuthApiError && e.code === "EMAIL_NOT_VERIFIED") {
         throw new AuthApiError(e.message, {
@@ -300,13 +315,23 @@ export const authRepository = {
             input.medicalRecordsStorageConsent === true,
         });
 
-    const photoUrl = await applySignupUploads(
-      input,
-      raw.access_token,
-      isDoctor,
-    ).catch(() => undefined);
+    let session = await finalizeSession(toSession(raw, email));
 
-    return toSession(raw, email, photoUrl);
+    const uploadToken =
+      session.accessToken ||
+      (usesCookieAuth ? (await fetchWebAccessToken()) ?? "" : "");
+    const photoUrl = uploadToken
+      ? await applySignupUploads(input, uploadToken, isDoctor).catch(() => undefined)
+      : undefined;
+
+    if (photoUrl) {
+      session = {
+        ...session,
+        profile: { ...session.profile, avatarUrl: photoUrl },
+      };
+    }
+
+    return session;
   },
 
   async verifyEmail(email: string, code: string): Promise<AuthSession> {
@@ -315,7 +340,7 @@ export const authRepository = {
       email: normalized,
       code: code.trim(),
     });
-    return toSession(raw, normalized);
+    return finalizeSession(toSession(raw, normalized));
   },
 
   async resendVerification(email: string): Promise<void> {
