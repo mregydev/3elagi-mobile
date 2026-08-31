@@ -263,22 +263,31 @@ export const useAuthStore = create<AuthState>()(
             state.emailVerified = transferred.emailVerified !== false;
           }
         }
-        if (state) state.hydrated = true;
+        // `accessToken` is not persisted under cookie auth, so on a page reload
+        // it has to come back from the cookie before anything reads it — the
+        // API modules all send it as a Bearer header. Hydrating first would let
+        // that first render fire unauthenticated requests.
         if (state && usesCookieAuth && state.profile) {
           void refreshAuthSession()
             .then(() => fetchWebAccessToken())
-            .catch(() => {
-              state.profile = null;
-              state.accessToken = null;
-              state.refreshToken = null;
-              state.role = null;
-              state.doctorId = null;
-              state.specialty = null;
-              state.specialityId = null;
-              state.doctorApprovalStatus = null;
-              state.emailVerified = true;
-            });
+            .then((token) => useAuthStore.setState({ accessToken: token ?? null }))
+            .catch(() =>
+              useAuthStore.setState({
+                profile: null,
+                accessToken: null,
+                refreshToken: null,
+                role: null,
+                doctorId: null,
+                specialty: null,
+                specialityId: null,
+                doctorApprovalStatus: null,
+                emailVerified: true,
+              }),
+            )
+            .finally(() => useAuthStore.setState({ hydrated: true }));
+          return;
         }
+        if (state) state.hydrated = true;
       },
     },
   ),
