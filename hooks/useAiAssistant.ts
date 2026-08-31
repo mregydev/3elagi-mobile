@@ -37,6 +37,7 @@ import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
 import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
+import { showErrorToast } from "@/utils/toast";
 import { formatMedicalRecordInsightReply } from "@/utils/medicalAiInsightChat";
 
 /** Single local conversation guests chat in (never persisted server-side). */
@@ -492,9 +493,11 @@ export function useAiAssistant() {
     ) => {
       if (!text.trim() && !attachment) return;
       if (!signedIn || !accessToken) {
-        // Guests: text only — attachments need an account.
-        if (attachment) promptAuthForConsultation();
-        else await sendGuestMessage(text);
+        if (attachment) {
+          showErrorToast(t.ai.guestSignInForAttachments);
+          if (!text.trim()) return;
+        }
+        await sendGuestMessage(text);
         return;
       }
       const question = text.trim();

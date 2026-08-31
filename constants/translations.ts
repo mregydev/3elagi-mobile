@@ -947,6 +947,9 @@ const en = {
     rateLimit:
       "You have reached your message limit. Please wait a minute and try again.",
     sendFailed: "Could not send your message. Please try again.",
+    guestSignInForAttachments: "Sign in to send files with AI.",
+    guestMessagesLeft: (left: number, max: number) =>
+      `${left} of ${max} free messages left`,
   },
   common: {
     loading: "Loading...",
@@ -1895,6 +1898,9 @@ const ar: typeof en = {
       "ليس لديك رصيدًا كافيًا لمراسلة المساعد الذكي. أضف رصيدًا من تبويب الرصيد.",
     rateLimit: "لقد وصلت إلى الحد الأقصى للرسائل. يرجى الانتظار دقيقة ثم المحاولة مرة أخرى.",
     sendFailed: "تعذر إرسال الرسالة. حاول مرة أخرى.",
+    guestSignInForAttachments: "سجّل الدخول لإرسال ملفات مع الذكاء الاصطناعي.",
+    guestMessagesLeft: (left: number, max: number) =>
+      `${left} من ${max} رسائل مجانية متبقية`,
   },
   common: {
     loading: "تحميل...",
@@ -2853,6 +2859,9 @@ const de: typeof en = {
     rateLimit:
       "Sie haben Ihr Nachrichtenlimit erreicht. Bitte warten Sie eine Minute und versuchen Sie es erneut.",
     sendFailed: "Ihre Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+    guestSignInForAttachments: "Melden Sie sich an, um Dateien an die KI zu senden.",
+    guestMessagesLeft: (left: number, max: number) =>
+      `${left} von ${max} kostenlosen Nachrichten übrig`,
   },
   common: {
     loading: "Wird geladen...",
@@ -3812,6 +3821,9 @@ const es: typeof en = {
     rateLimit:
       "Has alcanzado tu límite de mensajes. Espera un minuto e inténtalo de nuevo.",
     sendFailed: "No se pudo enviar tu mensaje. Inténtalo de nuevo.",
+    guestSignInForAttachments: "Inicia sesión para enviar archivos a la IA.",
+    guestMessagesLeft: (left: number, max: number) =>
+      `${left} de ${max} mensajes gratis restantes`,
   },
   common: {
     loading: "Cargando...",

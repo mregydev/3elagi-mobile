@@ -42,6 +42,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
+import { showErrorToast } from "@/utils/toast";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
@@ -149,7 +150,8 @@ function Ask3elagiAiPanel() {
   const isNative = Platform.OS !== "web";
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const signedIn = isSignedIn(profile, accessToken);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const signedIn = hydrated && isSignedIn(profile, accessToken);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
   const consumePendingQuestion = useAsk3elagiAiWidgetStore(
     (s) => s.consumePendingQuestion,
@@ -323,9 +325,11 @@ function Ask3elagiAiPanel() {
         return;
       }
 
-      if (aiFile.attachment) {
-        promptAuthForConsultation();
-        return;
+      const hadAttachment = !!aiFile.attachment;
+      if (hadAttachment) {
+        aiFile.clear();
+        showErrorToast(t.ai.guestSignInForAttachments);
+        if (!question) return;
       }
       if (!question) return;
       void sendGuestMessage(question);
@@ -337,6 +341,7 @@ function Ask3elagiAiPanel() {
       patientUserId,
       sendGuestMessage,
       signedIn,
+      t.ai.guestSignInForAttachments,
     ],
   );
 
@@ -515,7 +520,10 @@ function Ask3elagiAiPanel() {
             { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
           ]}
         >
-          {`${Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount)} / ${GUEST_AI_MAX_MESSAGES}`}
+          {t.ai.guestMessagesLeft(
+            Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount),
+            GUEST_AI_MAX_MESSAGES,
+          )}
         </Text>
       ) : null}
 
@@ -566,7 +574,7 @@ export function Ask3elagiAiWidget() {
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
 
   const aiEnabled = useAiEnabled();
-  const signedIn = isSignedIn(profile, accessToken);
+  const signedIn = hydrated && isSignedIn(profile, accessToken);
   const roleOk =
     role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
   /** Guests + patient/doctor accounts; hide for admin / unsupported roles when signed in. */

@@ -22,6 +22,7 @@ export async function sendGuestAiChat(input: {
 }): Promise<GuestAiChatResult> {
   const res = await fetch(`${API_BASE}/ai/guest/chat`, {
     method: "POST",
+    credentials: "omit",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       guestId: input.guestId,
@@ -48,7 +49,7 @@ export async function sendGuestAiChat(input: {
       : nested?.message ??
         (typeof data.message === "string" ? data.message : null) ??
         `Request failed (${res.status})`;
-    if (code === "guest_limit" || res.status === 403) {
+    if (code === "guest_limit") {
       throw new GuestAiLimitError(message);
     }
     throw new Error(message);
