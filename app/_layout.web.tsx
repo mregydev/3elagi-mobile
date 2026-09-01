@@ -8,6 +8,8 @@ import { AppSplash } from "@/components/SplashScreen";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { MobileAppDownloadHost } from "@/components/web/MobileAppDownloadHost";
+import { CookieConsentHost } from "@/components/web/CookieConsentHost";
+import { WebClarityBootstrap } from "@/components/web/WebClarityBootstrap.web";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { GuestAuthRequiredDialog } from "@/components/auth/GuestAuthRequiredDialog";
 import { SessionTransferBootstrap } from "@/components/auth/SessionTransferBootstrap";
@@ -175,6 +177,8 @@ export default function RootLayout() {
             <Stack.Screen name="points/checkout" />
           </Stack>
           <AppToast />
+          <WebClarityBootstrap />
+          <CookieConsentHost />
           <MobileAppDownloadHost />
           <Ask3elagiAiWidget />
           <GuestAuthRequiredDialog />

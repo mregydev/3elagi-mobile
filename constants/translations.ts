@@ -559,6 +559,15 @@ const en = {
     installImageAlt: "Android install prompt — tap Install",
     close: "Close",
   },
+  cookieConsent: {
+    title: "We use cookies",
+    message:
+      "3elagi requires essential cookies to keep you signed in. Optional analytics cookies help us improve the website.",
+    essentialNote:
+      "You must accept essential cookies to use this site. Choose whether to allow optional analytics.",
+    accept: "Accept all",
+    reject: "Essential only",
+  },
   reviews: {
     title: "My Reviews",
     empty: "No reviews yet",
@@ -1517,6 +1526,15 @@ const ar: typeof en = {
     installHint: "افتح الملف المحمّل. عند ظهور هذه الشاشة، اضغط Install (تثبيت).",
     installImageAlt: "نافذة تثبيت أندرويد — اضغط Install",
     close: "إغلاق",
+  },
+  cookieConsent: {
+    title: "نستخدم ملفات تعريف الارتباط",
+    message:
+      "يتطلب 3elagi ملفات تعريف ارتباط أساسية لتسجيل الدخول. ملفات التحليلات الاختيارية تساعدنا على تحسين الموقع.",
+    essentialNote:
+      "يجب قبول الملفات الأساسية لاستخدام هذا الموقع. اختر ما إذا كنت تسمح بالتحليلات الاختيارية.",
+    accept: "قبول الكل",
+    reject: "الأساسية فقط",
   },
   reviews: {
     title: "تقييماتي",
@@ -2479,6 +2497,15 @@ const de: typeof en = {
     installImageAlt: "Android-Installationsdialog — Installieren tippen",
     close: "Schließen",
   },
+  cookieConsent: {
+    title: "Wir verwenden Cookies",
+    message:
+      "3elagi benötigt essenzielle Cookies für die Anmeldung. Optionale Analyse-Cookies helfen uns, die Website zu verbessern.",
+    essentialNote:
+      "Essenzielle Cookies sind für die Nutzung dieser Website erforderlich. Wählen Sie, ob optionale Analysen erlaubt werden.",
+    accept: "Alle akzeptieren",
+    reject: "Nur essenzielle",
+  },
   reviews: {
     title: "Meine Bewertungen",
     empty: "Noch keine Bewertungen",
@@ -3440,6 +3467,15 @@ const es: typeof en = {
     installHint: "Abre el archivo descargado. Cuando veas esta pantalla, toca Instalar.",
     installImageAlt: "Pantalla de instalación de Android — toca Instalar",
     close: "Cerrar",
+  },
+  cookieConsent: {
+    title: "Usamos cookies",
+    message:
+      "3elagi requiere cookies esenciales para mantener tu sesión. Las cookies analíticas opcionales nos ayudan a mejorar el sitio.",
+    essentialNote:
+      "Debes aceptar las cookies esenciales para usar este sitio. Elige si permites analíticas opcionales.",
+    accept: "Aceptar todo",
+    reject: "Solo esenciales",
   },
   reviews: {
     title: "Mis reseñas",
