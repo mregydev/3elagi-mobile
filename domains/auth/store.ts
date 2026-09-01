@@ -7,7 +7,7 @@ import { emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "./events";
 import { applyLocaleAfterAuth } from "@/domains/i18n/store";
 import {
-  fetchWebAccessToken,
+  ensureWebAccessToken,
   logoutAuthSession,
   refreshAuthSession,
   usesCookieAuth,
@@ -271,8 +271,7 @@ export const useAuthStore = create<AuthState>()(
         // API modules all send it as a Bearer header. Hydrating first would let
         // that first render fire unauthenticated requests.
         if (state && usesCookieAuth && state.profile) {
-          void refreshAuthSession()
-            .then(() => fetchWebAccessToken())
+          void ensureWebAccessToken()
             .then((token) => useAuthStore.setState({ accessToken: token ?? null }))
             .catch(() => logoutOnAuthFailure())
             .finally(() => useAuthStore.setState({ hydrated: true }));

@@ -1,6 +1,7 @@
 import { API_BASE } from "@/constants/api";
 import { uploadFile } from "@/domains/medical";
 import {
+  ensureWebAccessToken,
   fetchWebAccessToken,
   usesCookieAuth,
   withAuthRequestInit,
@@ -230,8 +231,11 @@ async function applySignupUploads(
 
 async function finalizeSession(session: AuthSession): Promise<AuthSession> {
   if (usesCookieAuth) {
-    const token = await fetchWebAccessToken();
-    return { ...session, accessToken: token ?? "" };
+    const token = await ensureWebAccessToken({ logoutOnFailure: false });
+    if (!token) {
+      throw new Error("Could not establish session. Please try again.");
+    }
+    return { ...session, accessToken: token };
   }
   return session;
 }
