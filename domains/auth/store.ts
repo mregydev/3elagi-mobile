@@ -8,6 +8,7 @@ import { AUTH_EVENTS } from "./events";
 import { applyLocaleAfterAuth } from "@/domains/i18n/store";
 import {
   ensureWebAccessToken,
+  getWebAuthMode,
   logoutAuthSession,
   refreshAuthSession,
   usesCookieAuth,
@@ -229,7 +230,7 @@ export const useAuthStore = create<AuthState>()(
           doctorApprovalStatus: s.doctorApprovalStatus,
           emailVerified: s.emailVerified,
         };
-        if (usesCookieAuth) return shared;
+        if (usesCookieAuth()) return shared;
         return {
           ...shared,
           accessToken: s.accessToken,
@@ -270,14 +271,26 @@ export const useAuthStore = create<AuthState>()(
         // it has to come back from the cookie before anything reads it — the
         // API modules all send it as a Bearer header. Hydrating first would let
         // that first render fire unauthenticated requests.
-        if (state && usesCookieAuth && state.profile) {
+        if (state && Platform.OS === "web" && getWebAuthMode() === "token" && state.refreshToken) {
+          void refreshAuthSession(state.refreshToken)
+            .then(({ accessToken, refreshToken }) =>
+              useAuthStore.setState({
+                accessToken: accessToken ?? null,
+                refreshToken: refreshToken ?? state.refreshToken,
+              }),
+            )
+            .catch(() => logoutOnAuthFailure())
+            .finally(() => useAuthStore.setState({ hydrated: true }));
+          return;
+        }
+        if (state && usesCookieAuth() && state.profile) {
           void ensureWebAccessToken()
             .then((token) => useAuthStore.setState({ accessToken: token ?? null }))
             .catch(() => logoutOnAuthFailure())
             .finally(() => useAuthStore.setState({ hydrated: true }));
           return;
         }
-        if (state && !usesCookieAuth && state.refreshToken) {
+        if (state && !usesCookieAuth() && state.refreshToken) {
           void refreshAuthSession(state.refreshToken)
             .then(({ accessToken, refreshToken }) =>
               useAuthStore.setState({

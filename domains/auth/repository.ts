@@ -2,8 +2,9 @@ import { API_BASE } from "@/constants/api";
 import { uploadFile } from "@/domains/medical";
 import {
   ensureWebAccessToken,
-  fetchWebAccessToken,
-  usesCookieAuth,
+  setWebAccessToken,
+  setWebAuthMode,
+  usesBearerTokenAuth,
   withAuthRequestInit,
 } from "@/domains/auth/http";
 import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, SignupInput, SignupFile } from "./types";
@@ -230,14 +231,27 @@ async function applySignupUploads(
 }
 
 async function finalizeSession(session: AuthSession): Promise<AuthSession> {
-  if (usesCookieAuth) {
-    const token = await ensureWebAccessToken({ logoutOnFailure: false });
-    if (!token) {
+  if (usesBearerTokenAuth()) {
+    if (!session.accessToken?.trim()) {
       throw new Error("Could not establish session. Please try again.");
     }
+    setWebAccessToken(session.accessToken);
+    return session;
+  }
+
+  const token = await ensureWebAccessToken({ logoutOnFailure: false });
+  if (token) {
     return { ...session, accessToken: token };
   }
-  return session;
+
+  // Incognito / blocked third-party cookies — use tokens from the login response.
+  if (session.accessToken?.trim() && session.refreshToken?.trim()) {
+    setWebAuthMode("token");
+    setWebAccessToken(session.accessToken);
+    return session;
+  }
+
+  throw new Error("Could not establish session. Please try again.");
 }
 
 export const authRepository = {
@@ -321,9 +335,7 @@ export const authRepository = {
 
     let session = await finalizeSession(toSession(raw, email));
 
-    const uploadToken =
-      session.accessToken ||
-      (usesCookieAuth ? (await fetchWebAccessToken()) ?? "" : "");
+    const uploadToken = session.accessToken || "";
     const photoUrl = uploadToken
       ? await applySignupUploads(input, uploadToken, isDoctor).catch(() => undefined)
       : undefined;
