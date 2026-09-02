@@ -20,6 +20,7 @@ export function isGuestAllowedRoot(
     root === "auth" ||
     root === "contact" ||
     root === "register-with-us" ||
+    root === "rate-us" ||
     root === "demo" ||
     // Doctor directory: browsing is public, starting a consultation still prompts.
     root === "doctors"
@@ -35,6 +36,16 @@ export function isGuestAllowedRoot(
     return GUEST_ALLOWED_TABS.has(tabSegment);
   }
   return false;
+}
+
+/** Marketing / support pages that stay reachable after sign-in (email links, sidebar). */
+export function isSignedInPublicRoot(root: string | undefined): boolean {
+  return (
+    root === "contact" ||
+    root === "register-with-us" ||
+    root === "rate-us" ||
+    root === "demo"
+  );
 }
 
 /**

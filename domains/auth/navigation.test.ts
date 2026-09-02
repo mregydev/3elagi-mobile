@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { isPublicWebPath } from "./navigation";
-import { GUEST_ALLOWED_TABS, isGuestAllowedRoot } from "./guestBrowse";
+import { GUEST_ALLOWED_TABS, isGuestAllowedRoot, isSignedInPublicRoot } from "./guestBrowse";
 
 vi.mock("react-native", () => ({ Platform: { OS: "web" } }));
 vi.mock("expo-router", () => ({ router: {} }));
@@ -39,5 +39,13 @@ describe("isPublicWebPath", () => {
     expect(isPublicWebPath("/doctors")).toBe(true);
     expect(isGuestAllowedRoot("doctors")).toBe(true);
     expect(isGuestAllowedRoot("points")).toBe(false);
+  });
+
+  it("keeps marketing routes reachable while signed in", () => {
+    for (const root of ["contact", "register-with-us", "rate-us", "demo"] as const) {
+      expect(isSignedInPublicRoot(root), root).toBe(true);
+      expect(isPublicWebPath(`/${root}`), root).toBe(true);
+      expect(isGuestAllowedRoot(root), root).toBe(true);
+    }
   });
 });

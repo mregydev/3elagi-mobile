@@ -1,7 +1,7 @@
 import { useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
-import { isGuestAllowedRoot } from "@/domains/auth/guestBrowse";
+import { isGuestAllowedRoot, isSignedInPublicRoot } from "@/domains/auth/guestBrowse";
 import {
   navigatePostAuth,
   navigateToWelcome,
@@ -48,7 +48,6 @@ export function AuthRedirect() {
       authScreen === "verify-email";
     const isAdminRoute = root === "admin";
     const isPendingRoute = root === "doctor-pending";
-    const isDemoRoute = root === "demo";
 
     if (!signedIn) {
       if (!isGuestAllowedRoot(root, second)) {
@@ -65,6 +64,10 @@ export function AuthRedirect() {
       return;
     }
 
+    if (isSignedInPublicRoot(root)) {
+      return;
+    }
+
     const isAdmin = role?.toLowerCase() === "admin";
 
     if (isAdmin) {
@@ -76,10 +79,6 @@ export function AuthRedirect() {
       if (!isAdminRoute && !isChatRoute) {
         router.replace("/admin");
       }
-      return;
-    }
-
-    if (isDemoRoute) {
       return;
     }
 

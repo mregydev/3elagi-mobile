@@ -14,7 +14,15 @@ import {
   fetchAdminMarketingTemplate,
   sendAdminMarketingEmail,
   type MarketingEmailLanguage,
+  type MarketingEmailTheme,
 } from "@/domains/admin/api";
+import {
+  DEFAULT_MARKETING_EMAIL_THEME,
+  MARKETING_EMAIL_THEMES,
+  MARKETING_THEME_LABELS,
+  MARKETING_THEME_PALETTES,
+  rethemeMarketingBodyHtml,
+} from "@/domains/admin/marketingThemes";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
@@ -32,6 +40,9 @@ export default function AdminMarketingWeb() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [language, setLanguage] = useState<MarketingEmailLanguage>("en");
+  const [themeColor, setThemeColor] = useState<MarketingEmailTheme>(
+    DEFAULT_MARKETING_EMAIL_THEME,
+  );
   const [bodyHtml, setBodyHtml] = useState("");
   const [bodyDir, setBodyDir] = useState<"ltr" | "rtl">("ltr");
   const [subjectPreview, setSubjectPreview] = useState("");
@@ -40,23 +51,28 @@ export default function AdminMarketingWeb() {
   const bodyDirtyRef = useRef(false);
 
   const loadTemplate = useCallback(
-    async (lang: MarketingEmailLanguage, force = false) => {
+    async (
+      lang: MarketingEmailLanguage,
+      theme: MarketingEmailTheme,
+      force = false,
+    ) => {
       if (!accessToken) return;
       if (bodyDirtyRef.current && !force) {
         const ok =
           typeof window !== "undefined" &&
           window.confirm(
-            "Switch language and replace the current email body with the default template?",
+            "Replace the current email body with the default template for this language and theme?",
           );
         if (!ok) return;
       }
 
       setLoadingTemplate(true);
       try {
-        const template = await fetchAdminMarketingTemplate(accessToken, lang);
+        const template = await fetchAdminMarketingTemplate(accessToken, lang, theme);
         setBodyHtml(template.bodyHtml);
         setBodyDir(template.dir);
         setSubjectPreview(template.subjectTemplate);
+        setThemeColor(template.themeColor ?? theme);
         bodyDirtyRef.current = false;
       } catch (e) {
         showErrorToast(e instanceof Error ? e.message : "Failed to load template");
@@ -68,13 +84,30 @@ export default function AdminMarketingWeb() {
   );
 
   useEffect(() => {
-    void loadTemplate(language, true);
+    void loadTemplate(language, themeColor, true);
   }, [accessToken]);
 
   const pickLanguage = (code: MarketingEmailLanguage) => {
     if (code === language) return;
     setLanguage(code);
-    void loadTemplate(code);
+    void loadTemplate(code, themeColor);
+  };
+
+  const pickTheme = (theme: MarketingEmailTheme) => {
+    if (theme === themeColor) return;
+    if (bodyDirtyRef.current) {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          "Apply the new theme colors to your current email body? (Content is kept; colors are updated.)",
+        );
+      if (!ok) return;
+      setThemeColor(theme);
+      setBodyHtml((current) => rethemeMarketingBodyHtml(current, theme));
+      return;
+    }
+    setThemeColor(theme);
+    void loadTemplate(language, theme);
   };
 
   const resetTemplate = () => {
@@ -82,7 +115,7 @@ export default function AdminMarketingWeb() {
       typeof window === "undefined" ||
       window.confirm("Reset the email body to the default template for this language?");
     if (!ok) return;
-    void loadTemplate(language, true);
+    void loadTemplate(language, themeColor, true);
   };
 
   const send = async () => {
@@ -118,6 +151,7 @@ export default function AdminMarketingWeb() {
         email: trimmedEmail,
         language,
         bodyHtml: trimmedBody,
+        themeColor,
       });
       showSuccessToast(`Email sent to ${result.to}`);
       setName("");
@@ -217,6 +251,53 @@ export default function AdminMarketingWeb() {
                   </Text>
                   <Text style={[styles.langHint, { color: colors.mutedForeground }]}>
                     {item.hint}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>
+            Theme color
+          </Text>
+          <View style={styles.langRow}>
+            {MARKETING_EMAIL_THEMES.map((theme) => {
+              const active = themeColor === theme;
+              const palette = MARKETING_THEME_PALETTES[theme];
+              return (
+                <Pressable
+                  key={theme}
+                  onPress={() => pickTheme(theme)}
+                  style={({ pressed }) => [
+                    styles.themeChip,
+                    {
+                      borderColor: active ? palette.brand : colors.border,
+                      backgroundColor: active
+                        ? `${palette.brand}14`
+                        : pressed
+                          ? colors.muted
+                          : colors.background,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.themeSwatch,
+                      {
+                        backgroundColor: palette.brand,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.langLabel,
+                      {
+                        color: active ? palette.brand : colors.foreground,
+                        fontWeight: active ? "800" : "600",
+                      },
+                    ]}
+                  >
+                    {MARKETING_THEME_LABELS[theme]}
                   </Text>
                 </Pressable>
               );
@@ -334,6 +415,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     minWidth: 120,
     cursor: "pointer" as "auto",
+  },
+  themeChip: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minWidth: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    cursor: "pointer" as "auto",
+  },
+  themeSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 999,
   },
   langLabel: {
     fontSize: 14,

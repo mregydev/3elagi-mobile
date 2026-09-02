@@ -398,18 +398,21 @@ export async function fetchAdminAppReview(
 }
 
 export type MarketingEmailLanguage = "en" | "ar" | "es" | "de";
+export type MarketingEmailTheme = "blue" | "green" | "red";
 
 export interface SendMarketingEmailInput {
   email: string;
   name: string;
   language: MarketingEmailLanguage;
   bodyHtml?: string;
+  themeColor?: MarketingEmailTheme;
 }
 
 export interface SendMarketingEmailResult {
   ok: boolean;
   to: string;
   language: MarketingEmailLanguage;
+  themeColor?: MarketingEmailTheme;
   subject: string;
 }
 
@@ -425,6 +428,7 @@ export async function sendAdminMarketingEmail(
 
 export interface AdminMarketingTemplate {
   language: MarketingEmailLanguage;
+  themeColor: MarketingEmailTheme;
   dir: "ltr" | "rtl";
   subjectTemplate: string;
   preheader: string;
@@ -434,9 +438,11 @@ export interface AdminMarketingTemplate {
 export async function fetchAdminMarketingTemplate(
   token: string,
   language: MarketingEmailLanguage,
+  themeColor: MarketingEmailTheme = "blue",
 ): Promise<AdminMarketingTemplate> {
+  const themeQuery = encodeURIComponent(themeColor);
   return authJson<AdminMarketingTemplate>(
-    `/admin/marketing/template/${language}`,
+    `/admin/marketing/template/${language}?theme=${themeQuery}`,
     token,
   );
 }
