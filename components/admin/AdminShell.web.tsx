@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Megaphone,
   MessageSquare,
   Star,
   Stethoscope,
@@ -28,7 +29,8 @@ type AdminNavKey =
   | "specialities"
   | "pricing"
   | "rag"
-  | "complaints";
+  | "complaints"
+  | "marketing";
 
 const NAV: {
   key: AdminNavKey;
@@ -43,6 +45,12 @@ const NAV: {
     label: "Contact inbox",
     href: "/admin/contact-messages",
     Icon: Mail,
+  },
+  {
+    key: "marketing",
+    label: "Marketing",
+    href: "/admin/marketing",
+    Icon: Megaphone,
   },
   {
     key: "doctorRegistrations",
@@ -86,6 +94,7 @@ function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/pricing")) return "pricing";
   if (pathname.includes("/admin/rag")) return "rag";
   if (pathname.includes("/admin/complaints")) return "complaints";
+  if (pathname.includes("/admin/marketing")) return "marketing";
   return "doctors";
 }
 

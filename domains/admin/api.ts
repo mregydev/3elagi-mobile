@@ -396,3 +396,47 @@ export async function fetchAdminAppReview(
 ): Promise<AdminAppReviewRow> {
   return authJson<AdminAppReviewRow>(`/admin/app-reviews/${id}`, token);
 }
+
+export type MarketingEmailLanguage = "en" | "ar" | "es" | "de";
+
+export interface SendMarketingEmailInput {
+  email: string;
+  name: string;
+  language: MarketingEmailLanguage;
+  bodyHtml?: string;
+}
+
+export interface SendMarketingEmailResult {
+  ok: boolean;
+  to: string;
+  language: MarketingEmailLanguage;
+  subject: string;
+}
+
+export async function sendAdminMarketingEmail(
+  token: string,
+  input: SendMarketingEmailInput,
+): Promise<SendMarketingEmailResult> {
+  return authJson<SendMarketingEmailResult>("/admin/marketing/send", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export interface AdminMarketingTemplate {
+  language: MarketingEmailLanguage;
+  dir: "ltr" | "rtl";
+  subjectTemplate: string;
+  preheader: string;
+  bodyHtml: string;
+}
+
+export async function fetchAdminMarketingTemplate(
+  token: string,
+  language: MarketingEmailLanguage,
+): Promise<AdminMarketingTemplate> {
+  return authJson<AdminMarketingTemplate>(
+    `/admin/marketing/template/${language}`,
+    token,
+  );
+}
