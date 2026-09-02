@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,10 +13,11 @@ import { AdminShell } from "@/components/admin/AdminShell.web";
 import { MarketingHtmlEditor } from "@/components/admin/MarketingHtmlEditor.web";
 import {
   fetchAdminMarketingTemplate,
-  sendAdminMarketingEmail,
+  sendAdminMarketingEmailBatch,
   type MarketingEmailLanguage,
   type MarketingEmailTheme,
 } from "@/domains/admin/api";
+import { parseMarketingRecipients } from "@/domains/admin/parseMarketingRecipients";
 import {
   DEFAULT_MARKETING_EMAIL_THEME,
   MARKETING_EMAIL_THEMES,
@@ -34,11 +36,14 @@ const LANGUAGES: { code: MarketingEmailLanguage; label: string; hint: string }[]
   { code: "de", label: "German", hint: "Left-to-right" },
 ];
 
+const RECIPIENTS_PLACEHOLDER = `Dr. Ahmed Hassan, ahmed@example.com
+Dr. Sara Ali, sara@example.com
+Dr. Omar Khan <omar@example.com>`;
+
 export default function AdminMarketingWeb() {
   const colors = useColors();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [recipientsText, setRecipientsText] = useState("");
   const [language, setLanguage] = useState<MarketingEmailLanguage>("en");
   const [themeColor, setThemeColor] = useState<MarketingEmailTheme>(
     DEFAULT_MARKETING_EMAIL_THEME,
@@ -49,6 +54,12 @@ export default function AdminMarketingWeb() {
   const [loadingTemplate, setLoadingTemplate] = useState(true);
   const [sending, setSending] = useState(false);
   const bodyDirtyRef = useRef(false);
+
+  const parsedRecipients = useMemo(
+    () => parseMarketingRecipients(recipientsText),
+    [recipientsText],
+  );
+  const previewName = parsedRecipients[0]?.name ?? "Doctor";
 
   const loadTemplate = useCallback(
     async (
@@ -120,15 +131,13 @@ export default function AdminMarketingWeb() {
 
   const send = async () => {
     if (!accessToken || sending) return;
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
     const trimmedBody = bodyHtml.trim();
-    if (!trimmedName) {
-      showErrorToast("Recipient name is required");
-      return;
-    }
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      showErrorToast("Enter a valid email address");
+    const recipients = parseMarketingRecipients(recipientsText);
+
+    if (!recipients.length) {
+      showErrorToast(
+        "Add at least one recipient (one per line: Name, email or Name <email>)",
+      );
       return;
     }
     if (!trimmedBody) {
@@ -137,27 +146,48 @@ export default function AdminMarketingWeb() {
     }
 
     const langLabel = LANGUAGES.find((l) => l.code === language)?.label ?? language;
+    const recipientSummary =
+      recipients.length === 1
+        ? recipients[0].email
+        : `${recipients.length} recipients`;
     const confirmed =
       typeof window !== "undefined" &&
       window.confirm(
-        `Send the doctor invitation email to ${trimmedEmail} in ${langLabel}?`,
+        `Send the doctor invitation email to ${recipientSummary} in ${langLabel}?`,
       );
     if (!confirmed) return;
 
     setSending(true);
     try {
-      const result = await sendAdminMarketingEmail(accessToken, {
-        name: trimmedName,
-        email: trimmedEmail,
+      const result = await sendAdminMarketingEmailBatch(accessToken, {
+        recipients,
         language,
         bodyHtml: trimmedBody,
         themeColor,
       });
-      showSuccessToast(`Email sent to ${result.to}`);
-      setName("");
-      setEmail("");
+
+      if (result.failed === 0) {
+        showSuccessToast(
+          result.sent === 1
+            ? `Email sent to ${result.results[0]?.email}`
+            : `Sent ${result.sent} emails`,
+        );
+        setRecipientsText("");
+      } else if (result.sent > 0) {
+        const failedEmails = result.results
+          .filter((row) => !row.ok)
+          .map((row) => row.email)
+          .join(", ");
+        showErrorToast(
+          `Sent ${result.sent} of ${result.total}. Failed: ${failedEmails}`,
+        );
+      } else {
+        showErrorToast(
+          result.results[0]?.error ?? "Failed to send all emails",
+        );
+      }
     } catch (e) {
-      showErrorToast(e instanceof Error ? e.message : "Failed to send email");
+      showErrorToast(e instanceof Error ? e.message : "Failed to send emails");
     } finally {
       setSending(false);
     }
@@ -166,7 +196,7 @@ export default function AdminMarketingWeb() {
   return (
     <AdminShell
       title="Marketing"
-      subtitle="Compose and send the doctor invitation email. Edit the HTML body, then send to a recipient."
+      subtitle="Compose and send the doctor invitation email. Paste multiple recipients, edit the body, then send once."
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View
@@ -176,38 +206,23 @@ export default function AdminMarketingWeb() {
           ]}
         >
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Recipient
+            Recipients
           </Text>
 
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Doctor name
+            One per line — Name, email · Name &lt;email&gt; · or email only
           </Text>
           <AppTextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Dr. Ahmed Hassan"
-            autoCapitalize="words"
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-                color: colors.foreground,
-              },
-            ]}
-          />
-
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Email address
-          </Text>
-          <AppTextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="doctor@example.com"
-            keyboardType="email-address"
+            value={recipientsText}
+            onChangeText={setRecipientsText}
+            placeholder={RECIPIENTS_PLACEHOLDER}
+            multiline
+            numberOfLines={6}
+            textAlignVertical="top"
             autoCapitalize="none"
+            autoCorrect={false}
             style={[
-              styles.input,
+              styles.recipientsInput,
               {
                 backgroundColor: colors.background,
                 borderColor: colors.border,
@@ -215,6 +230,13 @@ export default function AdminMarketingWeb() {
               },
             ]}
           />
+          <Text style={[styles.recipientCount, { color: colors.mutedForeground }]}>
+            {parsedRecipients.length === 0
+              ? "No valid recipients parsed yet"
+              : parsedRecipients.length === 1
+                ? `1 recipient: ${parsedRecipients[0].email}`
+                : `${parsedRecipients.length} recipients ready to send`}
+          </Text>
 
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
             Email language
@@ -326,7 +348,7 @@ export default function AdminMarketingWeb() {
 
           {subjectPreview ? (
             <Text style={[styles.subjectPreview, { color: colors.mutedForeground }]}>
-              Subject preview: {subjectPreview.replace("{{name}}", name.trim() || "Doctor")}
+              Subject preview: {subjectPreview.replace("{{name}}", previewName)}
             </Text>
           ) : null}
 
@@ -362,7 +384,9 @@ export default function AdminMarketingWeb() {
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={[styles.sendBtnText, { color: colors.primaryForeground }]}>
-                Send invitation email
+                {parsedRecipients.length <= 1
+                  ? "Send invitation email"
+                  : `Send to ${parsedRecipients.length} recipients`}
               </Text>
             )}
           </Pressable>
@@ -400,6 +424,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
+  },
+  recipientsInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 140,
+    fontFamily: Platform.OS === "web" ? "ui-monospace, monospace" : undefined,
+  },
+  recipientCount: {
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 4,
   },
   langRow: {
     flexDirection: "row",

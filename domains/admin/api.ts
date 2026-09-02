@@ -426,6 +426,47 @@ export async function sendAdminMarketingEmail(
   });
 }
 
+export interface MarketingEmailRecipient {
+  name: string;
+  email: string;
+}
+
+export interface SendMarketingEmailBatchInput {
+  recipients: MarketingEmailRecipient[];
+  language: MarketingEmailLanguage;
+  bodyHtml: string;
+  themeColor?: MarketingEmailTheme;
+}
+
+export interface SendMarketingEmailBatchResult {
+  ok: boolean;
+  sent: number;
+  failed: number;
+  total: number;
+  language: MarketingEmailLanguage;
+  themeColor?: MarketingEmailTheme;
+  results: Array<{
+    email: string;
+    name: string;
+    ok: boolean;
+    error?: string;
+  }>;
+}
+
+export async function sendAdminMarketingEmailBatch(
+  token: string,
+  input: SendMarketingEmailBatchInput,
+): Promise<SendMarketingEmailBatchResult> {
+  return authJson<SendMarketingEmailBatchResult>(
+    "/admin/marketing/send-batch",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
 export interface AdminMarketingTemplate {
   language: MarketingEmailLanguage;
   themeColor: MarketingEmailTheme;
