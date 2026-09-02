@@ -8,12 +8,15 @@ export interface AdminDoctorRow {
   name: string;
   email: string;
   phone?: string;
+  country?: string;
   photo_url?: string | null;
   graduation_cert_url?: string | null;
   work_permit_url?: string | null;
   digital_signature_url?: string | null;
   approval_status: ApprovalStatus;
   created_at: string;
+  consultation_price?: number | null;
+  message_price?: number | null;
   speciality?: { id: string; name_en: string; name_ar: string } | null;
 }
 

@@ -32,11 +32,13 @@ function ConversationRow({
   colors,
   isRTL,
   onPress,
+  emptyPreview,
 }: {
   item: Conversation;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
   onPress: () => void;
+  emptyPreview?: string;
 }) {
   const dir = isRTL ? "row-reverse" : "row";
   const peerRole = item.user.role === "doctor" ? "doctor" : "patient";
@@ -64,7 +66,7 @@ function ConversationRow({
         <View style={styles.mainCol}>
           <NameWithCountryFlag
             name={item.user.name}
-            country={peerRole === "patient" ? item.user.country : undefined}
+            country={item.user.country}
             isRTL={isRTL}
             nameStyle={[
               styles.name,
@@ -88,7 +90,8 @@ function ConversationRow({
               ]}
               numberOfLines={1}
             >
-              {messagePreviewText(item.lastMessage, isRTL)}
+              {messagePreviewText(item.lastMessage, isRTL) ||
+                (item.lastMessage ? "" : emptyPreview ?? "")}
             </Text>
             {item.unreadCount > 0 ? (
               <View style={[styles.badge, { backgroundColor: colors.primary }]}>
@@ -129,6 +132,8 @@ interface Props {
   isRTL: boolean;
   onSelect: (conversationId: string) => void;
   emptyLabel: string;
+  /** Shown when a row has no last message yet (e.g. admin support inbox). */
+  emptyPreview?: string;
 }
 
 export function ChatHistoryList({
@@ -138,6 +143,7 @@ export function ChatHistoryList({
   isRTL,
   onSelect,
   emptyLabel,
+  emptyPreview,
 }: Props) {
   const colors = useColors();
 
@@ -159,6 +165,7 @@ export function ChatHistoryList({
   // peer, so the whole list no longer repaints when any user logs in or out.
   return (
     <FlatList
+      style={{ flex: 1 }}
       data={conversations}
       keyExtractor={(c) => c.id}
       contentContainerStyle={
@@ -179,6 +186,7 @@ export function ChatHistoryList({
           colors={colors}
           isRTL={isRTL}
           onPress={() => onSelect(item.id)}
+          emptyPreview={emptyPreview}
         />
       )}
       ListEmptyComponent={
