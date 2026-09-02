@@ -496,3 +496,27 @@ export async function fetchAdminMarketingTemplate(
     token,
   );
 }
+
+export interface AdminMarketingPreviewInput {
+  sections: MarketingEmailSection[];
+  language: MarketingEmailLanguage;
+  themeColor?: MarketingEmailTheme;
+  previewName?: string;
+}
+
+export interface AdminMarketingPreview {
+  subject: string;
+  html: string;
+  dir: "ltr" | "rtl";
+  themeColor: MarketingEmailTheme;
+}
+
+export async function fetchAdminMarketingPreview(
+  token: string,
+  input: AdminMarketingPreviewInput,
+): Promise<AdminMarketingPreview> {
+  return authJson<AdminMarketingPreview>("/admin/marketing/preview", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

@@ -11,6 +11,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { AdminShell } from "@/components/admin/AdminShell.web";
 import { MarketingSectionBuilder } from "@/components/admin/MarketingSectionBuilder.web";
+import { MarketingEmailPreview } from "@/components/admin/MarketingEmailPreview.web";
 import {
   fetchAdminMarketingTemplate,
   sendAdminMarketingEmailBatch,
@@ -40,6 +41,8 @@ const RECIPIENTS_PLACEHOLDER = `Dr. Ahmed Hassan, ahmed@example.com
 Dr. Sara Ali, sara@example.com
 Dr. Omar Khan <omar@example.com>`;
 
+type BuilderTab = "edit" | "preview";
+
 function sectionsHaveContent(sections: MarketingEmailSection[]): boolean {
   return sections.some((section) => {
     if (section.html?.trim()) return true;
@@ -64,6 +67,7 @@ export default function AdminMarketingWeb() {
   const [subjectPreview, setSubjectPreview] = useState("");
   const [loadingTemplate, setLoadingTemplate] = useState(true);
   const [sending, setSending] = useState(false);
+  const [builderTab, setBuilderTab] = useState<BuilderTab>("edit");
   const sectionsDirtyRef = useRef(false);
 
   const parsedRecipients = useMemo(
@@ -349,15 +353,53 @@ export default function AdminMarketingWeb() {
             </Pressable>
           </View>
 
-          {subjectPreview ? (
+          {subjectPreview && builderTab === "edit" ? (
             <Text style={[styles.subjectPreview, { color: colors.mutedForeground }]}>
               Subject preview: {subjectPreview.replace("{{name}}", previewName)}
             </Text>
           ) : null}
 
+          <View style={styles.tabRow}>
+            {(
+              [
+                { id: "edit" as const, label: "Edit sections" },
+                { id: "preview" as const, label: "Preview" },
+              ] as const
+            ).map((tab) => {
+              const active = builderTab === tab.id;
+              return (
+                <Pressable
+                  key={tab.id}
+                  onPress={() => setBuilderTab(tab.id)}
+                  style={({ pressed }) => [
+                    styles.tabBtn,
+                    {
+                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active
+                        ? `${colors.primary}14`
+                        : pressed
+                          ? colors.muted
+                          : colors.background,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: active ? colors.primary : colors.foreground,
+                      fontWeight: active ? "800" : "600",
+                      fontSize: 13,
+                    }}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           {loadingTemplate ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
-          ) : (
+          ) : builderTab === "edit" ? (
             <MarketingSectionBuilder
               sections={sections}
               onChange={(next) => {
@@ -366,7 +408,16 @@ export default function AdminMarketingWeb() {
               }}
               dir={bodyDir}
             />
-          )}
+          ) : accessToken ? (
+            <MarketingEmailPreview
+              accessToken={accessToken}
+              sections={sections}
+              language={language}
+              themeColor={themeColor}
+              previewName={previewName}
+              active={builderTab === "preview"}
+            />
+          ) : null}
 
           <Pressable
             onPress={() => void send()}
@@ -496,6 +547,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 4,
+  },
+  tabRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  tabBtn: {
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    cursor: "pointer" as "auto",
   },
   sendBtn: {
     marginTop: 16,
