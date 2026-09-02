@@ -124,8 +124,14 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile }: Props)
   };
 
   return (
-    <Modal transparent visible animationType="fade" onRequestClose={skip}>
-      <View style={styles.root}>
+    <Modal
+      transparent
+      visible
+      animationType="fade"
+      onRequestClose={skip}
+      statusBarTranslucent
+    >
+      <View style={[styles.overlay, Platform.OS === "web" && styles.overlayWeb]}>
         <SpotlightBackdrop anchorId={step.anchor} onSkip={skip} />
         <View
           style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -157,11 +163,20 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile }: Props)
 }
 
 const styles = StyleSheet.create({
-  root: {
+  overlay: {
     flex: 1,
     justifyContent: "flex-end",
     padding: 20,
     paddingBottom: Platform.OS === "web" ? 32 : 48,
+  },
+  overlayWeb: {
+    // Above sidebar, FAB, and other fixed chrome on web.
+    zIndex: 100000,
+    position: "fixed" as "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   fullDim: {
     ...StyleSheet.absoluteFillObject,

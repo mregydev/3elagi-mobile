@@ -1,77 +1,75 @@
+import { usePathname } from "expo-router";
 import React, { useCallback, useEffect } from "react";
-import { API_BASE } from "@/constants/api";
 import { ProductTourOverlay } from "@/components/onboarding/ProductTourOverlay";
+import {
+  ensureDoctorOnboarding,
+  fetchDoctorMeTourState,
+  markDoctorTourComplete,
+} from "@/domains/onboarding/doctorTourApi";
 import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useAuthStore } from "@/domains/auth/store";
 
-type DoctorMe = {
-  product_tour_completed_at?: string | null;
-  profile_tour_completed_at?: string | null;
-  onboarding_test_patient_user_id?: string | null;
-};
-
-async function fetchDoctorTourState(token: string): Promise<DoctorMe> {
-  const res = await fetch(`${API_BASE}/doctors/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return {};
-  return (await res.json()) as DoctorMe;
+function isApproved(
+  fromApi: string | null | undefined,
+  fromStore: string | null | undefined,
+): boolean {
+  return fromApi === "approved" || fromStore === "approved";
 }
 
-async function ensureDoctorOnboarding(token: string): Promise<string | null> {
-  const res = await fetch(`${API_BASE}/doctors/me/onboarding`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { test_patient_user_id?: string | null };
-  return data.test_patient_user_id ?? null;
-}
-
-async function markTourComplete(
-  token: string,
-  kind: "product" | "profile",
-): Promise<void> {
-  await fetch(`${API_BASE}/doctors/me/tours`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ kind }),
-  });
-}
-
-/** Starts doctor onboarding tours once after approval. */
+/** Starts doctor onboarding tours once per doctor (tracked on the server). */
 export function DoctorTourBootstrap() {
+  const pathname = usePathname();
+  const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorApprovalStatus = useAuthStore((s) => s.doctorApprovalStatus);
+  const setDoctorApprovalStatus = useAuthStore((s) => s.setDoctorApprovalStatus);
+
   const startMainTour = useProductTourStore((s) => s.startMainTour);
   const startProfileTour = useProductTourStore((s) => s.startProfileTour);
   const setTestPatientUserId = useProductTourStore((s) => s.setTestPatientUserId);
 
   const bootstrap = useCallback(async () => {
-    if (!accessToken || role?.toLowerCase() !== "doctor") return;
-    if (doctorApprovalStatus !== "approved") return;
+    if (!hydrated || !role || role.toLowerCase() !== "doctor") return;
 
-    const onboardingPatientId = await ensureDoctorOnboarding(accessToken);
-    const state = await fetchDoctorTourState(accessToken);
-    const testPatientId =
-      onboardingPatientId ?? state.onboarding_test_patient_user_id ?? null;
-    if (testPatientId) setTestPatientUserId(testPatientId);
+    const state = await fetchDoctorMeTourState(accessToken);
 
-    if (!state.product_tour_completed_at) {
-      startMainTour();
+    if (state?.approval_status && state.approval_status !== doctorApprovalStatus) {
+      setDoctorApprovalStatus(state.approval_status);
+    }
+
+    if (!isApproved(state?.approval_status, doctorApprovalStatus)) return;
+
+    if (!state) {
+      // API read failed — still start the tour for approved doctors so onboarding is not blocked.
+      if (!useProductTourStore.getState().active) startMainTour();
       return;
     }
-    if (!state.profile_tour_completed_at) {
+
+    const onboardingPatientId = await ensureDoctorOnboarding(accessToken);
+    const testPatientId =
+      onboardingPatientId ??
+      state?.onboarding_test_patient_user_id ??
+      null;
+    if (testPatientId) setTestPatientUserId(testPatientId);
+
+    const productDone = Boolean(state?.product_tour_completed_at);
+    const profileDone = Boolean(state?.profile_tour_completed_at);
+    const tourActive = useProductTourStore.getState().active;
+
+    if (!productDone) {
+      if (!tourActive) startMainTour();
+      return;
+    }
+    if (!profileDone && !tourActive) {
       startProfileTour();
     }
   }, [
+    hydrated,
     accessToken,
-    doctorApprovalStatus,
     role,
+    doctorApprovalStatus,
+    setDoctorApprovalStatus,
     setTestPatientUserId,
     startMainTour,
     startProfileTour,
@@ -79,20 +77,20 @@ export function DoctorTourBootstrap() {
 
   useEffect(() => {
     void bootstrap();
-  }, [bootstrap]);
+  }, [bootstrap, pathname, doctorApprovalStatus, accessToken]);
 
-  if (role?.toLowerCase() !== "doctor" || !accessToken) return null;
+  if (role?.toLowerCase() !== "doctor" || !hydrated) return null;
 
   return (
     <ProductTourOverlay
       onCompleteMain={async () => {
-        await markTourComplete(accessToken, "product");
-        const state = await fetchDoctorTourState(accessToken);
-        if (!state.profile_tour_completed_at) {
-          startProfileTour();
+        await markDoctorTourComplete(accessToken, "product");
+        const state = await fetchDoctorMeTourState(accessToken);
+        if (state && !state.profile_tour_completed_at) {
+          if (!useProductTourStore.getState().active) startProfileTour();
         }
       }}
-      onCompleteProfile={() => void markTourComplete(accessToken, "profile")}
+      onCompleteProfile={() => void markDoctorTourComplete(accessToken, "profile")}
     />
   );
 }
