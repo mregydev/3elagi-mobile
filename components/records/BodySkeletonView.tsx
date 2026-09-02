@@ -30,6 +30,7 @@ import {
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
@@ -96,6 +97,7 @@ export function BodySkeletonView({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = flexRow(isRTL);
   const { isDesktop } = useWebLayout();
   const { width, height: screenHeight } = useWindowDimensions();
@@ -171,6 +173,7 @@ export function BodySkeletonView({
     }
     const next = selectedPart === part ? null : part;
     onSelectPart(next);
+    if (next) advanceOnAnchorTap("records-skeleton-body");
     closePartPicker();
   };
 
@@ -228,9 +231,11 @@ export function BodySkeletonView({
           </Text>
           {selectedPart ? (
             <Pressable
+              testID="records-reset"
               onPress={() => {
                 onSelectPart(null);
                 closePartPicker();
+                advanceOnAnchorTap("records-reset");
               }}
               accessibilityRole="button"
               accessibilityLabel={t.records.bodyPartReset}
@@ -259,6 +264,7 @@ export function BodySkeletonView({
       </View>
 
       <View
+        testID="records-skeleton-body"
         style={isDesktop ? styles.diagramCard : [styles.diagramCardMobile, mobileBoxStyle]}
         onLayout={onDiagramLayout}
       >

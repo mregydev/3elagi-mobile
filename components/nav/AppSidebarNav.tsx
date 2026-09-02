@@ -49,6 +49,7 @@ import { LOGO_HEIGHT } from "@/constants/brand";
 import { UI } from "@/constants/uiTokens";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useNotificationsStore } from "@/domains/notifications/store";
@@ -99,6 +100,7 @@ export function AppSidebarNav({
     s.conversations.reduce((total, c) => total + (c.unreadCount ?? 0), 0),
   );
   const aiEnabled = useAiEnabled();
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const isArabic = locale === "ar";
@@ -218,7 +220,11 @@ export function AppSidebarNav({
     return (
       <Pressable
         key={String(href)}
-        onPress={() => go(href)}
+        testID={`nav-${labelKey}`}
+        onPress={() => {
+          if (labelKey === "history") advanceOnAnchorTap("nav-history");
+          go(href);
+        }}
         accessibilityRole="button"
         accessibilityLabel={t.tabs[labelKey]}
         accessibilityState={{ selected: active }}

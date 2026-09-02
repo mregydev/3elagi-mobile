@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { chatFlexRow } from "@/utils/rtl";
 
 export type RecordsViewMode = "table" | "skeleton";
@@ -14,6 +15,7 @@ interface Props {
 export function RecordsViewModeToggle({ mode, onChange }: Props) {
   const colors = useColors();
   const { t } = useI18n();
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = chatFlexRow();
 
   return (
@@ -28,7 +30,11 @@ export function RecordsViewModeToggle({ mode, onChange }: Props) {
         return (
           <Pressable
             key={opt.key}
-            onPress={() => onChange(opt.key)}
+            testID={opt.key === "skeleton" ? "records-skeleton-toggle" : "records-table-toggle"}
+            onPress={() => {
+              if (opt.key === "skeleton") advanceOnAnchorTap("records-skeleton-toggle");
+              onChange(opt.key);
+            }}
             style={[
               styles.chip,
               {

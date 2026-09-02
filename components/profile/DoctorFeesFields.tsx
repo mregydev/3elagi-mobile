@@ -60,12 +60,14 @@ export function DoctorFeesFields({
         {isRTL ? "استشارة نصية" : "Text consultation"}
       </Text>
       <FeeInput
+        testID="profile-local-price"
         label={inside}
         value={textLocal}
         onChangeText={onTextLocal}
         disabled={disabled}
       />
       <FeeInput
+        testID="profile-outside-price"
         label={outside}
         value={textUsd}
         onChangeText={onTextUsd}
@@ -112,6 +114,7 @@ function FeeInput({
   placeholder,
   keyboardType = "decimal-pad",
   disabled,
+  testID,
 }: {
   label: string;
   value: string;
@@ -119,13 +122,14 @@ function FeeInput({
   placeholder?: string;
   keyboardType?: "decimal-pad" | "default";
   disabled?: boolean;
+  testID?: string;
 }) {
   const colors = useColors();
   const { isRTL } = useI18n();
   const textAlign = isRTL ? "right" : "left";
 
   return (
-    <View style={styles.field}>
+    <View style={styles.field} testID={testID}>
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
         {label}
       </Text>

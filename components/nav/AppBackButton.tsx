@@ -23,6 +23,7 @@ type Props = {
   /** Override default stack pop (e.g. end a call, then navigate). */
   onPress?: () => void;
   accessibilityLabel?: string;
+  testID?: string;
 };
 
 /**
@@ -37,6 +38,7 @@ export function AppBackButton({
   fallback,
   onPress,
   accessibilityLabel = "Back",
+  testID,
 }: Props) {
   const router = useRouter();
   // Re-render when the route changes so visibility tracks the stack.
@@ -58,6 +60,7 @@ export function AppBackButton({
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={handlePress}

@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 interface Ask3elagiAiWidgetState {
   open: boolean;
+  /** Desktop: expanded panel uses more viewport width. */
+  expanded: boolean;
   /** Sent once when the panel opens / expands. */
   pendingQuestion: string | null;
   /** Scopes doctor AI answers to this patient (consultations + records). */
@@ -9,6 +11,8 @@ interface Ask3elagiAiWidgetState {
   openWidget: (question?: string, patientUserId?: string | null) => void;
   closeWidget: () => void;
   toggleWidget: () => void;
+  setExpanded: (expanded: boolean) => void;
+  toggleExpanded: () => void;
   setPatientUserId: (patientUserId: string | null) => void;
   consumePendingQuestion: () => string | null;
 }
@@ -17,6 +21,7 @@ interface Ask3elagiAiWidgetState {
 export const useAsk3elagiAiWidgetStore = create<Ask3elagiAiWidgetState>(
   (set, get) => ({
     open: false,
+    expanded: false,
     pendingQuestion: null,
     patientUserId: null,
     openWidget: (question, patientUserId) =>
@@ -29,13 +34,16 @@ export const useAsk3elagiAiWidgetStore = create<Ask3elagiAiWidgetState>(
             : get().patientUserId,
       }),
     closeWidget: () =>
-      set({ open: false, pendingQuestion: null, patientUserId: null }),
+      set({ open: false, expanded: false, pendingQuestion: null, patientUserId: null }),
     toggleWidget: () =>
       set((s) => ({
         open: !s.open,
+        expanded: s.open ? false : s.expanded,
         pendingQuestion: s.open ? null : s.pendingQuestion,
         patientUserId: s.open ? null : s.patientUserId,
       })),
+    setExpanded: (expanded) => set({ expanded }),
+    toggleExpanded: () => set((s) => ({ expanded: !s.expanded })),
     setPatientUserId: (patientUserId) =>
       set({ patientUserId: patientUserId?.trim() || null }),
     consumePendingQuestion: () => {

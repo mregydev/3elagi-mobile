@@ -38,6 +38,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { webConfirm } from "@/utils/webConfirm";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -108,6 +109,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
   const dockPadBottom = profileSaveDockBottomPad(insets.bottom);
 
   const editor = useProfileEditor({ accessToken, role, isRTL });
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const {
     loading,
     saving,
@@ -196,7 +198,11 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
       ]}
     >
       <Pressable
-        onPress={() => void save()}
+        testID="profile-save"
+        onPress={() => {
+          advanceOnAnchorTap("profile-save");
+          void save();
+        }}
         disabled={saving}
         style={[
           styles.saveBtn,

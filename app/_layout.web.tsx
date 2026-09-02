@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppSplash } from "@/components/SplashScreen";
+import { DoctorTourBootstrap } from "@/components/onboarding/DoctorTourBootstrap";
 import { Ask3elagiAiWidget } from "@/components/assistant/Ask3elagiAiWidget";
 import { AppToast } from "@/components/AppToast";
 import { MobileAppDownloadHost } from "@/components/web/MobileAppDownloadHost";
@@ -182,6 +183,7 @@ export default function RootLayout() {
           <CookieConsentHost />
           <MobileAppDownloadHost />
           <Ask3elagiAiWidget />
+          <DoctorTourBootstrap />
           <GuestAuthRequiredDialog />
         </View>
       </KeyboardProvider>

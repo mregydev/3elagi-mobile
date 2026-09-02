@@ -484,12 +484,19 @@ export function RecordsWebView() {
                           >
                             {group.label}
                           </Text>
-                          <View style={styles.timelineItems}>
+                          <View
+                            style={
+                              isDesktop && !isSkeleton
+                                ? styles.timelineItemsGrid
+                                : styles.timelineItems
+                            }
+                          >
                             {group.items.map((record, index) => (
                               <RecordTimelineItem
                                 key={record.id}
                                 record={record}
                                 isLast={index === group.items.length - 1}
+                                gridMode={isDesktop && !isSkeleton}
                                 colors={colors}
                                 isRTL={isRTL}
                                 dir={dir}
@@ -734,12 +741,19 @@ export function RecordsWebView() {
                         >
                           {group.label}
                         </Text>
-                        <View style={styles.timelineItems}>
+                        <View
+                          style={
+                            isDesktop && !isSkeleton
+                              ? styles.timelineItemsGrid
+                              : styles.timelineItems
+                          }
+                        >
                           {group.items.map((record, index) => (
                             <RecordTimelineItem
                               key={record.id}
                               record={record}
                               isLast={index === group.items.length - 1}
+                              gridMode={isDesktop && !isSkeleton}
                               colors={colors}
                               isRTL={isRTL}
                               dir={dir}
@@ -871,6 +885,7 @@ function DateInput({
 function RecordTimelineItem({
   record,
   isLast,
+  gridMode = false,
   colors,
   isRTL,
   dir,
@@ -898,6 +913,7 @@ function RecordTimelineItem({
   doctorPrefix: (name: string) => string;
   symptomsRecordedOne: string;
   symptomsRecordedMany: string;
+  gridMode?: boolean;
 }) {
   const meta = getCategoryMeta(record.category);
   const subtitle = getRecordSubtitle(record);
@@ -908,13 +924,20 @@ function RecordTimelineItem({
   });
 
   return (
-    <View style={[styles.timelineRow, { flexDirection: dir }]}>
+    <View
+      style={[
+        gridMode ? styles.timelineGridCell : styles.timelineRow,
+        !gridMode && { flexDirection: dir },
+      ]}
+    >
+      {gridMode ? null : (
       <View style={styles.timelineRail}>
         <View style={[styles.timelineDot, { backgroundColor: meta.color, borderColor: colors.card }]} />
         {!isLast ? (
           <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
         ) : null}
       </View>
+      )}
 
       <Pressable
         testID="records-row"
@@ -1237,6 +1260,15 @@ const styles = StyleSheet.create({
   },
   timelineItems: {
     gap: 0,
+  },
+  timelineItemsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+  },
+  timelineGridCell: {
+    width: "31.5%",
+    minWidth: 220,
   },
   timelineRow: {
     alignItems: "stretch",

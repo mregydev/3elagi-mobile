@@ -35,6 +35,7 @@ const SPECIALITY_IMAGES: Record<string, ImageSourcePropType> = {
   Emergency: require("@/assets/images/specialities/emergency.png"),
   Gynaecology: require("@/assets/images/specialities/gynaecology.png"),
   Nutritionist: require("@/assets/images/specialities/nutritionist.png"),
+  ENT: require("@/assets/images/specialities/ent.png"),
 };
 
 /** Accent color + Lucide fallback + local illustration per speciality. */
@@ -98,6 +99,11 @@ const SPECIALITY_VISUALS: Record<string, SpecialityVisual> = {
     icon: Apple,
     color: "#16a34a",
     image: SPECIALITY_IMAGES.Nutritionist,
+  },
+  ENT: {
+    icon: Stethoscope,
+    color: "#dc2626",
+    image: SPECIALITY_IMAGES.ENT,
   },
 };
 

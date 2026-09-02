@@ -1,5 +1,5 @@
 import { usePathname, useSegments } from "expo-router";
-import { Bot, History, Minus, Plus, X } from "lucide-react-native";
+import { Bot, History, Maximize2, Minimize, Minimize2, Plus, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -160,6 +160,8 @@ function Ask3elagiAiPanel() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const signedIn = hydrated && isSignedIn(profile, accessToken);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
+  const expanded = useAsk3elagiAiWidgetStore((s) => s.expanded);
+  const toggleExpanded = useAsk3elagiAiWidgetStore((s) => s.toggleExpanded);
   const consumePendingQuestion = useAsk3elagiAiWidgetStore(
     (s) => s.consumePendingQuestion,
   );
@@ -493,22 +495,25 @@ function Ask3elagiAiPanel() {
         ...(isRTL
           ? { left: 16, right: undefined as number | undefined }
           : { right: 16, left: undefined as number | undefined }),
-        width: windowWidth * 0.3,
-        maxWidth: windowWidth * 0.3,
-        height: Math.min(windowHeight * 0.75, 640),
+        width: expanded ? Math.min(windowWidth * 0.52, 720) : windowWidth * 0.3,
+        maxWidth: expanded ? Math.min(windowWidth * 0.52, 720) : windowWidth * 0.3,
+        height: expanded
+          ? Math.min(windowHeight * 0.88, 760)
+          : Math.min(windowHeight * 0.75, 640),
         borderRadius: 18,
       }
     : {
-        top: 0,
+        top: expanded ? 0 : undefined,
         bottom: 0,
         left: 0,
         right: 0,
         width: windowWidth,
         maxWidth: windowWidth,
-        height: windowHeight,
-        borderRadius: 0,
-        paddingTop: insets.top,
-        // Safe area when keyboard closed; sticky composer sits on keyboard when open.
+        height: expanded
+          ? windowHeight
+          : Math.round(Math.min(windowHeight * 0.68, windowHeight - insets.top - 72)),
+        borderRadius: expanded ? 0 : 18,
+        paddingTop: expanded ? insets.top : 12,
         paddingBottom:
           isNative && keyboardVisible ? 0 : Math.max(insets.bottom, 8),
       };
@@ -594,30 +599,61 @@ function Ask3elagiAiPanel() {
             ]}
           >
             <Plus size={14} color={ASK_3ELAGI_AI_FAB_ON_RED} />
-            <Text style={[styles.newChatLabel, { color: ASK_3ELAGI_AI_FAB_ON_RED }]}>
-              {t.records.ask3elagiAiNewChat}
-            </Text>
+            {!isDesktop ? null : (
+              <Text style={[styles.newChatLabel, { color: ASK_3ELAGI_AI_FAB_ON_RED }]}>
+                {t.records.ask3elagiAiNewChat}
+              </Text>
+            )}
           </Pressable>
           {isDesktop ? (
             <Pressable
-              onPress={closeWidget}
+              onPress={toggleExpanded}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Minimize"
+              accessibilityLabel={expanded ? "Restore panel size" : "Expand panel"}
               style={styles.iconBtn}
             >
-              <Minus size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+              {expanded ? (
+                <Minimize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+              ) : (
+                <Maximize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+              )}
             </Pressable>
-          ) : null}
+          ) : (
+            <Pressable
+              onPress={toggleExpanded}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={expanded ? "Restore panel size" : "Expand panel"}
+              style={styles.iconBtn}
+            >
+              {expanded ? (
+                <Minimize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+              ) : (
+                <Maximize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+              )}
+            </Pressable>
+          )}
           <Pressable
             onPress={closeWidget}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel="Minimize"
             style={styles.iconBtn}
           >
-            <X size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+            <Minimize size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
           </Pressable>
+          {!isDesktop ? (
+            <Pressable
+              onPress={closeWidget}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={styles.iconBtn}
+            >
+              <X size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
 

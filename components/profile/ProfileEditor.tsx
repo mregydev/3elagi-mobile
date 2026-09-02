@@ -41,6 +41,7 @@ import {
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useI18n } from "@/hooks/useI18n";
 
 const AVATAR_SIZE = 76;
@@ -71,6 +72,7 @@ export function ProfileEditor({
   const textAlign = isRTL ? "right" : "left";
 
   const editor = useProfileEditor({ accessToken, role, isRTL });
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const {
     loading,
     saving,
@@ -663,7 +665,11 @@ export function ProfileEditor({
           ]}
         >
           <Pressable
-            onPress={() => void save()}
+            testID="profile-save"
+            onPress={() => {
+              advanceOnAnchorTap("profile-save");
+              void save();
+            }}
             disabled={saving}
             style={[
               styles.actionBtn,

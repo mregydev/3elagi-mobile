@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -23,17 +23,21 @@ import {
 import { fetchPatientMedicalHistoryAsDoctor } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { readRouteParam } from "@/utils/routeParams";
+import { navigateBack } from "@/utils/appNavigation";
 
 export default function PatientRecordScreen() {
+  const router = useRouter();
   const colors = useColors();
   const { isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const consumePendingRefresh = useMedicalStore((s) => s.consumePendingRefresh);
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const params = useLocalSearchParams<{ userId?: string | string[]; name?: string | string[] }>();
   const userId = readRouteParam(params.userId);
   const name = readRouteParam(params.name);
@@ -144,11 +148,16 @@ export default function PatientRecordScreen() {
         ]}
       >
         <AppBackButton
+          testID="records-back"
           color={colors.primary}
           style={styles.backBtn}
           hitSlop={12}
           fallback="/(tabs)/history"
           accessibilityLabel={isRTL ? "رجوع" : "Back"}
+          onPress={() => {
+            advanceOnAnchorTap("records-back");
+            navigateBack(router, "/(tabs)/history");
+          }}
         />
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>

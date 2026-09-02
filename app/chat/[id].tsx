@@ -87,6 +87,7 @@ import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { useMedicalStore } from "@/domains/medical/store";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -182,6 +183,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const medicalRecords = useMedicalStore((s) => s.records);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const [contactsReady, setContactsReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [medicalPickerOpen, setMedicalPickerOpen] = useState(false);
@@ -1602,7 +1604,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
         {canOpenPatientRecord ? (
           <Pressable
-            onPress={openPatientRecord}
+            testID="chat-view-records"
+            onPress={() => {
+              advanceOnAnchorTap("chat-view-records");
+              openPatientRecord();
+            }}
             accessibilityRole="button"
             accessibilityLabel={isRTL ? "عرض السجل" : "View Record"}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [

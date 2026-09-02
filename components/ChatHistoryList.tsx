@@ -12,6 +12,7 @@ import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta"
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { messagePreviewText } from "@/domains/chat/messagePreview";
 import type { Conversation } from "@/domains/chat/types";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 
@@ -33,13 +34,16 @@ function ConversationRow({
   isRTL,
   onPress,
   emptyPreview,
+  tourHighlight,
 }: {
   item: Conversation;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
   onPress: () => void;
   emptyPreview?: string;
+  tourHighlight?: boolean;
 }) {
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = isRTL ? "row-reverse" : "row";
   const peerRole = item.user.role === "doctor" ? "doctor" : "patient";
   const isOnline = usePresenceStore((s) => s.isOnline(item.user.id));
@@ -47,7 +51,11 @@ function ConversationRow({
 
   return (
     <Pressable
-      onPress={onPress}
+      testID={tourHighlight ? "chat-test-row" : undefined}
+      onPress={() => {
+        if (tourHighlight) advanceOnAnchorTap("chat-test-row");
+        onPress();
+      }}
       style={({ pressed }) => [
         styles.row,
         { flexDirection: dir },
@@ -134,6 +142,8 @@ interface Props {
   emptyLabel: string;
   /** Shown when a row has no last message yet (e.g. admin support inbox). */
   emptyPreview?: string;
+  /** Highlights the onboarding test patient row for the product tour. */
+  tourHighlightUserId?: string | null;
 }
 
 export function ChatHistoryList({
@@ -144,6 +154,7 @@ export function ChatHistoryList({
   onSelect,
   emptyLabel,
   emptyPreview,
+  tourHighlightUserId,
 }: Props) {
   const colors = useColors();
 
@@ -187,6 +198,7 @@ export function ChatHistoryList({
           isRTL={isRTL}
           onPress={() => onSelect(item.id)}
           emptyPreview={emptyPreview}
+          tourHighlight={!!tourHighlightUserId && item.user.id === tourHighlightUserId}
         />
       )}
       ListEmptyComponent={

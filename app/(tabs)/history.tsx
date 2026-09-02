@@ -15,6 +15,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -28,6 +29,7 @@ export default function HistoryTab() {
   const loading = useChatStore((s) => s.loading);
   const error = useChatStore((s) => s.error);
   const loadConversations = useChatStore((s) => s.loadConversations);
+  const tourHighlightUserId = useProductTourStore((s) => s.testPatientUserId);
   const [query, setQuery] = useState("");
 
   const refresh = useCallback(() => {
@@ -95,6 +97,7 @@ export default function HistoryTab() {
         isRTL={isRTL}
         onSelect={(id) => router.push(`/chat/${id}`)}
         emptyLabel={emptyLabel}
+        tourHighlightUserId={tourHighlightUserId}
       />
     </View>
   );

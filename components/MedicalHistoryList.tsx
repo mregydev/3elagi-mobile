@@ -58,6 +58,7 @@ import {
 } from "@/domains/medical/search";
 import { createDiagnosis } from "@/domains/medical/api";
 import { useAuthStore } from "@/domains/auth/store";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -133,6 +134,7 @@ export function MedicalHistoryList({
   const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [intakeExamModalOpen, setIntakeExamModalOpen] = useState(false);
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
 
   // Doctors add via clinical pills during an open consult — hide generic add chrome.
   const showAddChrome = canAdd && !doctorView;
@@ -183,6 +185,12 @@ export function MedicalHistoryList({
     for (const r of displayRecords) out[r.category]?.push(r);
     return out;
   }, [displayRecords]);
+
+  React.useEffect(() => {
+    if (!doctorView || openSection) return;
+    const first = CATEGORIES.find((c) => grouped[c.key].length > 0);
+    if (first) setOpenSection(first.key);
+  }, [doctorView, grouped, openSection]);
 
   const effectiveFilters = useMemo(
     (): MedicalHistoryFilters => ({
@@ -413,7 +421,13 @@ export function MedicalHistoryList({
                         </Pressable>
                       )}
                       <Pressable
-                        onPress={() => openRecord(item)}
+                        testID={doctorView && index === 0 ? "records-record-row" : undefined}
+                        onPress={() => {
+                          if (doctorView && index === 0) {
+                            advanceOnAnchorTap("records-record-row");
+                          }
+                          openRecord(item);
+                        }}
                         style={({ pressed }) => [
                           styles.recordInfoRow,
                           { flexDirection: dir, backgroundColor: pressed ? colors.muted : "transparent" },

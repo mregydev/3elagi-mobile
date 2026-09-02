@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import {
-  Bot,
   CalendarClock,
   ChevronRight,
   Stethoscope,
@@ -94,17 +93,6 @@ export function HomePatientHeader({
       icon: <Stethoscope size={18} color={colors.primary} />,
       onPress: () => onFindDoctor?.(),
     },
-    ...(aiEnabled && signedIn
-      ? [
-          {
-            key: "ai",
-            label: t.home.aiAssistant,
-            hint: t.home.aiAssistantHint,
-            icon: <Bot size={18} color={colors.info} />,
-            onPress: () => router.push("/(tabs)/assistant"),
-          } satisfies QuickAction,
-        ]
-      : []),
   ];
 
   return (
