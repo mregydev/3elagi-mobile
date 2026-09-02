@@ -400,6 +400,13 @@ export async function fetchAdminAppReview(
 export type MarketingEmailLanguage = "en" | "ar" | "es" | "de";
 export type MarketingEmailTheme = "blue" | "green" | "red";
 
+import type { MarketingEmailSection } from "./marketingSections";
+export type {
+  MarketingEmailSection,
+  MarketingSectionType,
+  MarketingCalloutVariant,
+} from "./marketingSections";
+
 export interface SendMarketingEmailInput {
   email: string;
   name: string;
@@ -434,7 +441,8 @@ export interface MarketingEmailRecipient {
 export interface SendMarketingEmailBatchInput {
   recipients: MarketingEmailRecipient[];
   language: MarketingEmailLanguage;
-  bodyHtml: string;
+  bodyHtml?: string;
+  sections?: MarketingEmailSection[];
   themeColor?: MarketingEmailTheme;
 }
 
@@ -473,6 +481,7 @@ export interface AdminMarketingTemplate {
   dir: "ltr" | "rtl";
   subjectTemplate: string;
   preheader: string;
+  sections: MarketingEmailSection[];
   bodyHtml: string;
 }
 

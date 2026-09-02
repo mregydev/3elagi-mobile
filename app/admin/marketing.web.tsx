@@ -10,20 +10,20 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AdminShell } from "@/components/admin/AdminShell.web";
-import { MarketingHtmlEditor } from "@/components/admin/MarketingHtmlEditor.web";
+import { MarketingSectionBuilder } from "@/components/admin/MarketingSectionBuilder.web";
 import {
   fetchAdminMarketingTemplate,
   sendAdminMarketingEmailBatch,
   type MarketingEmailLanguage,
   type MarketingEmailTheme,
 } from "@/domains/admin/api";
+import type { MarketingEmailSection } from "@/domains/admin/marketingSections";
 import { parseMarketingRecipients } from "@/domains/admin/parseMarketingRecipients";
 import {
   DEFAULT_MARKETING_EMAIL_THEME,
   MARKETING_EMAIL_THEMES,
   MARKETING_THEME_LABELS,
   MARKETING_THEME_PALETTES,
-  rethemeMarketingBodyHtml,
 } from "@/domains/admin/marketingThemes";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
@@ -40,6 +40,17 @@ const RECIPIENTS_PLACEHOLDER = `Dr. Ahmed Hassan, ahmed@example.com
 Dr. Sara Ali, sara@example.com
 Dr. Omar Khan <omar@example.com>`;
 
+function sectionsHaveContent(sections: MarketingEmailSection[]): boolean {
+  return sections.some((section) => {
+    if (section.html?.trim()) return true;
+    if (section.title?.trim()) return true;
+    if (section.items?.some((item) => item.trim())) return true;
+    if (section.buttonLabel?.trim() || section.buttonUrl?.trim()) return true;
+    if (section.type === "screenshots") return true;
+    return false;
+  });
+}
+
 export default function AdminMarketingWeb() {
   const colors = useColors();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -48,12 +59,12 @@ export default function AdminMarketingWeb() {
   const [themeColor, setThemeColor] = useState<MarketingEmailTheme>(
     DEFAULT_MARKETING_EMAIL_THEME,
   );
-  const [bodyHtml, setBodyHtml] = useState("");
+  const [sections, setSections] = useState<MarketingEmailSection[]>([]);
   const [bodyDir, setBodyDir] = useState<"ltr" | "rtl">("ltr");
   const [subjectPreview, setSubjectPreview] = useState("");
   const [loadingTemplate, setLoadingTemplate] = useState(true);
   const [sending, setSending] = useState(false);
-  const bodyDirtyRef = useRef(false);
+  const sectionsDirtyRef = useRef(false);
 
   const parsedRecipients = useMemo(
     () => parseMarketingRecipients(recipientsText),
@@ -68,11 +79,11 @@ export default function AdminMarketingWeb() {
       force = false,
     ) => {
       if (!accessToken) return;
-      if (bodyDirtyRef.current && !force) {
+      if (sectionsDirtyRef.current && !force) {
         const ok =
           typeof window !== "undefined" &&
           window.confirm(
-            "Replace the current email body with the default template for this language and theme?",
+            "Replace your current email sections with the default template for this language and theme?",
           );
         if (!ok) return;
       }
@@ -80,11 +91,11 @@ export default function AdminMarketingWeb() {
       setLoadingTemplate(true);
       try {
         const template = await fetchAdminMarketingTemplate(accessToken, lang, theme);
-        setBodyHtml(template.bodyHtml);
+        setSections(template.sections);
         setBodyDir(template.dir);
         setSubjectPreview(template.subjectTemplate);
         setThemeColor(template.themeColor ?? theme);
-        bodyDirtyRef.current = false;
+        sectionsDirtyRef.current = false;
       } catch (e) {
         showErrorToast(e instanceof Error ? e.message : "Failed to load template");
       } finally {
@@ -106,15 +117,8 @@ export default function AdminMarketingWeb() {
 
   const pickTheme = (theme: MarketingEmailTheme) => {
     if (theme === themeColor) return;
-    if (bodyDirtyRef.current) {
-      const ok =
-        typeof window !== "undefined" &&
-        window.confirm(
-          "Apply the new theme colors to your current email body? (Content is kept; colors are updated.)",
-        );
-      if (!ok) return;
+    if (sectionsDirtyRef.current) {
       setThemeColor(theme);
-      setBodyHtml((current) => rethemeMarketingBodyHtml(current, theme));
       return;
     }
     setThemeColor(theme);
@@ -124,14 +128,13 @@ export default function AdminMarketingWeb() {
   const resetTemplate = () => {
     const ok =
       typeof window === "undefined" ||
-      window.confirm("Reset the email body to the default template for this language?");
+      window.confirm("Reset email sections to the default template for this language?");
     if (!ok) return;
     void loadTemplate(language, themeColor, true);
   };
 
   const send = async () => {
     if (!accessToken || sending) return;
-    const trimmedBody = bodyHtml.trim();
     const recipients = parseMarketingRecipients(recipientsText);
 
     if (!recipients.length) {
@@ -140,8 +143,8 @@ export default function AdminMarketingWeb() {
       );
       return;
     }
-    if (!trimmedBody) {
-      showErrorToast("Email body cannot be empty");
+    if (!sections.length || !sectionsHaveContent(sections)) {
+      showErrorToast("Add at least one section with content");
       return;
     }
 
@@ -162,7 +165,7 @@ export default function AdminMarketingWeb() {
       const result = await sendAdminMarketingEmailBatch(accessToken, {
         recipients,
         language,
-        bodyHtml: trimmedBody,
+        sections,
         themeColor,
       });
 
@@ -196,7 +199,7 @@ export default function AdminMarketingWeb() {
   return (
     <AdminShell
       title="Marketing"
-      subtitle="Compose and send the doctor invitation email. Paste multiple recipients, edit the body, then send once."
+      subtitle="Compose and send the doctor invitation email. Add or reorder sections, paste multiple recipients, then send once."
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View
@@ -328,7 +331,7 @@ export default function AdminMarketingWeb() {
 
           <View style={styles.bodyHeader}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Email body
+              Email sections
             </Text>
             <Pressable
               onPress={resetTemplate}
@@ -355,11 +358,11 @@ export default function AdminMarketingWeb() {
           {loadingTemplate ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
           ) : (
-            <MarketingHtmlEditor
-              value={bodyHtml}
-              onChange={(html) => {
-                bodyDirtyRef.current = true;
-                setBodyHtml(html);
+            <MarketingSectionBuilder
+              sections={sections}
+              onChange={(next) => {
+                sectionsDirtyRef.current = true;
+                setSections(next);
               }}
               dir={bodyDir}
             />
@@ -417,13 +420,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     marginTop: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
   },
   recipientsInput: {
     borderWidth: 1,
