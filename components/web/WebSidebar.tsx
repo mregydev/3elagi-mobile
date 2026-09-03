@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AppSidebarNav } from "@/components/nav/AppSidebarNav";
-import { MobileAppLink } from "@/components/web/MobileAppLink";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
@@ -34,7 +33,6 @@ export function WebSidebar() {
       ]}
     >
       <AppSidebarNav
-        footerExtra={<MobileAppLink variant="nav" />}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((value) => !value)}
       />

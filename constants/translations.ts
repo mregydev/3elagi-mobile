@@ -382,6 +382,7 @@ const en = {
     faq: "FAQ",
     forDoctors: "For doctors",
     more: "More",
+    helpAndMore: "Help & more",
   },
   landing: {
     getStarted: "Get started",
@@ -1359,6 +1360,7 @@ const ar: typeof en = {
     faq: "الأسئلة الشائعة",
     forDoctors: "للأطباء",
     more: "المزيد",
+    helpAndMore: "المساعدة والمزيد",
   },
   landing: {
     getStarted: "ابدأ الآن",
@@ -2327,6 +2329,7 @@ const de: typeof en = {
     faq: "FAQ",
     forDoctors: "Für Ärzte",
     more: "Mehr",
+    helpAndMore: "Hilfe & mehr",
   },
   landing: {
     getStarted: "Loslegen",
@@ -3299,6 +3302,7 @@ const es: typeof en = {
     faq: "Preguntas frecuentes",
     forDoctors: "Para médicos",
     more: "Más",
+    helpAndMore: "Ayuda y más",
   },
   landing: {
     getStarted: "Empezar",

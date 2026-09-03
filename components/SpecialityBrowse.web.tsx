@@ -27,8 +27,9 @@ function SpecialityTile({
   const colors = useColors();
   const { locale, isRTL } = useI18n();
   const label = specialityLabel(item, locale);
-  const { icon: Icon, color, image } = specialityVisual(item.nameEn);
+  const { icon: Icon, color, image, imageResizeMode } = specialityVisual(item.nameEn);
   const illustration = image ?? (item.imageUrl ? { uri: item.imageUrl } : null);
+  const illustrationFit = imageResizeMode ?? "contain";
   const isArabic = locale === "ar";
   const [hovered, setHovered] = useState(false);
 
@@ -67,7 +68,7 @@ function SpecialityTile({
                 styles.illustration,
                 { transform: [{ scale: hovered ? 1.06 : 1 }] },
               ]}
-              resizeMode="contain"
+              resizeMode={illustrationFit}
             />
           </View>
         ) : (

@@ -13,6 +13,18 @@ export const WEB_MAX_WIDTH = {
   profile: 1200,
 } as const;
 
+/** Shared horizontal padding for desktop content columns. */
+export const WEB_CONTENT_PADDING = 24;
+
+/** Gap between split dashboard panes (12-col grid gutter). */
+export const WEB_DASHBOARD_GAP = 24;
+
+/** Minimum height for the medical records split dashboard (both panes). */
+export const WEB_DASHBOARD_MIN_HEIGHT = 560;
+
+/** Viewport inset for floating action buttons on web desktop. */
+export const WEB_FAB_INSET = 24;
+
 /** Tab bar content row height on mobile web (matches `(tabs)/_layout.web`). */
 export const WEB_MOBILE_TAB_BAR_HEIGHT = 60;
 

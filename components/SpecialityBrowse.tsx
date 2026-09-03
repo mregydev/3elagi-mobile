@@ -25,8 +25,9 @@ function SpecialityTile({
   const colors = useColors();
   const { locale, isRTL } = useI18n();
   const label = specialityLabel(item, locale);
-  const { icon: Icon, color, image } = specialityVisual(item.nameEn);
+  const { icon: Icon, color, image, imageResizeMode } = specialityVisual(item.nameEn);
   const illustration = image ?? (item.imageUrl ? { uri: item.imageUrl } : null);
+  const illustrationFit = imageResizeMode ?? "contain";
   const isArabic = locale === "ar";
 
   const circleVisual = (pressed: boolean) =>
@@ -44,7 +45,7 @@ function SpecialityTile({
         <Image
           source={illustration}
           style={[styles.illustration, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
-          resizeMode="contain"
+          resizeMode={illustrationFit}
         />
       </View>
     ) : (

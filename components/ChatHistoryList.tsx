@@ -10,9 +10,9 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
+import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { messagePreviewText } from "@/domains/chat/messagePreview";
 import type { Conversation } from "@/domains/chat/types";
-import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 
@@ -43,25 +43,13 @@ function ConversationRow({
   emptyPreview?: string;
   tourHighlight?: boolean;
 }) {
-  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = isRTL ? "row-reverse" : "row";
   const peerRole = item.user.role === "doctor" ? "doctor" : "patient";
   const isOnline = usePresenceStore((s) => s.isOnline(item.user.id));
   const presence = isOnline ? "online" : "offline";
 
-  return (
-    <Pressable
-      testID={tourHighlight ? "chat-test-row" : undefined}
-      onPress={() => {
-        if (tourHighlight) advanceOnAnchorTap("chat-test-row");
-        onPress();
-      }}
-      style={({ pressed }) => [
-        styles.row,
-        { flexDirection: dir },
-        pressed && { backgroundColor: colors.muted },
-      ]}
-    >
+  const rowContent = (
+    <>
       <Avatar
         uri={item.user.photoUrl}
         seed={item.user.id}
@@ -129,6 +117,33 @@ function ConversationRow({
           ) : null}
         </View>
       </View>
+    </>
+  );
+
+  if (tourHighlight) {
+    return (
+      <TourAnchor
+        id="chat-test-row"
+        testID="chat-test-row"
+        pressable
+        onPress={onPress}
+        style={[styles.row, { flexDirection: dir }]}
+      >
+        {rowContent}
+      </TourAnchor>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { flexDirection: dir },
+        pressed && { backgroundColor: colors.muted },
+      ]}
+    >
+      {rowContent}
     </Pressable>
   );
 }

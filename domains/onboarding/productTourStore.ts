@@ -32,11 +32,15 @@ interface ProductTourState {
   stepIndex: number;
   active: boolean;
   testPatientUserId: string | null;
+  /** Set when the tour ends so bootstrap can persist completion after the last tap step. */
+  exitReason: "skip" | "complete" | null;
+  completedPhase: DoctorTourPhase;
   setTestPatientUserId: (id: string | null) => void;
   startMainTour: () => void;
   startProfileTour: () => void;
   next: () => void;
   skip: () => void;
+  clearExit: () => void;
   completePhase: () => void;
   advanceOnAnchorTap: (anchor: TourAnchor) => void;
 }
@@ -46,15 +50,15 @@ export const MAIN_DOCTOR_TOUR: TourStep[] = [
     id: "open-history",
     anchor: "nav-history",
     title: "Chat history",
-    body: "Open Chat history to see your test patient conversation.",
-    route: "/(tabs)/history",
+    body: "Activity is expanded for you. Click Chat history here to find your test patient.",
+    route: "/(tabs)",
     waitForTap: true,
   },
   {
     id: "open-test-chat",
     anchor: "chat-test-row",
     title: "Your test patient",
-    body: "Open the chat with your specialty test account. They sent you a welcome message.",
+    body: "Click this conversation — your test patient already sent you a welcome message.",
     route: "/(tabs)/history",
     waitForTap: true,
   },
@@ -62,42 +66,21 @@ export const MAIN_DOCTOR_TOUR: TourStep[] = [
     id: "view-records",
     anchor: "chat-view-records",
     title: "Medical records",
-    body: "Tap Medical records to browse this patient's files and attachments.",
+    body: "Click View Record to open this patient's medical history.",
     waitForTap: true,
   },
   {
     id: "skeleton-toggle",
     anchor: "records-skeleton-toggle",
     title: "Skeleton view",
-    body: "Switch to the skeleton view to browse records by body region.",
+    body: "Click Skeleton view to browse records by body region.",
     waitForTap: true,
   },
   {
     id: "skeleton-body",
     anchor: "records-skeleton-body",
-    title: "Body regions",
-    body: "We divide the body into main parts. Tap a region to filter records for that organ.",
-    waitForTap: true,
-  },
-  {
-    id: "open-record",
-    anchor: "records-record-row",
-    title: "Record details",
-    body: "Tap a medical record to view full details and attachments.",
-    waitForTap: true,
-  },
-  {
-    id: "back",
-    anchor: "records-back",
-    title: "Go back",
-    body: "Use back to return to the list.",
-    waitForTap: true,
-  },
-  {
-    id: "reset",
-    anchor: "records-reset",
-    title: "Reset filters",
-    body: "Press reset to clear body-part filters and see all records again.",
+    title: "Explore body regions",
+    body: "Click any body region, pick an organ, and view the medical records for it.",
     waitForTap: true,
   },
 ];
@@ -147,9 +130,6 @@ export function tourRouteForStep(
     [
       "records-skeleton-toggle",
       "records-skeleton-body",
-      "records-record-row",
-      "records-back",
-      "records-reset",
     ].includes(step.anchor)
   ) {
     return `/patients/${testPatientUserId}`;
@@ -162,20 +142,57 @@ export const useProductTourStore = create<ProductTourState>((set, get) => ({
   stepIndex: 0,
   active: false,
   testPatientUserId: null,
+  exitReason: null,
+  completedPhase: null,
   setTestPatientUserId: (id) => set({ testPatientUserId: id }),
-  startMainTour: () => set({ phase: "main", stepIndex: 0, active: true }),
-  startProfileTour: () => set({ phase: "profile", stepIndex: 0, active: true }),
+  startMainTour: () =>
+    set({
+      phase: "main",
+      stepIndex: 0,
+      active: true,
+      exitReason: null,
+      completedPhase: null,
+    }),
+  startProfileTour: () =>
+    set({
+      phase: "profile",
+      stepIndex: 0,
+      active: true,
+      exitReason: null,
+      completedPhase: null,
+    }),
   next: () => {
     const { phase, stepIndex } = get();
     const steps = phase === "profile" ? PROFILE_DOCTOR_TOUR : MAIN_DOCTOR_TOUR;
     if (stepIndex + 1 >= steps.length) {
-      set({ active: false, phase: null, stepIndex: 0 });
+      set({
+        active: false,
+        phase: null,
+        stepIndex: 0,
+        exitReason: "complete",
+        completedPhase: phase,
+      });
       return;
     }
-    set({ stepIndex: stepIndex + 1 });
+    set({ stepIndex: stepIndex + 1, exitReason: null });
   },
-  skip: () => set({ active: false, phase: null, stepIndex: 0 }),
-  completePhase: () => set({ active: false, phase: null, stepIndex: 0 }),
+  skip: () =>
+    set({
+      active: false,
+      phase: null,
+      stepIndex: 0,
+      exitReason: "skip",
+      completedPhase: null,
+    }),
+  clearExit: () => set({ exitReason: null, completedPhase: null }),
+  completePhase: () =>
+    set({
+      active: false,
+      phase: null,
+      stepIndex: 0,
+      exitReason: null,
+      completedPhase: null,
+    }),
   advanceOnAnchorTap: (anchor) => {
     const { active, phase, stepIndex } = get();
     if (!active) return;

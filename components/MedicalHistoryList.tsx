@@ -10,14 +10,12 @@ import {
   Pill,
   ScanLine,
   Stethoscope,
-  X,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Image,
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -33,7 +31,9 @@ import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDial
 import { BodySkeletonView, bodyFigureViewportHeight } from "@/components/records/BodySkeletonView";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
 import { PatientMedicalRequestsPanel } from "@/components/medical/PatientMedicalRequestsPanel";
+import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { MedicalRecordAddBar } from "@/components/records/MedicalRecordAddBar";
+import { MedicalRecordsDesktopDashboard } from "@/components/records/MedicalRecordsDesktopDashboard";
 import {
   RecordsBottomChrome,
   recordsBottomChromeHeight,
@@ -63,6 +63,7 @@ import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
+import { WEB_CONTENT_PADDING } from "@/constants/webLayout";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
 
 const CATEGORIES: {
@@ -86,6 +87,8 @@ import { MedicalPdfViewer, type MedicalPdfView } from "@/components/medical/Medi
 export interface MedicalHistoryListProps {
   records: MedicalRecord[];
   patientUserId: string;
+  /** Shown in the desktop dashboard patient summary card. */
+  patientLabel?: string;
   canAdd?: boolean;
   doctorView?: boolean;
   showIntake?: boolean;
@@ -99,6 +102,7 @@ export interface MedicalHistoryListProps {
 export function MedicalHistoryList({
   records,
   patientUserId,
+  patientLabel,
   canAdd = true,
   doctorView = false,
   showIntake = SHOW_INTAKE_RECORDS,
@@ -134,6 +138,7 @@ export function MedicalHistoryList({
   const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [intakeExamModalOpen, setIntakeExamModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
   const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
 
   // Doctors add via clinical pills during an open consult — hide generic add chrome.
@@ -185,12 +190,6 @@ export function MedicalHistoryList({
     for (const r of displayRecords) out[r.category]?.push(r);
     return out;
   }, [displayRecords]);
-
-  React.useEffect(() => {
-    if (!doctorView || openSection) return;
-    const first = CATEGORIES.find((c) => grouped[c.key].length > 0);
-    if (first) setOpenSection(first.key);
-  }, [doctorView, grouped, openSection]);
 
   const effectiveFilters = useMemo(
     (): MedicalHistoryFilters => ({
@@ -283,6 +282,23 @@ export function MedicalHistoryList({
   };
 
   const effectiveViewMode: RecordsViewMode = viewMode;
+
+  React.useEffect(() => {
+    if (!isDesktop || effectiveViewMode !== "table") return;
+    if (!openSection) {
+      setSelectedRecord(null);
+      return;
+    }
+    const isSearchable = SEARCHABLE_CATEGORIES.includes(openSection);
+    const items = isSearchable ? filteredGrouped[openSection] : grouped[openSection];
+    if (items.length === 0) {
+      setSelectedRecord(null);
+      return;
+    }
+    setSelectedRecord((prev) =>
+      prev && items.some((item) => item.id === prev.id) ? prev : items[0],
+    );
+  }, [isDesktop, effectiveViewMode, openSection, filteredGrouped, grouped]);
 
   const openBodyPart = (part: BodyPart) => {
     router.push(
@@ -540,6 +556,9 @@ export function MedicalHistoryList({
       style={[
         // Doctor patient page scrolls externally — avoid flex:1 locking height to the viewport.
         doctorView || isDesktop ? styles.desktopRoot : styles.mobileRoot,
+        doctorView && isDesktop && effectiveViewMode === "table"
+          ? styles.desktopRootFill
+          : null,
         fillSkeletonViewport ? styles.desktopRootSkeletonFill : null,
         effectiveViewMode === "skeleton" && !isDesktop
           ? styles.mobileRootSkeleton
@@ -619,17 +638,19 @@ export function MedicalHistoryList({
       ) : null}
 
       {effectiveViewMode === "table" || isDesktop ? (
-        <>
-          <View style={styles.chromeBlock}>
-            <MedicalHistoryFilterPanel
-              filters={effectiveFilters}
-              onChange={handleFiltersChange}
-              isRTL={isRTL}
-              dir={dir}
-            />
-            <PatientMedicalRequestsPanel patientUserId={patientUserId} />
-          </View>
-        </>
+        isDesktop && effectiveViewMode === "table" ? null : (
+          <>
+            <View style={styles.chromeBlock}>
+              <MedicalHistoryFilterPanel
+                filters={effectiveFilters}
+                onChange={handleFiltersChange}
+                isRTL={isRTL}
+                dir={dir}
+              />
+              <PatientMedicalRequestsPanel patientUserId={patientUserId} />
+            </View>
+          </>
+        )
       ) : (
         <View style={styles.chromeBlock}>
           <PatientMedicalRequestsPanel patientUserId={patientUserId} />
@@ -673,11 +694,42 @@ export function MedicalHistoryList({
             />
           </View>
         )
+      ) : isDesktop && effectiveViewMode === "table" ? (
+        <View style={styles.desktopDashboardWrap}>
+          <MedicalRecordsDesktopDashboard
+          patientLabel={patientLabel}
+          categories={visibleCategories}
+          grouped={grouped}
+          filteredGrouped={filteredGrouped}
+          searchableCategories={SEARCHABLE_CATEGORIES}
+          isFiltering={isFiltering}
+          openSection={openSection}
+          onOpenSectionChange={setOpenSection}
+          selectedRecord={selectedRecord}
+          onSelectRecord={setSelectedRecord}
+          onOpenPdf={setPdfView}
+          onZoomImage={setViewingFileUrl}
+          doctorView={doctorView}
+          patientUserId={patientUserId}
+          recordRowTestId={doctorView ? "records-record-row" : undefined}
+          onRecordRowTourTap={() => advanceOnAnchorTap("records-record-row")}
+          filtersSlot={
+            <MedicalHistoryFilterPanel
+              embedded
+              filters={effectiveFilters}
+              onChange={handleFiltersChange}
+              isRTL={isRTL}
+              dir={dir}
+            />
+          }
+          requestsSlot={<PatientMedicalRequestsPanel patientUserId={patientUserId} embedded />}
+        />
+        </View>
       ) : (
         recordsPanel
       )}
 
-      {isDesktop && showAddChrome ? (
+      {isDesktop && showAddChrome && effectiveViewMode !== "table" ? (
         <MedicalRecordAddBar
           onAdd={openAdd}
           showDiagnosis={false}
@@ -731,37 +783,10 @@ export function MedicalHistoryList({
         />
       ) : null}
 
-      <Modal
-        visible={!!viewingFileUrl}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setViewingFileUrl(null)}
-        statusBarTranslucent
-      >
-        <View style={styles.viewerBackdrop}>
-          <Pressable
-            style={[styles.viewerClose, { top: insets.top + 12 }]}
-            onPress={() => setViewingFileUrl(null)}
-          >
-            <X size={20} color="#fff" />
-          </Pressable>
-          {viewingFileUrl && (
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.viewerScroll}
-              maximumZoomScale={4}
-              minimumZoomScale={1}
-              centerContent
-            >
-              <Image
-                source={{ uri: viewingFileUrl }}
-                style={{ width: screenWidth, height: screenHeight * 0.88 }}
-                resizeMode="contain"
-              />
-            </ScrollView>
-          )}
-        </View>
-      </Modal>
+      <FullscreenImageViewer
+        uri={viewingFileUrl}
+        onClose={() => setViewingFileUrl(null)}
+      />
 
       <MedicalPdfViewer
         view={pdfView}
@@ -794,7 +819,19 @@ const styles = StyleSheet.create({
   },
   desktopRoot: {
     width: "100%",
-    paddingBottom: 72,
+    paddingBottom: 24,
+  },
+  desktopRootFill: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+    paddingBottom: 24,
+  },
+  desktopDashboardWrap: {
+    paddingHorizontal: WEB_CONTENT_PADDING,
+    flex: 1,
+    minHeight: 0,
+    alignSelf: "stretch",
   },
   desktopRootSkeletonFill: {
     flex: 1,
@@ -804,9 +841,13 @@ const styles = StyleSheet.create({
   chromeBlock: {
     flexShrink: 0,
   },
-  viewToggleWrap: { paddingHorizontal: 16, paddingTop: 8, flexShrink: 0 },
+  viewToggleWrap: {
+    paddingHorizontal: WEB_CONTENT_PADDING,
+    paddingTop: 8,
+    flexShrink: 0,
+  },
   requestPills: {
-    paddingHorizontal: 16,
+    paddingHorizontal: WEB_CONTENT_PADDING,
     paddingTop: 8,
     gap: 8,
     flexShrink: 0,

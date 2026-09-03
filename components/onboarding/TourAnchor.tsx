@@ -22,6 +22,7 @@ type Props = ViewProps & {
   children: React.ReactNode;
   /** Wrap with Pressable so tour taps fire onPress + advance. */
   pressable?: boolean;
+  onLayout?: (event: LayoutChangeEvent) => void;
 };
 
 /** Registers a layout rect for the product tour spotlight. */
@@ -31,6 +32,7 @@ export function TourAnchor({
   children,
   pressable = false,
   testID,
+  onLayout: onLayoutProp,
   ...rest
 }: Props) {
   const setRect = useTourAnchorStore((s) => s.setRect);
@@ -60,7 +62,8 @@ export function TourAnchor({
     };
   }, [publishRect]);
 
-  const onLayout = (_e: LayoutChangeEvent) => {
+  const onLayout = (e: LayoutChangeEvent) => {
+    onLayoutProp?.(e);
     requestAnimationFrame(() => publishRect());
   };
 

@@ -30,6 +30,7 @@ import {
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
@@ -263,7 +264,8 @@ export function BodySkeletonView({
         </View>
       </View>
 
-      <View
+      <TourAnchor
+        id="records-skeleton-body"
         testID="records-skeleton-body"
         style={isDesktop ? styles.diagramCard : [styles.diagramCardMobile, mobileBoxStyle]}
         onLayout={onDiagramLayout}
@@ -336,7 +338,7 @@ export function BodySkeletonView({
             })}
           </View>
         </View>
-      </View>
+      </TourAnchor>
 
       <Modal
         visible={openZone != null}

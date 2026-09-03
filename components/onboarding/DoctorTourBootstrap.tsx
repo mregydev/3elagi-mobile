@@ -8,6 +8,8 @@ import {
 } from "@/domains/onboarding/doctorTourApi";
 import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useAuthStore } from "@/domains/auth/store";
+import { canUseChat } from "@/domains/chat/access";
+import { useChatStore } from "@/domains/chat/store";
 
 function isApproved(
   fromApi: string | null | undefined,
@@ -23,11 +25,23 @@ export function DoctorTourBootstrap() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorApprovalStatus = useAuthStore((s) => s.doctorApprovalStatus);
-  const setDoctorApprovalStatus = useAuthStore((s) => s.setDoctorApprovalStatus);
+  const profile = useAuthStore((s) => s.profile);
+  const loadConversations = useChatStore((s) => s.loadConversations);
 
   const startMainTour = useProductTourStore((s) => s.startMainTour);
   const startProfileTour = useProductTourStore((s) => s.startProfileTour);
   const setTestPatientUserId = useProductTourStore((s) => s.setTestPatientUserId);
+  const exitReason = useProductTourStore((s) => s.exitReason);
+  const completedPhase = useProductTourStore((s) => s.completedPhase);
+  const clearExit = useProductTourStore((s) => s.clearExit);
+  const setDoctorApprovalStatus = useAuthStore((s) => s.setDoctorApprovalStatus);
+
+  const refreshChats = useCallback(async () => {
+    if (!accessToken || !profile?.id || role?.toLowerCase() !== "doctor" || !canUseChat(role)) {
+      return;
+    }
+    await loadConversations(accessToken, profile.id, role);
+  }, [accessToken, profile?.id, role, loadConversations]);
 
   const bootstrap = useCallback(async () => {
     if (!hydrated || !role || role.toLowerCase() !== "doctor") return;
@@ -52,6 +66,7 @@ export function DoctorTourBootstrap() {
       state?.onboarding_test_patient_user_id ??
       null;
     if (testPatientId) setTestPatientUserId(testPatientId);
+    await refreshChats();
 
     const productDone = Boolean(state?.product_tour_completed_at);
     const profileDone = Boolean(state?.profile_tour_completed_at);
@@ -73,16 +88,43 @@ export function DoctorTourBootstrap() {
     setTestPatientUserId,
     startMainTour,
     startProfileTour,
+    refreshChats,
   ]);
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap, pathname, doctorApprovalStatus, accessToken]);
 
+  useEffect(() => {
+    if (exitReason !== "complete" || !completedPhase) return;
+
+    const finish = async () => {
+      if (completedPhase === "main") {
+        await markDoctorTourComplete(accessToken, "product");
+        const state = await fetchDoctorMeTourState(accessToken);
+        if (state && !state.profile_tour_completed_at) {
+          if (!useProductTourStore.getState().active) startProfileTour();
+        }
+      } else if (completedPhase === "profile") {
+        await markDoctorTourComplete(accessToken, "profile");
+      }
+      clearExit();
+    };
+
+    void finish();
+  }, [
+    exitReason,
+    completedPhase,
+    accessToken,
+    startProfileTour,
+    clearExit,
+  ]);
+
   if (role?.toLowerCase() !== "doctor" || !hydrated) return null;
 
   return (
     <ProductTourOverlay
+      onSkip={() => void markDoctorTourComplete(accessToken, "product")}
       onCompleteMain={async () => {
         await markDoctorTourComplete(accessToken, "product");
         const state = await fetchDoctorMeTourState(accessToken);

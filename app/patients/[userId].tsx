@@ -26,13 +26,15 @@ import { useMedicalStore } from "@/domains/medical/store";
 import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { readRouteParam } from "@/utils/routeParams";
+import { WEB_CONTENT_PADDING } from "@/constants/webLayout";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { navigateBack } from "@/utils/appNavigation";
 
 export default function PatientRecordScreen() {
   const router = useRouter();
   const colors = useColors();
   const { isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
@@ -48,8 +50,9 @@ export default function PatientRecordScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
-  /** Non-scrolling host so skeleton diagram gets a real flex height (web + native). */
-  const skeletonView = recordsViewMode === "skeleton";
+  /** Non-scrolling host so split dashboard / skeleton get a real flex height (web + native). */
+  const fixedBodyHost =
+    recordsViewMode === "skeleton" || (isDesktop && recordsViewMode === "table");
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const dir = isRTL ? "row-reverse" : "row";
@@ -123,6 +126,7 @@ export default function PatientRecordScreen() {
     <MedicalHistoryList
       records={records}
       patientUserId={userId!}
+      patientLabel={patientName}
       canAdd={false}
       doctorView
       showIntake
@@ -176,8 +180,8 @@ export default function PatientRecordScreen() {
         </View>
       ) : !hasAccess ? (
         <DoctorPatientAccessDenied isRTL={isRTL} />
-      ) : skeletonView ? (
-        // Non-scrolling host so the Skeleton/Tabular toggle stays pressable.
+      ) : fixedBodyHost ? (
+        // Non-scrolling host so the split dashboard / skeleton toggle stays pressable.
         <View style={styles.body}>
           {historyList}
         </View>
@@ -210,7 +214,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: WEB_CONTENT_PADDING,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexShrink: 0,

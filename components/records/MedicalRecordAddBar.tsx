@@ -17,6 +17,7 @@ export type MedicalRecordAddBarLayout =
   | "web-inline"
   | "web-dock"
   | "inline"
+  | "header"
   /** Same chrome as dock, but not absolutely positioned (for stacking above AI chat). */
   | "stack";
 
@@ -39,12 +40,37 @@ export function MedicalRecordAddBar({
   const { isDesktop } = useWebLayout();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
+  const isHeader = layout === "header";
   const isInline = layout === "inline";
   const isWebInline = layout === "web-inline";
   const isWebDock = layout === "web-dock";
   const isStack = layout === "stack";
   const flushWebDock = Platform.OS === "web" && layout === "dock";
   const useDesktopBtn = isDesktop || isWebInline || isWebDock;
+
+  if (isHeader) {
+    return (
+      <Pressable
+        onPress={onAdd}
+        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+          styles.headerBtn,
+          { flexDirection: dir, backgroundColor: colors.primary },
+          pressed && { opacity: 0.9 },
+          hovered && !pressed ? { transform: [{ translateY: -1 }] } : null,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={t.records.addMedicalRecord}
+      >
+        <View style={styles.headerPlusCircle}>
+          <Plus size={16} color={colors.primary} strokeWidth={2.6} />
+        </View>
+        <Text style={styles.headerLabel} numberOfLines={1}>
+          {t.records.addMedicalRecord}
+        </Text>
+      </Pressable>
+    );
+  }
+
   /** Keep the CTA above system nav / home indicator on edge-to-edge mobile. */
   const safeBottomPad =
     layout === "dock" || isStack ? Math.max(insets.bottom, 0) : 0;
@@ -193,5 +219,34 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.2,
+  },
+  headerBtn: {
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexShrink: 0,
+    cursor: "pointer" as "auto",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  headerPlusCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerLabel: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    maxWidth: 200,
   },
 });

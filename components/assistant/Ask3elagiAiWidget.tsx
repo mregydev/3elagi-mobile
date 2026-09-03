@@ -51,6 +51,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 import { AI_ATTACHMENT_ONLY_PLACEHOLDER } from "@/utils/aiMessageDisplay";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
+import { WEB_FAB_INSET } from "@/constants/webLayout";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
@@ -63,7 +64,7 @@ function makeLocalId(prefix: string) {
 /** FAB size — used by pages that need bottom padding clearance. */
 export const ASK_3ELAGI_AI_FAB_SIZE = 56;
 /** Gap from the viewport edge. */
-export const ASK_3ELAGI_AI_FAB_CHROME_GAP = 8;
+export const ASK_3ELAGI_AI_FAB_CHROME_GAP = WEB_FAB_INSET;
 /** Extra breathing room above the native bottom tab bar. */
 export const ASK_3ELAGI_AI_FAB_TAB_BAR_GAP = 14;
 
@@ -788,7 +789,7 @@ export function Ask3elagiAiWidget() {
 
   if (!hydrated || !canUseWidget || hidden) return null;
 
-  const edge = 16;
+  const edge = WEB_FAB_INSET;
   const addBarLift = recordsAddBarFabOffset(
     pathname,
     segments as string[],

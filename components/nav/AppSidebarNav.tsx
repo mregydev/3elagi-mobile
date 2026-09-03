@@ -4,22 +4,18 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Languages,
+  CircleHelp,
   LogIn,
   LogOut,
   Mail,
-  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  Star,
-  SunMoon,
   UserPlus,
 } from "lucide-react-native";
 import React from "react";
 import {
   Alert,
-  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
@@ -28,17 +24,9 @@ import {
   UIManager,
   View,
 } from "react-native";
-import Animated, {
-  Easing,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { AccentPicker } from "@/components/AccentPicker";
-import { LanguageDropdown } from "@/components/language/LanguageDropdown";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { AppHelpMoreMenu } from "@/components/nav/AppHelpMoreMenu";
+import { AppSettingsModal } from "@/components/nav/AppSettingsModal";
 import {
   APP_NAV_GROUP_ICONS,
   filterAppNavItems,
@@ -46,10 +34,10 @@ import {
   HOME_NAV_RESET_EVENT,
 } from "@/constants/appNav";
 import { LOGO_HEIGHT } from "@/constants/brand";
-import { UI } from "@/constants/uiTokens";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
-import { useProductTourStore } from "@/domains/onboarding/productTourStore";
+import { useProductTourStore, currentTourStep } from "@/domains/onboarding/productTourStore";
+import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useNotificationsStore } from "@/domains/notifications/store";
@@ -70,8 +58,6 @@ if (
 type Props = {
   onNavigate?: () => void;
   showBrand?: boolean;
-  /** Extra footer content (e.g. mobile app link on web). */
-  footerExtra?: React.ReactNode;
   /** Icon-only rail (desktop web). */
   collapsed?: boolean;
   /** Shows the rail toggle when provided; also used to expand on menu taps while collapsed. */
@@ -81,7 +67,6 @@ type Props = {
 export function AppSidebarNav({
   onNavigate,
   showBrand = true,
-  footerExtra,
   collapsed = false,
   onToggleCollapse,
 }: Props) {
@@ -101,6 +86,11 @@ export function AppSidebarNav({
   );
   const aiEnabled = useAiEnabled();
   const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
+  const tourActive = useProductTourStore((s) => s.active);
+  const tourPhase = useProductTourStore((s) => s.phase);
+  const tourStepIndex = useProductTourStore((s) => s.stepIndex);
+  const tourStep = currentTourStep(tourPhase, tourStepIndex);
+  const highlightChatHistory = tourActive && tourStep?.anchor === "nav-history";
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const isArabic = locale === "ar";
@@ -113,69 +103,20 @@ export function AppSidebarNav({
   const sections = groupAppNavItems(items);
   // Groups start closed; opening one is a per-session preference.
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
-  const [preferencesOpen, setPreferencesOpen] = React.useState(true);
-  const [prefMeasuredHeight, setPrefMeasuredHeight] = React.useState(0);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [helpMoreOpen, setHelpMoreOpen] = React.useState(false);
   const scrollRef = React.useRef<ScrollView>(null);
-  const prefBodyHeight = useSharedValue(0);
-  const prefExpand = useSharedValue(1);
 
-  const isGroupExpanded = (group: string, hasActive: boolean) =>
-    group in openGroups ? openGroups[group] : hasActive;
-
-  const togglePreferences = () => {
-    if (Platform.OS !== "web") {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }
-    setPreferencesOpen((open) => !open);
+  const isGroupExpanded = (group: string, hasActive: boolean) => {
+    if (group === "activity" && highlightChatHistory) return true;
+    return group in openGroups ? openGroups[group] : hasActive;
   };
-
-  React.useEffect(() => {
-    if (!preferencesOpen || Platform.OS === "web") return;
-    const timer = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 80);
-    return () => clearTimeout(timer);
-  }, [preferencesOpen]);
 
   const toggleGroup = (group: string, hasActive: boolean) =>
     setOpenGroups((prev) => {
       const expanded = group in prev ? prev[group] : hasActive;
       return { ...prev, [group]: !expanded };
     });
-
-  const onPrefBodyLayout = (height: number) => {
-    if (height > 0) setPrefMeasuredHeight(height);
-  };
-
-  React.useEffect(() => {
-    if (Platform.OS !== "web") return;
-    prefExpand.value = withTiming(preferencesOpen ? 1 : 0, {
-      duration: UI.duration.normal,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [preferencesOpen, prefExpand]);
-
-  React.useEffect(() => {
-    if (prefMeasuredHeight > 0) {
-      prefBodyHeight.value = prefMeasuredHeight;
-    }
-  }, [prefMeasuredHeight, prefBodyHeight]);
-
-  const prefBodyAnimatedStyle = useAnimatedStyle(() => ({
-    height: prefExpand.value * prefBodyHeight.value,
-  }));
-
-  const prefInnerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(prefExpand.value, [0, 0.25, 1], [0, 1, 1]),
-  }));
-
-  const prefChevronStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        rotate: `${interpolate(prefExpand.value, [0, 1], [isRTL ? 90 : -90, 0])}deg`,
-      },
-    ],
-  }));
 
   const handleLogout = () => {
     const confirmed =
@@ -217,7 +158,7 @@ export function AppSidebarNav({
   const renderNavItem = ({ href, labelKey, active, Icon }: (typeof items)[number]) => {
     const badgeCount =
       labelKey === "notifications" ? unreadCount : labelKey === "history" ? chatUnreadCount : 0;
-    return (
+    const row = (
       <Pressable
         key={String(href)}
         testID={`nav-${labelKey}`}
@@ -252,7 +193,6 @@ export function AppSidebarNav({
           strokeWidth={active ? 2.25 : 2}
         />
         {collapsed ? (
-          // Rail has no room for the count — a dot still flags unread.
           badgeCount > 0 ? (
             <View style={[styles.railDot, active && styles.railDotActive]} />
           ) : null
@@ -283,61 +223,68 @@ export function AppSidebarNav({
         )}
       </Pressable>
     );
+
+    if (labelKey === "history" && !collapsed) {
+      return (
+        <TourAnchor key={String(href)} id="nav-history" testID="nav-history">
+          {row}
+        </TourAnchor>
+      );
+    }
+
+    return row;
   };
 
-  const renderRateUsCta = () => (
+  const renderSettingsButton = (rail = false) => (
     <Pressable
-      onPress={() => go("/rate-us")}
+      onPress={() => setSettingsOpen(true)}
       accessibilityRole="button"
-      accessibilityLabel={t.tabs.rateUs}
+      accessibilityLabel={t.settings.preferences}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-        styles.rateUsCta,
-        collapsed && styles.authCtaRail,
-        collapsed && styles.rateUsCtaRail,
+        styles.navItem,
+        rail && styles.navItemRail,
         {
-          shadowColor: "#B45309",
-          opacity: pressed || hovered ? 0.92 : 1,
+          flexDirection: dir,
+          backgroundColor: pressed || hovered ? colors.muted : "transparent",
         },
       ]}
     >
-      <LinearGradient
-        colors={["#FDE68A", "#FBBF24", "#D97706"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.rateUsGradient,
-          { flexDirection: dir },
-          collapsed && styles.authCtaGradientRail,
-        ]}
-      >
-        <Star size={18} color="#78350F" fill="#F59E0B" strokeWidth={2.2} />
-        {collapsed ? null : (
-          <Text
-            style={[
-              styles.rateUsText,
-              {
-                textAlign,
-                writingDirection: isRTL ? "rtl" : "ltr",
-                fontSize: navFontSize,
-              },
-            ]}
-          >
-            {t.tabs.rateUs}
-          </Text>
-        )}
-      </LinearGradient>
+      <Settings size={18} color={colors.mutedForeground} strokeWidth={2} />
+      {rail || collapsed ? null : (
+        <Text
+          style={[
+            styles.navLabel,
+            {
+              color: colors.foreground,
+              textAlign,
+              writingDirection: isRTL ? "rtl" : "ltr",
+              fontSize: navFontSize,
+              fontWeight: "500",
+            },
+          ]}
+        >
+          {t.settings.preferences}
+        </Text>
+      )}
     </Pressable>
   );
 
-  const renderPreferenceRows = () => (
-    <>
-      <View
-        style={[
-          styles.prefNavItem,
-          { flexDirection: dir, backgroundColor: "transparent" },
-        ]}
-      >
-        <Languages size={18} color={colors.mutedForeground} strokeWidth={2} />
+  const renderHelpMoreButton = (rail = false) => (
+    <Pressable
+      onPress={() => setHelpMoreOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel={t.tabs.helpAndMore}
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        styles.navItem,
+        rail && styles.navItemRail,
+        {
+          flexDirection: dir,
+          backgroundColor: pressed || hovered ? colors.muted : "transparent",
+        },
+      ]}
+    >
+      <CircleHelp size={18} color={colors.mutedForeground} strokeWidth={2} />
+      {rail || collapsed ? null : (
         <Text
           style={[
             styles.navLabel,
@@ -350,18 +297,31 @@ export function AppSidebarNav({
             },
           ]}
         >
-          {t.settings.language}
+          {t.tabs.helpAndMore}
         </Text>
-        <LanguageDropdown compact placement="bottom" />
-      </View>
+      )}
+    </Pressable>
+  );
 
-      <View
-        style={[
-          styles.prefNavItem,
-          { flexDirection: dir, backgroundColor: "transparent" },
-        ]}
-      >
-        <SunMoon size={18} color={colors.mutedForeground} strokeWidth={2} />
+  const renderContactButton = (rail = false) => (
+    <Pressable
+      onPress={() => {
+        onNavigate?.();
+        go("/contact");
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={t.tabs.contactUs}
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        styles.navItem,
+        rail && styles.navItemRail,
+        {
+          flexDirection: dir,
+          backgroundColor: pressed || hovered ? colors.muted : "transparent",
+        },
+      ]}
+    >
+      <Mail size={18} color={colors.mutedForeground} strokeWidth={2} />
+      {rail || collapsed ? null : (
         <Text
           style={[
             styles.navLabel,
@@ -374,35 +334,10 @@ export function AppSidebarNav({
             },
           ]}
         >
-          {t.settings.theme}
+          {t.tabs.contactUs}
         </Text>
-        <ThemeToggle />
-      </View>
-
-      <View
-        style={[
-          styles.prefNavItem,
-          { flexDirection: dir, backgroundColor: "transparent" },
-        ]}
-      >
-        <Palette size={18} color={colors.mutedForeground} strokeWidth={2} />
-        <Text
-          style={[
-            styles.navLabel,
-            {
-              color: colors.foreground,
-              textAlign,
-              writingDirection: isRTL ? "rtl" : "ltr",
-              fontSize: navFontSize,
-              fontWeight: "500",
-            },
-          ]}
-        >
-          {t.settings.accentColor}
-        </Text>
-        <AccentPicker />
-      </View>
-    </>
+      )}
+    </Pressable>
   );
 
   return (
@@ -526,148 +461,19 @@ export function AppSidebarNav({
       </View>
 
       <View style={styles.footer}>
-        {!collapsed ? (
+        {collapsed ? (
+          <>
+            {renderSettingsButton(true)}
+            {renderHelpMoreButton(true)}
+            {renderContactButton(true)}
+          </>
+        ) : (
           <View style={styles.navSection}>
-            <View
-              style={[
-                styles.prefPanel,
-                { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
-            >
-              <Pressable
-                onPress={togglePreferences}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: preferencesOpen }}
-                accessibilityLabel={t.settings.preferences}
-                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                  styles.navItem,
-                  {
-                    flexDirection: dir,
-                    backgroundColor:
-                      pressed || hovered ? colors.card : "transparent",
-                  },
-                ]}
-              >
-                <Settings size={18} color={colors.mutedForeground} strokeWidth={2} />
-                <Text
-                  style={[
-                    styles.navLabel,
-                    {
-                      color: colors.foreground,
-                      textAlign,
-                      writingDirection: isRTL ? "rtl" : "ltr",
-                      fontSize: navFontSize,
-                      fontWeight: "500",
-                    },
-                  ]}
-                >
-                  {t.settings.preferences}
-                </Text>
-                {Platform.OS === "web" ? (
-                  <Animated.View style={prefChevronStyle}>
-                    <ChevronDown size={16} color={colors.mutedForeground} />
-                  </Animated.View>
-                ) : preferencesOpen ? (
-                  <ChevronDown size={16} color={colors.mutedForeground} />
-                ) : (
-                  <ChevronDown
-                    size={16}
-                    color={colors.mutedForeground}
-                    style={{
-                      transform: [{ rotate: isRTL ? "90deg" : "-90deg" }],
-                    }}
-                  />
-                )}
-              </Pressable>
-
-              {Platform.OS === "web" ? (
-                <>
-                  <View
-                    pointerEvents="none"
-                    style={styles.prefMeasure}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no-hide-descendants"
-                  >
-                    <View
-                      onLayout={(event) => {
-                        onPrefBodyLayout(event.nativeEvent.layout.height);
-                      }}
-                    >
-                      {renderPreferenceRows()}
-                    </View>
-                  </View>
-                  <Animated.View
-                    style={[styles.prefBodyClip, prefBodyAnimatedStyle]}
-                    pointerEvents={preferencesOpen ? "auto" : "none"}
-                  >
-                    <Animated.View style={prefInnerAnimatedStyle}>
-                      {renderPreferenceRows()}
-                    </Animated.View>
-                  </Animated.View>
-                </>
-              ) : (
-                <>
-                  <View
-                    pointerEvents="none"
-                    style={styles.prefMeasure}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no-hide-descendants"
-                  >
-                    <View
-                      onLayout={(event) => {
-                        onPrefBodyLayout(event.nativeEvent.layout.height);
-                      }}
-                    >
-                      {renderPreferenceRows()}
-                    </View>
-                  </View>
-                  <View
-                    style={[
-                      styles.prefBodyClip,
-                      { height: preferencesOpen ? prefMeasuredHeight : 0 },
-                    ]}
-                    pointerEvents={preferencesOpen ? "auto" : "none"}
-                  >
-                    {renderPreferenceRows()}
-                  </View>
-                </>
-              )}
-            </View>
-
-            {signedIn ? renderRateUsCta() : null}
-
-            <Pressable
-              onPress={() => go("/contact")}
-              accessibilityRole="button"
-              accessibilityLabel={t.tabs.contactUs}
-              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                styles.navItem,
-                {
-                  flexDirection: dir,
-                  backgroundColor: pressed || hovered ? colors.muted : "transparent",
-                },
-              ]}
-            >
-              <Mail size={18} color={colors.mutedForeground} strokeWidth={2} />
-              <Text
-                style={[
-                  styles.navLabel,
-                  {
-                    color: colors.foreground,
-                    textAlign,
-                    writingDirection: isRTL ? "rtl" : "ltr",
-                    fontWeight: "500",
-                    fontSize: navFontSize,
-                  },
-                ]}
-              >
-                {t.tabs.contactUs}
-              </Text>
-            </Pressable>
+            {renderSettingsButton()}
+            {renderHelpMoreButton()}
+            {renderContactButton()}
           </View>
-        ) : signedIn ? (
-          renderRateUsCta()
-        ) : null}
+        )}
 
         {signedIn ? (
           <Pressable
@@ -777,9 +583,14 @@ export function AppSidebarNav({
             </Pressable>
           </>
         )}
-
-        {collapsed ? null : footerExtra}
       </View>
+
+      <AppSettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <AppHelpMoreMenu
+        visible={helpMoreOpen}
+        onClose={() => setHelpMoreOpen(false)}
+        onNavigate={onNavigate}
+      />
     </ScrollView>
   );
 }

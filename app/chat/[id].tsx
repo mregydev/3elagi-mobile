@@ -86,8 +86,8 @@ import { createDiagnosis, fetchAllMedicalHistory, uploadFile } from "@/domains/m
 import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
+import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { useMedicalStore } from "@/domains/medical/store";
-import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -183,7 +183,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const medicalRecords = useMedicalStore((s) => s.records);
   const setRecordsFromApi = useMedicalStore((s) => s.setRecordsFromApi);
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
-  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const [contactsReady, setContactsReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [medicalPickerOpen, setMedicalPickerOpen] = useState(false);
@@ -1603,14 +1602,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         ) : null}
 
         {canOpenPatientRecord ? (
-          <Pressable
+          <TourAnchor
+            id="chat-view-records"
             testID="chat-view-records"
-            onPress={() => {
-              advanceOnAnchorTap("chat-view-records");
-              openPatientRecord();
-            }}
+            pressable
+            onPress={openPatientRecord}
             accessibilityRole="button"
             accessibilityLabel={isRTL ? "عرض السجل" : "View Record"}
+            hitSlop={8}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
               styles.viewRecordBtn,
               {
@@ -1619,7 +1618,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   pressed || hovered ? `${colors.primary}14` : colors.card,
               },
             ]}
-            hitSlop={8}
           >
             <View style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}>
               <FileText size={16} color={colors.primary} />
@@ -1630,7 +1628,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                 {isRTL ? "عرض السجل" : "View Record"}
               </Text>
             </View>
-          </Pressable>
+          </TourAnchor>
         ) : null}
       </View>
 

@@ -20,6 +20,8 @@ interface SpecialityVisual {
   color: string;
   /** Bundled expressive illustration for specialty cards. */
   image?: ImageSourcePropType;
+  /** Default is contain; cover fills circular tiles edge-to-edge. */
+  imageResizeMode?: "contain" | "cover";
 }
 
 const SPECIALITY_IMAGES: Record<string, ImageSourcePropType> = {
@@ -104,6 +106,7 @@ const SPECIALITY_VISUALS: Record<string, SpecialityVisual> = {
     icon: Stethoscope,
     color: "#dc2626",
     image: SPECIALITY_IMAGES.ENT,
+    imageResizeMode: "cover",
   },
 };
 
