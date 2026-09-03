@@ -1,5 +1,5 @@
 import { usePathname } from "expo-router";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { ProductTourOverlay } from "@/components/onboarding/ProductTourOverlay";
 import {
   ensureDoctorOnboarding,
@@ -18,6 +18,9 @@ function isApproved(
   return fromApi === "approved" || fromStore === "approved";
 }
 
+/** Temporary: ignore server tour flags and show the main tour on every page load. */
+const ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR = true;
+
 /** Starts doctor onboarding tours once per doctor (tracked on the server). */
 export function DoctorTourBootstrap() {
   const pathname = usePathname();
@@ -35,6 +38,7 @@ export function DoctorTourBootstrap() {
   const completedPhase = useProductTourStore((s) => s.completedPhase);
   const clearExit = useProductTourStore((s) => s.clearExit);
   const setDoctorApprovalStatus = useAuthStore((s) => s.setDoctorApprovalStatus);
+  const autoStartedRef = useRef(false);
 
   const refreshChats = useCallback(async () => {
     if (!accessToken || !profile?.id || role?.toLowerCase() !== "doctor" || !canUseChat(role)) {
@@ -68,9 +72,18 @@ export function DoctorTourBootstrap() {
     if (testPatientId) setTestPatientUserId(testPatientId);
     await refreshChats();
 
+    const tourActive = useProductTourStore.getState().active;
+
+    if (ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) {
+      if (!tourActive && !autoStartedRef.current) {
+        startMainTour();
+        autoStartedRef.current = true;
+      }
+      return;
+    }
+
     const productDone = Boolean(state?.product_tour_completed_at);
     const profileDone = Boolean(state?.profile_tour_completed_at);
-    const tourActive = useProductTourStore.getState().active;
 
     if (!productDone) {
       if (!tourActive) startMainTour();
@@ -100,10 +113,12 @@ export function DoctorTourBootstrap() {
 
     const finish = async () => {
       if (completedPhase === "main") {
-        await markDoctorTourComplete(accessToken, "product");
-        const state = await fetchDoctorMeTourState(accessToken);
-        if (state && !state.profile_tour_completed_at) {
-          if (!useProductTourStore.getState().active) startProfileTour();
+        if (!ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) {
+          await markDoctorTourComplete(accessToken, "product");
+          const state = await fetchDoctorMeTourState(accessToken);
+          if (state && !state.profile_tour_completed_at) {
+            if (!useProductTourStore.getState().active) startProfileTour();
+          }
         }
       } else if (completedPhase === "profile") {
         await markDoctorTourComplete(accessToken, "profile");
@@ -124,8 +139,13 @@ export function DoctorTourBootstrap() {
 
   return (
     <ProductTourOverlay
-      onSkip={() => void markDoctorTourComplete(accessToken, "product")}
+      onSkip={() => {
+        if (!ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) {
+          void markDoctorTourComplete(accessToken, "product");
+        }
+      }}
       onCompleteMain={async () => {
+        if (ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) return;
         await markDoctorTourComplete(accessToken, "product");
         const state = await fetchDoctorMeTourState(accessToken);
         if (state && !state.profile_tour_completed_at) {
