@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
+  DOCTOR_SIGNUP_COUNTRY_CODES,
   patientCountryLabel,
-  type MarketCountryCode,
+  type DoctorSignupCountryCode,
 } from "@/constants/patientCountries";
 import {
   getDoctorSignupMarket,
@@ -12,21 +13,19 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
-const MARKETS: MarketCountryCode[] = ["EG", "JO"];
-
 type Props = {
   isRTL: boolean;
   disabled?: boolean;
   error?: string;
-  /** Controlled value (EG / JO). */
-  value?: MarketCountryCode | null;
+  /** Controlled value (EG / JO / US / GB). */
+  value?: DoctorSignupCountryCode | null;
   /** Called when the user picks a market. */
-  onChange?: (market: MarketCountryCode) => void;
+  onChange?: (market: DoctorSignupCountryCode) => void;
   /** Called when market is resolved (URL default or explicit pick). */
-  onMarketChange?: (market: MarketCountryCode | null) => void;
+  onMarketChange?: (market: DoctorSignupCountryCode | null) => void;
 };
 
-/** Doctors pick their practice country: Egypt or Jordan. */
+/** Doctors pick their practice country. */
 export function DoctorSignupMarketField({
   isRTL,
   disabled,
@@ -38,12 +37,12 @@ export function DoctorSignupMarketField({
   const colors = useColors();
   const { t } = useI18n();
   const dir = flexRow(isRTL);
-  const [internalMarket, setInternalMarket] = useState<MarketCountryCode | null>(() =>
+  const [internalMarket, setInternalMarket] = useState<DoctorSignupCountryCode | null>(() =>
     value ?? getDoctorSignupMarket(),
   );
   const market = value ?? internalMarket;
 
-  const pick = (code: MarketCountryCode) => {
+  const pick = (code: DoctorSignupCountryCode) => {
     if (value === undefined) {
       setDoctorSignupMarketOverride(code);
       setInternalMarket(code);
@@ -63,7 +62,7 @@ export function DoctorSignupMarketField({
         {t.auth.countryOfPractice}
       </Text>
       <View style={[styles.row, { flexDirection: dir }]}>
-        {MARKETS.map((code) => {
+        {DOCTOR_SIGNUP_COUNTRY_CODES.map((code) => {
           const active = market === code;
           return (
             <Pressable

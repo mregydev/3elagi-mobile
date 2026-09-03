@@ -62,14 +62,7 @@ export function DoctorTourBootstrap() {
 
     if (!isApproved(state?.approval_status, doctorApprovalStatus)) return;
 
-    if (!state) {
-      // API read failed — still start the tour for approved doctors so onboarding is not blocked.
-      if (!useProductTourStore.getState().active && !mainTourStartedRef.current) {
-        startMainTour();
-        mainTourStartedRef.current = true;
-      }
-      return;
-    }
+    if (!state) return;
 
     const onboardingPatientId = await ensureDoctorOnboarding(accessToken);
     const testPatientId =

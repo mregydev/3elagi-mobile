@@ -175,6 +175,16 @@ export default function AdminDoctorRegistrationsWeb() {
                         <Text style={{ color: colors.foreground, fontWeight: "600" }}>
                           {patientCountryLabel(row.country, false)}
                         </Text>
+                        {row.clinic_location ? (
+                          <>
+                            <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                              Clinic location
+                            </Text>
+                            <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                              {row.clinic_location}
+                            </Text>
+                          </>
+                        ) : null}
                       </View>
                     )}
                   </View>

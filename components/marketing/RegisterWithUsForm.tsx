@@ -15,7 +15,7 @@ import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import { primaryButton, UI } from "@/constants/uiTokens";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  type MarketCountryCode,
+  type DoctorSignupCountryCode,
 } from "@/constants/patientCountries";
 import { submitDoctorRegistration } from "@/domains/doctorRegistration/api";
 import { hasFieldErrors } from "@/domains/auth/validation";
@@ -50,7 +50,8 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
   const [doctorName, setDoctorName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [country, setCountry] = useState<MarketCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [country, setCountry] = useState<DoctorSignupCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [clinicLocation, setClinicLocation] = useState("");
   const [specialityId, setSpecialityId] = useState("");
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -88,6 +89,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
         phone,
         country,
         specialityId,
+        clinicLocation: clinicLocation.trim() || undefined,
       });
       setSent(true);
       showSuccessToast(t.registerWithUs.sent);
@@ -95,6 +97,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       setEmail("");
       setPhone("");
       setCountry(DEFAULT_PATIENT_COUNTRY);
+      setClinicLocation("");
       setSpecialityId("");
     } catch (e) {
       showErrorToast(t.registerWithUs.sendFailed, (e as Error).message);
@@ -219,6 +222,19 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           error={fieldErrors.country}
           disabled={sending}
         />
+
+        <FieldBlock label={t.registerWithUs.clinicLocationLabel}>
+          <AppTextInput
+            value={clinicLocation}
+            onChangeText={setClinicLocation}
+            placeholder={t.registerWithUs.clinicLocationPlaceholder}
+            editable={!sending}
+            style={[
+              styles.input,
+              inputStyle(colors, undefined, textAlign),
+            ]}
+          />
+        </FieldBlock>
 
         <SpecialitySelectField
           label={t.auth.speciality}

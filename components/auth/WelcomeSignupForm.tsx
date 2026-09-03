@@ -23,14 +23,16 @@ import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
   PATIENT_COUNTRY_CODES,
-  type MarketCountryCode,
+  type DoctorSignupCountryCode,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { defaultDoctorFeeFormValues, feeValue } from "@/domains/doctor/fees";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
+import { authRepository } from "@/domains/auth/repository";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
+import { DOCTOR_APPLY_ROUTE } from "@/constants/doctorSignup";
 import {
   hasFieldErrors,
   validateSignupFields,
@@ -46,6 +48,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
+import type { DoctorWelcomeEmailState } from "@/components/admin/DoctorWelcomeEmailPanel.web";
 
 type LocalFile = SignupFile & { label: string };
 
@@ -53,6 +56,10 @@ interface Props {
   onSwitchToLogin: () => void;
   googlePrefill?: GoogleNoAccountPayload | null;
   onGoogleNoAccount?: (payload: GoogleNoAccountPayload) => void;
+  /** Admin panel: create a doctor without replacing the admin session. */
+  adminDoctorMode?: boolean;
+  onAdminDoctorCreated?: (result?: { welcomeEmailOk?: boolean; welcomeEmailError?: string }) => void;
+  welcomeEmail?: DoctorWelcomeEmailState;
 }
 
 function initialSignupCountry(): PatientCountryCode {
@@ -63,6 +70,9 @@ export function WelcomeSignupForm({
   onSwitchToLogin,
   googlePrefill,
   onGoogleNoAccount,
+  adminDoctorMode = false,
+  onAdminDoctorCreated,
+  welcomeEmail,
 }: Props) {
   const colors = useColors();
   const accentGradient = useAccentGradient();
@@ -72,7 +82,7 @@ export function WelcomeSignupForm({
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
 
-  const [role, setRole] = useState<SignupRole>("patient");
+  const [role, setRole] = useState<SignupRole>(adminDoctorMode ? "doctor" : "patient");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -85,34 +95,40 @@ export function WelcomeSignupForm({
   const [specialityId, setSpecialityId] = useState("");
   const initialDoctorMarket = getDoctorSignupMarket() ?? "EG";
   const initialDoctorFees = defaultDoctorFeeFormValues(initialDoctorMarket);
-  const [doctorMarket, setDoctorMarket] = useState<MarketCountryCode>(initialDoctorMarket);
+  const [doctorMarket, setDoctorMarket] = useState<DoctorSignupCountryCode>(initialDoctorMarket);
   const [textPriceLocal, setTextPriceLocal] = useState(initialDoctorFees.textLocal);
   const [textPriceUsd, setTextPriceUsd] = useState(initialDoctorFees.textUsd);
   const [videoPriceLocal, setVideoPriceLocal] = useState(initialDoctorFees.videoLocal);
   const [videoPriceUsd, setVideoPriceUsd] = useState(initialDoctorFees.videoUsd);
   const [paymentLink, setPaymentLink] = useState("");
+  const [clinicLocation, setClinicLocation] = useState("");
   const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [adminSubmitting, setAdminSubmitting] = useState(false);
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (roleParam === "doctor") setRole("doctor");
-  }, [roleParam]);
+    if (adminDoctorMode) return;
+    if (roleParam === "doctor") {
+      router.replace(DOCTOR_APPLY_ROUTE);
+    }
+  }, [roleParam, adminDoctorMode]);
 
   useEffect(() => {
-    if (!googlePrefill) return;
+    if (!googlePrefill || adminDoctorMode) return;
     if (googlePrefill.email) setEmail(googlePrefill.email);
     if (googlePrefill.name) setName(googlePrefill.name);
     if (googlePrefill.role === "doctor" || googlePrefill.role === "patient") {
-      setRole(googlePrefill.role);
+      setRole(googlePrefill.role === "doctor" && !adminDoctorMode ? "patient" : googlePrefill.role);
     }
-  }, [googlePrefill]);
+  }, [googlePrefill, adminDoctorMode]);
   const passwordRef = useRef<TextInput>(null);
 
-  const isDoctor = role === "doctor";
+  const isDoctor = adminDoctorMode || role === "doctor";
+  const busy = loading || adminSubmitting;
   const urlMarket = getUrlMarketCountry();
   const phonePlaceholder =
     urlMarket === "JO" ||
@@ -121,7 +137,7 @@ export function WelcomeSignupForm({
       ? t.auth.phonePlaceholderJordan
       : t.auth.phonePlaceholder;
 
-  const applyDoctorMarket = (market: MarketCountryCode) => {
+  const applyDoctorMarket = (market: DoctorSignupCountryCode) => {
     setDoctorMarket(market);
     const fees = defaultDoctorFeeFormValues(market);
     setTextPriceLocal(fees.textLocal);
@@ -256,8 +272,8 @@ export function WelcomeSignupForm({
     setFormError(null);
 
     try {
-      await signup({
-        role,
+      const payload = {
+        role: (adminDoctorMode ? "doctor" : role) as SignupRole,
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
@@ -272,47 +288,88 @@ export function WelcomeSignupForm({
         videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
         paymentLink: isDoctor ? paymentLink.trim() : undefined,
         country: doctorCountry,
+        clinicLocation: isDoctor ? clinicLocation.trim() || undefined : undefined,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
-      });
+      };
+
+      if (adminDoctorMode) {
+        setAdminSubmitting(true);
+        const adminSession = {
+          profile: useAuthStore.getState().profile,
+          accessToken: useAuthStore.getState().accessToken,
+          refreshToken: useAuthStore.getState().refreshToken,
+          role: useAuthStore.getState().role,
+          doctorId: useAuthStore.getState().doctorId,
+          specialty: useAuthStore.getState().specialty,
+          specialityId: useAuthStore.getState().specialityId,
+          doctorApprovalStatus: useAuthStore.getState().doctorApprovalStatus,
+          emailVerified: useAuthStore.getState().emailVerified,
+        };
+        const adminToken = adminSession.accessToken;
+        if (!adminToken) {
+          throw new Error("Admin session expired. Please log in again.");
+        }
+        const result = await authRepository.createAdminDoctor(
+          adminToken,
+          payload,
+          welcomeEmail?.enabled
+            ? {
+                send: true,
+                language: welcomeEmail.language,
+                themeColor: welcomeEmail.themeColor,
+                sections: welcomeEmail.sections,
+              }
+            : undefined,
+        );
+        useAuthStore.setState({ ...adminSession, loading: false, error: null });
+        onAdminDoctorCreated?.(result);
+        return;
+      }
+
+      await signup(payload);
       const { role: nextRole, doctorApprovalStatus } = useAuthStore.getState();
       router.replace(getPostAuthRoute(nextRole, doctorApprovalStatus));
     } catch (e) {
       setFormError((e as Error).message || t.auth.genericError);
+    } finally {
+      setAdminSubmitting(false);
     }
   };
 
   return (
     <View style={styles.form}>
-      <View style={[styles.roleRow, { flexDirection: dir }]}>
-        <RoleChip
-          active={role === "patient"}
-          onPress={() => {
-            setRole("patient");
-            setDoctorSignupMarketOverride(null);
-            setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
-          }}
-          label={t.auth.patient}
-          Icon={UserRound}
-          colors={colors}
-        />
-        <RoleChip
-          active={role === "doctor"}
-          onPress={() => {
-            setRole("doctor");
-            setMedicalRecordsConsent(false);
-            setFieldErrors((prev) => ({
-              ...prev,
-              medicalRecordsConsent: undefined,
-              country: undefined,
-            }));
-          }}
-          label={t.auth.doctor}
-          Icon={Stethoscope}
-          colors={colors}
-        />
-      </View>
+      {!adminDoctorMode ? (
+        <View style={[styles.roleRow, { flexDirection: dir }]}>
+          <RoleChip
+            active={role === "patient"}
+            onPress={() => {
+              setRole("patient");
+              setDoctorSignupMarketOverride(null);
+              setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
+            }}
+            label={t.auth.patient}
+            Icon={UserRound}
+            colors={colors}
+          />
+          <RoleChip
+            active={false}
+            onPress={() => router.push(DOCTOR_APPLY_ROUTE)}
+            label={t.auth.doctor}
+            Icon={Stethoscope}
+            colors={colors}
+          />
+        </View>
+      ) : null}
 
-      {googlePrefill?.email ? (
+      {!adminDoctorMode ? (
+        <GoogleAuthButton
+          dividerBelow
+          signupRole="patient"
+          onAccountNotFound={onGoogleNoAccount}
+        />
+      ) : null}
+
+      {!adminDoctorMode && googlePrefill?.email ? (
         <AuthFormError
           message={
             isRTL
@@ -322,12 +379,6 @@ export function WelcomeSignupForm({
           colors={colors}
         />
       ) : null}
-
-      <GoogleAuthButton
-        dividerBelow
-        signupRole={role}
-        onAccountNotFound={onGoogleNoAccount}
-      />
 
       <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
         {photoPreview ? (
@@ -430,12 +481,12 @@ export function WelcomeSignupForm({
           }}
           error={fieldErrors.country}
           isRTL={isRTL}
-          disabled={loading}
+          disabled={busy}
         />
       ) : (
         <DoctorSignupMarketField
           isRTL={isRTL}
-          disabled={loading}
+          disabled={busy}
           error={fieldErrors.country}
           onMarketChange={(market) => {
             if (market) applyDoctorMarket(market);
@@ -445,6 +496,17 @@ export function WelcomeSignupForm({
           }}
         />
       )}
+
+      {isDoctor ? (
+        <AuthFormField
+          label={t.auth.clinicLocationOptional}
+          value={clinicLocation}
+          onChange={setClinicLocation}
+          placeholder={t.auth.clinicLocationPlaceholder}
+          colors={colors}
+          isRTL={isRTL}
+        />
+      ) : null}
 
       {isDoctor ? (
         <View style={styles.doctorBlock}>
@@ -459,7 +521,7 @@ export function WelcomeSignupForm({
             }}
             specialities={specialities}
             error={fieldErrors.specialityId}
-            disabled={loading}
+            disabled={busy}
           />
           <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
             {isRTL ? "أسعار الاستشارة" : "Consultation prices"}
@@ -476,7 +538,7 @@ export function WelcomeSignupForm({
             onVideoUsd={setVideoPriceUsd}
             paymentLink={paymentLink}
             onPaymentLink={setPaymentLink}
-            disabled={loading}
+            disabled={busy}
           />
           <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
             {t.auth.documentsOptional}
@@ -554,34 +616,42 @@ export function WelcomeSignupForm({
 
       <Pressable
         onPress={submit}
-        disabled={loading}
+        disabled={busy}
         style={({ pressed }) => [
           styles.btn,
           {
             shadowColor: colors.primary,
-            opacity: loading ? 0.7 : pressed ? 0.92 : 1,
+            opacity: busy ? 0.7 : pressed ? 0.92 : 1,
           },
         ]}
       >
         <LinearGradient
-          colors={loading ? ["#94A3B8", "#94A3B8"] : accentGradient}
+          colors={busy ? ["#94A3B8", "#94A3B8"] : accentGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.btnGradient}
         >
-          {loading ? (
+          {busy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.btnText}>{t.auth.signUp}</Text>
+            <Text style={styles.btnText}>
+              {adminDoctorMode
+                ? isRTL
+                  ? "إنشاء حساب طبيب"
+                  : "Create doctor account"
+                : t.auth.signUp}
+            </Text>
           )}
         </LinearGradient>
       </Pressable>
 
-      <Pressable onPress={onSwitchToLogin} style={styles.switchLink}>
-        <Text style={{ color: colors.primary, fontWeight: "600" }}>
-          {t.auth.hasAccountLogIn}
-        </Text>
-      </Pressable>
+      {!adminDoctorMode ? (
+        <Pressable onPress={onSwitchToLogin} style={styles.switchLink}>
+          <Text style={{ color: colors.primary, fontWeight: "600" }}>
+            {t.auth.hasAccountLogIn}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

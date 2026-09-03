@@ -338,12 +338,51 @@ export async function fetchAdminContactMessage(
   return authJson<AdminContactMessageRow>(`/admin/contact-messages/${id}`, token);
 }
 
+export interface AdminDeletedAccountRow {
+  id: string;
+  user_id: string;
+  account_type: "patient" | "doctor";
+  name: string;
+  email: string;
+  phone: string | null;
+  country: string | null;
+  speciality_name: string | null;
+  deleted_by: "self" | "admin";
+  deleted_at: string;
+}
+
+export async function fetchAdminDeletedAccounts(
+  token: string,
+): Promise<AdminDeletedAccountRow[]> {
+  const data = await authJson<AdminDeletedAccountRow[]>(
+    "/admin/deleted-accounts",
+    token,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+export interface AdminLoginStatRow {
+  user_id: string;
+  email: string;
+  login_count: number;
+  last_login_at: string | null;
+  updated_at: string;
+}
+
+export async function fetchAdminLoginAnalytics(
+  token: string,
+): Promise<AdminLoginStatRow[]> {
+  const data = await authJson<AdminLoginStatRow[]>("/admin/analytics/logins", token);
+  return Array.isArray(data) ? data : [];
+}
+
 export interface AdminDoctorRegistrationRow {
   id: string;
   doctor_name: string;
   email: string;
   phone: string;
   country: string;
+  clinic_location: string | null;
   speciality_id: string;
   speciality_name_en: string;
   speciality_name_ar: string;
@@ -512,6 +551,37 @@ export interface AdminMarketingPreview {
   html: string;
   dir: "ltr" | "rtl";
   themeColor: MarketingEmailTheme;
+}
+
+export async function fetchAdminDoctorWelcomeTemplate(
+  token: string,
+  language: MarketingEmailLanguage,
+  themeColor: MarketingEmailTheme = "blue",
+): Promise<AdminMarketingTemplate> {
+  const themeQuery = encodeURIComponent(themeColor);
+  return authJson<AdminMarketingTemplate>(
+    `/admin/doctor-welcome/template/${language}?theme=${themeQuery}`,
+    token,
+  );
+}
+
+export interface AdminDoctorWelcomePreviewInput {
+  sections: MarketingEmailSection[];
+  language: MarketingEmailLanguage;
+  themeColor?: MarketingEmailTheme;
+  previewName?: string;
+  previewEmail?: string;
+  previewPassword?: string;
+}
+
+export async function fetchAdminDoctorWelcomePreview(
+  token: string,
+  input: AdminDoctorWelcomePreviewInput,
+): Promise<AdminMarketingPreview> {
+  return authJson<AdminMarketingPreview>("/admin/doctor-welcome/preview", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function fetchAdminMarketingPreview(

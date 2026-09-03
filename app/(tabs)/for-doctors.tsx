@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { DOCTOR_APPLY_ROUTE } from "@/constants/doctorSignup";
 import { router } from "expo-router";
 import { Activity, CalendarClock, Coins, MessageSquare, ShieldCheck, Video } from "lucide-react-native";
 import React from "react";
@@ -101,7 +102,7 @@ export default function ForDoctorsScreen() {
               </Text>
               <View style={[styles.ctaRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                 <Pressable
-                  onPress={() => router.push({ pathname: "/auth/signup", params: { role: "doctor" } })}
+                  onPress={() => router.push(DOCTOR_APPLY_ROUTE)}
                   style={({ pressed }) => [
                     primaryButton(),
                     styles.cta,
@@ -112,20 +113,6 @@ export default function ForDoctorsScreen() {
                   ]}
                 >
                   <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
-                    {t.landing.forDoctorsCta}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push("/register-with-us")}
-                  style={({ pressed }) => [
-                    styles.ctaSecondary,
-                    {
-                      borderColor: colors.primary,
-                      backgroundColor: pressed ? `${colors.primary}12` : colors.card,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.ctaSecondaryText, { color: colors.primary }]}>
                     {t.landing.registerWithUsCta}
                   </Text>
                 </Pressable>

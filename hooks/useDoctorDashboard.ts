@@ -6,7 +6,6 @@ import {
 } from "@/domains/auth/profile-api";
 import { fetchMyConsultations, type DoctorConsultation } from "@/domains/consultations/api";
 import { fetchUnreadNotificationCount } from "@/domains/notifications/api";
-import { fetchPointsBalance } from "@/domains/points/api";
 import { countUpcomingVideoCalls } from "@/domains/appointments/upcomingVideoCalls";
 
 export type DoctorDashboardMetrics = {
@@ -14,7 +13,6 @@ export type DoctorDashboardMetrics = {
   upcomingVideoCalls: number;
   openConsultations: number;
   unreadNotifications: number;
-  reimbursableCredits: number;
 };
 
 const EMPTY_METRICS: DoctorDashboardMetrics = {
@@ -22,7 +20,6 @@ const EMPTY_METRICS: DoctorDashboardMetrics = {
   upcomingVideoCalls: 0,
   openConsultations: 0,
   unreadNotifications: 0,
-  reimbursableCredits: 0,
 };
 
 function isToday(date: string): boolean {
@@ -39,11 +36,10 @@ export function useDoctorDashboard(accessToken: string | null, role: string | nu
   const load = useCallback(async () => {
     if (!accessToken || role?.toLowerCase() !== "doctor") return;
     try {
-      const [appointments, consultationList, pointsSummary, profile, unreadNotifications] =
+      const [appointments, consultationList, profile, unreadNotifications] =
         await Promise.all([
           fetchMyAppointments(accessToken),
           fetchMyConsultations(accessToken),
-          fetchPointsBalance(accessToken),
           fetchAccountProfile(accessToken, role),
           fetchUnreadNotificationCount(accessToken).catch(() => 0),
         ]);
@@ -59,7 +55,6 @@ export function useDoctorDashboard(accessToken: string | null, role: string | nu
         upcomingVideoCalls,
         openConsultations,
         unreadNotifications,
-        reimbursableCredits: pointsSummary.message_points ?? 0,
       });
       setConsultations(consultationList.filter((c) => c.status === "open"));
       setAccount(profile);

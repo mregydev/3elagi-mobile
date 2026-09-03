@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { CalendarClock, Coins, Bell, Users, Video } from "lucide-react-native";
+import { CalendarClock, Bell, Users, Video } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
@@ -7,7 +7,6 @@ import type { DoctorDashboardMetrics } from "@/hooks/useDoctorDashboard";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { formatEgp } from "@/utils/credits";
 import { alignText, flexRow } from "@/utils/rtl";
 
 interface Props {
@@ -49,13 +48,6 @@ export function HomeDoctorSummary({ metrics }: Props) {
       value: String(metrics.unreadNotifications),
       icon: Bell,
       onPress: () => router.push("/(tabs)/notifications"),
-    },
-    {
-      key: "credits",
-      label: t.doctorDashboard.reimbursableCredits,
-      value: formatEgp(metrics.reimbursableCredits, t),
-      icon: Coins,
-      onPress: () => router.push("/(tabs)/consultations"),
     },
   ];
 

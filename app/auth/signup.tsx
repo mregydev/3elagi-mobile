@@ -39,7 +39,7 @@ import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
   PATIENT_COUNTRY_CODES,
-  type MarketCountryCode,
+  type DoctorSignupCountryCode,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { defaultDoctorFeeFormValues, feeValue } from "@/domains/doctor/fees";
@@ -47,6 +47,7 @@ import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
+import { DOCTOR_APPLY_ROUTE } from "@/constants/doctorSignup";
 import {
   hasFieldErrors,
   validateSignupFields,
@@ -100,7 +101,7 @@ export default function SignupScreen() {
   const [specialityId, setSpecialityId] = useState<string>("");
   const initialDoctorMarket = getDoctorSignupMarket() ?? "EG";
   const initialDoctorFees = defaultDoctorFeeFormValues(initialDoctorMarket);
-  const [doctorMarket, setDoctorMarket] = useState<MarketCountryCode>(initialDoctorMarket);
+  const [doctorMarket, setDoctorMarket] = useState<DoctorSignupCountryCode>(initialDoctorMarket);
   const [textPriceLocal, setTextPriceLocal] = useState(initialDoctorFees.textLocal);
   const [textPriceUsd, setTextPriceUsd] = useState(initialDoctorFees.textUsd);
   const [videoPriceLocal, setVideoPriceLocal] = useState(initialDoctorFees.videoLocal);
@@ -117,7 +118,9 @@ export default function SignupScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (roleParam === "doctor") setRole("doctor");
+    if (roleParam === "doctor") {
+      router.replace(DOCTOR_APPLY_ROUTE);
+    }
   }, [roleParam]);
 
   useEffect(() => {
@@ -136,7 +139,7 @@ export default function SignupScreen() {
       ? t.auth.phonePlaceholderJordan
       : t.auth.phonePlaceholder;
 
-  const applyDoctorMarket = (market: MarketCountryCode) => {
+  const applyDoctorMarket = (market: DoctorSignupCountryCode) => {
     setDoctorMarket(market);
     const fees = defaultDoctorFeeFormValues(market);
     setTextPriceLocal(fees.textLocal);
@@ -393,22 +396,14 @@ export default function SignupScreen() {
           />
           <RoleChip
             active={role === "doctor"}
-            onPress={() => {
-              setRole("doctor");
-              setMedicalRecordsConsent(false);
-              setFieldErrors((prev) => ({
-                ...prev,
-                medicalRecordsConsent: undefined,
-                country: undefined,
-              }));
-            }}
+            onPress={() => router.push(DOCTOR_APPLY_ROUTE)}
             label={t.auth.doctor}
             Icon={Stethoscope}
             colors={colors}
           />
         </View>
 
-        <GoogleAuthButton dividerBelow signupRole={role} />
+        <GoogleAuthButton dividerBelow signupRole="patient" />
 
         <Pressable
           onPress={() => setFormOpen((open) => !open)}

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import {
+  fetchAdminDoctorWelcomePreview,
   fetchAdminMarketingPreview,
   type MarketingEmailLanguage,
   type MarketingEmailTheme,
@@ -15,6 +16,9 @@ interface Props {
   themeColor: MarketingEmailTheme;
   previewName: string;
   active: boolean;
+  previewKind?: "marketing" | "doctor-welcome";
+  previewEmail?: string;
+  previewPassword?: string;
 }
 
 export function MarketingEmailPreview({
@@ -24,6 +28,9 @@ export function MarketingEmailPreview({
   themeColor,
   previewName,
   active,
+  previewKind = "marketing",
+  previewEmail,
+  previewPassword,
 }: Props) {
   const colors = useColors();
   const [html, setHtml] = useState("");
@@ -45,12 +52,21 @@ export function MarketingEmailPreview({
     const timer = setTimeout(() => {
       setLoading(true);
       setError(null);
-      void fetchAdminMarketingPreview(accessToken, {
-        sections,
-        language,
-        themeColor,
-        previewName,
-      })
+      void (previewKind === "doctor-welcome"
+        ? fetchAdminDoctorWelcomePreview(accessToken, {
+            sections,
+            language,
+            themeColor,
+            previewName,
+            previewEmail,
+            previewPassword,
+          })
+        : fetchAdminMarketingPreview(accessToken, {
+            sections,
+            language,
+            themeColor,
+            previewName,
+          }))
         .then((result) => {
           if (requestId !== requestIdRef.current) return;
           setHtml(result.html);
@@ -68,7 +84,17 @@ export function MarketingEmailPreview({
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [accessToken, active, language, previewName, sections, themeColor]);
+  }, [
+    accessToken,
+    active,
+    language,
+    previewEmail,
+    previewKind,
+    previewName,
+    previewPassword,
+    sections,
+    themeColor,
+  ]);
 
   if (Platform.OS !== "web") return null;
 

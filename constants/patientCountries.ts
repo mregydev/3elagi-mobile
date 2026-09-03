@@ -28,6 +28,11 @@ import {
 export const MARKET_COUNTRY_CODES = ["EG", "JO"] as const;
 export type MarketCountryCode = (typeof MARKET_COUNTRY_CODES)[number];
 
+/** Countries offered on doctor signup and register-with-us forms. */
+export const DOCTOR_SIGNUP_COUNTRY_CODES = ["EG", "JO", "US", "GB"] as const;
+export type DoctorSignupCountryCode =
+  (typeof DOCTOR_SIGNUP_COUNTRY_CODES)[number];
+
 export const DEFAULT_PATIENT_COUNTRY: MarketCountryCode = "EG";
 
 /** @deprecated use MARKET_COUNTRY_CODES — alias for roster filter. */
@@ -51,6 +56,14 @@ export function isPatientCountryCode(value: string): value is PatientCountryCode
 
 export function isMarketCountryCode(value: string): value is MarketCountryCode {
   return (MARKET_COUNTRY_CODES as readonly string[]).includes(
+    value.trim().toUpperCase(),
+  );
+}
+
+export function isDoctorSignupCountryCode(
+  value: string,
+): value is DoctorSignupCountryCode {
+  return (DOCTOR_SIGNUP_COUNTRY_CODES as readonly string[]).includes(
     value.trim().toUpperCase(),
   );
 }

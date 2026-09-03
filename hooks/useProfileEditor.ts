@@ -18,6 +18,12 @@ import {
 import { uploadFile } from "@/domains/medical/api";
 import { feeText, feeValue } from "@/domains/doctor/fees";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
+import {
+  ensureDoctorOnboarding,
+  fetchDoctorMeTourState,
+} from "@/domains/onboarding/doctorTourApi";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
+import { useChatStore } from "@/domains/chat/store";
 
 interface Options {
   accessToken: string;
@@ -236,6 +242,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       return false;
     }
     setSaving(true);
+    const previousPrimarySpecialityId =
+      account?.specialityIds?.[0] ?? account?.specialityId ?? "";
     try {
       let nextPhotoUrl = photoUrl ?? null;
       if (photoDirty && photoUri) {
@@ -284,6 +292,29 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhotoUrl(updated.avatarUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
+      if (isDoctor) {
+        const spec = specialities.find((s) => s.id === specialityId);
+        useAuthStore.setState({
+          specialityId: specialityId || null,
+          specialty: spec?.nameEn ?? useAuthStore.getState().specialty,
+        });
+
+        if (specialityId && specialityId !== previousPrimarySpecialityId) {
+          const tourState = await fetchDoctorMeTourState(accessToken);
+          const testPatientId =
+            tourState?.onboarding_test_patient_user_id ??
+            (await ensureDoctorOnboarding(accessToken));
+          if (testPatientId) {
+            useProductTourStore.getState().setTestPatientUserId(testPatientId);
+          }
+          const profileId = useAuthStore.getState().profile?.id;
+          if (profileId) {
+            await useChatStore
+              .getState()
+              .loadConversations(accessToken, profileId, role);
+          }
+        }
+      }
       if (isDoctor && digitalSignatureDirty) {
         setDigitalSignatureDirty(false);
         setDigitalSignatureLocalUri(null);

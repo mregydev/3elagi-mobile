@@ -38,8 +38,10 @@ export interface SignupInput extends Credentials {
   paymentLink?: string;
   /** @deprecated Legacy points price — defaults on the server when omitted. */
   consultationPrice?: number;
-  /** ISO country code — patients: residence; doctors: EG or JO. */
+  /** ISO country code — patients: residence; doctors: practice country. */
   country?: string;
+  /** Optional clinic address when signing up as a doctor. */
+  clinicLocation?: string;
   medicalRecordsStorageConsent?: boolean;
 }
 

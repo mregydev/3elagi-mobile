@@ -1,12 +1,26 @@
-import { Languages, Palette, SunMoon, X } from "lucide-react-native";
-import React from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Languages, Palette, SunMoon, Trash2, X } from "lucide-react-native";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { AccentPicker } from "@/components/AccentPicker";
 import { LanguageDropdown } from "@/components/language/LanguageDropdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { deleteOwnAccount } from "@/domains/auth/account-api";
+import { getPostLogoutRoute } from "@/domains/auth/navigation";
+import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 interface Props {
   visible: boolean;
@@ -18,6 +32,41 @@ export function AppSettingsModal({ visible, onClose }: Props) {
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
+  const role = useAuthStore((s) => s.role);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const logout = useAuthStore((s) => s.logout);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const canDeleteAccount =
+    role?.toLowerCase() === "doctor" || role?.toLowerCase() === "patient";
+
+  const closeDelete = () => {
+    setDeleteOpen(false);
+    setDeletePassword("");
+  };
+
+  const confirmDelete = async () => {
+    if (!accessToken || !deletePassword.trim()) {
+      showErrorToast(t.settings.deleteAccountFailed, t.auth.fieldRequired);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteOwnAccount(accessToken, deletePassword);
+      showSuccessToast(t.settings.deleteAccountSuccess);
+      closeDelete();
+      onClose();
+      logout();
+      router.replace(getPostLogoutRoute());
+    } catch (e) {
+      showErrorToast(t.settings.deleteAccountFailed, (e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <Modal
@@ -82,10 +131,97 @@ export function AppSettingsModal({ visible, onClose }: Props) {
               dir={dir}
               textAlign={textAlign}
               colors={colors}
-              isLast
+              isLast={!canDeleteAccount}
             >
               <AccentPicker />
             </SettingRow>
+
+            {canDeleteAccount ? (
+              <View
+                style={[
+                  styles.dangerZone,
+                  { borderTopColor: colors.border },
+                ]}
+              >
+                <View style={[styles.dangerHead, { flexDirection: dir }]}>
+                  <Trash2 size={18} color={colors.destructive} />
+                  <Text style={[styles.dangerTitle, { color: colors.destructive, textAlign }]}>
+                    {t.settings.deleteAccount}
+                  </Text>
+                </View>
+                <Text style={[styles.dangerHint, { color: colors.mutedForeground, textAlign }]}>
+                  {t.settings.deleteAccountHint}
+                </Text>
+                {!deleteOpen ? (
+                  <Pressable
+                    onPress={() => setDeleteOpen(true)}
+                    style={({ pressed }) => [
+                      styles.deleteBtn,
+                      {
+                        borderColor: colors.destructive,
+                        opacity: pressed ? 0.88 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={{ color: colors.destructive, fontWeight: "800" }}>
+                      {t.settings.deleteAccount}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <View style={styles.deleteForm}>
+                    <Text style={[styles.dangerHint, { color: colors.foreground, textAlign }]}>
+                      {t.settings.deleteAccountConfirmBody}
+                    </Text>
+                    <AppTextInput
+                      value={deletePassword}
+                      onChangeText={setDeletePassword}
+                      placeholder={t.settings.deleteAccountPassword}
+                      secureTextEntry
+                      editable={!deleting}
+                      style={[
+                        styles.passwordInput,
+                        {
+                          backgroundColor: colors.muted,
+                          borderColor: colors.border,
+                          color: colors.foreground,
+                          textAlign,
+                        },
+                      ]}
+                    />
+                    <View style={[styles.deleteActions, { flexDirection: dir }]}>
+                      <Pressable
+                        onPress={closeDelete}
+                        disabled={deleting}
+                        style={styles.cancelDeleteBtn}
+                      >
+                        <Text style={{ color: colors.mutedForeground, fontWeight: "700" }}>
+                          {t.common.cancel}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void confirmDelete()}
+                        disabled={deleting}
+                        style={({ pressed }) => [
+                          styles.confirmDeleteBtn,
+                          {
+                            backgroundColor: colors.destructive,
+                            opacity: pressed || deleting ? 0.85 : 1,
+                          },
+                        ]}
+                      >
+                        {deleting ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
+                          <Text style={{ color: "#fff", fontWeight: "800" }}>
+                            {t.settings.deleteAccountAction}
+                          </Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : null}
           </View>
         </Pressable>
       </Pressable>
@@ -175,4 +311,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   settingLabel: { fontSize: 15, fontWeight: "500" },
+  dangerZone: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  dangerHead: { alignItems: "center", gap: 8 },
+  dangerTitle: { fontSize: 15, fontWeight: "800", flex: 1 },
+  dangerHint: { fontSize: 13, lineHeight: 18 },
+  deleteBtn: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  deleteForm: { gap: 10, marginTop: 4 },
+  passwordInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 15,
+  },
+  deleteActions: { gap: 10, alignItems: "center", justifyContent: "flex-end" },
+  cancelDeleteBtn: { paddingHorizontal: 12, paddingVertical: 10 },
+  confirmDeleteBtn: {
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    minWidth: 140,
+    alignItems: "center",
+  },
 });

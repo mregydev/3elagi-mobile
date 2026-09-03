@@ -36,7 +36,7 @@ export function navigateGoogleNoAccount(
       error: "google_no_account",
       email: payload.email,
       name: payload.name,
-      ...(payload.role ? { role: payload.role } : {}),
+      ...(payload.role === "patient" ? { role: payload.role } : {}),
     },
   });
 }

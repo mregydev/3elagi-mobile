@@ -22,12 +22,18 @@ export interface DoctorFees {
 export const DEFAULT_DOCTOR_FEES = {
   EG: { local: 200, usd: 50 },
   JO: { local: 15, usd: 50 },
+  INTL: { local: 50, usd: 50 },
 } as const;
 
 /** Pre-filled signup / profile form strings for a doctor's market. */
 export function defaultDoctorFeeFormValues(country?: string | null) {
   const code = country?.trim().toUpperCase();
-  const fees = code === "JO" ? DEFAULT_DOCTOR_FEES.JO : DEFAULT_DOCTOR_FEES.EG;
+  const fees =
+    code === "JO"
+      ? DEFAULT_DOCTOR_FEES.JO
+      : code === "EG"
+        ? DEFAULT_DOCTOR_FEES.EG
+        : DEFAULT_DOCTOR_FEES.INTL;
   const local = String(fees.local);
   const usd = String(fees.usd);
   return { textLocal: local, textUsd: usd, videoLocal: local, videoUsd: usd };

@@ -8,8 +8,11 @@ import {
   Mail,
   Megaphone,
   MessageSquare,
+  BarChart3,
   Star,
   Stethoscope,
+  Trash2,
+  UserPlus,
 } from "lucide-react-native";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -22,6 +25,7 @@ import { useColors } from "@/hooks/useColors";
 
 type AdminNavKey =
   | "doctors"
+  | "doctorSignup"
   | "chats"
   | "contact"
   | "doctorRegistrations"
@@ -30,7 +34,9 @@ type AdminNavKey =
   | "pricing"
   | "rag"
   | "complaints"
-  | "marketing";
+  | "marketing"
+  | "deletedAccounts"
+  | "analytics";
 
 const NAV: {
   key: AdminNavKey;
@@ -39,6 +45,12 @@ const NAV: {
   Icon: React.ComponentType<{ size?: number; color?: string }>;
 }[] = [
   { key: "doctors", label: "Doctors", href: "/admin", Icon: Stethoscope },
+  {
+    key: "doctorSignup",
+    label: "Add doctor",
+    href: "/admin/doctor-signup",
+    Icon: UserPlus,
+  },
   { key: "chats", label: "Chats", href: "/admin/chats", Icon: MessageSquare },
   {
     key: "contact",
@@ -83,9 +95,22 @@ const NAV: {
     href: "/admin/complaints",
     Icon: FileWarning,
   },
+  {
+    key: "analytics",
+    label: "Analytics",
+    href: "/admin/analytics",
+    Icon: BarChart3,
+  },
+  {
+    key: "deletedAccounts",
+    label: "Deleted accounts",
+    href: "/admin/deleted-accounts",
+    Icon: Trash2,
+  },
 ];
 
 function activeKey(pathname: string): AdminNavKey {
+  if (pathname.includes("/admin/doctor-signup")) return "doctorSignup";
   if (pathname.includes("/admin/chats")) return "chats";
   if (pathname.includes("/admin/contact-messages")) return "contact";
   if (pathname.includes("/admin/doctor-registrations")) return "doctorRegistrations";
@@ -95,6 +120,8 @@ function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/rag")) return "rag";
   if (pathname.includes("/admin/complaints")) return "complaints";
   if (pathname.includes("/admin/marketing")) return "marketing";
+  if (pathname.includes("/admin/deleted-accounts")) return "deletedAccounts";
+  if (pathname.includes("/admin/analytics")) return "analytics";
   return "doctors";
 }
 

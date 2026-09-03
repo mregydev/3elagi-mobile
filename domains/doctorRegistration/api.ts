@@ -6,6 +6,7 @@ export async function submitDoctorRegistration(input: {
   phone: string;
   country: string;
   specialityId: string;
+  clinicLocation?: string;
 }): Promise<void> {
   const res = await fetch(`${API_BASE}/doctor-registration-requests`, {
     method: "POST",
@@ -16,6 +17,7 @@ export async function submitDoctorRegistration(input: {
       phone: input.phone.trim(),
       country: input.country.trim().toUpperCase(),
       speciality_id: input.specialityId,
+      clinic_location: input.clinicLocation?.trim() || undefined,
     }),
   });
   const data = await res.json().catch(() => ({}));

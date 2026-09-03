@@ -22,6 +22,7 @@ import { HomeHealthSummary } from "@/components/home/HomeHealthSummary";
 import { DoctorHomeBrowse } from "@/components/home/DoctorHomeBrowse";
 import { PublicLandingSections } from "@/components/marketing/PublicLandingSections";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
+import { useRecordAppVisit } from "@/hooks/useRecordAppVisit";
 import { SpecialityGrid } from "@/components/SpecialityBrowse";
 import { HOME_NAV_RESET_EVENT } from "@/constants/appNav";
 import { patientCountryLabel } from "@/constants/patientCountries";
@@ -330,6 +331,7 @@ function ChatsHomeBrowse() {
 
 export default function ChatsTab() {
   const colors = useColors();
+  useRecordAppVisit();
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

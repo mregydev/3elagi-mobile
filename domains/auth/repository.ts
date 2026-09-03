@@ -8,6 +8,11 @@ import {
   withAuthRequestInit,
 } from "@/domains/auth/http";
 import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, SignupInput, SignupFile } from "./types";
+import type {
+  MarketingEmailLanguage,
+  MarketingEmailTheme,
+} from "@/domains/admin/api";
+import type { MarketingEmailSection } from "@/domains/admin/marketingSections";
 
 export class AuthApiError extends Error {
   code?: string;
@@ -322,6 +327,7 @@ export const authRepository = {
           video_price_local: input.videoPriceLocal ?? undefined,
           video_price_usd: input.videoPriceUsd ?? undefined,
           payment_link: input.paymentLink?.trim() || undefined,
+          clinic_location: input.clinicLocation?.trim() || undefined,
         })
       : await post<RawAuthResponse>("/auth/register/patient", {
           email,
@@ -348,6 +354,49 @@ export const authRepository = {
     }
 
     return session;
+  },
+
+  async createAdminDoctor(
+    adminToken: string,
+    input: SignupInput,
+    welcomeEmail?: {
+      send: boolean;
+      language: MarketingEmailLanguage;
+      themeColor?: MarketingEmailTheme;
+      sections?: MarketingEmailSection[];
+    },
+  ): Promise<{ welcomeEmailOk?: boolean; welcomeEmailError?: string }> {
+    const email = input.email.trim().toLowerCase();
+    const raw = await authPost<RawAuthResponse & {
+      welcome_email?: { ok: boolean; error?: string };
+    }>("/admin/doctors", adminToken, {
+      email,
+      password: input.password,
+      name: input.name.trim(),
+      phone: input.phone ?? "",
+      country: (input.country ?? "EG").trim().toUpperCase(),
+      speciality_id: input.specialityId,
+      consultation_price: input.consultationPrice ?? 1,
+      text_price_local: input.textPriceLocal ?? undefined,
+      text_price_usd: input.textPriceUsd ?? undefined,
+      video_price_local: input.videoPriceLocal ?? undefined,
+      video_price_usd: input.videoPriceUsd ?? undefined,
+      payment_link: input.paymentLink?.trim() || undefined,
+      clinic_location: input.clinicLocation?.trim() || undefined,
+      send_welcome_email: welcomeEmail?.send === true,
+      welcome_email_language: welcomeEmail?.language,
+      welcome_email_theme: welcomeEmail?.themeColor,
+      welcome_email_sections: welcomeEmail?.sections,
+    });
+    const uploadToken = raw.access_token || "";
+    if (uploadToken) {
+      await applySignupUploads(input, uploadToken, true).catch(() => undefined);
+    }
+    const welcome = raw.welcome_email;
+    return {
+      welcomeEmailOk: welcome?.ok,
+      welcomeEmailError: welcome?.error,
+    };
   },
 
   async verifyEmail(email: string, code: string): Promise<AuthSession> {

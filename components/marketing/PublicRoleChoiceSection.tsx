@@ -1,3 +1,4 @@
+import { DOCTOR_APPLY_ROUTE } from "@/constants/doctorSignup";
 import { router } from "expo-router";
 import { Stethoscope, UserRound } from "lucide-react-native";
 import React from "react";
@@ -37,7 +38,7 @@ export function PublicRoleChoiceSection({ onPatientContinue }: Props) {
       cta: t.landing.roleDoctorCta,
       icon: Stethoscope,
       primary: false,
-      onPress: () => router.push({ pathname: "/auth/signup", params: { role: "doctor" } }),
+      onPress: () => router.push(DOCTOR_APPLY_ROUTE),
     },
   ];
 

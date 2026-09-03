@@ -1,5 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -87,10 +88,11 @@ import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { TourAnchor } from "@/components/onboarding/TourAnchor";
+import { fetchTestPatientChatStatus, type TestPatientChatStatus } from "@/domains/doctor/testPatientChatApi";
 import { registerTourAnchorHandler } from "@/domains/onboarding/tourAnchorActions";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
@@ -119,6 +121,7 @@ interface ChatScreenProps {
 
 export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { isRTL, t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
@@ -211,6 +214,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     string | null
   >(null);
   const [selfDoctorEntityId, setSelfDoctorEntityId] = useState<string | null>(null);
+  const [testPatientStatus, setTestPatientStatus] = useState<TestPatientChatStatus | null>(null);
   const listRef = useRef<FlatList<ChatListItem>>(null);
   const chatBodyRef = useRef<View>(null);
   const sendingRef = useRef(false);
@@ -238,14 +242,15 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const isDoctor = role?.toLowerCase() === "doctor";
   const isPatient = role?.toLowerCase() === "patient";
   const isAdmin = role?.toLowerCase() === "admin";
+  const isDemoPatientChat = isDoctor && !!testPatientStatus?.is_test_patient;
   const canOpenPatientRecord =
     isDoctor &&
     peer?.role === "patient" &&
-    canDoctorViewPatientRecords(accessStatus);
+    (isDemoPatientChat || canDoctorViewPatientRecords(accessStatus));
 
   const openPatientRecord = useCallback(() => {
     if (!id || !isDoctor || peer?.role !== "patient") return;
-    if (!canDoctorViewPatientRecords(accessStatus)) {
+    if (!isDemoPatientChat && !canDoctorViewPatientRecords(accessStatus)) {
       Alert.alert(
         isRTL ? "لا يوجد صلاحية" : "No access",
         isRTL
@@ -258,7 +263,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       pathname: "/patients/[userId]",
       params: { userId: id, name: peer?.name ?? "" },
     });
-  }, [id, isDoctor, peer?.role, peer?.name, accessStatus, isRTL, router]);
+  }, [id, isDoctor, peer?.role, peer?.name, accessStatus, isDemoPatientChat, isRTL, router]);
 
   useEffect(() => {
     if (!canOpenPatientRecord) return;
@@ -295,15 +300,16 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   );
   /** Previous consultations' messages — collapsed by default under a toggle. */
   const [archiveExpanded, setArchiveExpanded] = useState(false);
-  // Doctor↔patient can only message while a consultation is open.
-  const needsConsultation = isDoctorPatientChat && !consultationOpen;
-  const canUseDiagnosisTemplates = canOpenPatientRecord && consultationOpen;
+  // Doctor↔patient can only message while a consultation is open — except AI demo patient.
+  const needsConsultation = isDoctorPatientChat && !consultationOpen && !isDemoPatientChat;
+  const canUseDiagnosisTemplates =
+    canOpenPatientRecord && (consultationOpen || isDemoPatientChat);
   const chatBlocked = !!accessStatus?.is_blocked;
   const patientUserIdForLinks =
     isDoctor && peer?.role === "patient" ? peer.id : undefined;
   const canOpenSharedMedicalLinks =
     isDoctor && peer?.role === "patient"
-      ? !!accessStatus?.records_allowed && !accessStatus?.is_blocked
+      ? (isDemoPatientChat || !!accessStatus?.records_allowed) && !accessStatus?.is_blocked
       : isDoctorDoctorChat
         ? false
         : true;
@@ -379,6 +385,32 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       cancelled = true;
     };
   }, [id, accessToken, isDoctorPatientChat]);
+
+  useEffect(() => {
+    if (!id || !accessToken || !isDoctor || !isDoctorPatientChat) {
+      setTestPatientStatus(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchTestPatientChatStatus(accessToken, id)
+      .then((status) => {
+        if (cancelled) return;
+        setTestPatientStatus(status);
+        if (status.is_test_patient) {
+          void fetchDoctorPatientAccess(accessToken, id)
+            .then((access) => {
+              if (!cancelled) setAccessStatus(access);
+            })
+            .catch(() => undefined);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTestPatientStatus(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, accessToken, isDoctor, isDoctorPatientChat, messages.length]);
 
   useEffect(() => {
     if (!id) return;
@@ -1615,32 +1647,53 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             pressable
             onPress={openPatientRecord}
             accessibilityRole="button"
-            accessibilityLabel={isRTL ? "عرض السجل" : "View Record"}
+            accessibilityLabel={isRTL ? "عرض السجل الطبي" : "View medical records"}
             hitSlop={8}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
               styles.viewRecordBtn,
-              {
-                borderColor: colors.primary,
-                backgroundColor:
-                  pressed || hovered ? `${colors.primary}14` : colors.card,
-              },
+              Platform.OS === "web"
+                ? ({
+                    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.14)",
+                  } as object)
+                : null,
+              { opacity: pressed || hovered ? 0.92 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
             ]}
           >
-            <View style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}>
-              <FileText size={16} color={colors.primary} />
-              <Text
-                style={[styles.viewRecordBtnText, { color: colors.primary }]}
-                numberOfLines={1}
-              >
-                {isRTL ? "عرض السجل" : "View Record"}
+            <LinearGradient
+              colors={accentGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}
+            >
+              <FileText size={17} color="#fff" strokeWidth={2.25} />
+              <Text style={styles.viewRecordBtnText} numberOfLines={1}>
+                {isRTL ? "السجل الطبي" : "Medical records"}
               </Text>
-            </View>
+            </LinearGradient>
           </TourAnchor>
         ) : null}
       </View>
 
       {isDoctorPatientChat && !accessLoading ? (
         <ChatAccessBanner isRTL={isRTL} isDoctor={isDoctor} access={accessStatus} />
+      ) : null}
+
+      {isDoctor && testPatientStatus?.is_test_patient ? (
+        <View
+          style={[
+            styles.testPatientBanner,
+            {
+              backgroundColor: colors.muted,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.testPatientBannerText, { color: colors.foreground }]}>
+            {isRTL
+              ? `مريض 3elagi التجريبي (ذكاء اصطناعي) — ${testPatientStatus.questions_asked}/${testPatientStatus.max_questions} أسئلة. المحادثة مفتوحة — اطلب تحاليل أو أشعة من القائمة +.`
+              : `3elagi AI demo patient — ${testPatientStatus.questions_asked}/${testPatientStatus.max_questions} questions. Chat is open — request labs or X-rays from the + menu.`}
+          </Text>
+        </View>
       ) : null}
 
       <View style={[styles.chatBody, desktopLayout && styles.chatBodyDesktop]}>
@@ -1906,7 +1959,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               peerId={id}
               isPatient={isPatient}
               isDoctor={isDoctor}
-              enabled={isDoctorPatientChat}
+              enabled={isDoctorPatientChat && !isDemoPatientChat}
               token={accessToken}
               isRTL={isRTL}
               colors={colors}
@@ -2160,24 +2213,35 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   peerInfo: { flex: 1, alignItems: "center", gap: 10, minWidth: 0 },
   viewRecordBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
+    borderRadius: 999,
+    overflow: "hidden",
     flexShrink: 0,
-    maxWidth: "42%",
   },
   viewRecordBtnInner: {
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   viewRecordBtnText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     flexShrink: 0,
+    color: "#fff",
+    letterSpacing: 0.2,
   },
   peerName: { fontSize: 16, fontWeight: "700" },
   presence: { fontSize: 12, marginTop: 1 },
+  testPatientBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  testPatientBannerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+  },
   bubbleRow: {
     alignItems: "flex-end",
     gap: 6,

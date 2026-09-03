@@ -70,6 +70,16 @@ const en = {
     changePasswordAction: "Update password",
     changePasswordSuccess: "Password updated successfully.",
     changePasswordFailed: "Could not update password",
+    deleteAccount: "Delete account",
+    deleteAccountHint:
+      "Permanently removes your account, medical records, AI chats, and consultations. This cannot be undone.",
+    deleteAccountConfirmTitle: "Delete your account?",
+    deleteAccountConfirmBody:
+      "All your medical records, AI conversations, and consultations will be permanently deleted.",
+    deleteAccountPassword: "Enter your password to confirm",
+    deleteAccountAction: "Delete my account",
+    deleteAccountSuccess: "Your account was deleted.",
+    deleteAccountFailed: "Could not delete account",
     doctorTags: "Profile tags",
     doctorTagsHint:
       "Add skills, focus areas, or languages patients should know about. Suggestions match your specialities.",
@@ -205,6 +215,8 @@ const en = {
       "You must consent to medical records storage to create a patient account.",
     countryOfResidence: "Country you currently reside in",
     countryOfPractice: "Country of practice",
+    clinicLocationOptional: "Clinic location (optional)",
+    clinicLocationPlaceholder: "City, address, or clinic name",
     countrySearchPlaceholder: "Search country…",
     countryNoResults: "No countries match your search.",
     countryRequired: "Please select a country.",
@@ -212,7 +224,7 @@ const en = {
     doctorMarketRequiredSubtitle:
       "Doctor signup only works on the Egypt or Jordan site. Choose one to continue.",
     doctorMarketRequired:
-      "Open the Egypt or Jordan site URL to sign up as a doctor.",
+      "Please select your country of practice.",
     chooseCountryEyebrow: "3elagi · Country",
     chooseCountryTitle: "Choose your country",
     chooseCountrySubtitle:
@@ -520,6 +532,8 @@ const en = {
     nameLabel: "Doctor name",
     emailLabel: "Email",
     phoneLabel: "Phone number",
+    clinicLocationLabel: "Clinic location (optional)",
+    clinicLocationPlaceholder: "City, address, or clinic name",
     submit: "Submit request",
     sent: "Request sent. We’ll contact you soon.",
     sendFailed: "Could not send your request",
@@ -1051,6 +1065,16 @@ const ar: typeof en = {
     changePasswordAction: "تحديث كلمة المرور",
     changePasswordSuccess: "تم تحديث كلمة المرور بنجاح.",
     changePasswordFailed: "تعذر تحديث كلمة المرور",
+    deleteAccount: "حذف الحساب",
+    deleteAccountHint:
+      "يحذف حسابك نهائياً مع السجلات الطبية ومحادثات الذكاء الاصطناعي والاستشارات. لا يمكن التراجع.",
+    deleteAccountConfirmTitle: "حذف حسابك؟",
+    deleteAccountConfirmBody:
+      "سيتم حذف جميع سجلاتك الطبية ومحادثات الذكاء الاصطناعي والاستشارات نهائياً.",
+    deleteAccountPassword: "أدخل كلمة المرور للتأكيد",
+    deleteAccountAction: "حذف حسابي",
+    deleteAccountSuccess: "تم حذف حسابك.",
+    deleteAccountFailed: "تعذر حذف الحساب",
     doctorTags: "وسوم الملف",
     doctorTagsHint:
       "أضف مهارات أو مجالات اهتمام أو لغات يجب أن يعرفها المرضى. الاقتراحات مرتبطة بتخصصاتك.",
@@ -1186,6 +1210,8 @@ const ar: typeof en = {
       "يجب الموافقة على تخزين السجلات الطبية لإنشاء حساب مريض.",
     countryOfResidence: "البلد الذي تقيم فيه حالياً",
     countryOfPractice: "بلد الممارسة",
+    clinicLocationOptional: "موقع العيادة (اختياري)",
+    clinicLocationPlaceholder: "المدينة أو العنوان أو اسم العيادة",
     countrySearchPlaceholder: "ابحث عن البلد…",
     countryNoResults: "لا توجد دول مطابقة لبحثك.",
     countryRequired: "يرجى اختيار البلد.",
@@ -1193,7 +1219,7 @@ const ar: typeof en = {
     doctorMarketRequiredSubtitle:
       "تسجيل الأطباء متاح فقط على موقع مصر أو الأردن. اختر أحدهما للمتابعة.",
     doctorMarketRequired:
-      "افتح رابط موقع مصر أو الأردن للتسجيل كطبيب.",
+      "يرجى اختيار بلد الممارسة.",
     chooseCountryEyebrow: "3elagi · الدولة",
     chooseCountryTitle: "اختر دولتك",
     chooseCountrySubtitle:
@@ -1489,6 +1515,8 @@ const ar: typeof en = {
     nameLabel: "اسم الطبيب",
     emailLabel: "البريد الإلكتروني",
     phoneLabel: "رقم الهاتف",
+    clinicLocationLabel: "موقع العيادة (اختياري)",
+    clinicLocationPlaceholder: "المدينة أو العنوان أو اسم العيادة",
     submit: "إرسال الطلب",
     sent: "تم إرسال الطلب. سنتواصل معك قريبًا.",
     sendFailed: "تعذر إرسال الطلب",
@@ -2018,6 +2046,16 @@ const de: typeof en = {
     changePasswordAction: "Passwort aktualisieren",
     changePasswordSuccess: "Passwort erfolgreich aktualisiert.",
     changePasswordFailed: "Passwort konnte nicht aktualisiert werden",
+    deleteAccount: "Konto löschen",
+    deleteAccountHint:
+      "Entfernt Ihr Konto dauerhaft einschließlich medizinischer Unterlagen, KI-Chats und Konsultationen.",
+    deleteAccountConfirmTitle: "Konto löschen?",
+    deleteAccountConfirmBody:
+      "Alle medizinischen Unterlagen, KI-Gespräche und Konsultationen werden dauerhaft gelöscht.",
+    deleteAccountPassword: "Passwort zur Bestätigung eingeben",
+    deleteAccountAction: "Mein Konto löschen",
+    deleteAccountSuccess: "Ihr Konto wurde gelöscht.",
+    deleteAccountFailed: "Konto konnte nicht gelöscht werden",
     doctorTags: "Profil-Tags",
     doctorTagsHint:
       "Fügen Sie Fähigkeiten, Schwerpunkte oder Sprachen hinzu. Vorschläge passen zu Ihren Fachgebieten.",
@@ -2153,6 +2191,8 @@ const de: typeof en = {
       "Sie müssen der Speicherung medizinischer Aufzeichnungen zustimmen, um ein Patientenkonto zu erstellen.",
     countryOfResidence: "Land, in dem Sie derzeit wohnen",
     countryOfPractice: "Land der Praxis",
+    clinicLocationOptional: "Klinikstandort (optional)",
+    clinicLocationPlaceholder: "Stadt, Adresse oder Klinikname",
     countrySearchPlaceholder: "Land suchen…",
     countryNoResults: "Keine Länder passen zu Ihrer Suche.",
     countryRequired: "Bitte wählen Sie ein Land.",
@@ -2160,7 +2200,7 @@ const de: typeof en = {
     doctorMarketRequiredSubtitle:
       "Arzt-Registrierung nur auf der Ägypten- oder Jordanien-Seite. Wählen Sie eine aus, um fortzufahren.",
     doctorMarketRequired:
-      "Öffnen Sie die Ägypten- oder Jordanien-URL, um sich als Arzt zu registrieren.",
+      "Bitte wählen Sie Ihr Praxisland.",
     chooseCountryEyebrow: "3elagi · Land",
     chooseCountryTitle: "Wählen Sie Ihr Land",
     chooseCountrySubtitle:
@@ -2460,6 +2500,8 @@ const de: typeof en = {
     nameLabel: "Name des Arztes",
     emailLabel: "E-Mail",
     phoneLabel: "Telefonnummer",
+    clinicLocationLabel: "Klinikstandort (optional)",
+    clinicLocationPlaceholder: "Stadt, Adresse oder Klinikname",
     submit: "Anfrage senden",
     sent: "Anfrage gesendet. Wir melden uns bald bei Ihnen.",
     sendFailed: "Anfrage konnte nicht gesendet werden",
@@ -2991,6 +3033,16 @@ const es: typeof en = {
     changePasswordAction: "Actualizar contraseña",
     changePasswordSuccess: "Contraseña actualizada correctamente.",
     changePasswordFailed: "No se pudo actualizar la contraseña",
+    deleteAccount: "Eliminar cuenta",
+    deleteAccountHint:
+      "Elimina permanentemente tu cuenta, registros médicos, chats de IA y consultas.",
+    deleteAccountConfirmTitle: "¿Eliminar tu cuenta?",
+    deleteAccountConfirmBody:
+      "Se eliminarán permanentemente todos tus registros médicos, conversaciones de IA y consultas.",
+    deleteAccountPassword: "Introduce tu contraseña para confirmar",
+    deleteAccountAction: "Eliminar mi cuenta",
+    deleteAccountSuccess: "Tu cuenta fue eliminada.",
+    deleteAccountFailed: "No se pudo eliminar la cuenta",
     doctorTags: "Etiquetas del perfil",
     doctorTagsHint:
       "Añade habilidades, áreas de enfoque o idiomas. Las sugerencias coinciden con tus especialidades.",
@@ -3126,6 +3178,8 @@ const es: typeof en = {
       "Debes consentir el almacenamiento de registros médicos para crear una cuenta de paciente.",
     countryOfResidence: "País en el que resides actualmente",
     countryOfPractice: "País de práctica",
+    clinicLocationOptional: "Ubicación de la clínica (opcional)",
+    clinicLocationPlaceholder: "Ciudad, dirección o nombre de la clínica",
     countrySearchPlaceholder: "Buscar país…",
     countryNoResults: "Ningún país coincide con tu búsqueda.",
     countryRequired: "Selecciona un país.",
@@ -3133,7 +3187,7 @@ const es: typeof en = {
     doctorMarketRequiredSubtitle:
       "El registro de médicos solo funciona en el sitio de Egipto o Jordania. Elige uno para continuar.",
     doctorMarketRequired:
-      "Abre la URL del sitio de Egipto o Jordania para registrarte como médico.",
+      "Selecciona tu país de práctica.",
     chooseCountryEyebrow: "3elagi · País",
     chooseCountryTitle: "Elige tu país",
     chooseCountrySubtitle:
@@ -3432,6 +3486,8 @@ const es: typeof en = {
     nameLabel: "Nombre del médico",
     emailLabel: "Correo electrónico",
     phoneLabel: "Teléfono",
+    clinicLocationLabel: "Ubicación de la clínica (opcional)",
+    clinicLocationPlaceholder: "Ciudad, dirección o nombre de la clínica",
     submit: "Enviar solicitud",
     sent: "Solicitud enviada. Nos pondremos en contacto pronto.",
     sendFailed: "No se pudo enviar la solicitud",
