@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentry Logs Test</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 24px;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      pre {
+        background: #1e293b;
+        padding: 16px;
+        border-radius: 8px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sentry Logs Test</h1>
+    <pre id="output">Running…</pre>
+
+    <script>
+      const API_BASE = "http://localhost:8080/3eyadahub-api";
+
+      async function testSentryLogs() {
+        const output = document.getElementById("output");
+
+        try {
+          const response = await fetch(`${API_BASE}/sentry/logs`);
+          const data = await response.json();
+
+          console.log("Status:", response.status);
+          console.log("Data:", data);
+
+          output.textContent =
+            `Status: ${response.status}\n\n` + JSON.stringify(data, null, 2);
+        } catch (error) {
+          console.error(error);
+          output.textContent = `Error:\n${error}`;
+        }
+      }
+
+      testSentryLogs();
+    </script>
+  </body>
+</html>

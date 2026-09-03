@@ -30,18 +30,9 @@ export interface SignupInput extends Credentials {
   graduationCert?: SignupFile;
   workPermit?: SignupFile;
   specialityId?: string;
-  /** Cash fees: home currency for patients in the doctor's country, USD abroad. */
-  textPriceLocal?: number | null;
-  textPriceUsd?: number | null;
-  videoPriceLocal?: number | null;
-  videoPriceUsd?: number | null;
-  paymentLink?: string;
-  /** @deprecated Legacy points price — defaults on the server when omitted. */
   consultationPrice?: number;
-  /** ISO country code — patients: residence; doctors: practice country. */
+  /** Required for patient signup — ISO country code. */
   country?: string;
-  /** Optional clinic address when signing up as a doctor. */
-  clinicLocation?: string;
   medicalRecordsStorageConsent?: boolean;
 }
 
@@ -51,13 +42,10 @@ export type PreferredLocale = "ar" | "en" | "de" | "es";
 
 export interface AuthSession {
   accessToken: string;
-  refreshToken?: string;
   role: string;
   userId: string;
   profile: PatientProfile;
   preferredLocale?: PreferredLocale | null;
-  /** False until the user confirms the email verification code. */
-  emailVerified?: boolean;
   /** Set when role is doctor */
   doctorId?: string;
   /** Set when role is doctor */

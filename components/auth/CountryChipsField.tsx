@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  MARKET_COUNTRY_CODES,
+  PATIENT_COUNTRY_CODES,
   patientCountryLabel,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
@@ -15,8 +15,6 @@ type Props = {
   error?: string;
   isRTL: boolean;
   disabled?: boolean;
-  /** Defaults to Egypt & Jordan (doctor / live markets). Pass PATIENT_COUNTRY_CODES for patients. */
-  codes?: readonly PatientCountryCode[];
 };
 
 export function CountryChipsField({
@@ -26,7 +24,6 @@ export function CountryChipsField({
   error,
   isRTL,
   disabled,
-  codes = MARKET_COUNTRY_CODES,
 }: Props) {
   const colors = useColors();
   const dir = flexRow(isRTL);
@@ -42,7 +39,7 @@ export function CountryChipsField({
         {label}
       </Text>
       <View style={[styles.row, { flexDirection: dir }]}>
-        {codes.map((code) => {
+        {PATIENT_COUNTRY_CODES.map((code) => {
           const active = value === code;
           return (
             <Pressable

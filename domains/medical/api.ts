@@ -1,13 +1,7 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
 import type { Locale } from "@/domains/i18n/store";
-import type {
-  DiagnosisSymptom,
-  LinkedConsultationSummary,
-  MedicalAiInsight,
-  MedicalRecord,
-  PrescriptionMedication,
-} from "./types";
+import type { DiagnosisSymptom, MedicalAiInsight, MedicalRecord, PrescriptionMedication } from "./types";
 import { parseBodyPart } from "./bodyParts";
 import { fetchIntakeExamsForPatient } from "@/domains/intake-exams/api";
 
@@ -30,18 +24,6 @@ interface RawPrescriptionMedication {
   notes?: string | null;
 }
 
-interface RawLinkedConsultation {
-  id: string;
-  status: LinkedConsultationSummary["status"];
-  created_at: string;
-  closed_at: string | null;
-  doctor_id: string;
-  patient_id: string;
-  diagnosis_id: string | null;
-  doctor_name: string;
-  patient_name: string;
-}
-
 interface RawPrescription {
   id: string;
   patient_user_id: string;
@@ -52,27 +34,9 @@ interface RawPrescription {
   pdf_url?: string | null;
   image_url?: string | null;
   created_at: string;
-  diagnosis_id?: string | null;
   medications?: RawPrescriptionMedication[];
   ai_insight?: MedicalAiInsight | null;
   body_part?: string | null;
-  linked_consultations?: RawLinkedConsultation[];
-}
-
-function mapLinkedConsultations(
-  raw: RawLinkedConsultation[] | undefined,
-): LinkedConsultationSummary[] {
-  return (raw ?? []).map((row) => ({
-    id: row.id,
-    status: row.status,
-    createdAt: row.created_at,
-    closedAt: row.closed_at,
-    doctorId: row.doctor_id,
-    patientId: row.patient_id,
-    diagnosisId: row.diagnosis_id,
-    doctorName: row.doctor_name,
-    patientName: row.patient_name,
-  }));
 }
 
 function mapPrescriptionMedication(raw: RawPrescriptionMedication): PrescriptionMedication {
@@ -105,8 +69,6 @@ function mapPrescription(raw: RawPrescription): MedicalRecord {
     fileName: imageUrl ? "prescription.jpg" : undefined,
     aiInsight: mapAiInsight(raw.ai_insight) ?? null,
     bodyPart: parseBodyPart(raw.body_part),
-    diagnosisId: raw.diagnosis_id ?? null,
-    linkedConsultations: mapLinkedConsultations(raw.linked_consultations),
   };
 }
 
@@ -467,14 +429,25 @@ export async function fetchPatientMedicalHistoryAsDoctor(
   patientUserId: string,
   token: string,
 ): Promise<MedicalRecord[]> {
-  // Match fetchAllMedicalHistory: one failing endpoint must not blank the whole page.
   const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
-    fetchDocumentsForPatientUser(patientUserId, token),
-    fetchDiagnosesForPatientUser(patientUserId, token).catch(() => [] as MedicalRecord[]),
+    authJson<RawDocument[]>(`/medical-documents/patient/${patientUserId}`, token),
+    authJson<RawDiagnosis[]>(
+      `/diagnosis?patient_id=${encodeURIComponent(patientUserId)}`,
+      token,
+    ),
     fetchPrescriptionsForPatientUser(patientUserId, token),
     fetchIntakeExamsForPatient(patientUserId, token).catch(() => [] as MedicalRecord[]),
   ]);
-  return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
+  // Doctors only see submitted exams (API also filters; keep FE guard for older backends).
+  const completedIntake = intakeExams.filter(
+    (r) => r.category === "intake" && r.intakeExam?.status === "completed",
+  );
+  return [
+    ...(Array.isArray(diagnoses) ? diagnoses : []).map(mapDiagnosis),
+    ...(Array.isArray(prescriptions) ? prescriptions : []),
+    ...(Array.isArray(documents) ? documents : []).map(mapDocument),
+    ...completedIntake,
+  ];
 }
 
 export async function fetchDoctorDiagnosisById(
@@ -557,7 +530,7 @@ export async function analyzePrescriptionImage(
   mimeType: string,
   fileName: string,
   token: string,
-  lang: Locale = "ar",
+  lang: Locale = "en",
   webFile?: File | Blob,
 ): Promise<PrescriptionMedication[]> {
   const formData = new FormData();
@@ -641,7 +614,10 @@ export async function fetchAllMedicalHistory(
       fetchPrescriptionsForPatientUser(patientId, token),
       fetchIntakeExamsForPatient(patientId, token).catch(() => [] as MedicalRecord[]),
     ]);
-    return [...diagnoses, ...prescriptions, ...documents, ...intakeExams];
+    const completedIntake = intakeExams.filter(
+      (r) => r.category === "intake" && r.intakeExam?.status === "completed",
+    );
+    return [...diagnoses, ...prescriptions, ...documents, ...completedIntake];
   }
   const [documents, diagnoses, prescriptions, intakeExams] = await Promise.all([
     fetchPatientDocuments(patientId, token),
@@ -963,14 +939,9 @@ export async function analyzeMedicalRecordImage(
   token: string,
   lang: Locale,
   webFile?: File | Blob,
-  options?: { title?: string },
 ): Promise<AnalyzedMedicalRecordImage> {
   const formData = new FormData();
   await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
-  const title = options?.title?.trim();
-  if (title) {
-    formData.append("title", title);
-  }
   const res = await fetch(
     `${API_BASE}/patient/medical-documents/analyze-image?lang=${lang}`,
     {
@@ -996,14 +967,10 @@ export async function createMedicalRecordFromImage(
   token: string,
   lang: Locale,
   webFile?: File | Blob,
-  options?: { generateInsight?: boolean; title?: string },
+  options?: { generateInsight?: boolean },
 ): Promise<MedicalRecord> {
   const formData = new FormData();
   await appendFileToFormData(formData, "file", uri, mimeType, fileName, webFile);
-  const title = options?.title?.trim();
-  if (title) {
-    formData.append("title", title);
-  }
   const insightParam =
     options?.generateInsight === false ? "&generate_insight=false" : "";
   const res = await fetch(
@@ -1074,10 +1041,7 @@ export async function createMedicalRecordFromChatImage(
       token,
       lang,
       input.webFile,
-      {
-        generateInsight: true,
-        title: input.caption?.trim() || undefined,
-      },
+      { generateInsight: true },
     );
   }
 
@@ -1101,10 +1065,9 @@ export async function createMedicalRecordFromChatImage(
       token,
       lang,
       input.webFile,
-      input.caption?.trim() ? { title: input.caption.trim() } : undefined,
     );
     type = analyzed.type;
-    title = input.caption?.trim() || analyzed.title;
+    title = analyzed.title;
     notes = analyzed.notes;
     bodyPart = analyzed.body_part ?? null;
   } catch {

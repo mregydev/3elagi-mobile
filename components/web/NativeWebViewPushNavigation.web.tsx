@@ -9,8 +9,7 @@ let pendingPushPath: string | null = null;
 
 function navigateToPushPath(router: ReturnType<typeof useRouter>, path: string): void {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  // Push so the previous in-app screen stays in history for Back.
-  router.push(normalized as Href);
+  router.replace(normalized as Href);
   pendingPushPath = null;
 }
 

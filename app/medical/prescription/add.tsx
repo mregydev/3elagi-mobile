@@ -1,7 +1,9 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
+  ArrowLeft,
+  ArrowRight,
   Camera,
   Image as ImageIcon,
   Plus,
@@ -21,13 +23,9 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
-import { useAiEnabled } from "@/domains/ai/aiPreference";
-import { AppBackButton } from "@/components/nav/AppBackButton";
-import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
-import { sharePrescriptionToChat } from "@/domains/medical/sharePrescriptionToChat";
 import {
   createPrescriptionForPatientUser,
   draftAiPrescriptionForDiagnosis,
@@ -58,23 +56,15 @@ interface ScanAsset extends PrescriptionScanAsset {}
 
 export default function AddPrescriptionScreen() {
   const colors = useColors();
-  const aiEnabled = useAiEnabled();
   const { isRTL, t, locale } = useI18n();
   const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
-  const {
-    patientUserId: patientUserIdParam,
-    bodyPart: bodyPartParam,
-    returnTo: returnToParam,
-  } = useLocalSearchParams<{
+  const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
     patientUserId?: string;
     bodyPart?: string;
-    returnTo?: string;
   }>();
-  // Set when the form was opened from a chat — land back in that thread.
-  const returnTo = Array.isArray(returnToParam) ? returnToParam[0] : returnToParam;
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -277,7 +267,7 @@ export default function AddPrescriptionScreen() {
   };
 
   const handleCancel = () => {
-    leaveMedicalForm("/(tabs)/records", returnTo);
+    router.back();
   };
 
   const handleSave = async () => {
@@ -343,20 +333,10 @@ export default function AddPrescriptionScreen() {
       );
       upsertPrescription(saved);
       scheduleReminder(saved);
-      if (isDoctor && patientUserIdParam && profile?.id) {
-        await sharePrescriptionToChat({
-          patientUserId,
-          prescriptionId: saved.id,
-          title: trimmedTitle,
-          token: accessToken,
-          selfId: profile.id,
-          selfRole: role,
-        });
-      }
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);
-      leaveMedicalForm("/(tabs)/records", returnTo);
+      router.back();
     } catch (e) {
       Alert.alert(
         isRTL ? "فشل الحفظ" : "Save failed",
@@ -382,13 +362,13 @@ export default function AddPrescriptionScreen() {
           },
         ]}
       >
-        <AppBackButton
-          color={colors.foreground}
-          style={styles.headerBtn}
-          hitSlop={8}
-          fallback="/(tabs)/records"
-          onPress={handleCancel}
-        />
+        <Pressable onPress={handleCancel} style={styles.headerBtn} hitSlop={8}>
+          {isRTL ? (
+            <ArrowRight size={22} color={colors.foreground} />
+          ) : (
+            <ArrowLeft size={22} color={colors.foreground} />
+          )}
+        </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground, textAlign }]}>
           {isRTL ? "إضافة روشتة" : "Add prescription"}
         </Text>
@@ -415,7 +395,7 @@ export default function AddPrescriptionScreen() {
           textAlign={textAlign}
         />
 
-        {isDoctor && aiEnabled ? (
+        {isDoctor ? (
           <Pressable
             onPress={() => void completeWithAi()}
             disabled={!title.trim() || busy}

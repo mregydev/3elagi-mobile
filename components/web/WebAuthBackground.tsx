@@ -12,7 +12,7 @@ export const WEB_AUTH_GRADIENT = {
 interface Props {
   children: React.ReactNode;
   variant?: "gradient" | "login-hero";
-  /** Primary wash over hero image; use 0 on welcome for a crisp artwork. */
+  /** White wash over hero image; use 0 on welcome for a crisp artwork. */
   heroOverlayOpacity?: number;
 }
 

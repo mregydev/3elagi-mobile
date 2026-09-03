@@ -1,5 +1,5 @@
 const LINK_CATALOG_LINE =
-  /(?:^|\n)\s*(?:[-*]\s*)?Link:\s*(\/(?:medical|doctor)\/[^\s|]+)\s*\|\s*([^\n]+)/gi;
+  /Link:\s*(\/(?:medical|doctor)\/[^\s|]+)\s*\|\s*([^\n]+)/gi;
 
 const BARE_ASSISTANT_PATH = /(\/(?:medical|doctor)\/[a-zA-Z0-9-]+)/g;
 

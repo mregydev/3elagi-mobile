@@ -23,8 +23,6 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
-import { useAiEnabled } from "@/domains/ai/aiPreference";
-import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import type { MedicalCategory } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
@@ -120,9 +118,60 @@ function FormField({
   );
 }
 
+function InsightOptionCard({
+  checked,
+  onToggle,
+  isRTL,
+  colors,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  isRTL: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const dir = isRTL ? "row-reverse" : "row";
+  const textAlign = isRTL ? "right" : "left";
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={[
+        styles.insightCard,
+        {
+          flexDirection: dir,
+          backgroundColor: colors.background,
+          borderColor: checked ? colors.primary : colors.border,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.insightCheckbox,
+          {
+            borderColor: checked ? colors.primary : colors.border,
+            backgroundColor: checked ? colors.primary : "transparent",
+          },
+        ]}
+      >
+        {checked ? <Text style={styles.insightCheck}>✓</Text> : null}
+      </View>
+      <View style={styles.insightContent}>
+        <Text style={[styles.insightTitle, { color: colors.foreground, textAlign }]}>
+          {isRTL ? "إنشاء تحليل ذكي" : "Generate AI insight"}
+        </Text>
+        <Text
+          style={[styles.insightDescription, { color: colors.mutedForeground, textAlign }]}
+        >
+          {isRTL
+            ? "حلل الصورة لاستخراج العنوان والوصف، ثم أنشئ ملخصًا ذكيًا ومؤشرات محتملة لهذا السجل."
+            : "Analyze the image to extract the title and description, then create an AI summary and possible findings."}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function MedicalAddWebView() {
   const colors = useColors();
-  const aiEnabled = useAiEnabled();
   const { isDesktop, isTablet } = useWebLayout();
   const form = useMedicalAddForm();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -158,6 +207,7 @@ export function MedicalAddWebView() {
     isLabOrXray,
     isImage,
     generateAiInsight,
+    setGenerateAiInsight,
     completeWithAi,
     completingAi,
     submit,
@@ -217,10 +267,10 @@ export function MedicalAddWebView() {
     >
       <View style={styles.symptomList}>
         {symptomLines.map((line, index) => (
-          <View key={line.id} style={[styles.symptomRow, { flexDirection: dir }]}>
+          <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
             <AppTextInput
-              value={line.text}
-              onChangeText={(t) => updateSymptomLine(line.id, t)}
+              value={line}
+              onChangeText={(t) => updateSymptomLine(index, t)}
               placeholder={isRTL ? `عرض ${index + 1}` : `Symptom ${index + 1}`}
               placeholderTextColor={colors.mutedForeground}
               style={[
@@ -235,7 +285,7 @@ export function MedicalAddWebView() {
               ]}
             />
             <Pressable
-              onPress={() => removeSymptomLine(line.id)}
+              onPress={() => removeSymptomLine(index)}
               style={[styles.symptomRemove, { backgroundColor: colors.muted }]}
             >
               <X size={16} color={colors.mutedForeground} />
@@ -341,6 +391,12 @@ export function MedicalAddWebView() {
       colors={colors}
       textAlign={textAlign}
     >
+      <InsightOptionCard
+        checked={generateAiInsight}
+        onToggle={() => setGenerateAiInsight(!generateAiInsight)}
+        isRTL={isRTL}
+        colors={colors}
+      />
       {attached ? (
         <View style={[styles.previewCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
           {isImage ? (
@@ -497,7 +553,6 @@ export function MedicalAddWebView() {
                   disabled={!title.trim() || completingAi || uploading}
                   style={({ pressed }) => [
                     {
-                      display: aiEnabled ? "flex" : "none",
                       marginTop: 10,
                       flexDirection: isRTL ? "row-reverse" : "row",
                       alignItems: "center",
@@ -806,8 +861,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
-    // Pinned height so the Ask AI FAB knows exactly how far to lift.
-    minHeight: MEDICAL_FORM_SAVE_BAR_HEIGHT,
   },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 11 },
   zoomBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)" },

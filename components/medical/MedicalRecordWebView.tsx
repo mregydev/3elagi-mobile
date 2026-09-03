@@ -9,7 +9,6 @@ import {
   FileDown,
   FileText,
   Hash,
-  MessageCircle,
   Pill,
   Trash2,
 } from "lucide-react-native";
@@ -31,7 +30,6 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
 import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
-import { MedicalPdfViewer } from "@/components/medical/MedicalPdfViewer";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
 import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import {
@@ -45,26 +43,6 @@ import { useMedicalRecordDetail } from "@/hooks/useMedicalRecordDetail";
 import { useMobileWebTabBarHeight } from "@/hooks/useMobileWebTabBarHeight";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { localeTag } from "@/utils/rtl";
-import type { LinkedConsultationSummary } from "@/domains/medical/types";
-
-function consultationStatusLabel(
-  status: LinkedConsultationSummary["status"],
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  switch (status) {
-    case "open":
-      return t.consultations.open;
-    case "pending":
-      return t.consultations.waitingActive;
-    case "ended":
-      return t.consultations.completed;
-    case "cancelled":
-    case "rejected":
-      return t.consultations.cancelled;
-    default:
-      return status;
-  }
-}
 
 function gridStyle(columns: number): ViewStyle {
   if (columns <= 1) {
@@ -197,7 +175,6 @@ export function MedicalRecordWebView() {
     isPrescription,
     isLabOrXray,
     isDocImage,
-    isDocPdf,
     isDoctorView,
     canEditLabDetails,
     newSymptom,
@@ -210,9 +187,6 @@ export function MedicalRecordWebView() {
     savingDiagnosis,
     zoomImageUri,
     setZoomImageUri,
-    pdfView,
-    setPdfView,
-    openPdfAttachment,
     editingLabDetails,
     setEditingLabDetails,
     editTitle,
@@ -228,7 +202,6 @@ export function MedicalRecordWebView() {
     confirmDelete,
     intakeAnswersDraft,
     setIntakeAnswersDraft,
-    intakeExamTakerRef,
     savingIntake,
     saveIntakeDraft,
     submitIntakeExam,
@@ -240,7 +213,6 @@ export function MedicalRecordWebView() {
     printPrescription,
     accessToken,
     openLinkedDoc,
-    openLinkedConsultation,
     goBack,
   } = detail;
 
@@ -346,23 +318,6 @@ export function MedicalRecordWebView() {
           <MedicalRecordAttachmentImage uri={record.fileUrl} style={mediaImageStyle} />
           <Text style={[styles.mediaHint, { color: colors.mutedForeground, textAlign }]}>
             {isRTL ? "اضغط للتكبير" : "Click to zoom"}
-          </Text>
-        </Pressable>
-      );
-    }
-    if (isDocPdf) {
-      return (
-        <Pressable
-          testID="medical-record-pdf"
-          onPress={openPdfAttachment}
-          style={[styles.fileCard, { borderColor: colors.border, backgroundColor: colors.card }]}
-        >
-          <FileText size={36} color={color} />
-          <Text style={{ color: colors.primary, fontWeight: "600", textAlign }}>
-            {record.fileName?.trim() || (isRTL ? "عرض PDF" : "View PDF")}
-          </Text>
-          <Text style={[styles.mediaHint, { color: colors.mutedForeground, textAlign }]}>
-            {isRTL ? "اضغط للعرض" : "Click to view"}
           </Text>
         </Pressable>
       );
@@ -582,65 +537,6 @@ export function MedicalRecordWebView() {
     );
   };
 
-  const renderLinkedConsultations = () => {
-    if (!isPrescription || !record?.linkedConsultations?.length) return null;
-
-    return (
-      <SectionCard
-        testID="medical-record-linked-consultations"
-        title={isRTL ? "استشارات مرتبطة" : "Linked consultations"}
-        icon={<MessageCircle size={18} color={colors.primary} />}
-        accent={colors.primary}
-        colors={colors}
-        textAlign={textAlign}
-        dir={dir}
-      >
-        <View style={styles.linkedList}>
-          {record.linkedConsultations.map((consultation) => {
-            const title = isDoctorView
-              ? consultation.patientName
-              : consultation.doctorName;
-            return (
-              <Pressable
-                key={consultation.id}
-                testID="medical-record-linked-consultation-row"
-                onPress={() => openLinkedConsultation(consultation)}
-                style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
-              >
-                <View
-                  style={[
-                    styles.linkedThumb,
-                    styles.linkedThumbPlaceholder,
-                    { backgroundColor: `${colors.primary}22` },
-                  ]}
-                >
-                  <MessageCircle size={22} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text
-                    style={{ color: colors.foreground, fontWeight: "700", textAlign }}
-                    numberOfLines={2}
-                  >
-                    {title}
-                  </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
-                    {consultationStatusLabel(consultation.status, t)}
-                    {" · "}
-                    {new Date(consultation.createdAt).toLocaleDateString(localeTag(isRTL), {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      </SectionCard>
-    );
-  };
-
   const renderMedications = () => {
     if (!isPrescription || !record) return null;
 
@@ -746,7 +642,6 @@ export function MedicalRecordWebView() {
         dir={dir}
       >
         <IntakeExamTaker
-          ref={intakeExamTakerRef}
           isRTL={isRTL}
           questions={exam.questions}
           answers={readOnly ? exam.answers : intakeAnswersDraft}
@@ -1217,7 +1112,6 @@ export function MedicalRecordWebView() {
             {renderLinkedDiagnoses()}
             {renderSymptoms()}
             {renderMedications()}
-            {renderLinkedConsultations()}
           </View>
 
           {canDeleteRecord && !isDesktop ? (
@@ -1238,11 +1132,6 @@ export function MedicalRecordWebView() {
       <FullscreenImageViewer
         uri={zoomImageUri}
         onClose={() => setZoomImageUri(null)}
-      />
-      <MedicalPdfViewer
-        view={pdfView}
-        onClose={() => setPdfView(null)}
-        isRTL={isRTL}
       />
     </View>
   );

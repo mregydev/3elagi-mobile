@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   panelEmbedded: {
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 0,
+    marginBottom: 20,
   },
   panelHeader: {
     justifyContent: "space-between",

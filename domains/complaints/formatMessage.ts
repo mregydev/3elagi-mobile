@@ -54,14 +54,9 @@ function consultationActionText(m: ComplaintMessage): string {
             : null);
     if (reason) parts.push(reason);
     else if (note && note !== "Consultation cancelled") parts.push(note);
-  } else if (meta.action === "accept") {
-    parts.push("Consultation accepted");
-  } else if (meta.action === "reject") {
-    parts.push("Consultation request declined");
-    if (note && note !== "Consultation rejected") parts.push(note);
   }
 
-  return parts.join(" · ") || note || "Consultation update";
+  return parts.join(" · ");
 }
 
 /** Human-readable line for admin complaint thread review. */
@@ -91,9 +86,7 @@ export function formatComplaintMessageText(m: ComplaintMessage): string {
               ? "Diagnosis record"
               : link?.record_type === "intake"
                 ? "Intake exam"
-                : link?.record_type === "prescription"
-                  ? "Prescription"
-                  : "Medical record";
+                : "Medical record";
       const base = title ? `${typeLabel}: ${title}` : typeLabel;
       const linkNote = link?.note?.trim();
       return linkNote ? `${base} — ${linkNote}` : base;

@@ -1,18 +1,10 @@
 import { router } from "expo-router";
-import { navigateBack } from "@/utils/appNavigation";
 
-/**
- * Leave an add-medical form — pop stack, otherwise go to records.
- * `returnTo` (set when the form was opened from a chat thread) wins over both:
- * the doctor came from the conversation and expects to land back in it.
- */
-export function leaveMedicalForm(
-  fallback: "/(tabs)/records" | `/patients/${string}` = "/(tabs)/records",
-  returnTo?: string | null,
-) {
-  if (returnTo) {
-    router.replace(returnTo as never);
+/** Leave an add-medical form — back when possible, otherwise go to records. */
+export function leaveMedicalForm(fallback: "/(tabs)/records" | `/patients/${string}` = "/(tabs)/records") {
+  if (typeof router.canGoBack === "function" && router.canGoBack()) {
+    router.back();
     return;
   }
-  navigateBack(router, fallback);
+  router.replace(fallback as never);
 }

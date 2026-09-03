@@ -1,5 +1,4 @@
 import { API_BASE } from "@/constants/api";
-import { withAuthRequestInit } from "@/domains/auth/http";
 import type { AccessActionType } from "./types";
 
 export interface DoctorPatientAccessStatus {
@@ -17,10 +16,9 @@ export async function fetchDoctorPatientAccess(
   token: string,
   peerId: string,
 ): Promise<DoctorPatientAccessStatus> {
-  const res = await fetch(
-    `${API_BASE}/doctor-patient-access/with/${peerId}`,
-    withAuthRequestInit(token),
-  );
+  const res = await fetch(`${API_BASE}/doctor-patient-access/with/${peerId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(
@@ -76,5 +74,5 @@ export function accessActionLabel(action: AccessActionType, isRTL = false): stri
 /** Doctor↔patient messaging is restricted to these roles on the API. */
 export function canUseChat(role: string | null | undefined): boolean {
   const r = role?.toLowerCase();
-  return r === "doctor" || r === "patient" || r === "admin";
+  return r === "doctor" || r === "patient";
 }

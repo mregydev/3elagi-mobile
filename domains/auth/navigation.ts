@@ -1,23 +1,14 @@
 import { Platform } from "react-native";
-import type { Href, Router } from "expo-router";
-import {
-  clearPendingAuthReturn,
-  consumePendingAuthReturn,
-} from "@/domains/auth/pendingAuthReturn";
+import type { Router } from "expo-router";
 import type { DoctorApprovalStatus } from "./types";
 
 const WELCOME_ROUTE = "/welcome" as const;
-const MAIN_ROUTE = "/(tabs)" as const;
 
-type ForcedPostAuthRoute = "/admin" | "/doctor-pending";
-
-/** Prevent login form + AuthRedirect from racing to different destinations. */
-let lockedPostAuthHref: Href | undefined;
-
-function getForcedPostAuthRoute(
+/** Route to open right after a successful login or signup. */
+export function getPostAuthRoute(
   role: string | null,
   doctorApprovalStatus: DoctorApprovalStatus | null,
-): ForcedPostAuthRoute | null {
+): "/admin" | "/doctor-pending" | "/(tabs)" {
   const normalizedRole = role?.toLowerCase();
   if (normalizedRole === "admin" && Platform.OS === "web") {
     return "/admin";
@@ -28,114 +19,39 @@ function getForcedPostAuthRoute(
   ) {
     return "/doctor-pending";
   }
-  return null;
+  return "/(tabs)";
 }
 
-/** Resolve post-auth destination (consumes pending guest return once). */
-export function getPostAuthRoute(
-  role: string | null,
-  doctorApprovalStatus: DoctorApprovalStatus | null,
-): Href {
-  if (lockedPostAuthHref !== undefined) return lockedPostAuthHref;
-
-  const forced = getForcedPostAuthRoute(role, doctorApprovalStatus);
-  if (forced) {
-    clearPendingAuthReturn();
-    lockedPostAuthHref = forced;
-  } else {
-    const pending = consumePendingAuthReturn();
-    lockedPostAuthHref = (pending as Href | null) ?? MAIN_ROUTE;
-  }
-
-  const dest = lockedPostAuthHref;
-  setTimeout(() => {
-    lockedPostAuthHref = undefined;
-  }, 1500);
-  return dest;
+/** Landing page after logout (welcome home with login/signup actions). */
+export function getPostLogoutRoute(): "/welcome" {
+  return WELCOME_ROUTE;
 }
 
-/**
- * After login: same destinations as signup; honors pending guest chat return.
- */
-export function getPostLoginRoute(
-  role: string | null,
-  doctorApprovalStatus: DoctorApprovalStatus | null,
-): Href {
-  return getPostAuthRoute(role, doctorApprovalStatus);
-}
-
-/** Navigate after auth; safe to call from form + AuthRedirect together. */
-export function navigatePostAuth(
-  router: Pick<Router, "replace">,
-  role: string | null,
-  doctorApprovalStatus: DoctorApprovalStatus | null,
-): void {
-  router.replace(getPostAuthRoute(role, doctorApprovalStatus));
-}
-
-/** Landing page after logout — main home browse (not welcome). */
-export function getPostLogoutRoute(): "/(tabs)" {
-  return MAIN_ROUTE;
-}
-
-/** Paths guests may stay on (browse + welcome + auth flows). */
-export function isPublicWebPath(pathname: string): boolean {
-  if (
+function isPublicWebPath(pathname: string): boolean {
+  return (
     pathname === "/" ||
     pathname === WELCOME_ROUTE ||
     pathname.startsWith(`${WELCOME_ROUTE}/`) ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/doctor/") ||
-    // Doctor directory (note: distinct from the /doctor/ profile route above).
-    pathname === "/doctors" ||
-    pathname.startsWith("/doctors/") ||
-    pathname === "/contact" ||
-    pathname.startsWith("/contact/") ||
-    pathname === "/register-with-us" ||
-    pathname.startsWith("/register-with-us/") ||
-    pathname === "/rate-us" ||
-    pathname.startsWith("/rate-us/") ||
-    pathname === "/demo" ||
-    pathname.startsWith("/demo/")
-  ) {
-    return true;
-  }
-  // Guest browse tabs. Keep in step with GUEST_ALLOWED_TABS — this is the
-  // path-based twin used on web, and a tab missing here bounces guests back to
-  // the welcome page, which looks like the nav link doing nothing.
-  const guestTabs = ["about-us", "assistant", "faq", "for-doctors"];
-  if (pathname === "/(tabs)") return true;
-  if (
-    guestTabs.some(
-      (tab) =>
-        pathname === `/${tab}` ||
-        pathname.startsWith(`/${tab}/`) ||
-        pathname.startsWith(`/(tabs)/${tab}`),
-    )
-  ) {
-    return true;
-  }
-  // Expo Router may expose home as bare "/" under tabs already covered above.
-  return false;
+    pathname.startsWith("/auth")
+  );
 }
 
-/** Navigate to main home after logout; retries on web when router.replace is dropped. */
+/** Navigate to welcome after logout; retries on web when router.replace is dropped. */
 export function navigateToWelcome(router: Pick<Router, "replace">): void {
-  const dest = getPostLogoutRoute();
-  router.replace(dest);
+  router.replace(WELCOME_ROUTE);
 
   if (Platform.OS !== "web" || typeof window === "undefined") return;
 
-  const ensureHome = () => {
+  const ensureWelcome = () => {
     if (isPublicWebPath(window.location.pathname)) return;
-    router.replace(dest);
+    router.replace(WELCOME_ROUTE);
   };
 
-  queueMicrotask(ensureHome);
-  window.setTimeout(ensureHome, 0);
+  queueMicrotask(ensureWelcome);
+  window.setTimeout(ensureWelcome, 0);
   window.setTimeout(() => {
     if (!isPublicWebPath(window.location.pathname)) {
-      window.location.replace("/");
+      window.location.replace(WELCOME_ROUTE);
     }
   }, 100);
 }

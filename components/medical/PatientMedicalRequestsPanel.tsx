@@ -27,11 +27,9 @@ interface Props {
    * When omitted, loads the signed-in patient's own pending requests.
    */
   patientUserId?: string;
-  /** Flush margins for dashboard / split-pane layouts. */
-  embedded?: boolean;
 }
 
-export function PatientMedicalRequestsPanel({ patientUserId, embedded = false }: Props) {
+export function PatientMedicalRequestsPanel({ patientUserId }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
@@ -109,7 +107,7 @@ export function PatientMedicalRequestsPanel({ patientUserId, embedded = false }:
   };
 
   return (
-    <View style={[styles.wrap, embedded && styles.wrapEmbedded]}>
+    <View style={styles.wrap}>
       <View
         style={[
           styles.categoryCard,
@@ -205,14 +203,7 @@ const styles = StyleSheet.create({
   wrap: {
     marginTop: 8,
     marginBottom: 4,
-    marginHorizontal: 16,
     gap: 8,
-    flexShrink: 0,
-  },
-  wrapEmbedded: {
-    marginHorizontal: 0,
-    marginTop: 0,
-    marginBottom: 0,
   },
   categoryCard: {
     borderRadius: 14,

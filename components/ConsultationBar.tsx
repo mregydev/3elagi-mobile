@@ -1,7 +1,6 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import {
-  Check,
   CircleAlert,
   CircleStop,
   FileText,
@@ -10,7 +9,6 @@ import {
   Paperclip,
   Square,
   Stethoscope,
-  Trash2,
   Video as VideoIcon,
   X,
 } from "lucide-react-native";
@@ -42,10 +40,8 @@ import {
 } from "@/domains/complaints/api";
 import { mimeFromUri, resolveWebVoiceFile } from "@/utils/chatMedia";
 import {
-  acceptConsultation,
   cancelConsultation,
   endConsultation,
-  rejectConsultation,
   fetchActiveConsultation,
   startConsultation,
   type Consultation,
@@ -59,9 +55,8 @@ import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import type { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
-import type { ChatAction } from "@/components/chat/ChatActionsMenu";
+import { formatEgp } from "@/utils/credits";
 import { useI18n } from "@/hooks/useI18n";
-import { useRemoveConsultation } from "@/hooks/useRemoveConsultation";
 
 type SelectedRecord = { record: MedicalRecord; note?: string };
 type MediaAttachment = ConsultationMediaItem;
@@ -83,20 +78,8 @@ interface Props {
   latestAction?: ConsultationActionMeta | null;
   /** Reports whether a consultation is currently open between the pair. */
   onOpenChange?: (open: boolean) => void;
-  /** Fired after a request is sent or answered, so the thread can scroll. */
-  onThreadUpdated?: () => void;
   /** Active open consultation (for diagnosis AI draft / linking). */
   onActiveChange?: (consultation: Consultation | null) => void;
-  /** Render the pills bare (no bar wrapper) so they can sit inside another row. */
-  compact?: boolean;
-  /**
-   * Hide inline pills and publish them as chat-menu actions instead
-   * (plus-button context window). Modals still render here.
-   */
-  menuOnly?: boolean;
-  onMenuActionsChange?: (actions: ChatAction[]) => void;
-  /** Explicit consultation to remove (e.g. from consultations list deep link). */
-  removeConsultationId?: string | null;
 }
 
 const CANCEL_REASONS: {
@@ -122,17 +105,10 @@ export function ConsultationBar({
   latestAction,
   onOpenChange,
   onActiveChange,
-  onThreadUpdated,
-  compact = false,
-  menuOnly = false,
-  onMenuActionsChange,
-  removeConsultationId,
 }: Props) {
   const { t } = useI18n();
-  const { remove: removeConsultationById } = useRemoveConsultation();
   const sendMessage = useChatStore((s) => s.sendMessage);
   const [active, setActive] = useState<Consultation | null>(null);
-  const [loaded, setLoaded] = useState(false);
   const [modal, setModal] = useState<null | "start" | "end" | "cancel">(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -167,8 +143,6 @@ export function ConsultationBar({
       setActive(c);
     } catch {
       setActive(null);
-    } finally {
-      setLoaded(true);
     }
   }, [enabled, peerId, token]);
 
@@ -179,20 +153,13 @@ export function ConsultationBar({
   // Sync with realtime consultation_action messages arriving in the thread.
   useEffect(() => {
     if (!latestAction) return;
-    // Payment steps keep the consultation alive: it is pending until the
-    // doctor approves the receipt, and open the moment they do.
-    const OPENS = ["accept", "payment_approved"];
-    const PENDS = ["start", "payment_request", "payment_submitted", "payment_rejected"];
-    const opens = OPENS.includes(latestAction.action);
-    if (opens || PENDS.includes(latestAction.action)) {
-      const status = opens ? "open" : "pending";
+    if (latestAction.action === "start") {
       setActive((prev) =>
-        prev?.id === latestAction.consultation_id && prev.status === status
+        prev?.id === latestAction.consultation_id
           ? prev
           : ({
-              ...(prev?.id === latestAction.consultation_id ? prev : {}),
               id: latestAction.consultation_id,
-              status,
+              status: "open",
               reserved_points: latestAction.reserved_points ?? 0,
             } as Consultation),
       );
@@ -201,15 +168,10 @@ export function ConsultationBar({
     }
   }, [latestAction]);
 
-  // Never report "no consultation" before the first load has answered. The
-  // composer swaps layout on that flag, which remounts this bar and resets
-  // `active` — reporting the reset state back flipped it straight again and
-  // the chat flickered between the two composer layouts forever.
   useEffect(() => {
-    if (!loaded) return;
     onOpenChange?.(active?.status === "open");
     onActiveChange?.(active?.status === "open" ? active : null);
-  }, [active, loaded, onOpenChange, onActiveChange]);
+  }, [active, onOpenChange, onActiveChange]);
 
   // A patient may complain about the most recently ended consultation.
   const endedConsultationId =
@@ -233,6 +195,8 @@ export function ConsultationBar({
       .catch(() => setRecords([]))
       .finally(() => setRecordsLoading(false));
   }, [modal, isPatient, selfId, token, selfRole, records.length]);
+
+  if (!enabled) return null;
 
   const label = (en: string, ar: string) => (isRTL ? ar : en);
 
@@ -357,7 +321,7 @@ export function ConsultationBar({
             type: "medical_link",
             content: recNote?.trim() || record.title,
             medicalLink: {
-              record_type: record.category,
+              record_type: record.category as "lab" | "xray" | "diagnosis" | "intake",
               record_id: record.id,
               title: record.title,
               ...(recNote?.trim() ? { note: recNote.trim() } : {}),
@@ -372,9 +336,10 @@ export function ConsultationBar({
       setDescription("");
       setSelectedRecords([]);
       setMedia([]);
-      showSuccessToast(t.consultations.consultationStarted);
-      // The request lands in the thread — put the patient on it.
-      onThreadUpdated?.();
+      showSuccessToast(
+        t.consultations.consultationStarted,
+        t.consultations.reservedToast(formatEgp(res.consultation.reserved_points, t)),
+      );
     } catch (e) {
       showErrorToast(t.consultations.couldNotStart, (e as Error).message);
     } finally {
@@ -456,57 +421,8 @@ export function ConsultationBar({
     }
   };
 
-  /** Doctor answers a pending request; the patient is told either way. */
-  const answerRequest = async (answer: "accept" | "reject") => {
-    if (!active || submitting) return;
-    setSubmitting(true);
-    try {
-      const res =
-        answer === "accept"
-          ? await acceptConsultation(active.id, token)
-          : await rejectConsultation(active.id, token);
-      setActive(answer === "accept" ? res.consultation : null);
-      onThreadUpdated?.();
-      showSuccessToast(
-        answer === "accept"
-          ? label("Consultation accepted", "تم قبول الاستشارة")
-          : label("Request declined", "تم رفض الطلب"),
-      );
-    } catch (e) {
-      showErrorToast(
-        e instanceof Error
-          ? e.message
-          : label("Could not answer the request", "تعذر الرد على الطلب"),
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const dir = isRTL ? "row-reverse" : "row";
   const isOpen = active?.status === "open";
-  // Waiting on the doctor: the patient cannot start another, and the doctor
-  // gets accept / decline instead of "end".
-  const isPending = active?.status === "pending";
-  const removableConsultationId =
-    removeConsultationId ?? active?.id ?? latestAction?.consultation_id ?? null;
-
-  const handleRemoveConsultation = useCallback(() => {
-    if (!removableConsultationId) return;
-    removeConsultationById(removableConsultationId, peerId, () => {
-      setActive(null);
-      onOpenChange?.(false);
-      onActiveChange?.(null);
-      onThreadUpdated?.();
-    });
-  }, [
-    removableConsultationId,
-    removeConsultationById,
-    peerId,
-    onOpenChange,
-    onActiveChange,
-    onThreadUpdated,
-  ]);
   const complaintLabel =
     complaintStatus === "pending"
       ? label("Complaint under review", "الشكوى قيد المراجعة")
@@ -516,104 +432,11 @@ export function ConsultationBar({
           ? label("Complaint rejected", "تم رفض الشكوى")
           : null;
 
-  // Compact mode drops the standalone bar so the pills sit in the chat actions row.
-  const Bar = ({ children }: { children: React.ReactNode }) =>
-    compact ? (
-      <>{children}</>
-    ) : (
-      <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
-        {children}
-      </View>
-    );
-
-  useEffect(() => {
-    if (!enabled || !onMenuActionsChange) {
-      onMenuActionsChange?.([]);
-      return;
-    }
-
-    const next: ChatAction[] = [];
-    if (isPatient && !isOpen && !isPending) {
-      next.push({
-        key: "consult-start",
-        label: label("Start consultation", "بدء استشارة"),
-        Icon: Stethoscope,
-        color: colors.primary,
-        onPress: () => setModal("start"),
-      });
-      if (endedConsultationId && !complaintLabel) {
-        next.push({
-          key: "consult-complaint",
-          label: label("File a complaint", "تقديم شكوى"),
-          Icon: CircleAlert,
-          color: "#dc2626",
-          onPress: () => setComplaintModal(true),
-        });
-      }
-    }
-    if (isDoctor && isPending) {
-      next.push({
-        key: "consult-accept",
-        label: label("Accept request", "قبول الطلب"),
-        Icon: Check,
-        color: "#10b981",
-        onPress: () => void answerRequest("accept"),
-      });
-      next.push({
-        key: "consult-reject",
-        label: label("Decline request", "رفض الطلب"),
-        Icon: X,
-        color: "#dc2626",
-        onPress: () => void answerRequest("reject"),
-      });
-    }
-    if (isDoctor && isOpen) {
-      next.push({
-        key: "consult-end",
-        label: label("End consultation", "إنهاء الاستشارة"),
-        Icon: CircleStop,
-        color: colors.primary,
-        onPress: () => setModal("end"),
-      });
-    }
-    if (removableConsultationId) {
-      next.push({
-        key: "consult-remove",
-        label: t.consultations.removeConsultation,
-        Icon: Trash2,
-        color: "#dc2626",
-        onPress: handleRemoveConsultation,
-      });
-    }
-    onMenuActionsChange(next);
-  }, [
-    enabled,
-    onMenuActionsChange,
-    isPatient,
-    isDoctor,
-    isOpen,
-    isPending,
-    endedConsultationId,
-    complaintLabel,
-    removableConsultationId,
-    handleRemoveConsultation,
-    t.consultations.removeConsultation,
-    colors.primary,
-    isRTL,
-  ]);
-
-  useEffect(() => {
-    if (!onMenuActionsChange) return;
-    return () => onMenuActionsChange([]);
-  }, [onMenuActionsChange]);
-
-  if (!enabled) return null;
-
   return (
     <>
       {/* Patient: start (+ complaint after an ended consultation). Doctor: end. */}
-      {!menuOnly && isPatient && !isOpen ? (
-        <Bar>
+      {isPatient && !isOpen ? (
+        <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
           <Pill
             label={label("Start consultation", "بدء استشارة")}
             color={colors.primary}
@@ -644,11 +467,11 @@ export function ConsultationBar({
               />
             )
           ) : null}
-        </Bar>
+        </View>
       ) : null}
 
-      {!menuOnly && isDoctor && isOpen ? (
-        <Bar>
+      {isDoctor && isOpen ? (
+        <View style={[styles.bar, { flexDirection: dir, borderTopColor: colors.border }]}>
           <Pill
             label={label("End consultation", "إنهاء الاستشارة")}
             color={colors.primary}
@@ -656,7 +479,7 @@ export function ConsultationBar({
             onPress={() => setModal("end")}
             Icon={CircleStop}
           />
-        </Bar>
+        </View>
       ) : null}
 
       {/* Start modal */}

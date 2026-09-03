@@ -17,7 +17,7 @@ import { useI18n } from "@/hooks/useI18n";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 32;
-const IMAGE_HEIGHT = 160;
+const CARD_HEIGHT = 160;
 
 interface Props {
   items: Advertisement[];
@@ -29,7 +29,6 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
   const { locale } = useI18n();
   const listRef = useRef<FlatList<Advertisement>>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const isArabic = locale === "ar";
 
   useEffect(() => {
     if (items.length <= 1) return;
@@ -71,62 +70,28 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
         })}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
         renderItem={({ item }) => {
-          const copy = localizeAdvertisement(item, locale);
+          const localized = localizeAdvertisement(item, locale);
           return (
-            <View style={[styles.slide, { width: CARD_WIDTH }]}>
-              <Pressable
-                style={[
-                  styles.imageCard,
-                  { borderColor: colors.border, backgroundColor: colors.muted },
-                ]}
-              >
-                <Image
-                  source={{ uri: item.bannerImageUrl }}
-                  style={styles.banner}
-                  resizeMode="stretch"
-                  accessibilityLabel={copy.title}
-                />
-              </Pressable>
-              <View
-                style={[
-                  styles.caption,
-                  { direction: isArabic ? "rtl" : "ltr" } as object,
-                ]}
-                // @ts-expect-error web writing direction
-                dir={isArabic ? "rtl" : "ltr"}
-              >
-                <Text
-                  style={[
-                    styles.title,
-                    {
-                      color: colors.foreground,
-                      textAlign: isArabic ? "right" : "left",
-                      writingDirection: isArabic ? "rtl" : "ltr",
-                      fontSize: isArabic ? 18 : 16,
-                      lineHeight: isArabic ? 24 : 21,
-                    },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {copy.title}
+          <Pressable style={[styles.card, { width: CARD_WIDTH }]}>
+            <Image
+              source={{ uri: item.bannerImageUrl }}
+              style={styles.banner}
+              resizeMode="cover"
+            />
+            <View style={styles.overlay}>
+              <Text style={styles.title} numberOfLines={1}>
+                {localized.title}
+              </Text>
+              <Text style={styles.desc} numberOfLines={2}>
+                {localized.description}
+              </Text>
+              {item.clinicName ? (
+                <Text style={styles.clinic} numberOfLines={1}>
+                  {item.clinicName}
                 </Text>
-                <Text
-                  style={[
-                    styles.desc,
-                    {
-                      color: colors.mutedForeground,
-                      textAlign: isArabic ? "right" : "left",
-                      writingDirection: isArabic ? "rtl" : "ltr",
-                      fontSize: isArabic ? 14 : 13,
-                      lineHeight: isArabic ? 20 : 18,
-                    },
-                  ]}
-                  numberOfLines={3}
-                >
-                  {copy.description}
-                </Text>
-              </View>
+              ) : null}
             </View>
+          </Pressable>
           );
         }}
       />
@@ -152,27 +117,25 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { paddingTop: 12, paddingBottom: 4 },
-  slide: {
-    gap: 10,
-  },
-  imageCard: {
-    height: IMAGE_HEIGHT,
+  card: {
+    height: CARD_HEIGHT,
     borderRadius: 16,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "#e5e7eb",
   },
-  banner: {
-    width: "100%",
-    height: "100%",
+  banner: { ...StyleSheet.absoluteFillObject },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 14,
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
-  caption: {
-    gap: 4,
-    paddingHorizontal: 2,
-  },
-  title: {
-    fontWeight: "800",
-  },
-  desc: {
+  title: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  desc: { color: "rgba(255,255,255,0.92)", fontSize: 13, marginTop: 4 },
+  clinic: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    marginTop: 6,
     fontWeight: "600",
   },
   dots: {

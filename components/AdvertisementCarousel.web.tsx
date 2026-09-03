@@ -29,9 +29,6 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
 
-  /** Overlay copy on image only on desktop; mobile/tablet show caption under image. */
-  const textUnderImage = !isDesktop;
-
   const horizontalPadding = isDesktop ? 24 : 16;
   const bannerWidth = Math.max(280, width - horizontalPadding * 2);
   const bannerHeight = isDesktop
@@ -39,21 +36,6 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
     : isTablet
       ? 200
       : 168;
-  const isArabic = locale === "ar";
-  const titleSize = isDesktop
-    ? isArabic
-      ? 32
-      : 28
-    : isArabic
-      ? 20
-      : 17;
-  const descSize = isDesktop
-    ? isArabic
-      ? 18
-      : 16
-    : isArabic
-      ? 15
-      : 13;
 
   const goTo = useCallback(
     (index: number) => {
@@ -93,67 +75,10 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
   if (items.length === 0) return null;
 
   const item = items[activeIndex];
-  const copy = localizeAdvertisement(item, locale);
+  const localized = localizeAdvertisement(item, locale);
   const showControls = items.length > 1;
   const PrevIcon = isRTL ? ChevronRight : ChevronLeft;
   const NextIcon = isRTL ? ChevronLeft : ChevronRight;
-
-  const caption = (
-    <View
-      style={[
-        textUnderImage ? styles.captionBelow : styles.copyBlock,
-        {
-          width: textUnderImage
-            ? "100%"
-            : isDesktop
-              ? isArabic
-                ? "38%"
-                : "70%"
-              : "88%",
-          maxWidth: !textUnderImage && isArabic ? 360 : undefined,
-          direction: isArabic ? "rtl" : "ltr",
-        } as object,
-      ]}
-      // @ts-expect-error web writing direction
-      dir={isArabic ? "rtl" : "ltr"}
-    >
-      <Text
-        style={[
-          styles.title,
-          textUnderImage && { color: colors.foreground, textShadowRadius: 0 },
-          {
-            fontSize: titleSize,
-            lineHeight: titleSize + (isArabic ? 8 : 6),
-            textAlign: isArabic ? "right" : "left",
-            writingDirection: isArabic ? "rtl" : "ltr",
-            width: "100%",
-          },
-        ]}
-        numberOfLines={2}
-      >
-        {copy.title}
-      </Text>
-      <Text
-        style={[
-          styles.desc,
-          textUnderImage && {
-            color: colors.mutedForeground,
-            textShadowRadius: 0,
-          },
-          {
-            fontSize: descSize,
-            lineHeight: descSize + (isArabic ? 8 : 6),
-            textAlign: isArabic ? "right" : "left",
-            writingDirection: isArabic ? "rtl" : "ltr",
-            width: "100%",
-          },
-        ]}
-        numberOfLines={textUnderImage ? 3 : 2}
-      >
-        {copy.description}
-      </Text>
-    </View>
-  );
 
   return (
     <View style={[styles.wrap, { paddingHorizontal: horizontalPadding }]}>
@@ -171,59 +96,95 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
           <Image
             source={{ uri: item.bannerImageUrl }}
             style={styles.banner}
-            resizeMode="stretch"
-            accessibilityLabel={copy.title}
+            resizeMode="cover"
           />
-          {!textUnderImage ? (
-            <>
-              <LinearGradient
-                colors={["rgba(15,39,68,0.74)", "rgba(15,39,68,0.2)", "rgba(15,39,68,0.5)"]}
-                locations={[0, 0.42, 1]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <View
-                style={[
-                  styles.copyOverlay,
-                  {
-                    alignItems: "flex-start",
-                    paddingLeft: isArabic ? 20 : 28,
-                    paddingRight: 28,
-                    paddingVertical: 24,
-                  },
-                ]}
-              >
-                {caption}
-              </View>
-            </>
-          ) : null}
-        </Animated.View>
-      </View>
-
-      {textUnderImage ? (
-        <Animated.View style={{ opacity: fade, marginTop: 10 }}>
-          {caption}
-        </Animated.View>
-      ) : null}
-
-      {showControls ? (
-        <View style={[styles.footer, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-          <Pressable
-            onPress={goPrev}
-            accessibilityLabel="Previous slide"
-            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.arrowBtn,
+          <LinearGradient
+            colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.82)"]}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View
+            style={[
+              styles.copy,
               {
-                backgroundColor:
-                  pressed || hovered ? `${colors.primary}22` : colors.card,
-                borderColor: colors.border,
+                alignItems: isRTL ? "flex-end" : "flex-start",
+                paddingHorizontal: isDesktop ? 28 : 18,
+                paddingBottom: isDesktop ? 24 : 16,
               },
             ]}
           >
-            <PrevIcon size={18} color={colors.foreground} />
-          </Pressable>
+            <Text
+              style={[
+                styles.title,
+                {
+                  fontSize: isDesktop ? 24 : isTablet ? 20 : 17,
+                  textAlign: isRTL ? "right" : "left",
+                  maxWidth: isDesktop ? "72%" : "100%",
+                },
+              ]}
+              numberOfLines={isDesktop ? 2 : 1}
+            >
+              {localized.title}
+            </Text>
+            <Text
+              style={[
+                styles.desc,
+                { textAlign: isRTL ? "right" : "left", maxWidth: isDesktop ? "68%" : "100%" },
+              ]}
+              numberOfLines={isDesktop ? 3 : 2}
+            >
+              {localized.description}
+            </Text>
+            {item.clinicName ? (
+              <Text
+                style={[
+                  styles.clinic,
+                  { textAlign: isRTL ? "right" : "left" },
+                ]}
+                numberOfLines={1}
+              >
+                {item.clinicName}
+              </Text>
+            ) : null}
+          </View>
+        </Animated.View>
 
+        {showControls ? (
+          <>
+            <Pressable
+              onPress={goPrev}
+              accessibilityLabel="Previous slide"
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.arrow,
+                isRTL ? styles.arrowRight : styles.arrowLeft,
+                {
+                  backgroundColor:
+                    pressed || hovered ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)",
+                },
+              ]}
+            >
+              <PrevIcon size={20} color="#fff" />
+            </Pressable>
+            <Pressable
+              onPress={goNext}
+              accessibilityLabel="Next slide"
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                styles.arrow,
+                isRTL ? styles.arrowLeft : styles.arrowRight,
+                {
+                  backgroundColor:
+                    pressed || hovered ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)",
+                },
+              ]}
+            >
+              <NextIcon size={20} color="#fff" />
+            </Pressable>
+          </>
+        ) : null}
+      </View>
+
+      {showControls ? (
+        <View style={[styles.footer, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <View style={[styles.dots, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             {items.map((ad, i) => {
               const active = i === activeIndex;
@@ -243,25 +204,9 @@ export function AdvertisementCarousel({ items, isRTL }: Props) {
               );
             })}
           </View>
-
           <Text style={[styles.counter, { color: colors.mutedForeground }]}>
             {activeIndex + 1}/{items.length}
           </Text>
-
-          <Pressable
-            onPress={goNext}
-            accessibilityLabel="Next slide"
-            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.arrowBtn,
-              {
-                backgroundColor:
-                  pressed || hovered ? `${colors.primary}22` : colors.card,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <NextIcon size={18} color={colors.foreground} />
-          </Pressable>
         </View>
       ) : null}
     </View>
@@ -288,52 +233,53 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  copyOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    zIndex: 1,
-  },
-  copyBlock: {
+  copy: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 48,
     gap: 6,
-  },
-  captionBelow: {
-    gap: 4,
-    width: "100%",
   },
   title: {
     color: "#fff",
     fontWeight: "800",
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    lineHeight: 28,
   },
   desc: {
     color: "rgba(255,255,255,0.92)",
-    fontWeight: "600",
-    textShadowColor: "rgba(0,0,0,0.3)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    fontSize: 14,
+    lineHeight: 20,
   },
+  clinic: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  arrow: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  arrowLeft: { left: 12 },
+  arrowRight: { right: 12 },
   footer: {
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: 12,
-    gap: 10,
-  },
-  arrowBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer" as "auto",
+    gap: 12,
   },
   dots: {
     alignItems: "center",
     gap: 6,
     flex: 1,
-    justifyContent: "center",
   },
   dot: {
     height: 8,
@@ -343,6 +289,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     minWidth: 36,
-    textAlign: "center",
+    textAlign: "right",
   },
 });

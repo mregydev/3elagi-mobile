@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Wallet } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,41 +13,41 @@ import {
   Text,
   View,
 } from "react-native";
-import { ConsultationListPaymentPanel } from "@/components/consultations/ConsultationListPaymentPanel";
-import {
-  consultationNeedsPaymentPanel,
-  consultationPaymentBadge,
-} from "@/components/consultations/consultationPaymentMeta";
 import {
   fetchMyConsultations,
   type DoctorConsultation,
 } from "@/domains/consultations/api";
-import { formatUsd, pointsToUsd } from "@/domains/points/usd";
-import { countryFlagEmoji } from "@/constants/patientCountries";
+import { fetchPointsBalance, reimbursePoints } from "@/domains/points/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useRemoveConsultation } from "@/hooks/useRemoveConsultation";
 import { webConfirm } from "@/utils/webConfirm";
-import { showErrorToast } from "@/utils/toast";
+import { formatEgp } from "@/utils/credits";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 import { flexRow } from "@/utils/rtl";
 
 export function ConsultationsSection() {
   const colors = useColors();
   const { t, isRTL, locale } = useI18n();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const { remove } = useRemoveConsultation();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
   const [items, setItems] = useState<DoctorConsultation[]>([]);
+  const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [reimbursing, setReimbursing] = useState(false);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      setItems(await fetchMyConsultations(accessToken));
+      const [list, summary] = await Promise.all([
+        fetchMyConsultations(accessToken),
+        fetchPointsBalance(accessToken),
+      ]);
+      setItems(list);
+      setPoints(summary.message_points ?? 0);
     } catch (e) {
       showErrorToast(t.common.error, (e as Error).message);
     } finally {
@@ -67,28 +67,71 @@ export function ConsultationsSection() {
     setRefreshing(false);
   };
 
+  const doReimburse = async () => {
+    if (!accessToken || points <= 0) return;
+    setReimbursing(true);
+    try {
+      await reimbursePoints(accessToken);
+      await load();
+      showSuccessToast(t.consultations.reimbursementRequested);
+    } catch (e) {
+      showErrorToast(t.consultations.reimburseFailed, (e as Error).message);
+    } finally {
+      setReimbursing(false);
+    }
+  };
+
+  const confirmReimburse = () => {
+    if (points <= 0) return;
+    const title = t.consultations.reimburseTitle;
+    const msg = t.consultations.reimburseConfirm(formatEgp(points, t));
+    if (Platform.OS === "web") {
+      if (webConfirm(title, msg)) void doReimburse();
+      return;
+    }
+    Alert.alert(title, msg, [
+      { text: t.common.cancel, style: "cancel" },
+      { text: t.consultations.reimburse, onPress: () => void doReimburse() },
+    ]);
+  };
+
   const statusMeta = (status: DoctorConsultation["status"]) => {
     if (status === "open") return { color: colors.primary, text: t.consultations.open };
     if (status === "ended") return { color: "#0d9488", text: t.consultations.completed };
     return { color: "#dc2626", text: t.consultations.cancelled };
   };
 
-  // Doctors are paid outside the app now, so the reimburse flow is gone; the
-  // header just totals what the listed consultations are worth in USD.
-  const totalUsd = items.reduce(
-    (sum, c) =>
-      sum + pointsToUsd(c.reserved_points ?? 0, c.patient_country, c.point_price_usd),
-    0,
-  );
-
   const header = (
     <View style={[styles.reimburseCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Text style={[styles.reimburseLabel, { color: colors.mutedForeground, textAlign }]}>
-        {t.consultations.consultationsTotalUsd}
+        {t.consultations.reimbursableCredits}
       </Text>
-      <Text style={[styles.reimburseValue, { color: colors.primary, textAlign }]}>
-        {formatUsd(totalUsd)}
-      </Text>
+      <View style={[styles.reimburseRow, { flexDirection: dir }]}>
+        <Text style={[styles.reimburseValue, { color: colors.primary }]}>
+          {formatEgp(points, t)}
+        </Text>
+        <Pressable
+          onPress={confirmReimburse}
+          disabled={reimbursing || points <= 0}
+          style={[
+            styles.reimburseBtn,
+            {
+              backgroundColor: colors.primary,
+              opacity: reimbursing || points <= 0 ? 0.5 : 1,
+              flexDirection: dir,
+            },
+          ]}
+        >
+          {reimbursing ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Wallet size={16} color="#fff" />
+              <Text style={styles.reimburseBtnText}>{t.consultations.reimburse}</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
       <Text style={[styles.listTitle, { color: colors.foreground, textAlign }]}>
         {t.consultations.myConsultations}
       </Text>
@@ -101,7 +144,6 @@ export function ConsultationsSection() {
 
   return (
     <FlatList
-      style={styles.list}
       data={items}
       keyExtractor={(c) => c.id}
       ListHeaderComponent={header}
@@ -116,21 +158,10 @@ export function ConsultationsSection() {
       }
       renderItem={({ item }) => {
         const s = statusMeta(item.status);
-        const paymentBadge = consultationPaymentBadge(item, true, t, colors);
-        const showPayment = consultationNeedsPaymentPanel(item);
         const refunded = item.complaint_status === "accepted";
         const date = new Date(item.created_at).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US");
         const Chevron = isRTL ? ChevronLeft : ChevronRight;
         return (
-          <View
-            style={[
-              styles.rowWrap,
-              {
-                backgroundColor: colors.card,
-                borderColor: paymentBadge ? `${paymentBadge.color}33` : colors.border,
-              },
-            ]}
-          >
           <Pressable
             onPress={() =>
               router.push({
@@ -141,6 +172,8 @@ export function ConsultationsSection() {
             style={({ pressed }) => [
               styles.row,
               {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
                 flexDirection: dir,
                 opacity: pressed ? 0.85 : 1,
               },
@@ -148,10 +181,6 @@ export function ConsultationsSection() {
           >
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[styles.name, { color: colors.foreground, textAlign }]} numberOfLines={1}>
-                {/* Country the consultation was requested from. */}
-                {item.patient_country
-                  ? `${countryFlagEmoji(item.patient_country)} `
-                  : ""}
                 {item.patient_name}
               </Text>
               {item.description ? (
@@ -163,30 +192,13 @@ export function ConsultationsSection() {
                 </Text>
               ) : null}
               <Text style={[styles.date, { color: colors.mutedForeground, textAlign }]}>
-                {date} ·{" "}
-                {formatUsd(
-                  pointsToUsd(
-                    item.reserved_points,
-                    item.patient_country,
-                    item.point_price_usd,
-                  ),
-                )}
-                {/* The country is what sets that value — name it here too. */}
-                {item.patient_country ? ` · ${item.patient_country.toUpperCase()}` : ""}
+                {date} · {formatEgp(item.reserved_points, t)}
               </Text>
             </View>
             <View style={styles.badges}>
-              {paymentBadge ? (
-                <View style={[styles.badge, { backgroundColor: `${paymentBadge.color}1F` }]}>
-                  <Text style={{ color: paymentBadge.color, fontWeight: "800", fontSize: 12 }}>
-                    {paymentBadge.label}
-                  </Text>
-                </View>
-              ) : (
               <View style={[styles.badge, { backgroundColor: `${s.color}1F` }]}>
                 <Text style={{ color: s.color, fontWeight: "800", fontSize: 12 }}>{s.text}</Text>
               </View>
-              )}
               {refunded ? (
                 <View style={[styles.badge, { backgroundColor: "#dc26261F" }]}>
                   <Text style={{ color: "#dc2626", fontWeight: "800", fontSize: 12 }}>
@@ -195,35 +207,8 @@ export function ConsultationsSection() {
                 </View>
               ) : null}
             </View>
-            <Pressable
-              accessibilityLabel={t.consultations.removeConsultation}
-              onPress={(event) => {
-                event.stopPropagation?.();
-                remove(item.id, item.patient_id, () => void load());
-              }}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.removeBtn,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: pressed ? "#dc262614" : colors.card,
-                },
-              ]}
-            >
-              <Trash2 size={16} color="#dc2626" />
-            </Pressable>
             <Chevron size={18} color={colors.mutedForeground} />
           </Pressable>
-          {showPayment ? (
-            <View style={styles.paymentSection}>
-            <ConsultationListPaymentPanel
-              item={item}
-              isDoctor
-              onUpdated={() => void load()}
-            />
-            </View>
-          ) : null}
-          </View>
         );
       }}
     />
@@ -231,7 +216,6 @@ export function ConsultationsSection() {
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1 },
   reimburseCard: {
     borderWidth: 1,
     borderRadius: 16,
@@ -251,20 +235,13 @@ const styles = StyleSheet.create({
   },
   reimburseBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
   listTitle: { fontSize: 15, fontWeight: "800", marginTop: 6 },
-  rowWrap: {
-    borderWidth: 1,
-    borderRadius: 14,
-    marginBottom: 10,
-    overflow: "hidden",
-  },
   row: {
     alignItems: "center",
     gap: 12,
+    borderWidth: 1,
+    borderRadius: 14,
     padding: 14,
-  },
-  paymentSection: {
-    paddingHorizontal: 10,
-    paddingBottom: 10,
+    marginBottom: 10,
   },
   name: { fontSize: 15, fontWeight: "700" },
   desc: { fontSize: 13 },
@@ -274,14 +251,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-  },
-  removeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   empty: { textAlign: "center", marginTop: 32, fontSize: 14 },
 });

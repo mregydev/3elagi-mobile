@@ -1,6 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ClipboardList, FileText } from "lucide-react-native";
-import { AppBackButton } from "@/components/nav/AppBackButton";
+import { ArrowLeft, ArrowRight, ClipboardList, FileText } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -33,7 +32,6 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
-import { readRouteParam } from "@/utils/routeParams";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
@@ -57,20 +55,17 @@ export function BodyPartRecordsView({
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const storeRecords = useMedicalStore((s) => s.records);
-  const params = useLocalSearchParams<{
-    part?: string | string[];
-    patientUserId?: string | string[];
-  }>();
-  const partParam = readRouteParam(params.part);
-  const patientUserIdParam = readRouteParam(params.patientUserId);
+  const {
+    part: partParam,
+    patientUserId: patientUserIdParam,
+  } = useLocalSearchParams<{ part?: string; patientUserId?: string }>();
 
   const bodyPart = parseBodyPart(partParam);
   const ownerUserId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
   const isDoctor = role?.toLowerCase() === "doctor";
   const viewingPatient =
-    !!patientUserIdParam && patientUserIdParam !== profile?.id;
-  const asDoctorView = doctorView || (isDoctor && viewingPatient);
-  const showDiagnosis = asDoctorView;
+    !!patientUserIdParam?.trim() && patientUserIdParam.trim() !== profile?.id;
+  const showDiagnosis = doctorView || (isDoctor && viewingPatient);
 
   const [fetched, setFetched] = useState<MedicalRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -145,12 +140,17 @@ export function BodyPartRecordsView({
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { flexDirection: dir, borderBottomColor: colors.border }]}>
-        <AppBackButton
-          color={colors.foreground}
-          size={20}
+        <Pressable
+          onPress={() => router.back()}
           style={[styles.backBtn, { flexDirection: dir }]}
           hitSlop={8}
-        />
+        >
+          {isRTL ? (
+            <ArrowRight size={20} color={colors.foreground} />
+          ) : (
+            <ArrowLeft size={20} color={colors.foreground} />
+          )}
+        </Pressable>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[styles.title, { color: colors.foreground, textAlign }]} numberOfLines={1}>
             {partLabel}
@@ -214,20 +214,7 @@ export function BodyPartRecordsView({
                 return (
                   <Pressable
                     key={record.id}
-                    onPress={() => {
-                      if (asDoctorView && ownerUserId) {
-                        router.push({
-                          pathname: "/medical/[id]",
-                          params: {
-                            id: record.id,
-                            doctorView: "1",
-                            patientUserId: ownerUserId,
-                          },
-                        });
-                        return;
-                      }
-                      router.push(`/medical/${record.id}` as never);
-                    }}
+                    onPress={() => router.push(`/medical/${record.id}` as never)}
                     style={[
                       styles.card,
                       {

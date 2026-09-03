@@ -8,7 +8,6 @@ import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadi
 import { AssistantMessageActions } from "@/components/assistant/AssistantMessageActions";
 import type { AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
-import { surfaceCard, UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { AiBookingCard } from "@/components/assistant/AiBookingCard";
 import { AiConsultationCard } from "@/components/assistant/AiConsultationCard";
@@ -119,15 +118,16 @@ function AssistantMessageBubbleBase({
         style={[
           styles.bubbleWrap,
           rowAlign,
-          { maxWidth: compact ? 420 : 560 },
+          { maxWidth: compact ? "90%" : "88%" },
         ]}
       >
         <View
           style={[
             compact ? styles.bubbleCompact : styles.bubble,
-            isUser
-              ? { backgroundColor: colors.primary }
-              : [surfaceCard(colors.card, colors.border), styles.assistantBubble],
+            {
+              backgroundColor: isUser ? colors.primary : colors.card,
+              borderColor: colors.border,
+            },
           ]}
         >
           {isUser ? (
@@ -277,6 +277,12 @@ function AssistantMessageBubbleBase({
               {prepareAssistantMarkdown(assistantText || " ")}
             </Markdown>
           )}
+          {!isUser && booking.directive ? (
+            <AiBookingCard directive={booking.directive} />
+          ) : null}
+          {!isUser && consultation.directive ? (
+            <AiConsultationCard directive={consultation.directive} />
+          ) : null}
           <Text
             style={[
               styles.time,
@@ -286,13 +292,6 @@ function AssistantMessageBubbleBase({
             {formatTime(message.createdAt)}
           </Text>
         </View>
-
-        {!isUser && booking.directive ? (
-          <AiBookingCard directive={booking.directive} />
-        ) : null}
-        {!isUser && consultation.directive ? (
-          <AiConsultationCard directive={consultation.directive} />
-        ) : null}
 
         {showAssistantActions ? (
           <AssistantMessageActions
@@ -325,28 +324,24 @@ export const AssistantMessageBubble = React.memo(
 );
 
 const styles = StyleSheet.create({
-  row: { marginBottom: UI.space.md, paddingHorizontal: UI.space.md },
-  rowCompact: { marginBottom: UI.space.sm, paddingHorizontal: UI.space.sm + 4 },
+  row: { marginBottom: 12, paddingHorizontal: 16 },
+  rowCompact: { marginBottom: 8, paddingHorizontal: 12 },
   bubbleWrap: {
     position: "relative",
-    gap: UI.space.sm,
-    width: "100%",
   },
   bubble: {
     maxWidth: "100%",
-    borderRadius: 16,
+    borderRadius: 18,
     paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  assistantBubble: {
-    shadowOpacity: 0,
-    elevation: 0,
+    paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   bubbleCompact: {
     maxWidth: "100%",
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   text: { fontSize: 15, lineHeight: 22 },
   messageImage: {

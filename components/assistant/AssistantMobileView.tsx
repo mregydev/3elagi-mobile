@@ -15,13 +15,16 @@ import {
   useKeyboardState,
 } from "react-native-keyboard-controller";
 import { AssistantComposer } from "@/components/assistant/AssistantComposer";
+import { ChatMedicalRecordPills } from "@/components/chat/ChatMedicalRecordPills";
 import { AssistantAvatar } from "@/components/assistant/AssistantAvatar";
 import { AssistantHistoryModal } from "@/components/assistant/AssistantHistoryModal";
 import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadingIndicator";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
 import { AssistantVoiceModeView } from "@/components/assistant/AssistantVoiceModeView";
+import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { AssistantVoiceWebStyles } from "@/components/assistant/AssistantVoiceWebStyles";
 import { useAppSidebar } from "@/contexts/AppSidebarContext";
+import type { MedicalRecord } from "@/domains/medical/types";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useAuthStore } from "@/domains/auth/store";
@@ -71,6 +74,7 @@ interface Props {
     addToMedicalRecords: boolean;
     generateAiInsight: boolean;
   }) => void;
+  onMedicalRecordCreated?: (record: MedicalRecord, previewUri?: string) => void;
   /** Extra bottom inset for native tab screens that need it. */
   bottomTabInset?: number;
 }
@@ -93,18 +97,20 @@ export function AssistantMobileView({
   selfUserId,
   onToggleMessageEmotion,
   medicalImageBusy = false,
+  onMedicalRecordCreated,
   bottomTabInset = 0,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
-  const keyboardHeight = useKeyboardState((s) => s.height);
-  const composerBottomInset = keyboardVisible ? 0 : Math.max(insets.bottom, 0);
   const { t, isRTL } = useI18n();
   const { openSidebar } = useAppSidebar();
   const isEn = !isRTL;
   const isDoctor = useAuthStore((s) => s.role?.toLowerCase() === "doctor");
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [createRecordOpen, setCreateRecordOpen] = useState(false);
+  const [dictatedText, setDictatedText] = useState<string | null>(null);
   const listRef = useRef<FlatList<AiMessage>>(null);
   const isNearBottomRef = useRef(true);
   const initialScrollPendingRef = useRef(true);
@@ -301,14 +307,7 @@ export function AssistantMobileView({
         ListEmptyComponent={renderEmpty}
         extraData={`${messages.length}:${lastMessageId}:${lastMessage?.content?.length ?? 0}:${sending}:${voice.spokenHighlight?.wordIndex ?? -1}:${voice.isTalking}`}
         contentContainerStyle={
-          messages.length === 0
-            ? styles.messagesEmpty
-            : [
-                styles.messages,
-                keyboardVisible && {
-                  paddingBottom: keyboardHeight + 32,
-                },
-              ]
+          messages.length === 0 ? styles.messagesEmpty : styles.messages
         }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -370,34 +369,33 @@ export function AssistantMobileView({
         </Text>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.body}>
-          {voice.isVoiceMode ? (
-            <AssistantVoiceModeView
-              isRecording={voice.isRecording}
-              isTranscribing={voice.isTranscribing}
-              isTalking={voice.isTalking}
-              sending={sending}
-              streaming={streaming}
-              voiceError={voice.voiceError ?? error ?? historyError ?? null}
-              liveTranscript={voice.liveTranscript}
-              speechLocale={voice.speechLocale}
-              onSpeechLocaleChange={voice.setSpeechLocale}
-              onSend={() => void voice.sendRecording(voice.liveTranscript)}
-              onExit={() => void voice.exitVoiceMode()}
-              onClearError={voice.clearVoiceError}
-            />
-          ) : (
-            renderMessages()
-          )}
-        </View>
+      <View style={styles.body}>
+        {voice.isVoiceMode ? (
+          <AssistantVoiceModeView
+            isRecording={voice.isRecording}
+            isTranscribing={voice.isTranscribing}
+            isTalking={voice.isTalking}
+            sending={sending}
+            streaming={streaming}
+            voiceError={voice.voiceError ?? error ?? historyError ?? null}
+            liveTranscript={voice.liveTranscript}
+            speechLocale={voice.speechLocale}
+            onSpeechLocaleChange={voice.setSpeechLocale}
+            onSend={() => void voice.sendRecording(voice.liveTranscript)}
+            onExit={() => void voice.exitVoiceMode()}
+            onClearError={voice.clearVoiceError}
+          />
+        ) : (
+          renderMessages()
+        )}
+      </View>
 
-        {!voice.isVoiceMode ? (
-          <KeyboardStickyView
-            enabled={Platform.OS !== "web"}
-            offset={{ closed: 0, opened: 0 }}
-          >
-            <View style={styles.footer}>
+      {!voice.isVoiceMode ? (
+      <KeyboardStickyView
+        enabled={Platform.OS !== "web"}
+        offset={{ closed: 0, opened: 0 }}
+      >
+      <View style={styles.footer}>
         {(error || historyError || voice.voiceError) ? (
           error && !canRetry ? (
             <View
@@ -434,15 +432,26 @@ export function AssistantMobileView({
           )
         ) : null}
 
+        {!isDoctor ? (
+          <ChatMedicalRecordPills
+            isRTL={isRTL}
+            onAddMedicalRecord={() => setCreateRecordOpen(true)}
+            disabled={loadingHistory || medicalImageBusy}
+          />
+        ) : null}
+
         <AssistantComposer
           compact
           isRTL={isRTL}
           sending={sending || medicalImageBusy}
           disabled={loadingHistory || medicalImageBusy}
           bottomInset={
-            Platform.OS === "web" && bottomTabInset
-              ? bottomTabInset
-              : composerBottomInset
+            keyboardVisible ? 0 : Math.max(insets.bottom, bottomTabInset)
+          }
+          isDictating={voice.isDictating}
+          micLoading={voice.isDictating && voice.isTranscribing}
+          onMicPress={() =>
+            voice.toggleDictation((text) => setDictatedText(text))
           }
           aiAttachment={
             aiFile.attachment
@@ -454,11 +463,10 @@ export function AssistantMobileView({
               : null
           }
           onAttachAiFile={() => void aiFile.pickFile()}
-          onScanAiFile={
-            aiFile.canScan ? () => void aiFile.scanFile() : undefined
-          }
           aiAttachLoading={aiFile.loading}
           onRemoveAiAttachment={aiFile.clear}
+          dictatedText={dictatedText}
+          onDictatedTextConsumed={() => setDictatedText(null)}
           placeholder={
             isDoctor
               ? isEn
@@ -470,10 +478,9 @@ export function AssistantMobileView({
           }
           onSend={handleSend}
         />
-            </View>
-          </KeyboardStickyView>
-        ) : null}
       </View>
+      </KeyboardStickyView>
+      ) : null}
 
       <AssistantHistoryModal
         visible={historyOpen}
@@ -486,13 +493,23 @@ export function AssistantMobileView({
         onDelete={onDeleteConversation}
       />
 
+      {accessToken ? (
+        <AssistantCreateRecordDialog
+          visible={createRecordOpen}
+          token={accessToken}
+          onClose={() => setCreateRecordOpen(false)}
+          onCreated={(record, previewUri) => {
+            onMedicalRecordCreated?.(record, previewUri);
+            setCreateRecordOpen(false);
+          }}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { flex: 1, minHeight: 0 },
   header: {
     paddingHorizontal: 12,
     paddingBottom: 8,
@@ -535,7 +552,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexShrink: 0,
-    marginTop: "auto",
   },
   errorBar: {
     marginHorizontal: 12,

@@ -17,15 +17,13 @@ import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { PointsPieChart } from "@/components/PointsPieChart";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
-import { reimbursePoints } from "@/domains/points/api";
-import { usePointsStore } from "@/domains/points/store";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Redirect } from "expo-router";
+import { reimbursePoints } from "@/domains/points/api";
+import { usePointsStore } from "@/domains/points/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useIpPointPricing } from "@/hooks/useIpPointPricing";
 import { usePointsPage } from "@/hooks/usePointsPage";
-import { formatMoney } from "@/utils/credits";
 import { flexRow } from "@/utils/rtl";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
@@ -40,8 +38,6 @@ export default function PointsTab() {
   const tabBarHeight = useBottomTabBarHeight();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
-  // Price follows the caller's IP (Egypt $2 / Jordan $15 / elsewhere $50 USD).
-  const { rate, currency, moneyForAmount } = useIpPointPricing();
 
   const {
     loading,
@@ -112,22 +108,6 @@ export default function PointsTab() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
           {t.credits.mobileSubtitle}
         </Text>
-
-        {/* Rate is region-dependent, so state it plainly rather than only in
-            the top-up dialog. */}
-        <View
-          style={[
-            styles.rateBadge,
-            {
-              backgroundColor: `${colors.primary}12`,
-              borderColor: `${colors.primary}33`,
-            },
-          ]}
-        >
-          <Text style={[styles.rateText, { color: colors.primary }]}>
-            {t.credits.pricePerPointLabel(rate, currency)}
-          </Text>
-        </View>
 
         {loading && !summary ? (
           <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
@@ -201,9 +181,6 @@ export default function PointsTab() {
           >
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.credits.addCredits}</Text>
             <Text style={[styles.modalHint, { color: colors.mutedForeground, textAlign }]}>
-              {t.credits.pricePerPointLabel(rate, currency)}
-            </Text>
-            <Text style={[styles.modalHint, { color: colors.mutedForeground, textAlign }]}>
               {t.credits.creditAmountHint}
             </Text>
             <AppTextInput
@@ -221,16 +198,6 @@ export default function PointsTab() {
                 },
               ]}
             />
-            {(() => {
-              const pts = parseInt(amountText.trim(), 10);
-              if (!Number.isFinite(pts) || pts < 1) return null;
-              return (
-                <Text style={{ color: colors.primary, fontWeight: "800", textAlign, fontSize: 15 }}>
-                  {t.credits.checkoutAmount}:{" "}
-                  {formatMoney(moneyForAmount(pts), t)}
-                </Text>
-              );
-            })()}
             <View style={[styles.modalActions, { flexDirection: dir }]}>
               <Pressable
                 onPress={() => setModalOpen(false)}
@@ -253,15 +220,6 @@ export default function PointsTab() {
 }
 
 const styles = StyleSheet.create({
-  rateBadge: {
-    alignSelf: "center",
-    marginTop: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  rateText: { fontSize: 13, fontWeight: "800" },
   root: { flex: 1 },
   content: { padding: 20, gap: 16 },
   heading: { alignItems: "center", gap: 10, marginTop: 8 },

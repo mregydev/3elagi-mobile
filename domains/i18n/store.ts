@@ -6,9 +6,6 @@ import { patchUserLocale } from "./serverSync";
 
 export type Locale = "en" | "ar" | "de" | "es";
 
-/** App-wide default language for new sessions / missing preferences. */
-export const DEFAULT_LOCALE: Locale = "ar";
-
 interface I18nState {
   locale: Locale;
   hydrated: boolean;
@@ -23,16 +20,12 @@ function syncLocaleIfSignedIn(locale: Locale) {
   });
 }
 
-function isLocale(value: unknown): value is Locale {
-  return value === "ar" || value === "en" || value === "de" || value === "es";
-}
-
 export const useI18nStore = create<I18nState>()(
   persist(
     (set, get) => ({
       // Default language is Arabic (web + mobile) until the user picks one or a
       // server preference loads.
-      locale: DEFAULT_LOCALE,
+      locale: "ar",
       hydrated: false,
       setLocale: (locale) => {
         set({ locale });
@@ -46,19 +39,8 @@ export const useI18nStore = create<I18nState>()(
       name: "3elagi-locale",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ locale: state.locale }),
-      merge: (persisted, current) => {
-        const stored = persisted as Partial<I18nState> | undefined;
-        return {
-          ...current,
-          ...stored,
-          locale: isLocale(stored?.locale) ? stored.locale : DEFAULT_LOCALE,
-        };
-      },
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          if (!isLocale(state.locale)) state.locale = DEFAULT_LOCALE;
-          state.hydrated = true;
-        }
+        if (state) state.hydrated = true;
       },
     },
   ),
@@ -84,11 +66,14 @@ export function getApiLang(): Locale {
 export function applyLocaleAfterAuth(
   preferredLocale: Locale | null | undefined,
 ): void {
-  if (isLocale(preferredLocale)) {
+  if (
+    preferredLocale === "ar" ||
+    preferredLocale === "en" ||
+    preferredLocale === "de" ||
+    preferredLocale === "es"
+  ) {
     useI18nStore.setState({ locale: preferredLocale });
     return;
   }
-  // No server preference → keep / restore Arabic as the product default.
-  useI18nStore.setState({ locale: DEFAULT_LOCALE });
   useI18nStore.getState().syncLocaleToServer();
 }

@@ -21,13 +21,6 @@ let onMessageNew: IncomingMessageHandler | null = null;
 let onMessageDeletedHandler:
   | ((payload: { message_id: string; peer_id: string }) => void)
   | null = null;
-let onConsultationRemovedHandler:
-  | ((payload: {
-      consultation_id: string;
-      peer_id: string;
-      message_ids?: string[];
-    }) => void)
-  | null = null;
 let onMessageUpdatedHandler:
   | ((payload: { message: MessageRow; peer_id: string }) => void)
   | null = null;
@@ -42,9 +35,6 @@ let onMessageEmotionUpdatedHandler:
       message_source: "chat" | "ai";
       emotions: Array<{ user_id: string; emotion: import("@/domains/emotions/types").MessageEmotionType }>;
     }) => void)
-  | null = null;
-let onMessagesReadHandler:
-  | ((payload: { peer_id: string; read_at: string }) => void)
   | null = null;
 let onDoctorRegisteredHandler:
   | ((payload: import("@/domains/home/api").SpecialityDoctorRow) => void)
@@ -87,31 +77,10 @@ let onIncomingVideoCallHandler:
       caller_name?: string;
     }) => void)
   | null = null;
-export type VideoCallStatusPayload = {
-  session_id: string;
-  status: "accepted" | "declined" | "ended" | "missed";
-  room_url?: string;
-  doctor_name?: string;
-  duration_minutes?: number;
-};
-let onVideoCallStatusHandler:
-  | ((payload: VideoCallStatusPayload) => void)
-  | null = null;
 let onSystemNotificationHandler:
   | ((payload: {
       title?: string;
       body: string;
-    }) => void)
-  | null = null;
-let onInboxNotificationHandler:
-  | ((payload: {
-      id: string;
-      type: string;
-      title: string;
-      body: string;
-      data: Record<string, string>;
-      read_at: string | null;
-      created_at: string;
     }) => void)
   | null = null;
 
@@ -125,29 +94,10 @@ export function onChatMessageDeleted(
   onMessageDeletedHandler = handler;
 }
 
-export function onConsultationRemoved(
-  handler:
-    | ((payload: {
-        consultation_id: string;
-        peer_id: string;
-        message_ids?: string[];
-      }) => void)
-    | null,
-) {
-  onConsultationRemovedHandler = handler;
-}
-
 export function onChatMessageUpdated(
   handler: ((payload: { message: MessageRow; peer_id: string }) => void) | null,
 ) {
   onMessageUpdatedHandler = handler;
-}
-
-/** Peer opened the thread and read everything we sent them. */
-export function onChatMessagesRead(
-  handler: ((payload: { peer_id: string; read_at: string }) => void) | null,
-) {
-  onMessagesReadHandler = handler;
 }
 
 export function onChatTyping(handler: ((payload: { peer_id: string }) => void) | null) {
@@ -240,13 +190,6 @@ export function onIncomingVideoCall(
   onIncomingVideoCallHandler = handler;
 }
 
-/** Caller side of a call: the doctor answered, declined, or hung up. */
-export function onVideoCallStatus(
-  handler: ((payload: VideoCallStatusPayload) => void) | null,
-) {
-  onVideoCallStatusHandler = handler;
-}
-
 export function onSystemNotification(
   handler:
     | ((payload: {
@@ -256,22 +199,6 @@ export function onSystemNotification(
     | null,
 ) {
   onSystemNotificationHandler = handler;
-}
-
-export function onInboxNotification(
-  handler:
-    | ((payload: {
-        id: string;
-        type: string;
-        title: string;
-        body: string;
-        data: Record<string, string>;
-        read_at: string | null;
-        created_at: string;
-      }) => void)
-    | null,
-) {
-  onInboxNotificationHandler = handler;
 }
 
 export function emitChatTyping(recipientId: string, userId: string) {
@@ -366,33 +293,6 @@ function bindListeners(client: Socket) {
     if (payload?.message_id && payload?.peer_id) onMessageDeletedHandler?.(payload);
   });
 
-  client.on(
-    "consultation:removed",
-    (payload: {
-      consultation_id?: string;
-      peer_id?: string;
-      message_ids?: string[];
-    }) => {
-      if (!payload?.consultation_id || !payload?.peer_id) return;
-      onConsultationRemovedHandler?.({
-        consultation_id: payload.consultation_id,
-        peer_id: payload.peer_id,
-        message_ids: payload.message_ids,
-      });
-    },
-  );
-
-  client.on(
-    "messages:read",
-    (payload: { peer_id?: string; read_at?: string }) => {
-      if (!payload?.peer_id) return;
-      onMessagesReadHandler?.({
-        peer_id: payload.peer_id,
-        read_at: payload.read_at ?? new Date().toISOString(),
-      });
-    },
-  );
-
   client.on("message:updated", (payload: { message: MessageRow; peer_id: string }) => {
     if (payload?.message?.id && payload?.peer_id) onMessageUpdatedHandler?.(payload);
   });
@@ -422,17 +322,6 @@ function bindListeners(client: Socket) {
           message_source: payload.message_source,
           emotions: payload.emotions,
         });
-      }
-    },
-  );
-
-  client.on(
-    "doctor:call-state",
-    (payload: { doctor_user_id?: string; busy?: boolean }) => {
-      if (payload?.doctor_user_id) {
-        usePresenceStore
-          .getState()
-          .setDoctorBusy(payload.doctor_user_id, !!payload.busy);
       }
     },
   );
@@ -476,12 +365,6 @@ function bindListeners(client: Socket) {
     },
   );
 
-  client.on("video-call:status", (payload: Partial<VideoCallStatusPayload>) => {
-    if (payload?.session_id && payload.status) {
-      onVideoCallStatusHandler?.(payload as VideoCallStatusPayload);
-    }
-  });
-
   client.on(
     "system:notification",
     (payload: {
@@ -494,30 +377,6 @@ function bindListeners(client: Socket) {
           body: payload.body,
         });
       }
-    },
-  );
-
-  client.on(
-    "notification:new",
-    (payload: {
-      id?: string;
-      type?: string;
-      title?: string;
-      body?: string;
-      data?: Record<string, string>;
-      read_at?: string | null;
-      created_at?: string;
-    }) => {
-      if (!payload?.id || !payload.type) return;
-      onInboxNotificationHandler?.({
-        id: payload.id,
-        type: payload.type,
-        title: payload.title ?? "",
-        body: payload.body ?? "",
-        data: payload.data ?? {},
-        read_at: payload.read_at ?? null,
-        created_at: payload.created_at ?? new Date().toISOString(),
-      });
     },
   );
 }

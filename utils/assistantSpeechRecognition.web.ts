@@ -106,7 +106,6 @@ export type WebSpeechSession = {
   abort: () => void;
 };
 
-/** Built-in browser SpeechRecognition / webkitSpeechRecognition. */
 export function createWebSpeechSession(options: {
   lang: string;
   continuous?: boolean;
@@ -137,6 +136,7 @@ export function createWebSpeechSession(options: {
 
   recognition.onstart = () => options.onStart?.();
 
+  // Do NOT attach onspeechstart / onsoundstart — they fire on non-speech noise.
   recognition.onresult = (event) => {
     rebuildTranscriptFromEvent(event, transcriptState);
     notifyTranscript();
@@ -165,7 +165,12 @@ export function createWebSpeechSession(options: {
         resolve(getFullTranscript(transcriptState));
       };
 
+      const prevOnResult = recognition.onresult;
       const prevOnEnd = recognition.onend;
+
+      recognition.onresult = (event) => {
+        prevOnResult?.(event);
+      };
 
       recognition.onend = () => {
         prevOnEnd?.();
@@ -215,9 +220,9 @@ export function startWebSpeechRecognition(options: {
     onStart: options.onStart,
     onTranscript: options.onResult,
     onError: options.onError,
-    onEnd: options.onEnd,
   });
-  return session ? ({ stop: () => void session.stop(), abort: () => session.abort() } as SpeechRecognitionLike) : null;
+  if (!session) return null;
+  return { stop: () => void session.stop(), abort: () => session.abort() };
 }
 
 export function stopWebSpeechRecognition(
@@ -235,48 +240,19 @@ export function stopWebSpeechRecognition(
   }
 }
 
-/** Fallback recorder when Web Speech API is unavailable. */
 export class WebMediaRecorderSession {
   private stream: MediaStream | null = null;
   private recorder: MediaRecorder | null = null;
   private chunks: BlobPart[] = [];
-  private startedAt = 0;
-  private mimeType = "audio/webm";
-
-  private static pickMimeType(): string {
-    if (typeof MediaRecorder === "undefined") return "audio/webm";
-    const candidates = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/mp4",
-      "audio/ogg;codecs=opus",
-      "audio/ogg",
-    ];
-    for (const type of candidates) {
-      if (MediaRecorder.isTypeSupported?.(type)) return type;
-    }
-    return "";
-  }
 
   async start(): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        channelCount: 1,
-      },
-    });
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     this.chunks = [];
-    const picked = WebMediaRecorderSession.pickMimeType();
-    this.mimeType = picked.split(";")[0] || "audio/webm";
-    this.recorder = picked
-      ? new MediaRecorder(this.stream, { mimeType: picked })
-      : new MediaRecorder(this.stream);
+    this.recorder = new MediaRecorder(this.stream);
     this.recorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) this.chunks.push(event.data);
+      if (event.data.size > 0) this.chunks.push(event.data);
     };
-    this.recorder.start(200);
-    this.startedAt = Date.now();
+    this.recorder.start();
   }
 
   async stop(): Promise<{ blob: Blob; mimeType: string }> {
@@ -284,69 +260,17 @@ export class WebMediaRecorderSession {
     const stream = this.stream;
     if (!recorder) throw new Error("Recorder not started");
 
-    const durationMs = Date.now() - this.startedAt;
-
     return new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
+      recorder.onstop = () => {
         stream?.getTracks().forEach((track) => track.stop());
-        this.recorder = null;
-        this.stream = null;
-
-        const mimeType =
-          (recorder.mimeType || this.mimeType || "audio/webm").split(";")[0] ||
-          "audio/webm";
-        const blob = new Blob(this.chunks, { type: mimeType });
-        this.chunks = [];
-
-        if (durationMs < 700) {
-          reject(
-            new Error(
-              "Recording too short. Hold the mic and speak for about a second.",
-            ),
-          );
-          return;
-        }
-        if (blob.size < 256) {
-          reject(
-            new Error(
-              "No audio captured. Check microphone permission and try again.",
-            ),
-          );
-          return;
-        }
-        resolve({ blob, mimeType });
+        const mimeType = recorder.mimeType || "audio/webm";
+        resolve({
+          blob: new Blob(this.chunks, { type: mimeType }),
+          mimeType,
+        });
       };
-
-      recorder.onstop = () => finish();
-      recorder.onerror = () => {
-        if (settled) return;
-        settled = true;
-        stream?.getTracks().forEach((track) => track.stop());
-        reject(new Error("Recording failed"));
-      };
-
-      try {
-        if (recorder.state === "recording") {
-          try {
-            recorder.requestData();
-          } catch {
-            /* ignore */
-          }
-          recorder.stop();
-        } else {
-          finish();
-        }
-      } catch (err) {
-        if (settled) return;
-        settled = true;
-        stream?.getTracks().forEach((track) => track.stop());
-        reject(err instanceof Error ? err : new Error("Recording failed"));
-      }
-
-      setTimeout(finish, 2500);
+      recorder.onerror = () => reject(new Error("Recording failed"));
+      recorder.stop();
     });
   }
 }

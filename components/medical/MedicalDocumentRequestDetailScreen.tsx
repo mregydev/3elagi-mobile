@@ -1,5 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import {
+  ArrowLeft,
+  ArrowRight,
   Beaker,
   Calendar,
   FileDown,
@@ -18,8 +20,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
-import { AppBackButton } from "@/components/nav/AppBackButton";
-import { navigateBack } from "@/utils/appNavigation";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   cancelMedicalDocumentRequest,
@@ -98,7 +98,7 @@ export function MedicalDocumentRequestDetailScreen() {
       MEDICAL_EVENTS.DOCUMENT_REQUEST_FULFILLED,
       (payload) => {
         if (payload?.requestId && id && payload.requestId !== id) return;
-        navigateBack(router, "/(tabs)/records");
+        router.back();
       },
     );
   }, [id]);
@@ -188,12 +188,17 @@ export function MedicalDocumentRequestDetailScreen() {
           },
         ]}
       >
-        <AppBackButton
-          color={colors.foreground}
+        <Pressable
+          onPress={() => router.back()}
           hitSlop={12}
           style={styles.backBtn}
-          fallback="/(tabs)/records"
-        />
+        >
+          {isRTL ? (
+            <ArrowRight size={22} color={colors.foreground} />
+          ) : (
+            <ArrowLeft size={22} color={colors.foreground} />
+          )}
+        </Pressable>
         <Text
           style={[styles.headerTitle, { color: colors.foreground, textAlign }]}
           numberOfLines={1}

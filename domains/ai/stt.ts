@@ -3,9 +3,6 @@ import type { Locale } from "@/domains/i18n/store";
 
 const STT_TIMEOUT_MS = 60_000;
 
-/** Auto-detect among Arabic, English, German, Spanish. */
-export type SttLanguageCode = Locale | "auto";
-
 async function parseError(res: Response): Promise<string> {
   const text = await res.text().catch(() => "");
   if (!text) return `STT request failed (${res.status})`;
@@ -22,7 +19,7 @@ export async function transcribeAssistantAudio(
   token: string,
   audioBase64: string,
   mimeType: string,
-  languageCode: SttLanguageCode = "auto",
+  languageCode?: Locale,
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);
@@ -37,8 +34,7 @@ export async function transcribeAssistantAudio(
       body: JSON.stringify({
         audio: audioBase64,
         mimeType,
-        languageCode:
-          !languageCode || languageCode === "auto" ? "auto" : languageCode,
+        languageCode,
       }),
     });
     if (!res.ok) {
@@ -48,11 +44,6 @@ export async function transcribeAssistantAudio(
     const text = data.text?.trim();
     if (!text) throw new Error("No speech detected");
     return text;
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("Speech recognition timed out. Try a shorter recording.");
-    }
-    throw err;
   } finally {
     clearTimeout(timer);
   }

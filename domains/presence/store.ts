@@ -8,9 +8,6 @@ interface PresenceState {
   removeUser: (userId: string) => void;
   clear: () => void;
   isOnline: (userId: string) => boolean;
-  /** Doctor call lines, live from the socket. Absent = fall back to fetched flag. */
-  busyDoctors: Record<string, boolean>;
-  setDoctorBusy: (doctorUserId: string, busy: boolean) => void;
 }
 
 export const usePresenceStore = create<PresenceState>((set, get) => ({
@@ -40,13 +37,6 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
       delete next[userId];
       return { users: next };
     }),
-  clear: () => set({ users: {}, busyDoctors: {} }),
+  clear: () => set({ users: {} }),
   isOnline: (userId) => Boolean(get().users[userId]),
-  busyDoctors: {},
-  setDoctorBusy: (doctorUserId, busy) =>
-    set((state) =>
-      state.busyDoctors[doctorUserId] === busy
-        ? state
-        : { busyDoctors: { ...state.busyDoctors, [doctorUserId]: busy } },
-    ),
 }));

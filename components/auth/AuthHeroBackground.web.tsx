@@ -1,18 +1,31 @@
+import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { AuthHeroMedia } from "@/components/auth/AuthHeroMedia";
+
+const AUTH_HERO_WEB = require("@/assets/images/auth-login-hero.jpg");
 
 interface Props {
   children: React.ReactNode;
-  /** 0–1 primary wash over the hero image. */
+  /** 0–1 white wash over the image for foreground readability. */
   overlayOpacity?: number;
 }
 
-/** Full-viewport auth hero image — web only. */
-export function AuthHeroBackground({ children, overlayOpacity = 0.48 }: Props) {
+/** Full-viewport auth hero image — web only, image scaled to fit. */
+export function AuthHeroBackground({ children, overlayOpacity = 0.38 }: Props) {
   return (
     <View style={styles.page}>
-      <AuthHeroMedia overlayOpacity={overlayOpacity} />
+      <Image
+        source={AUTH_HERO_WEB}
+        style={styles.image}
+        contentFit="contain"
+        contentPosition="center"
+        accessibilityLabel=""
+      />
+      {overlayOpacity > 0 ? (
+        <View
+          style={[styles.overlay, { backgroundColor: `rgba(255, 255, 255, ${overlayOpacity})` }]}
+        />
+      ) : null}
       {children}
     </View>
   );
@@ -24,5 +37,11 @@ const styles = StyleSheet.create({
     minHeight: "100vh" as unknown as number,
     width: "100%",
     backgroundColor: "#eef4fc",
+  },
+  image: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
   },
 });

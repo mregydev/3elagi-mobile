@@ -1,6 +1,5 @@
 import type { Router } from "expo-router";
 import { isAiChatWebPath, isNormalChatWebPath } from "@/constants/webAppPaths";
-import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
 import { leaveChatToHistory } from "@/utils/chatNavigation";
 import { leaveMedicalForm } from "@/utils/medicalFormNavigation";
 
@@ -19,12 +18,7 @@ export function isAiChatPath(pathname: string): boolean {
 
 /**
  * Resolve the action for hardware / mobile back on the current route.
- * Returns null when the default OS behavior should run (i.e. exit the app).
- *
- * Order matters: real navigation history wins, so back retraces the pages the
- * user actually visited. The per-route destinations below are only fallbacks
- * for when there is no history to pop — a chat opened straight from a push
- * notification, for instance.
+ * Returns null when the default OS behavior should run (e.g. exit app).
  */
 export function getHardwareBackAction(
   pathname: string,
@@ -32,21 +26,12 @@ export function getHardwareBackAction(
 ): (() => void) | null {
   const path = normalizePathname(pathname);
 
-  if (canNavigateBack(router)) {
-    return () => {
-      navigateBack(router);
-    };
-  }
-
   if (isNormalChatPath(path)) {
-    const origin = /[?&]from=([^&]+)/.exec(pathname)?.[1];
-    return () => leaveChatToHistory(origin ? decodeURIComponent(origin) : null);
+    return leaveChatToHistory;
   }
 
   if (isAiChatPath(path)) {
-    return () => {
-      navigateBack(router, "/(tabs)/assistant");
-    };
+    return () => router.replace("/(tabs)/assistant");
   }
 
   if (path.includes("/medical/add") || path.includes("/prescription/add")) {
@@ -55,29 +40,17 @@ export function getHardwareBackAction(
 
   if (path.includes("/points/checkout")) {
     return () => {
-      navigateBack(router, "/(tabs)/points");
+      if (typeof router.canGoBack === "function" && router.canGoBack()) {
+        router.back();
+        return;
+      }
+      router.replace("/(tabs)/points");
     };
   }
 
-  if (path.includes("/doctor/")) {
-    return () => {
-      navigateBack(router, "/(tabs)");
-    };
+  if (typeof router.canGoBack === "function" && router.canGoBack()) {
+    return () => router.back();
   }
 
-  if (path.includes("/patients/")) {
-    return () => {
-      navigateBack(router, "/(tabs)/history");
-    };
-  }
-
-  if (path.includes("/contact") || path.includes("/register-with-us") || path.includes("/rate-us")) {
-    return () => {
-      navigateBack(router, "/(tabs)");
-    };
-  }
-
-  // Nothing left in history and no route-specific home to fall back to:
-  // hand back to the OS, which closes the app.
   return null;
 }

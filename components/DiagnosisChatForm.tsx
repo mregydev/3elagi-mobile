@@ -1,11 +1,4 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Sparkles,
-  Stethoscope,
-  X,
-} from "lucide-react-native";
+import { Plus, Sparkles, Stethoscope, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
-import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import {
   fetchIntakeExamsForPatient,
@@ -43,12 +35,6 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { showAppAlert } from "@/utils/appAlert";
 import { flexRow } from "@/utils/rtl";
-import {
-  newSymptomLine,
-  symptomLinesFrom,
-  symptomTexts,
-  type SymptomLine,
-} from "@/utils/symptomLines";
 
 export type DiagnosisSubmitPayload = {
   description: string;
@@ -63,8 +49,6 @@ export type DiagnosisSubmitPayload = {
 };
 
 type AttachMode = "none" | "existing" | "new";
-
-type PanelId = "symptoms" | "records" | "prescription" | "intake";
 
 function emptyMed(): PrescriptionMedication {
   return { medication_name: "", dose: "", interval: "", notes: "" };
@@ -112,20 +96,11 @@ export function DiagnosisChatForm({
   const colors = useColors();
   const { t } = useI18n();
   const apiLang = useApiLang();
-  const aiEnabled = useAiEnabled();
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
 
-  // One panel open at a time — the dialog stays short and collapsed fields keep
-  // whatever was typed into them.
-  const [openPanel, setOpenPanel] = useState<PanelId | null>(null);
-  const togglePanel = (id: PanelId) =>
-    setOpenPanel((prev) => (prev === id ? null : id));
-
   const [description, setDescription] = useState("");
-  const [symptomLines, setSymptomLines] = useState<SymptomLine[]>(() => [
-    newSymptomLine(),
-  ]);
+  const [symptomLines, setSymptomLines] = useState<string[]>([""]);
   const [note, setNote] = useState("");
   const [bodyPart, setBodyPart] = useState<BodyPart>("general");
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
@@ -149,9 +124,8 @@ export function DiagnosisChatForm({
 
   useEffect(() => {
     if (!visible) {
-      setOpenPanel(null);
       setDescription("");
-      setSymptomLines([newSymptomLine()]);
+      setSymptomLines([""]);
       setNote("");
       setBodyPart("general");
       setSelectedDocumentIds([]);
@@ -224,7 +198,7 @@ export function DiagnosisChatForm({
         accessToken,
       );
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
-      setSymptomLines(symptomLinesFrom(symptoms));
+      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
       setSelectedDocumentIds(result.document_ids ?? []);
       const linkedTitles = linkableDocs
         .filter((d) => (result.document_ids ?? []).includes(d.id))
@@ -256,7 +230,7 @@ export function DiagnosisChatForm({
           patient_user_id: patientUserId,
           diagnosis_title: desc,
           consultation_id: consultationId,
-          symptoms: symptomTexts(symptomLines),
+          symptoms: symptomLines.map((s) => s.trim()).filter(Boolean),
           lang: apiLang,
         },
         accessToken,
@@ -314,52 +288,13 @@ export function DiagnosisChatForm({
     </Pressable>
   );
 
-  const panel = (
-    id: PanelId,
-    title: string,
-    summary: string,
-    children: React.ReactNode,
-  ) => {
-    const open = openPanel === id;
-    const Chevron = open ? ChevronUp : ChevronDown;
-    return (
-      <View style={[styles.panel, { borderColor: colors.border }]}>
-        <Pressable
-          onPress={() => togglePanel(id)}
-          style={[styles.panelHead, { flexDirection: dir }]}
-        >
-          <Text
-            style={{
-              color: colors.foreground,
-              fontWeight: "800",
-              fontSize: 14,
-              flex: 1,
-              textAlign,
-            }}
-          >
-            {title}
-          </Text>
-          {summary ? (
-            <Text
-              style={{ color: colors.primary, fontWeight: "700", fontSize: 12 }}
-            >
-              {summary}
-            </Text>
-          ) : null}
-          <Chevron size={18} color={colors.mutedForeground} />
-        </Pressable>
-        {open ? <View style={styles.panelBody}>{children}</View> : null}
-      </View>
-    );
-  };
-
   const submit = () => {
     const desc = description.trim();
     const trimmedNote = note.trim();
     if (saving) return;
     if (requireDescription && !desc) return;
     if (!requireDescription && !desc && !trimmedNote) return;
-    const symptoms = symptomTexts(symptomLines);
+    const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
 
     let prescription_id: string | undefined;
     let prescription: DiagnosisPrescriptionAttach | undefined;
@@ -441,12 +376,10 @@ export function DiagnosisChatForm({
     (requireDescription ? !!description.trim() : !!description.trim() || !!note.trim());
 
   const uniqueAssignments = useMemo(() => existingIntakes, [existingIntakes]);
-  const filledSymptoms = symptomTexts(symptomLines).length;
 
   return (
-    <View style={styles.container}>
     <ScrollView
-      style={Platform.OS === "web" ? styles.webScroll : styles.nativeScroll}
+      style={Platform.OS === "web" ? styles.webScroll : undefined}
       keyboardShouldPersistTaps="handled"
       bounces={false}
       showsVerticalScrollIndicator={false}
@@ -495,49 +428,43 @@ export function DiagnosisChatForm({
         editable={!saving && !completingAi}
       />
 
-      {aiEnabled ? (
-        <Pressable
-          onPress={() => void completeWithAi()}
-          disabled={!description.trim() || completingAi || saving}
-          style={[
-            styles.aiBtn,
-            {
-              flexDirection: dir,
-              borderColor: colors.primary,
-              backgroundColor: `${colors.primary}12`,
-              opacity: !description.trim() || completingAi || saving ? 0.55 : 1,
-            },
-          ]}
-        >
-          {completingAi ? (
-            <ActivityIndicator color={colors.primary} size="small" />
-          ) : (
-            <Sparkles size={16} color={colors.primary} />
-          )}
-          <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
-            {t.records.completeWithAi}
-          </Text>
-        </Pressable>
-      ) : null}
+      <Pressable
+        onPress={() => void completeWithAi()}
+        disabled={!description.trim() || completingAi || saving}
+        style={[
+          styles.aiBtn,
+          {
+            flexDirection: dir,
+            borderColor: colors.primary,
+            backgroundColor: `${colors.primary}12`,
+            opacity: !description.trim() || completingAi || saving ? 0.55 : 1,
+          },
+        ]}
+      >
+        {completingAi ? (
+          <ActivityIndicator color={colors.primary} size="small" />
+        ) : (
+          <Sparkles size={16} color={colors.primary} />
+        )}
+        <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>
+          {t.records.completeWithAi}
+        </Text>
+      </Pressable>
 
       <BodyPartPicker value={bodyPart} onChange={setBodyPart} label={t.records.bodyPart} />
 
-      {panel(
-        "symptoms",
-        isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)",
-        filledSymptoms ? `${filledSymptoms}` : "",
-        <>
-      {symptomLines.map((line) => (
-        <View key={line.id} style={[styles.symptomRow, { flexDirection: dir }]}>
+      <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
+        {isRTL ? "الأعراض (اختياري)" : "Symptoms (optional)"}
+      </Text>
+      {symptomLines.map((line, index) => (
+        <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
           <AppTextInput
-            value={line.text}
-            onChangeText={(value) =>
-              setSymptomLines((prev) =>
-                prev.map((row) =>
-                  row.id === line.id ? { ...row, text: value } : row,
-                ),
-              )
-            }
+            value={line}
+            onChangeText={(value) => {
+              const next = [...symptomLines];
+              next[index] = value;
+              setSymptomLines(next);
+            }}
             placeholder={isRTL ? "عرض" : "Symptom"}
             placeholderTextColor={colors.mutedForeground}
             style={[
@@ -548,9 +475,7 @@ export function DiagnosisChatForm({
           />
           {symptomLines.length > 1 ? (
             <Pressable
-              onPress={() =>
-                setSymptomLines((prev) => prev.filter((row) => row.id !== line.id))
-              }
+              onPress={() => setSymptomLines(symptomLines.filter((_, i) => i !== index))}
               hitSlop={8}
               disabled={saving}
             >
@@ -560,7 +485,7 @@ export function DiagnosisChatForm({
         </View>
       ))}
       <Pressable
-        onPress={() => setSymptomLines((prev) => [...prev, newSymptomLine()])}
+        onPress={() => setSymptomLines([...symptomLines, ""])}
         style={[styles.addSymptom, { flexDirection: dir }]}
         disabled={saving}
       >
@@ -569,14 +494,10 @@ export function DiagnosisChatForm({
           {isRTL ? "إضافة عرض" : "Add symptom"}
         </Text>
       </Pressable>
-        </>,
-      )}
 
-      {panel(
-        "records",
-        isRTL ? "ربط نتائج المختبر / الأشعة (اختياري)" : "Link lab results / X-rays (optional)",
-        selectedDocumentIds.length ? `${selectedDocumentIds.length}` : "",
-        <>
+      <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
+        {isRTL ? "ربط نتائج المختبر / الأشعة (اختياري)" : "Link lab results / X-rays (optional)"}
+      </Text>
       {loadingDocs ? (
         <ActivityIndicator color={colors.primary} style={{ marginVertical: 8 }} />
       ) : linkableDocs.length === 0 ? (
@@ -637,15 +558,11 @@ export function DiagnosisChatForm({
           })}
         </View>
       )}
-        </>,
-      )}
 
       {/* Prescription attach */}
-      {panel(
-        "prescription",
-        isRTL ? "روشتة (اختياري)" : "Prescription (optional)",
-        rxMode === "none" ? "" : isRTL ? "مرفقة" : "attached",
-        <>
+      <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+        {isRTL ? "روشتة (اختياري)" : "Prescription (optional)"}
+      </Text>
       <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
         {isRTL
           ? "اربط روشتة موجودة أو أنشئ واحدة — ويمكن الإكمال بالذكاء الاصطناعي من أدوية بلد المريض للمراجعة."
@@ -701,7 +618,6 @@ export function DiagnosisChatForm({
                 borderColor: colors.primary,
                 backgroundColor: `${colors.primary}12`,
                 opacity: !description.trim() || draftingRx || saving ? 0.55 : 1,
-                display: aiEnabled ? "flex" : "none",
               },
             ]}
           >
@@ -771,15 +687,11 @@ export function DiagnosisChatForm({
           </Pressable>
         </View>
       ) : null}
-        </>,
-      )}
 
       {/* Intake attach */}
-      {panel(
-        "intake",
-        isRTL ? "فحص الاستقبال (اختياري)" : "Intake exam (optional)",
-        intakeMode === "none" ? "" : isRTL ? "مرفق" : "attached",
-        <>
+      <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+        {isRTL ? "فحص الاستقبال (اختياري)" : "Intake exam (optional)"}
+      </Text>
       <View style={[styles.modeRow, { flexDirection: dir }]}>
         {modeChip(isRTL ? "بدون" : "None", intakeMode === "none", () => setIntakeMode("none"))}
         {modeChip(
@@ -869,8 +781,6 @@ export function DiagnosisChatForm({
           </View>
         )
       ) : null}
-        </>,
-      )}
 
       <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
         {noteLabel ?? (isRTL ? "رسالة للمريض (اختياري)" : "Message to patient (optional)")}
@@ -889,55 +799,33 @@ export function DiagnosisChatForm({
         maxLength={500}
         editable={!saving}
       />
-    </ScrollView>
 
-      {/* Outside the scroll — stays reachable however far the panels expand. */}
-      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
-        <Pressable
-          onPress={submit}
-          disabled={!canSubmit}
-          style={[
-            styles.submitBtn,
-            { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.6 },
-          ]}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-              {submitLabel ??
-                (isRTL ? "حفظ وإرسال في المحادثة" : "Save & send in chat")}
-            </Text>
-          )}
-        </Pressable>
-      </View>
-    </View>
+      <Pressable
+        onPress={submit}
+        disabled={!canSubmit}
+        style={[
+          styles.submitBtn,
+          { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.6 },
+        ]}
+      >
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+            {submitLabel ??
+              (isRTL ? "حفظ وإرسال في المحادثة" : "Save & send in chat")}
+          </Text>
+        )}
+      </Pressable>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Shrinks to the content while short, capped by the modal so the footer below
-  // it is never pushed off screen.
-  container: { flexShrink: 1 },
   webScroll: {
-    maxHeight: "min(56vh, 520px)" as unknown as number,
+    maxHeight: "min(68vh, 640px)" as unknown as number,
   },
-  nativeScroll: { flexShrink: 1 },
   scroll: { paddingBottom: 8 },
-  panel: {
-    borderWidth: 1,
-    borderRadius: 12,
-    marginBottom: 10,
-    overflow: "hidden",
-  },
-  panelHead: {
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  panelBody: { paddingHorizontal: 12, paddingBottom: 12 },
-  footer: { borderTopWidth: 1, paddingTop: 10, marginTop: 2 },
   header: { alignItems: "center", gap: 12, marginBottom: 16 },
   iconWrap: {
     width: 40,
@@ -947,6 +835,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   label: { fontSize: 12, fontWeight: "700", marginBottom: 8, marginTop: 4 },
+  sectionTitle: { fontSize: 14, fontWeight: "800", marginTop: 12, marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 17, marginBottom: 8 },
   modeRow: { gap: 8, flexWrap: "wrap", marginBottom: 10 },
   modeChip: {
@@ -1014,5 +903,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 12,
+    marginTop: 8,
   },
 });

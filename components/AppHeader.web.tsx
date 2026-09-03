@@ -1,12 +1,10 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { AppSidebarMenuButton } from "@/components/nav/AppSidebarDrawer";
-import { goHome } from "@/domains/navigation/goHome";
 import { LOGO_HEIGHT } from "@/constants/brand";
 import { useColors } from "@/hooks/useColors";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
-import { useShowAppHeader } from "@/hooks/useShowAppHeader";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 interface Props {
@@ -23,11 +21,8 @@ export function AppHeader({
   title,
 }: Props) {
   const colors = useColors();
-  const { isMobile, isTablet } = useWebLayout();
+  const { isDesktop } = useWebLayout();
   const mobileTitleTop = useMobileWebPageTitlePaddingTop();
-  const showHeader = useShowAppHeader();
-
-  if (!showHeader) return null;
 
   return (
     <View
@@ -37,22 +32,14 @@ export function AppHeader({
           backgroundColor: surface === "card" ? colors.card : colors.background,
           borderBottomColor: colors.border,
           borderBottomWidth: borderless ? 0 : StyleSheet.hairlineWidth,
-          // Mobile web: sit at the viewport top (safe-area only — no extra gap).
-          paddingTop: isTablet ? 16 : mobileTitleTop,
+          paddingTop: isDesktop ? 16 : 14 + mobileTitleTop,
         },
       ]}
     >
-      {isMobile ? (
+      {!isDesktop ? (
         <View style={styles.brandRow}>
           <AppSidebarMenuButton />
-          <Pressable
-            onPress={goHome}
-            accessibilityRole="button"
-            accessibilityLabel="3elagi"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Logo3elagi height={LOGO_HEIGHT.header} />
-          </Pressable>
+          <Logo3elagi height={LOGO_HEIGHT.header} />
         </View>
       ) : title ? (
         <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
@@ -65,8 +52,8 @@ export function AppHeader({
 const styles = StyleSheet.create({
   root: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
+    paddingBottom: 10,
+    gap: 10,
   },
   brandRow: {
     position: "relative",

@@ -1,10 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import { useState } from "react";
 import { Alert } from "react-native";
-import {
-  isDocumentScannerAvailable,
-  scanDocumentPage,
-} from "@/utils/documentScanner";
 
 export interface AiFileAttachment {
   /** base64 without the data: prefix */
@@ -95,40 +91,7 @@ export function useAiFileAttachment() {
     }
   };
 
-  /** Native only: camera in document-scan mode, attached as a JPEG page. */
-  const scanFile = async () => {
-    setLoading(true);
-    try {
-      const page = await scanDocumentPage();
-      if (!page) return;
-      const { data } = await uriToBase64(page.uri);
-      if (!data || data.length > MAX_BASE64_LENGTH) {
-        Alert.alert("File too large", "Please attach a file under ~10 MB.");
-        return;
-      }
-      setAttachment({
-        data,
-        mimeType: page.mimeType,
-        name: page.name,
-        previewUri: page.uri,
-        uploadUri: page.uri,
-        isPdf: false,
-      });
-    } catch (e) {
-      Alert.alert("Error", (e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const clear = () => setAttachment(null);
 
-  return {
-    attachment,
-    loading,
-    pickFile,
-    scanFile,
-    canScan: isDocumentScannerAvailable,
-    clear,
-  };
+  return { attachment, loading, pickFile, clear };
 }

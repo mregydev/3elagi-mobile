@@ -1,6 +1,6 @@
 const app = require("./app.json");
 
-const EAS_PROJECT_ID = "0bb1b8ef-f01a-415a-9639-7788882cd311";
+const EAS_PROJECT_ID = "c4d6c5d2-8664-4a92-b30a-2205f11532b5";
 const ONESIGNAL_APP_ID = "cdb484c9-84b2-4239-bbf8-cefe299e554c";
 const BUNDLE_ID = app.expo.ios?.bundleIdentifier ?? "com.threelagi.mobile";
 /** Must match `constants/push.ts` */
@@ -38,11 +38,7 @@ module.exports = {
     ios: {
       ...app.expo.ios,
       infoPlist: {
-        ...(app.expo.ios?.infoPlist ?? {}),
         UIBackgroundModes: ["remote-notification"],
-        NSMicrophoneUsageDescription:
-          app.expo.ios?.infoPlist?.NSMicrophoneUsageDescription ??
-          "Allow 3elagi to record voice messages and dictate text.",
       },
       ...(ACTIVE_PUSH_PROVIDER === "onesignal"
         ? {

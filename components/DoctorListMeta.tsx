@@ -4,8 +4,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { formatEgpPerUnit } from "@/utils/credits";
-import { DoctorFeeLines } from "@/components/doctor/DoctorFeeLines";
-import type { DoctorFees } from "@/domains/doctor/fees";
 
 interface SubtitleProps {
   specialty?: string;
@@ -34,8 +32,6 @@ interface TrailingProps {
   rating?: number;
   ratingTotal?: number;
   consultationPrice?: number;
-  /** Cash prices; whichever applies to the viewer's country is shown. */
-  fees?: DoctorFees;
   showReviewCount?: boolean;
 }
 
@@ -44,7 +40,6 @@ export function DoctorTrailingMeta({
   rating,
   ratingTotal,
   consultationPrice,
-  fees,
   showReviewCount = false,
 }: TrailingProps) {
   const colors = useColors();
@@ -68,13 +63,11 @@ export function DoctorTrailingMeta({
         </Text>
       ) : null}
 
-      <DoctorFeeLines
-        doctor={fees ?? {}}
-        isRTL={isRTL}
-        compact
-        align="end"
-        fallback={formatEgpPerUnit(price, t)}
-      />
+      <Text style={[styles.priceLine, { textAlign: isRTL ? "left" : "right" }]}>
+        <Text style={[styles.priceValue, { color: colors.primary }]}>
+          {formatEgpPerUnit(price, t)}
+        </Text>
+      </Text>
     </View>
   );
 }
@@ -101,5 +94,17 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 11,
     lineHeight: 14,
+  },
+  priceLine: {
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  priceValue: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  priceUnit: {
+    fontSize: 11,
+    fontWeight: "500",
   },
 });

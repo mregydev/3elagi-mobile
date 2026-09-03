@@ -1,9 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { Camera, FileText, Image as ImageIcon, Plus, ScanLine, Sparkles, X, ZoomIn } from "lucide-react-native";
-import { AppBackButton } from "@/components/nav/AppBackButton";
-import { navigateBack } from "@/utils/appNavigation";
+import { ArrowLeft, ArrowRight, Camera, FileText, Image as ImageIcon, Plus, Sparkles, X, ZoomIn } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,7 +17,6 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
-import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { useAuthStore } from "@/domains/auth/store";
@@ -34,10 +31,6 @@ import {
   fulfillMedicalDocumentRequest,
   uploadFile,
 } from "@/domains/medical/api";
-import {
-  isDocumentScannerAvailable,
-  scanDocumentPage,
-} from "@/utils/documentScanner";
 import { MEDICAL_EVENTS } from "@/domains/medical/events";
 import { useMedicalStore } from "@/domains/medical/store";
 import type {
@@ -57,12 +50,6 @@ import {
   type BodyPart,
 } from "@/domains/medical/bodyParts";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
-import {
-  newSymptomLine,
-  symptomLinesFrom,
-  symptomTexts,
-  type SymptomLine,
-} from "@/utils/symptomLines";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
 
@@ -74,7 +61,6 @@ interface AttachedFile {
 
 export default function AddMedicalScreen() {
   const colors = useColors();
-  const aiEnabled = useAiEnabled();
   const { isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
@@ -117,9 +103,7 @@ export default function AddMedicalScreen() {
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
-  const [symptomLines, setSymptomLines] = useState<SymptomLine[]>(() => [
-    newSymptomLine(),
-  ]);
+  const [symptomLines, setSymptomLines] = useState<string[]>([""]);
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [completingAi, setCompletingAi] = useState(false);
@@ -128,8 +112,7 @@ export default function AddMedicalScreen() {
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  // The manual form never generates insights — the AI add flow does that.
-  const generateAiInsight = false;
+  const [generateAiInsight, setGenerateAiInsight] = useState(false);
   const [draftAiInsight, setDraftAiInsight] = useState<MedicalAiInsight | null>(null);
   const analyzeRunRef = useRef(0);
 
@@ -205,8 +188,6 @@ export default function AddMedicalScreen() {
       attached.name,
       accessToken,
       getApiLang(),
-      undefined,
-      title.trim() ? { title: title.trim() } : undefined,
     )
       .then((analyzed) => {
         if (cancelled || analyzeRunRef.current !== runId) return;
@@ -214,8 +195,7 @@ export default function AddMedicalScreen() {
           !!requestIdParam?.trim() &&
           (categoryParam === "lab" || categoryParam === "xray");
         if (!locked) setCategory(analyzed.type);
-        const patientTitle = title.trim();
-        setTitle(patientTitle || analyzed.title);
+        setTitle(analyzed.title);
         setNotes(analyzed.notes);
         setDraftAiInsight(analyzed.ai_insight);
       })
@@ -254,16 +234,11 @@ export default function AddMedicalScreen() {
     if (!ATTACHMENT_CATEGORIES.includes(key)) setAttached(null);
   };
 
-  const addSymptomLine = () =>
-    setSymptomLines((prev) => [...prev, newSymptomLine()]);
-  const updateSymptomLine = (id: string, text: string) =>
-    setSymptomLines((prev) =>
-      prev.map((line) => (line.id === id ? { ...line, text } : line)),
-    );
-  const removeSymptomLine = (id: string) =>
-    setSymptomLines((prev) =>
-      prev.length <= 1 ? [newSymptomLine()] : prev.filter((line) => line.id !== id),
-    );
+  const addSymptomLine = () => setSymptomLines((prev) => [...prev, ""]);
+  const updateSymptomLine = (index: number, text: string) =>
+    setSymptomLines((prev) => prev.map((s, i) => (i === index ? text : s)));
+  const removeSymptomLine = (index: number) =>
+    setSymptomLines((prev) => (prev.length <= 1 ? [""] : prev.filter((_, i) => i !== index)));
 
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -307,19 +282,6 @@ export default function AddMedicalScreen() {
     }
   };
 
-  /** Native document scan — deskewed page instead of a raw camera photo. */
-  const scanWithCamera = async () => {
-    try {
-      const page = await scanDocumentPage();
-      if (page) setAttached(page);
-    } catch (e) {
-      Alert.alert(
-        "Scan failed",
-        e instanceof Error ? e.message : "Please try again.",
-      );
-    }
-  };
-
   const pickFromFiles = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: ["image/*", "application/pdf"],
@@ -360,7 +322,7 @@ export default function AddMedicalScreen() {
         accessToken,
       );
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
-      setSymptomLines(symptomLinesFrom(symptoms));
+      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
       setSelectedDocumentIds(result.document_ids ?? []);
       const linkedTitles = linkableDocs
         .filter((d) => (result.document_ids ?? []).includes(d.id))
@@ -404,7 +366,7 @@ export default function AddMedicalScreen() {
         Alert.alert("Description required", "Enter a diagnosis description.");
         return;
       }
-      const symptoms = symptomTexts(symptomLines);
+      const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
       const documentIds =
         selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined;
       setUploading(true);
@@ -422,7 +384,7 @@ export default function AddMedicalScreen() {
         );
         await refetchMedicalHistory(selectedPatientUserId);
         setUploading(false);
-        navigateBack(router, "/(tabs)/records");
+        router.back();
       } catch (e) {
         setUploading(false);
         Alert.alert("Save failed", (e as Error).message);
@@ -463,14 +425,12 @@ export default function AddMedicalScreen() {
             attached.name,
             accessToken,
             getApiLang(),
-            undefined,
-            resolvedTitle ? { title: resolvedTitle } : undefined,
           );
-          resolvedTitle = resolvedTitle || analyzed.title;
+          resolvedTitle = analyzed.title;
           resolvedNotes = analyzed.notes;
           resolvedInsight = analyzed.ai_insight;
           setDraftAiInsight(analyzed.ai_insight);
-          setTitle(resolvedTitle);
+          setTitle(analyzed.title);
           setNotes(analyzed.notes);
         }
 
@@ -522,7 +482,7 @@ export default function AddMedicalScreen() {
           isDoctor && selectedPatientUserId ? selectedPatientUserId : profile.id,
         );
         setUploading(false);
-        navigateBack(router, "/(tabs)/records");
+        router.back();
       } catch (e) {
         setUploading(false);
         Alert.alert("Save failed", (e as Error).message);
@@ -542,7 +502,7 @@ export default function AddMedicalScreen() {
       value: value.trim() || undefined,
       notes: notes.trim() || undefined,
     });
-    navigateBack(router, "/(tabs)/records");
+    router.back();
   };
 
   if (categoryParam === "prescription") return null;
@@ -561,11 +521,13 @@ export default function AddMedicalScreen() {
           },
         ]}
       >
-        <AppBackButton
-          color={colors.foreground}
-          style={{ padding: 4 }}
-          fallback="/(tabs)/records"
-        />
+        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+          {isRTL ? (
+            <ArrowRight size={22} color={colors.foreground} />
+          ) : (
+            <ArrowLeft size={22} color={colors.foreground} />
+          )}
+        </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground, textAlign }]}>
           {isDiagnosis
             ? isRTL
@@ -646,7 +608,6 @@ export default function AddMedicalScreen() {
                   backgroundColor: `${colors.primary}12`,
                   opacity: !title.trim() || completingAi || uploading ? 0.55 : 1,
                   marginBottom: 12,
-                  display: aiEnabled ? "flex" : "none",
                 },
               ]}
             >
@@ -666,10 +627,10 @@ export default function AddMedicalScreen() {
               </Text>
             </Text>
             {symptomLines.map((line, index) => (
-              <View key={line.id} style={[styles.symptomRow, { flexDirection: dir }]}>
+              <View key={index} style={[styles.symptomRow, { flexDirection: dir }]}>
                 <AppTextInput
-                  value={line.text}
-                  onChangeText={(t) => updateSymptomLine(line.id, t)}
+                  value={line}
+                  onChangeText={(t) => updateSymptomLine(index, t)}
                   placeholder={isRTL ? `عرض ${index + 1}` : `Symptom ${index + 1}`}
                   placeholderTextColor={colors.mutedForeground}
                   style={[
@@ -684,7 +645,7 @@ export default function AddMedicalScreen() {
                   ]}
                 />
                 <Pressable
-                  onPress={() => removeSymptomLine(line.id)}
+                  onPress={() => removeSymptomLine(index)}
                   style={[styles.symptomRemove, { backgroundColor: colors.muted }]}
                 >
                   <X size={16} color={colors.mutedForeground} />
@@ -819,6 +780,45 @@ export default function AddMedicalScreen() {
               Image <Text style={{ color: "#ef4444" }}>*</Text>
             </Text>
 
+            <Pressable
+              onPress={() => setGenerateAiInsight((value) => !value)}
+              style={[
+                styles.insightCard,
+                {
+                  borderColor: generateAiInsight ? colors.primary : colors.border,
+                  backgroundColor: colors.card,
+                  flexDirection: dir,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.insightCheckbox,
+                  {
+                    borderColor: generateAiInsight ? colors.primary : colors.border,
+                    backgroundColor: generateAiInsight ? colors.primary : "transparent",
+                  },
+                ]}
+              >
+                {generateAiInsight ? <Text style={styles.insightCheck}>✓</Text> : null}
+              </View>
+              <View style={styles.insightContent}>
+                <Text style={[styles.insightTitle, { color: colors.foreground, textAlign }]}>
+                  {isRTL ? "إنشاء تحليل ذكي" : "Generate AI insight"}
+                </Text>
+                <Text
+                  style={[
+                    styles.insightDescription,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
+                  {isRTL
+                    ? "حلل الصورة لاستخراج العنوان والوصف، ثم أنشئ ملخصًا ذكيًا ومؤشرات محتملة لهذا السجل."
+                    : "Analyze the image to extract the title and description, then create an AI summary and possible findings."}
+                </Text>
+              </View>
+            </Pressable>
+
             {attached ? (
               <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 {/* Image thumbnail or PDF icon */}
@@ -865,15 +865,6 @@ export default function AddMedicalScreen() {
                   <ImageIcon size={18} color={colors.primary} />
                   <Text style={[styles.pickBtnText, { color: colors.foreground }]}>Gallery</Text>
                 </Pressable>
-                {isDocumentScannerAvailable ? (
-                  <Pressable
-                    onPress={scanWithCamera}
-                    style={[styles.pickBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  >
-                    <ScanLine size={18} color={colors.primary} />
-                    <Text style={[styles.pickBtnText, { color: colors.foreground }]}>Scan</Text>
-                  </Pressable>
-                ) : null}
               </View>
             )}
             {!attached && (

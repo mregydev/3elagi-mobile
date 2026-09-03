@@ -1,9 +1,4 @@
 import { API_BASE } from "@/constants/api";
-import { withAuthRequestInit } from "@/domains/auth/http";
-import {
-  isAuthHttpStatus,
-  logoutOnAuthFailure,
-} from "@/domains/auth/sessionFailure";
 import type { PatientProfile } from "./types";
 
 async function authJson<T>(
@@ -11,20 +6,16 @@ async function authJson<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(
-    `${API_BASE}${path}`,
-    withAuthRequestInit(token, {
-      ...init,
-      headers: {
-        ...init?.headers,
-      },
-    }),
-  );
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (isAuthHttpStatus(res.status)) {
-      logoutOnAuthFailure();
-    }
     throw new Error(
       (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
         data?.error ??
@@ -64,37 +55,15 @@ interface RawDoctor {
   personal_clinic_location?: string | null;
   certification_urls?: DoctorCertification[] | null;
   speciality_id?: string | null;
-  speciality_ids?: string[] | null;
   speciality_name_en?: string | null;
   speciality_name_ar?: string | null;
   consultation_price?: number | null;
   video_consultation_price?: number | null;
   video_consultation_minutes?: number | null;
-  immediate_call_enabled?: boolean | null;
   digital_signature_url?: string | null;
   iban?: string | null;
   account_holder_full_name?: string | null;
   national_id?: string | null;
-  text_price_local?: string | number | null;
-  text_price_usd?: string | number | null;
-  video_price_local?: string | number | null;
-  video_price_usd?: string | number | null;
-  payment_link?: string | null;
-  tags?: string[] | null;
-  pending_speciality_change?: PendingSpecialityChange | null;
-}
-
-export interface PendingSpecialityChange {
-  id: string;
-  status: "pending";
-  current_speciality_id: string | null;
-  current_speciality_name_en: string | null;
-  current_speciality_name_ar: string | null;
-  requested_speciality_id: string;
-  requested_speciality_ids: string[];
-  requested_speciality_name_en: string;
-  requested_speciality_name_ar: string;
-  created_at: string;
 }
 
 export interface DoctorCertification {
@@ -104,8 +73,6 @@ export interface DoctorCertification {
 
 export interface AccountProfile {
   userId: string;
-  /** Doctors only: the doctor row id, needed for schedule/slot lookups. */
-  doctorEntityId?: string;
   email: string;
   name: string;
   phone: string;
@@ -116,36 +83,17 @@ export interface AccountProfile {
   location?: string;
   certifications?: DoctorCertification[];
   specialityId?: string;
-  /** Every speciality the doctor practises; the first one is the primary. */
-  specialityIds?: string[];
   specialityNameEn?: string;
   specialityNameAr?: string;
   consultationPrice?: number;
   videoConsultationPrice?: number;
   videoConsultationMinutes?: number;
-  immediateCallEnabled?: boolean;
   digitalSignatureUrl?: string;
   iban?: string;
   accountHolderFullName?: string;
   nationalId?: string;
-  /** Cash fees: home currency for patients in the doctor's country, USD abroad. */
-  textPriceLocal?: number | null;
-  textPriceUsd?: number | null;
-  videoPriceLocal?: number | null;
-  videoPriceUsd?: number | null;
-  /** Where patients pay the doctor. */
-  paymentLink?: string;
-  tags?: string[];
   photoUrl?: string;
   role: string;
-  pendingSpecialityChange?: PendingSpecialityChange | null;
-}
-
-/** Money columns arrive as numeric strings from Postgres. */
-function toFee(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
 }
 
 function pickPhoto(user: RawUser, roleRow: { photo_url?: string | null }) {
@@ -163,7 +111,6 @@ export async function fetchAccountProfile(
     const doctor = await authJson<RawDoctor>("/doctors/me", token);
     return {
       userId: user.id,
-      doctorEntityId: doctor.id,
       email: doctor.email ?? user.email,
       name: doctor.name,
       phone: doctor.phone ?? "",
@@ -175,11 +122,6 @@ export async function fetchAccountProfile(
         ? doctor.certification_urls
         : [],
       specialityId: doctor.speciality_id ?? undefined,
-      specialityIds: Array.isArray(doctor.speciality_ids)
-        ? doctor.speciality_ids
-        : doctor.speciality_id
-          ? [doctor.speciality_id]
-          : [],
       specialityNameEn: doctor.speciality_name_en ?? undefined,
       specialityNameAr: doctor.speciality_name_ar ?? undefined,
       consultationPrice: Math.min(100_000, Math.max(1, doctor.consultation_price ?? 1)),
@@ -188,20 +130,12 @@ export async function fetchAccountProfile(
         Math.max(1, doctor.video_consultation_price ?? 1),
       ),
       videoConsultationMinutes: doctor.video_consultation_minutes ?? 30,
-      immediateCallEnabled: !!doctor.immediate_call_enabled,
       digitalSignatureUrl: doctor.digital_signature_url ?? undefined,
       iban: doctor.iban ?? undefined,
       accountHolderFullName: doctor.account_holder_full_name ?? undefined,
       nationalId: doctor.national_id ?? undefined,
-      textPriceLocal: toFee(doctor.text_price_local),
-      textPriceUsd: toFee(doctor.text_price_usd),
-      videoPriceLocal: toFee(doctor.video_price_local),
-      videoPriceUsd: toFee(doctor.video_price_usd),
-      paymentLink: doctor.payment_link ?? undefined,
-      tags: Array.isArray(doctor.tags) ? doctor.tags : [],
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
-      pendingSpecialityChange: doctor.pending_speciality_change ?? null,
     };
   }
 
@@ -231,21 +165,13 @@ export async function updateAccountProfile(
     location?: string;
     certifications?: DoctorCertification[];
     specialityId?: string;
-    specialityIds?: string[];
     consultationPrice?: number;
     videoConsultationPrice?: number;
     videoConsultationMinutes?: number;
-    immediateCallEnabled?: boolean;
     digitalSignatureUrl?: string | null;
     iban?: string;
     accountHolderFullName?: string;
     nationalId?: string;
-    textPriceLocal?: number | null;
-    textPriceUsd?: number | null;
-    videoPriceLocal?: number | null;
-    videoPriceUsd?: number | null;
-    paymentLink?: string;
-    tags?: string[];
     photoUrl?: string | null;
   },
 ): Promise<PatientProfile> {
@@ -271,11 +197,9 @@ export async function updateAccountProfile(
         personal_clinic_location: payload.location?.trim() || null,
         certification_urls: payload.certifications ?? undefined,
         speciality_id: payload.specialityId ?? undefined,
-        speciality_ids: payload.specialityIds ?? undefined,
         consultation_price: payload.consultationPrice ?? undefined,
         video_consultation_price: payload.videoConsultationPrice ?? undefined,
         video_consultation_minutes: payload.videoConsultationMinutes ?? undefined,
-        immediate_call_enabled: payload.immediateCallEnabled ?? undefined,
         digital_signature_url:
           payload.digitalSignatureUrl !== undefined
             ? payload.digitalSignatureUrl
@@ -283,14 +207,6 @@ export async function updateAccountProfile(
         iban: payload.iban ?? undefined,
         account_holder_full_name: payload.accountHolderFullName ?? undefined,
         national_id: payload.nationalId ?? undefined,
-        // Left out of the payload when undefined, so a partial update (the
-        // availability toggle, say) cannot wipe prices it never carried.
-        text_price_local: payload.textPriceLocal,
-        text_price_usd: payload.textPriceUsd,
-        video_price_local: payload.videoPriceLocal,
-        video_price_usd: payload.videoPriceUsd,
-        payment_link: payload.paymentLink,
-        tags: payload.tags,
       }),
     });
     return {

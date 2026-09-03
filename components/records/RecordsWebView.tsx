@@ -18,11 +18,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
-import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
-import { MedicalPdfViewer, type MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
-import { MedicalRecordsDesktopDashboard } from "@/components/records/MedicalRecordsDesktopDashboard";
 
-import { WEB_CONTENT_PADDING, WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { PatientMedicalRequestsPanel } from "@/components/medical/PatientMedicalRequestsPanel";
 import { BodyPartAutocomplete } from "@/components/records/BodyPartAutocomplete";
 import { BodySkeletonView } from "@/components/records/BodySkeletonView";
@@ -45,7 +42,6 @@ import {
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
 import { buildMedicalAddEntryHref } from "@/domains/medical/addHref";
-import { buildBodyPartRecordsHref } from "@/domains/medical/bodyPartHref";
 import type { BodyPart } from "@/domains/medical/bodyParts";
 import {
   EMPTY_MEDICAL_FILTERS,
@@ -65,7 +61,6 @@ import { alignText, flexRow, localeTag } from "@/utils/rtl";
 type CategoryFilter = MedicalCategory | "all";
 
 const DATE_MODES: DateFilterMode[] = ["any", "on", "range", "before", "after"];
-const SEARCHABLE_CATEGORIES: MedicalCategory[] = ["diagnosis", "lab", "xray", "prescription"];
 
 function parseWebDate(value: string): Date | null {
   const trimmed = value.trim();
@@ -105,10 +100,6 @@ export function RecordsWebView() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<RecordsViewMode>("table");
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
-  const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
-  const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
-  const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
 
   const displayRecords = useMemo(() => withoutIntakeRecords(records), [records]);
   const visibleCategories = getDisplayMedicalRecordCategories();
@@ -129,9 +120,6 @@ export function RecordsWebView() {
     [filteredRecords, dateLocale],
   );
 
-  const isSkeleton = viewMode === "skeleton";
-  const isDashboardDesktop = isDesktop && !isSkeleton;
-
   const filtering =
     hasActiveFilters(filters) || categoryFilter !== "all" || !!selectedBodyPart;
   const advancedFiltering =
@@ -140,42 +128,6 @@ export function RecordsWebView() {
       filters.bodyPart != null ||
       filters.dateMode !== "any" ||
       filters.text.trim().length > 0);
-
-  const grouped = useMemo(() => {
-    const out: Record<MedicalCategory, MedicalRecord[]> = {
-      diagnosis: [],
-      lab: [],
-      xray: [],
-      prescription: [],
-      intake: [],
-    };
-    for (const record of filteredRecords) {
-      out[record.category]?.push(record);
-    }
-    return out;
-  }, [filteredRecords]);
-
-  React.useEffect(() => {
-    if (categoryFilter !== "all") {
-      setOpenSection(categoryFilter);
-    }
-  }, [categoryFilter]);
-
-  React.useEffect(() => {
-    if (!isDesktop || isSkeleton) return;
-    if (!openSection) {
-      setSelectedRecord(null);
-      return;
-    }
-    const items = grouped[openSection] ?? [];
-    if (items.length === 0) {
-      setSelectedRecord(null);
-      return;
-    }
-    setSelectedRecord((prev) =>
-      prev && items.some((item) => item.id === prev.id) ? prev : items[0],
-    );
-  }, [isDesktop, isSkeleton, openSection, grouped]);
 
   const openRecord = (item: MedicalRecord) => {
     router.push(`/medical/${item.id}`);
@@ -208,290 +160,17 @@ export function RecordsWebView() {
     setSelectedBodyPart(null);
   };
 
-  /** Keep skeleton selection and filter body-part control in sync. */
-  const selectBodyPart = (bodyPart: BodyPart | null) => {
-    setSelectedBodyPart(bodyPart);
-    setFilters((prev) => ({ ...prev, bodyPart }));
-  };
-
-  const webFiltersPanel = (
-    <View style={styles.searchBlockCompact}>
-      <View
-        style={[
-          styles.searchRow,
-          {
-            flexDirection: dir,
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-          },
-        ]}
-      >
-        <Search size={18} color={colors.mutedForeground} />
-        <AppTextInput
-          value={filters.text}
-          onChangeText={(text) => setFilters({ ...filters, text })}
-          placeholder={t.records.searchPlaceholder}
-          placeholderTextColor={colors.mutedForeground}
-          style={[styles.searchInput, { color: colors.foreground, textAlign }]}
-          accessibilityLabel={t.records.searchLabel}
-        />
-        {filters.text.length > 0 ? (
-          <Pressable onPress={() => setFilters({ ...filters, text: "" })} hitSlop={8}>
-            <X size={16} color={colors.mutedForeground} />
-          </Pressable>
-        ) : null}
-      </View>
-
-      {!isDesktop ? <PatientMedicalRequestsPanel /> : null}
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.categoryRow, { flexDirection: dir }]}
-      >
-        <CategoryChip
-          label={t.records.all}
-          active={categoryFilter === "all"}
-          onPress={() => setCategoryFilter("all")}
-          colors={colors}
-          activeColor={colors.primary}
-        />
-        {visibleCategories.map(({ key, color }) => (
-          <CategoryChip
-            key={key}
-            label={getLocalizedCategoryLabel(key, t)}
-            active={categoryFilter === key}
-            onPress={() => setCategoryFilter(key)}
-            colors={colors}
-            activeColor={color}
-          />
-        ))}
-      </ScrollView>
-
-      <Pressable
-        onPress={() => setFiltersOpen((v) => !v)}
-        style={[styles.filtersToggle, { flexDirection: dir }]}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: filtersOpen }}
-      >
-        <Text style={[styles.filtersToggleText, { color: colors.primary }]}>
-          {t.records.filterOptions}
-        </Text>
-        {filtersOpen ? (
-          <ChevronUp size={16} color={colors.primary} />
-        ) : (
-          <ChevronDown size={16} color={colors.primary} />
-        )}
-        {advancedFiltering && !filtersOpen ? (
-          <View style={[styles.filterDot, { backgroundColor: colors.primary }]} />
-        ) : null}
-      </Pressable>
-
-      {filtersOpen ? (
-        <View style={[styles.advancedFilters, { borderColor: colors.border }]}>
-          <View
-            style={[
-              styles.searchRow,
-              {
-                flexDirection: dir,
-                borderColor: colors.border,
-                backgroundColor: colors.background,
-              },
-            ]}
-          >
-            <Stethoscope size={16} color={colors.mutedForeground} />
-            <AppTextInput
-              value={filters.doctorName}
-              onChangeText={(doctorName) => setFilters({ ...filters, doctorName })}
-              placeholder={t.records.doctorName}
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.searchInput, { color: colors.foreground, textAlign }]}
-            />
-            {filters.doctorName.length > 0 ? (
-              <Pressable onPress={() => setFilters({ ...filters, doctorName: "" })} hitSlop={8}>
-                <X size={16} color={colors.mutedForeground} />
-              </Pressable>
-            ) : null}
-          </View>
-
-          <BodyPartAutocomplete
-            value={filters.bodyPart}
-            onChange={selectBodyPart}
-            label={t.records.bodyPart}
-            clearable
-          />
-
-          <View style={[styles.chipRow, { flexDirection: dir }]}>
-            {DATE_MODES.map((mode) => {
-              const active = filters.dateMode === mode;
-              return (
-                <Pressable
-                  key={mode}
-                  onPress={() => setDateMode(mode)}
-                  style={[
-                    styles.dateChip,
-                    {
-                      backgroundColor: active ? `${colors.primary}12` : "transparent",
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: active ? colors.primary : colors.foreground,
-                      fontWeight: "600",
-                      fontSize: 12,
-                    }}
-                  >
-                    {t.records.dateFilter[mode]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {filters.dateMode === "range" ? (
-            <View style={[styles.dateRow, { flexDirection: dir }]}>
-              <DateInput
-                label={t.records.dateFrom}
-                value={filters.dateFrom}
-                onChange={(dateFrom) => setFilters({ ...filters, dateFrom })}
-                colors={colors}
-                isRTL={isRTL}
-                dir={dir}
-              />
-              <DateInput
-                label={t.records.dateTo}
-                value={filters.dateTo}
-                onChange={(dateTo) => setFilters({ ...filters, dateTo })}
-                colors={colors}
-                isRTL={isRTL}
-                dir={dir}
-              />
-            </View>
-          ) : null}
-
-          {(filters.dateMode === "on" ||
-            filters.dateMode === "before" ||
-            filters.dateMode === "after") && (
-            <DateInput
-              label={t.records.date}
-              value={filters.singleDate}
-              onChange={(singleDate) => setFilters({ ...filters, singleDate })}
-              colors={colors}
-              isRTL={isRTL}
-              dir={dir}
-            />
-          )}
-        </View>
-      ) : null}
-
-      {filtering ? (
-        <Pressable onPress={clearFilters} style={styles.clearLink}>
-          <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
-            {t.records.clearFilters}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-
-  const openBodyPart = (part: BodyPart) => {
-    router.push(buildBodyPartRecordsHref(part) as never);
-  };
-
-  const pageHeaderBlock = (
-    <View
-      style={[
-        styles.pageHeader,
-        isSkeleton && styles.pageHeaderSkeleton,
-        { flexDirection: dir },
-        mobileTitlePaddingTop > 0 && { paddingTop: mobileTitlePaddingTop },
-      ]}
-    >
-      <View style={styles.pageHeaderText}>
-        <Text
-          style={[
-            styles.pageTitle,
-            { color: colors.foreground, textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
-          ]}
-        >
-          {t.records.title}
-        </Text>
-        <Text
-          style={[
-            styles.pageSubtitle,
-            {
-              color: colors.mutedForeground,
-              textAlign,
-              alignSelf: "stretch",
-              writingDirection: isRTL ? "rtl" : "ltr",
-            },
-          ]}
-        >
-          {t.records.webSubtitle}
-        </Text>
-      </View>
-      {isDesktop ? <MedicalRecordAddBar onAdd={openAdd} layout="header" /> : null}
-    </View>
-  );
-
-  const viewModeToggleBlock = (
-    <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
-      <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-    </View>
-  );
-
-  const desktopDashboard = (
-    <MedicalRecordsDesktopDashboard
-      patientLabel={profile?.name ?? t.records.title}
-      categories={visibleCategories}
-      grouped={grouped}
-      filteredGrouped={grouped}
-      searchableCategories={SEARCHABLE_CATEGORIES}
-      isFiltering={filtering}
-      openSection={openSection}
-      onOpenSectionChange={setOpenSection}
-      selectedRecord={selectedRecord}
-      onSelectRecord={setSelectedRecord}
-      onOpenPdf={setPdfView}
-      onZoomImage={setViewingFileUrl}
-      filtersSlot={webFiltersPanel}
-      requestsSlot={<PatientMedicalRequestsPanel embedded />}
-    />
-  );
+  const isSkeleton = isDesktop && viewMode === "skeleton";
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
-      {isDashboardDesktop ? (
-        <>
-          <View
-            style={[
-              styles.container,
-              styles.dashboardChrome,
-              { maxWidth: WEB_MAX_WIDTH.content },
-            ]}
-          >
-            {pageHeaderBlock}
-            {viewModeToggleBlock}
-          </View>
-          <View
-            style={[
-              styles.dashboardHost,
-              { maxWidth: WEB_MAX_WIDTH.content },
-            ]}
-          >
-            {desktopDashboard}
-          </View>
-        </>
-      ) : (
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           isDesktop && styles.scrollContentDesktop,
           isSkeleton && styles.scrollContentSkeleton,
-          isSkeleton && isDesktop && styles.scrollContentSkeletonDesktop,
+          isSkeleton && styles.scrollContentSkeletonDesktop,
           {
             paddingBottom: isSkeleton
               ? 12
@@ -507,7 +186,7 @@ export function RecordsWebView() {
           style={[
             styles.container,
             isSkeleton && styles.containerSkeleton,
-            isSkeleton && isDesktop && styles.containerSkeletonDesktop,
+            isSkeleton && styles.containerSkeletonDesktop,
             { maxWidth: WEB_MAX_WIDTH.content },
           ]}
         >
@@ -515,45 +194,41 @@ export function RecordsWebView() {
             style={[
               styles.pageHeader,
               isSkeleton && styles.pageHeaderSkeleton,
-              { flexDirection: dir },
               mobileTitlePaddingTop > 0 && { paddingTop: mobileTitlePaddingTop },
             ]}
           >
-            <View style={styles.pageHeaderText}>
-              <Text
-                style={[
-                  styles.pageTitle,
-                  { color: colors.foreground, textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
-                ]}
-              >
-                {t.records.title}
-              </Text>
-              <Text
-                style={[
-                  styles.pageSubtitle,
-                  {
-                    color: colors.mutedForeground,
-                    textAlign,
-                    alignSelf: "stretch",
-                    writingDirection: isRTL ? "rtl" : "ltr",
-                  },
-                ]}
-              >
-                {t.records.webSubtitle}
-              </Text>
-            </View>
-            {isDesktop ? (
-              <MedicalRecordAddBar onAdd={openAdd} layout="header" />
-            ) : null}
+            <Text
+              style={[
+                styles.pageTitle,
+                { color: colors.foreground, textAlign, writingDirection: isRTL ? "rtl" : "ltr" },
+              ]}
+            >
+              {t.records.title}
+            </Text>
+            <Text
+              style={[
+                styles.pageSubtitle,
+                {
+                  color: colors.mutedForeground,
+                  textAlign,
+                  alignSelf: "stretch",
+                  writingDirection: isRTL ? "rtl" : "ltr",
+                },
+              ]}
+            >
+              {t.records.webSubtitle}
+            </Text>
           </View>
 
-          <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
-            <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-          </View>
+          {isDesktop ? (
+            <View style={isSkeleton ? styles.toggleWrapSkeleton : { marginBottom: 12 }}>
+              <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+            </View>
+          ) : null}
 
           <View
             style={
-              isSkeleton && isDesktop
+              isSkeleton
                 ? [styles.splitRow, { flexDirection: dir }]
                 : undefined
             }
@@ -563,15 +238,13 @@ export function RecordsWebView() {
                 style={[
                   styles.splitPane,
                   styles.splitSkeleton,
-                  !isDesktop && styles.splitSkeletonMobile,
                   { borderColor: colors.border },
                 ]}
               >
                 <BodySkeletonView
                   selectedPart={selectedBodyPart}
                   records={displayRecords}
-                  onSelectPart={selectBodyPart}
-                  onOpenPart={isDesktop ? undefined : openBodyPart}
+                  onSelectPart={setSelectedBodyPart}
                 />
               </View>
             ) : null}
@@ -691,7 +364,7 @@ export function RecordsWebView() {
 
                         <BodyPartAutocomplete
                           value={filters.bodyPart}
-                          onChange={selectBodyPart}
+                          onChange={(bodyPart) => setFilters({ ...filters, bodyPart })}
                           label={t.records.bodyPart}
                           clearable
                         />
@@ -800,19 +473,12 @@ export function RecordsWebView() {
                           >
                             {group.label}
                           </Text>
-                          <View
-                            style={
-                              isDesktop && !isSkeleton
-                                ? styles.timelineItemsGrid
-                                : styles.timelineItems
-                            }
-                          >
+                          <View style={styles.timelineItems}>
                             {group.items.map((record, index) => (
                               <RecordTimelineItem
                                 key={record.id}
                                 record={record}
                                 isLast={index === group.items.length - 1}
-                                gridMode={isDesktop && !isSkeleton}
                                 colors={colors}
                                 isRTL={isRTL}
                                 dir={dir}
@@ -837,10 +503,197 @@ export function RecordsWebView() {
                     </View>
                   )}
                 </ScrollView>
+
+                {isDesktop ? (
+                  <View style={styles.splitAddFooter}>
+                    <MedicalRecordAddBar onAdd={openAdd} layout="web-inline" />
+                  </View>
+                ) : null}
               </View>
             ) : !isSkeleton ? (
               <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                {webFiltersPanel}
+                <View style={styles.searchBlock}>
+                  <View
+                    style={[
+                      styles.searchRow,
+                      {
+                        flexDirection: dir,
+                        borderColor: colors.border,
+                        backgroundColor: colors.card,
+                      },
+                    ]}
+                  >
+                    <Search size={18} color={colors.mutedForeground} />
+                    <AppTextInput
+                      value={filters.text}
+                      onChangeText={(text) => setFilters({ ...filters, text })}
+                      placeholder={t.records.searchPlaceholder}
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[styles.searchInput, { color: colors.foreground, textAlign }]}
+                      accessibilityLabel={t.records.searchLabel}
+                    />
+                    {filters.text.length > 0 ? (
+                      <Pressable onPress={() => setFilters({ ...filters, text: "" })} hitSlop={8}>
+                        <X size={16} color={colors.mutedForeground} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  <PatientMedicalRequestsPanel />
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.categoryRow, { flexDirection: dir }]}
+                  >
+                    <CategoryChip
+                      label={t.records.all}
+                      active={categoryFilter === "all"}
+                      onPress={() => setCategoryFilter("all")}
+                      colors={colors}
+                      activeColor={colors.primary}
+                    />
+                    {visibleCategories.map(({ key, color }) => (
+                      <CategoryChip
+                        key={key}
+                        label={getLocalizedCategoryLabel(key, t)}
+                        active={categoryFilter === key}
+                        onPress={() => setCategoryFilter(key)}
+                        colors={colors}
+                        activeColor={color}
+                      />
+                    ))}
+                  </ScrollView>
+
+                  <Pressable
+                    onPress={() => setFiltersOpen((v) => !v)}
+                    style={[styles.filtersToggle, { flexDirection: dir }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: filtersOpen }}
+                  >
+                    <Text style={[styles.filtersToggleText, { color: colors.primary }]}>
+                      {t.records.filterOptions}
+                    </Text>
+                    {filtersOpen ? (
+                      <ChevronUp size={16} color={colors.primary} />
+                    ) : (
+                      <ChevronDown size={16} color={colors.primary} />
+                    )}
+                    {advancedFiltering && !filtersOpen ? (
+                      <View style={[styles.filterDot, { backgroundColor: colors.primary }]} />
+                    ) : null}
+                  </Pressable>
+
+                  {filtersOpen ? (
+                    <View style={[styles.advancedFilters, { borderColor: colors.border }]}>
+                      <View
+                        style={[
+                          styles.searchRow,
+                          {
+                            flexDirection: dir,
+                            borderColor: colors.border,
+                            backgroundColor: colors.background,
+                          },
+                        ]}
+                      >
+                        <Stethoscope size={16} color={colors.mutedForeground} />
+                        <AppTextInput
+                          value={filters.doctorName}
+                          onChangeText={(doctorName) => setFilters({ ...filters, doctorName })}
+                          placeholder={t.records.doctorName}
+                          placeholderTextColor={colors.mutedForeground}
+                          style={[styles.searchInput, { color: colors.foreground, textAlign }]}
+                        />
+                        {filters.doctorName.length > 0 ? (
+                          <Pressable
+                            onPress={() => setFilters({ ...filters, doctorName: "" })}
+                            hitSlop={8}
+                          >
+                            <X size={16} color={colors.mutedForeground} />
+                          </Pressable>
+                        ) : null}
+                      </View>
+
+                      <BodyPartAutocomplete
+                        value={filters.bodyPart}
+                        onChange={(bodyPart) => setFilters({ ...filters, bodyPart })}
+                        label={t.records.bodyPart}
+                        clearable
+                      />
+
+                      <View style={[styles.chipRow, { flexDirection: dir }]}>
+                        {DATE_MODES.map((mode) => {
+                          const active = filters.dateMode === mode;
+                          return (
+                            <Pressable
+                              key={mode}
+                              onPress={() => setDateMode(mode)}
+                              style={[
+                                styles.dateChip,
+                                {
+                                  backgroundColor: active ? `${colors.primary}12` : "transparent",
+                                  borderColor: active ? colors.primary : colors.border,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={{
+                                  color: active ? colors.primary : colors.foreground,
+                                  fontWeight: "600",
+                                  fontSize: 12,
+                                }}
+                              >
+                                {t.records.dateFilter[mode]}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+
+                      {filters.dateMode === "range" ? (
+                        <View style={[styles.dateRow, { flexDirection: dir }]}>
+                          <DateInput
+                            label={t.records.dateFrom}
+                            value={filters.dateFrom}
+                            onChange={(dateFrom) => setFilters({ ...filters, dateFrom })}
+                            colors={colors}
+                            isRTL={isRTL}
+                            dir={dir}
+                          />
+                          <DateInput
+                            label={t.records.dateTo}
+                            value={filters.dateTo}
+                            onChange={(dateTo) => setFilters({ ...filters, dateTo })}
+                            colors={colors}
+                            isRTL={isRTL}
+                            dir={dir}
+                          />
+                        </View>
+                      ) : null}
+
+                      {(filters.dateMode === "on" ||
+                        filters.dateMode === "before" ||
+                        filters.dateMode === "after") && (
+                        <DateInput
+                          label={t.records.date}
+                          value={filters.singleDate}
+                          onChange={(singleDate) => setFilters({ ...filters, singleDate })}
+                          colors={colors}
+                          isRTL={isRTL}
+                          dir={dir}
+                        />
+                      )}
+                    </View>
+                  ) : null}
+
+                  {filtering ? (
+                    <Pressable onPress={clearFilters} style={styles.clearLink}>
+                      <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
+                        {t.records.clearFilters}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
 
                 {filteredRecords.length === 0 ? (
                   <View
@@ -870,19 +723,12 @@ export function RecordsWebView() {
                         >
                           {group.label}
                         </Text>
-                        <View
-                          style={
-                            isDesktop && !isSkeleton
-                              ? styles.timelineItemsGrid
-                              : styles.timelineItems
-                          }
-                        >
+                        <View style={styles.timelineItems}>
                           {group.items.map((record, index) => (
                             <RecordTimelineItem
                               key={record.id}
                               record={record}
                               isLast={index === group.items.length - 1}
-                              gridMode={isDesktop && !isSkeleton}
                               colors={colors}
                               isRTL={isRTL}
                               dir={dir}
@@ -912,14 +758,21 @@ export function RecordsWebView() {
 
         </View>
       </ScrollView>
-      )}
+
+      {isDesktop && !isSkeleton ? (
+        <View
+          style={[
+            styles.desktopDock,
+            { backgroundColor: colors.card, borderTopColor: colors.border },
+          ]}
+        >
+          <MedicalRecordAddBar onAdd={openAdd} layout="web-dock" />
+        </View>
+      ) : null}
 
       {!isDesktop ? (
         <RecordsBottomChrome canAdd onAdd={openAdd} />
       ) : null}
-
-      <FullscreenImageViewer uri={viewingFileUrl} onClose={() => setViewingFileUrl(null)} />
-      <MedicalPdfViewer view={pdfView} onClose={() => setPdfView(null)} isRTL={isRTL} />
     </View>
   );
 }
@@ -1007,7 +860,6 @@ function DateInput({
 function RecordTimelineItem({
   record,
   isLast,
-  gridMode = false,
   colors,
   isRTL,
   dir,
@@ -1035,7 +887,6 @@ function RecordTimelineItem({
   doctorPrefix: (name: string) => string;
   symptomsRecordedOne: string;
   symptomsRecordedMany: string;
-  gridMode?: boolean;
 }) {
   const meta = getCategoryMeta(record.category);
   const subtitle = getRecordSubtitle(record);
@@ -1046,20 +897,13 @@ function RecordTimelineItem({
   });
 
   return (
-    <View
-      style={[
-        gridMode ? styles.timelineGridCell : styles.timelineRow,
-        !gridMode && { flexDirection: dir },
-      ]}
-    >
-      {gridMode ? null : (
+    <View style={[styles.timelineRow, { flexDirection: dir }]}>
       <View style={styles.timelineRail}>
         <View style={[styles.timelineDot, { backgroundColor: meta.color, borderColor: colors.card }]} />
         {!isLast ? (
           <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
         ) : null}
       </View>
-      )}
 
       <Pressable
         testID="records-row"
@@ -1144,18 +988,6 @@ function RecordTimelineItem({
 
 const styles = StyleSheet.create({
   page: { flex: 1, minHeight: 0, width: "100%", position: "relative" },
-  dashboardChrome: {
-    width: "100%",
-    alignSelf: "center",
-    flexShrink: 0,
-  },
-  dashboardHost: {
-    flex: 1,
-    minHeight: 0,
-    width: "100%",
-    alignSelf: "center",
-    paddingBottom: WEB_CONTENT_PADDING,
-  },
   splitRow: {
     flex: 1,
     minHeight: 0,
@@ -1193,23 +1025,39 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
+  splitAddFooter: {
+    flexShrink: 0,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
   splitRecordsContent: {
-    padding: WEB_CONTENT_PADDING,
-    gap: WEB_CONTENT_PADDING,
+    padding: 12,
+    gap: 12,
     paddingBottom: 24,
+  },
+  mobileDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+  desktopDock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    zIndex: 100,
   },
   scroll: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
-    paddingHorizontal: WEB_CONTENT_PADDING,
+    paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 40,
   },
   scrollContentDesktop: {
-    paddingHorizontal: WEB_CONTENT_PADDING,
-    paddingTop: WEB_CONTENT_PADDING,
-    paddingBottom: WEB_CONTENT_PADDING,
+    paddingHorizontal: 32,
+    paddingTop: 24,
+    paddingBottom: 48,
   },
   scrollContentSkeleton: {
     flexGrow: 1,
@@ -1235,16 +1083,8 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   pageHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 16,
-    width: "100%",
-  },
-  pageHeaderText: {
-    flex: 1,
-    minWidth: 0,
     gap: 6,
+    paddingHorizontal: 2,
   },
   pageHeaderSkeleton: {
     flexShrink: 0,
@@ -1266,9 +1106,6 @@ const styles = StyleSheet.create({
   searchBlock: {
     gap: 12,
     marginBottom: 24,
-  },
-  searchBlockCompact: {
-    gap: 12,
   },
   searchRow: {
     alignItems: "center",
@@ -1389,15 +1226,6 @@ const styles = StyleSheet.create({
   },
   timelineItems: {
     gap: 0,
-  },
-  timelineItemsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 14,
-  },
-  timelineGridCell: {
-    width: "31.5%",
-    minWidth: 220,
   },
   timelineRow: {
     alignItems: "stretch",

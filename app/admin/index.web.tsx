@@ -1,3 +1,4 @@
+import { Redirect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,14 +10,15 @@ import {
   Text,
   View,
 } from "react-native";
-import { AdminShell } from "@/components/admin/AdminShell.web";
+import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
 import {
   deleteDoctor,
   fetchAdminDoctors,
   setDoctorApproval,
   type AdminDoctorRow,
 } from "@/domains/admin/api";
-import { useAuthStore } from "@/domains/auth/store";
+import { getPostLogoutRoute } from "@/domains/auth/navigation";
 import { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
@@ -49,7 +51,11 @@ function confirmAction(message: string): boolean {
 
 export default function AdminPanelWeb() {
   const colors = useColors();
+  const router = useRouter();
+  const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const logout = useAuthStore((s) => s.logout);
 
   const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +77,14 @@ export default function AdminPanelWeb() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  if (!isSignedIn(profile, accessToken)) {
+    return <Redirect href="/auth/login" />;
+  }
+
+  if (role?.toLowerCase() !== "admin") {
+    return <Redirect href="/welcome" />;
+  }
 
   const pending = doctors.filter((d) => d.approval_status === "pending");
   const others = doctors.filter((d) => d.approval_status !== "pending");
@@ -118,32 +132,23 @@ export default function AdminPanelWeb() {
 
     return (
       <View style={styles.docSection}>
-        <Text style={[styles.docSectionTitle, { color: colors.foreground }]}>
-          Documents
-        </Text>
+        <Text style={[styles.docSectionTitle, { color: colors.foreground }]}>Documents</Text>
         {available.length ? (
           <View style={styles.docLinks}>
             {available.map((doc) => (
               <Pressable
                 key={doc.label}
                 onPress={() => void Linking.openURL(doc.url!)}
-                style={[
-                  styles.docChip,
-                  { borderColor: colors.border, backgroundColor: colors.muted },
-                ]}
+                style={[styles.docChip, { borderColor: colors.border, backgroundColor: colors.muted }]}
               >
-                <Text
-                  style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}
-                >
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
                   {doc.label}
                 </Text>
               </Pressable>
             ))}
           </View>
         ) : (
-          <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-            No documents uploaded.
-          </Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>No documents uploaded.</Text>
         )}
       </View>
     );
@@ -157,10 +162,7 @@ export default function AdminPanelWeb() {
     return (
       <View
         key={doctor.id}
-        style={[
-          styles.card,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
+        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       >
         <View style={styles.cardTop}>
           {doctor.photo_url ? (
@@ -169,21 +171,12 @@ export default function AdminPanelWeb() {
             <View style={[styles.avatar, { backgroundColor: colors.muted }]} />
           )}
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[styles.name, { color: colors.foreground }]}>
-              {doctor.name}
-            </Text>
-            <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-              {doctor.email}
-            </Text>
+            <Text style={[styles.name, { color: colors.foreground }]}>{doctor.name}</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>{doctor.email}</Text>
             <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
               {speciality} · {doctor.phone || "No phone"}
             </Text>
-            <Text
-              style={{
-                color: statusColor(doctor.approval_status),
-                fontWeight: "700",
-              }}
-            >
+            <Text style={{ color: statusColor(doctor.approval_status), fontWeight: "700" }}>
               {doctor.approval_status}
             </Text>
           </View>
@@ -211,10 +204,7 @@ export default function AdminPanelWeb() {
               onPress={() =>
                 void handleApproval(doctor.id, "rejected", "Doctor rejected")
               }
-              style={[
-                styles.rejectBtn,
-                { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 },
-              ]}
+              style={[styles.rejectBtn, { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 }]}
             >
               <Text style={{ color: "#ef4444", fontWeight: "700" }}>Reject</Text>
             </Pressable>
@@ -227,17 +217,14 @@ export default function AdminPanelWeb() {
                 onPress={() => {
                   if (
                     !confirmAction(
-                      `Block doctor "${doctor.name}"? They will no longer appear as approved.`,
+                      `Block doctor "${doctor.name}"? They will be hidden from the patient roster.`,
                     )
                   ) {
                     return;
                   }
                   void handleApproval(doctor.id, "rejected", "Doctor blocked");
                 }}
-                style={[
-                  styles.rejectBtn,
-                  { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 },
-                ]}
+                style={[styles.rejectBtn, { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 }]}
               >
                 <Text style={{ color: "#ef4444", fontWeight: "700" }}>Block</Text>
               </Pressable>
@@ -245,15 +232,11 @@ export default function AdminPanelWeb() {
               <Pressable
                 disabled={busy}
                 onPress={() =>
-                  void handleApproval(doctor.id, "approved", "Doctor approved")
+                  void handleApproval(doctor.id, "approved", "Doctor unblocked")
                 }
                 style={[styles.approveBtn, { opacity: busy ? 0.6 : 1 }]}
               >
-                {busy ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.approveText}>Approve</Text>
-                )}
+                <Text style={styles.approveText}>Unblock</Text>
               </Pressable>
             )}
             <Pressable
@@ -274,10 +257,39 @@ export default function AdminPanelWeb() {
   };
 
   return (
-    <AdminShell
-      title="Doctors"
-      subtitle="Review applications, approve doctors, and manage accounts."
-    >
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Admin — Doctors</Text>
+          <View style={styles.navRow}>
+            <View style={[styles.navBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}14` }]}>
+              <Text style={{ color: colors.primary, fontWeight: "800" }}>Doctors</Text>
+            </View>
+            <Pressable
+              onPress={() => router.push("/admin/rag")}
+              style={[styles.navBtn, { borderColor: colors.border }]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "700" }}>RAG Sources</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/admin/complaints")}
+              style={[styles.navBtn, { borderColor: colors.border }]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "700" }}>Complaints</Text>
+            </Pressable>
+          </View>
+        </View>
+        <Pressable
+          onPress={() => {
+            logout();
+            router.replace(getPostLogoutRoute());
+          }}
+          style={[styles.logoutBtn, { borderColor: colors.border }]}
+        >
+          <Text style={{ color: colors.foreground, fontWeight: "700" }}>Logout</Text>
+        </Pressable>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
           Pending ({pending.length})
@@ -287,34 +299,44 @@ export default function AdminPanelWeb() {
         ) : pending.length ? (
           pending.map(renderDoctor)
         ) : (
-          <Text style={{ color: colors.mutedForeground }}>
-            No pending doctor applications.
-          </Text>
+          <Text style={{ color: colors.mutedForeground }}>No pending doctor applications.</Text>
         )}
 
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: colors.foreground, marginTop: 28 },
-          ]}
-        >
+        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 28 }]}>
           All doctors ({others.length})
         </Text>
         {others.map(renderDoctor)}
       </ScrollView>
-    </AdminShell>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    padding: 28,
-    gap: 12,
-    maxWidth: 900,
-    width: "100%",
-    alignSelf: "center",
-    paddingBottom: 48,
+  root: { flex: 1, minHeight: "100%" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
   },
+  headerLeft: { gap: 10 },
+  title: { fontSize: 22, fontWeight: "800" },
+  navRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  navBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  logoutBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  content: { padding: 24, gap: 12, maxWidth: 900, width: "100%", alignSelf: "center" },
   sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 4 },
   card: {
     borderWidth: 1,

@@ -10,11 +10,8 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { DoctorSubtitle, DoctorTrailingMeta } from "@/components/DoctorListMeta";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
-import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { messagePreviewText } from "@/domains/chat/messagePreview";
 import type { Conversation } from "@/domains/chat/types";
-import { tourAnchorDataSet } from "@/domains/onboarding/tourAnchorStore";
-import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 
@@ -35,24 +32,26 @@ function ConversationRow({
   colors,
   isRTL,
   onPress,
-  emptyPreview,
-  tourHighlight,
 }: {
   item: Conversation;
   colors: ReturnType<typeof useColors>;
   isRTL: boolean;
   onPress: () => void;
-  emptyPreview?: string;
-  tourHighlight?: boolean;
 }) {
-  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = isRTL ? "row-reverse" : "row";
   const peerRole = item.user.role === "doctor" ? "doctor" : "patient";
   const isOnline = usePresenceStore((s) => s.isOnline(item.user.id));
   const presence = isOnline ? "online" : "offline";
 
-  const rowContent = (
-    <>
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { flexDirection: dir },
+        pressed && { backgroundColor: colors.muted },
+      ]}
+    >
       <Avatar
         uri={item.user.photoUrl}
         seed={item.user.id}
@@ -65,7 +64,7 @@ function ConversationRow({
         <View style={styles.mainCol}>
           <NameWithCountryFlag
             name={item.user.name}
-            country={item.user.country}
+            country={peerRole === "patient" ? item.user.country : undefined}
             isRTL={isRTL}
             nameStyle={[
               styles.name,
@@ -89,8 +88,7 @@ function ConversationRow({
               ]}
               numberOfLines={1}
             >
-              {messagePreviewText(item.lastMessage, isRTL) ||
-                (item.lastMessage ? "" : emptyPreview ?? "")}
+              {messagePreviewText(item.lastMessage, isRTL)}
             </Text>
             {item.unreadCount > 0 ? (
               <View style={[styles.badge, { backgroundColor: colors.primary }]}>
@@ -109,52 +107,10 @@ function ConversationRow({
               isRTL={isRTL}
               rating={item.user.rating}
               consultationPrice={item.user.consultationPrice}
-              fees={{
-                country: item.user.country,
-                textPriceLocal: item.user.textPriceLocal,
-                textPriceUsd: item.user.textPriceUsd,
-                videoPriceLocal: item.user.videoPriceLocal,
-                videoPriceUsd: item.user.videoPriceUsd,
-              }}
             />
           ) : null}
         </View>
       </View>
-    </>
-  );
-
-  if (tourHighlight) {
-    return (
-      <TourAnchor id="chat-test-row">
-        <Pressable
-          testID="chat-test-row"
-          {...tourAnchorDataSet("chat-test-row")}
-          onPress={() => {
-            advanceOnAnchorTap("chat-test-row");
-            onPress();
-          }}
-          style={({ pressed }) => [
-            styles.row,
-            { flexDirection: dir },
-            pressed && { backgroundColor: colors.muted },
-          ]}
-        >
-          {rowContent}
-        </Pressable>
-      </TourAnchor>
-    );
-  }
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { flexDirection: dir },
-        pressed && { backgroundColor: colors.muted },
-      ]}
-    >
-      {rowContent}
     </Pressable>
   );
 }
@@ -166,10 +122,6 @@ interface Props {
   isRTL: boolean;
   onSelect: (conversationId: string) => void;
   emptyLabel: string;
-  /** Shown when a row has no last message yet (e.g. admin support inbox). */
-  emptyPreview?: string;
-  /** Highlights the onboarding test patient row for the product tour. */
-  tourHighlightUserId?: string | null;
 }
 
 export function ChatHistoryList({
@@ -179,10 +131,9 @@ export function ChatHistoryList({
   isRTL,
   onSelect,
   emptyLabel,
-  emptyPreview,
-  tourHighlightUserId,
 }: Props) {
   const colors = useColors();
+  const onlineUsers = usePresenceStore((s) => s.users);
 
   if (loading && conversations.length === 0) {
     return <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />;
@@ -198,13 +149,11 @@ export function ChatHistoryList({
     );
   }
 
-  // No presence extraData / users subscription here: each row watches its own
-  // peer, so the whole list no longer repaints when any user logs in or out.
   return (
     <FlatList
-      style={{ flex: 1 }}
       data={conversations}
       keyExtractor={(c) => c.id}
+      extraData={onlineUsers}
       contentContainerStyle={
         conversations.length === 0 ? styles.emptyContainer : { paddingBottom: 24 }
       }
@@ -223,8 +172,6 @@ export function ChatHistoryList({
           colors={colors}
           isRTL={isRTL}
           onPress={() => onSelect(item.id)}
-          emptyPreview={emptyPreview}
-          tourHighlight={!!tourHighlightUserId && item.user.id === tourHighlightUserId}
         />
       )}
       ListEmptyComponent={

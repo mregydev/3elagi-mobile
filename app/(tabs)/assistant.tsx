@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { Redirect } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import { AssistantMobileView } from "@/components/assistant/AssistantMobileView";
 import {
@@ -6,12 +7,16 @@ import {
   setAssistantScreenActive,
 } from "@/domains/ai/push-suppression";
 import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useAssistantDeepLinkId } from "@/hooks/useAssistantDeepLinkId";
 
 export default function AssistantScreen() {
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
   const conversationId = useAssistantDeepLinkId();
+  const signedIn = isSignedIn(profile, accessToken);
   const assistant = useAiAssistant();
 
   useFocusEffect(
@@ -36,6 +41,7 @@ export default function AssistantScreen() {
   }, [assistant.activeId]);
 
   if (!hydrated) return null;
+  if (!signedIn) return <Redirect href="/welcome" />;
 
   return (
     <AssistantMobileView
@@ -61,6 +67,9 @@ export default function AssistantScreen() {
       }
       medicalImageBusy={assistant.medicalImageBusy}
       onSubmitMedicalImage={(input) => void assistant.submitMedicalImage(input)}
+      onMedicalRecordCreated={(record, previewUri) =>
+        assistant.appendMedicalRecordCreated(record, previewUri)
+      }
     />
   );
 }

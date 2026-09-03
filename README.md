@@ -68,11 +68,6 @@ constants/      colors, theme tokens
 assets/         images & fonts
 ```
 
-## Analytics (Microsoft Clarity)
-
-- **Web** uses project `yak30uwjsp` (Website) via the script in `public/index.html`.
-- **Native APK** uses mobile project `yao5h49onm` (Mobile app type). Rebuild the APK after changing this id in `constants/clarity.ts`.
-
 ## Notes
 
 This is a self-contained copy — no monorepo, no Replit env vars, no proxy.

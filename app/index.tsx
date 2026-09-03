@@ -1,12 +1,14 @@
 import { Redirect } from "expo-router";
 import React from "react";
 import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
 
-/** Guests and signed-in users both land on browseable home. */
 export default function Index() {
+  const profile = useAuthStore((s) => s.profile);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
 
   if (!hydrated) return null;
 
-  return <Redirect href="/(tabs)" />;
+  return <Redirect href={isSignedIn(profile, accessToken) ? "/(tabs)" : "/welcome"} />;
 }

@@ -12,10 +12,6 @@ expo-env.d.ts
 # Native
 ios/
 android/
-# …but not the sources the incoming-call config plugin copies in during
-# prebuild: `android/` matches at any depth, which hid these from EAS.
-!native/android/
-!native/android/**
 *.orig.*
 *.jks
 *.p8

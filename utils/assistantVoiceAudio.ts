@@ -1,10 +1,6 @@
 import { Audio as ExpoAudio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import { AppState, Platform } from "react-native";
-import {
-  mimeTypeForRecordingUri,
-  STT_RECORDING_OPTIONS,
-} from "@/utils/sttRecordingOptions";
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -23,11 +19,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
-
-type NativeRecorderOptions = {
-  /** Minimum capture length before STT (default 400ms for tap-to-talk). */
-  minDurationMs?: number;
-};
 
 function isAudioFocusError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err ?? "");
@@ -83,9 +74,8 @@ async function prepareNativeAudioMode(allowsRecording: boolean) {
     interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
     shouldDuckAndroid: true,
     playThroughEarpieceAndroid: false,
-    // Android only: helps after permission sheet. iOS needs UIBackgroundModes
-    // "audio" for true background stays — we do not declare that.
-    staysActiveInBackground: Platform.OS === "android",
+    // Helps Android avoid false “background” focus failures after permission / focus return.
+    staysActiveInBackground: true,
   });
 }
 
@@ -114,11 +104,6 @@ async function withAudioFocusRetry<T>(run: () => Promise<T>): Promise<T> {
 export class NativeAssistantRecorder {
   private recording: ExpoAudio.Recording | null = null;
   private startedAt = 0;
-  private readonly minDurationMs: number;
-
-  constructor(options?: NativeRecorderOptions) {
-    this.minDurationMs = options?.minDurationMs ?? 400;
-  }
 
   get active() {
     return !!this.recording;
@@ -135,7 +120,7 @@ export class NativeAssistantRecorder {
       // Small delay after permission / mode change so Android can grant focus.
       await sleep(150);
       const { recording } = await ExpoAudio.Recording.createAsync(
-        STT_RECORDING_OPTIONS,
+        ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY,
       );
       this.recording = recording;
       this.startedAt = Date.now();
@@ -151,20 +136,22 @@ export class NativeAssistantRecorder {
     this.recording = null;
     await prepareNativeAudioMode(false);
 
-    if (durationMs < this.minDurationMs) {
+    if (durationMs < 800) {
       throw new Error("Recording too short. Hold the mic a little longer.");
     }
 
     const uri = recording.getURI();
     if (!uri) throw new Error("Could not save recording.");
 
-    const mimeType = mimeTypeForRecordingUri(uri);
+    const mimeType =
+      Platform.OS === "ios"
+        ? "audio/mp4"
+        : uri.endsWith(".3gp")
+          ? "audio/3gpp"
+          : "audio/mp4";
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    if (!base64?.length) {
-      throw new Error("Could not read recording.");
-    }
     return { base64, mimeType };
   }
 

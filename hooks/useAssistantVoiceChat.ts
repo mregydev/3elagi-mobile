@@ -302,12 +302,11 @@ export function useAssistantVoiceChat({
       setIsTranscribing(true);
       try {
         const base64 = await blobToBase64(blob);
-        // Auto-detect ar | en | de | es from what was spoken.
         const text = await transcribeAssistantAudio(
           accessToken,
           base64,
           mimeType,
-          "auto",
+          speechLocale,
         );
         finishVoiceInput(text);
       } catch (err) {
@@ -316,26 +315,12 @@ export function useAssistantVoiceChat({
         setIsTranscribing(false);
       }
     },
-    [accessToken, finishVoiceInput],
+    [accessToken, finishVoiceInput, speechLocale],
   );
-
-  const clearDictationState = useCallback(() => {
-    dictationRef.current = false;
-    dictationCallbackRef.current = null;
-    setIsDictating(false);
-  }, []);
 
   const transcribeNative = useCallback(async () => {
     const recorder = nativeRecorderRef.current;
-    if (!recorder?.active || !accessToken) {
-      nativeRecorderRef.current = null;
-      clearDictationState();
-      setIsRecording(false);
-      if (!accessToken) {
-        setVoiceError("Sign in to use voice chat.");
-      }
-      return;
-    }
+    if (!recorder?.active || !accessToken) return;
 
     setIsTranscribing(true);
     try {
@@ -345,18 +330,16 @@ export function useAssistantVoiceChat({
         accessToken,
         base64,
         mimeType,
-        "auto",
+        speechLocale,
       );
       finishVoiceInput(text);
     } catch (err) {
-      nativeRecorderRef.current = null;
-      clearDictationState();
       setVoiceError((err as Error).message || "Could not transcribe audio.");
     } finally {
       setIsTranscribing(false);
       setIsRecording(false);
     }
-  }, [accessToken, clearDictationState, finishVoiceInput]);
+  }, [accessToken, finishVoiceInput, speechLocale]);
 
   const stopRecording = useCallback(
     async (fallbackText = "") => {
@@ -415,40 +398,33 @@ export function useAssistantVoiceChat({
         ? false
         : (opts?.continuous ?? voiceLoopRef.current);
 
-      const beginMediaFallback = async () => {
-        await stopPlayback();
-        try {
-          if (Platform.OS === "web") {
-            const session = new WebMediaRecorderSession();
-            await session.start();
-            webMediaRecorderRef.current = session;
-            setIsRecording(true);
-            return;
-          }
-          const recorder = new NativeAssistantRecorder();
-          await recorder.start();
-          nativeRecorderRef.current = recorder;
-          setIsRecording(true);
-        } catch (err) {
-          setVoiceError(
-            (err as Error).message || "Microphone permission is required.",
-          );
-          setIsRecording(false);
-          if (dictationRef.current) {
-            dictationRef.current = false;
-            dictationCallbackRef.current = null;
-            setIsDictating(false);
-          }
-        }
-      };
-
       if (Platform.OS === "web") {
         const lang = resolveWebSpeechLang(
           opts?.lang ?? speechLocaleRef.current,
         );
 
-        // Prefer built-in Web Speech API (dictation + voice mode).
-        // Fallback: MediaRecorder + backend STT if SpeechRecognition fails.
+        // Fallback path: record audio and transcribe via the backend (Gemini /stt).
+        // Used when the browser has no Web Speech API, or it fails at runtime
+        // (e.g. `network` / `service-not-allowed` — common on Chrome by region).
+        const beginMediaFallback = async () => {
+          await stopPlayback();
+          try {
+            const session = new WebMediaRecorderSession();
+            await session.start();
+            webMediaRecorderRef.current = session;
+            setIsRecording(true);
+          } catch (err) {
+            setVoiceError(
+              (err as Error).message || "Microphone permission is required.",
+            );
+            setIsRecording(false);
+            if (dictationRef.current) {
+              dictationRef.current = false;
+              dictationCallbackRef.current = null;
+              setIsDictating(false);
+            }
+          }
+        };
 
         if (isWebSpeechRecognitionSupported()) {
           if (webSpeechSessionRef.current) return;
@@ -550,12 +526,6 @@ export function useAssistantVoiceChat({
         setVoiceError(
           friendlyAssistantVoiceError(err, "Could not start recording."),
         );
-        setIsRecording(false);
-        if (dictationRef.current) {
-          dictationRef.current = false;
-          dictationCallbackRef.current = null;
-          setIsDictating(false);
-        }
       }
     },
     [
@@ -574,13 +544,6 @@ export function useAssistantVoiceChat({
     async (fallbackText = "") => {
       const captured =
         fallbackText.trim() || liveTranscriptRef.current.trim();
-
-      if (isRecordingRef.current) {
-        voiceSendInFlightRef.current = true;
-        await stopRecording(captured);
-        return;
-      }
-
       if (!captured) {
         if (voiceLoopRef.current) {
           setVoiceError("No speech detected.");
@@ -590,6 +553,10 @@ export function useAssistantVoiceChat({
       if (sentTranscriptRef.current || sendingRef.current) return;
 
       voiceSendInFlightRef.current = true;
+      if (isRecordingRef.current && webSpeechSessionRef.current) {
+        await stopRecording(captured);
+        return;
+      }
       voiceSendInFlightRef.current = false;
       finishVoiceInput(captured);
     },

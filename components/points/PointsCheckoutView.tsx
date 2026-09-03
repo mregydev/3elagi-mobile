@@ -1,4 +1,4 @@
-import { usePathname, useRouter } from "expo-router";
+import { router } from "expo-router";
 import { ArrowLeft, ArrowRight, Coins } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -15,14 +15,12 @@ import {
   PaymentMethodCard,
   type PaymentMethodId,
 } from "@/components/points/PaymentMethodCard";
+import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { createVisaCheckout } from "@/domains/points/api";
 import { useAuthStore } from "@/domains/auth/store";
-import { useIpPointPricing } from "@/hooks/useIpPointPricing";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { canNavigateBack, navigateBack } from "@/utils/appNavigation";
-import { formatMoney } from "@/utils/credits";
 import { showErrorToast } from "@/utils/toast";
 import { flexRow } from "@/utils/rtl";
 
@@ -35,17 +33,12 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { isDesktop } = useWebLayout();
-  const router = useRouter();
-  usePathname();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const { rate, currency, moneyForAmount, loading: pricingLoading } = useIpPointPricing();
   const [payingMethod, setPayingMethod] = useState<PaymentMethodId | null>(null);
   const useWideLayout = desktopLayout || isDesktop;
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
-  const showBack = canNavigateBack(router);
-  const due = moneyForAmount(amount);
 
   const methods: Array<{
     id: PaymentMethodId;
@@ -90,13 +83,11 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
-        nativeID={BRAND_SCROLL_NATIVE_ID}
         contentContainerStyle={[
           styles.scroll,
           useWideLayout && styles.scrollDesktop,
         ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator
       >
         <View
           style={[
@@ -104,15 +95,13 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
             { maxWidth: useWideLayout ? WEB_MAX_WIDTH.content : 560 },
           ]}
         >
-          {showBack ? (
-            <Pressable
-              onPress={() => navigateBack(router, "/(tabs)/points")}
-              style={[styles.backRow, { flexDirection: dir }]}
-            >
-              <BackIcon size={18} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: "700" }}>{t.credits.back}</Text>
-            </Pressable>
-          ) : null}
+          <Pressable
+            onPress={() => router.back()}
+            style={[styles.backRow, { flexDirection: dir }]}
+          >
+            <BackIcon size={18} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>{t.credits.back}</Text>
+          </Pressable>
 
           <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.summaryHeader, { flexDirection: dir }]}>
@@ -124,24 +113,16 @@ export function PointsCheckoutView({ amount, desktopLayout = false }: PointsChec
                   {t.credits.checkoutTitle}
                 </Text>
                 <Text style={{ color: colors.mutedForeground, textAlign }}>
-                  {pricingLoading ? "…" : t.credits.pricePerPointLabel(rate, currency)}
+                  {t.credits.checkoutSubtitle}
                 </Text>
               </View>
             </View>
             <View style={[styles.amountRow, { borderTopColor: colors.border }]}>
               <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
-                {t.credits.checkoutPoints}
-              </Text>
-              <Text style={[styles.pointsValue, { color: colors.foreground }]}>
-                {amount}
-              </Text>
-            </View>
-            <View style={[styles.amountRow, { borderTopColor: colors.border, borderTopWidth: 0, paddingTop: 8 }]}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>
                 {t.credits.checkoutAmount}
               </Text>
               <Text style={[styles.amountValue, { color: colors.primary }]}>
-                {formatMoney(due, t)}
+                {t.credits.egp(amount)}
               </Text>
             </View>
           </View>
@@ -230,10 +211,6 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 28,
     fontWeight: "900",
-  },
-  pointsValue: {
-    fontSize: 22,
-    fontWeight: "800",
   },
   sectionTitle: {
     fontSize: 16,

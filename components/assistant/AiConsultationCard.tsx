@@ -1,9 +1,8 @@
 import { router } from "expo-router";
-import { Check, FileText, MessageCircle, Stethoscope } from "lucide-react-native";
+import { Check, FileText, MessageCircle } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -17,7 +16,6 @@ import {
   selectPointsBalance,
   usePointsStore,
 } from "@/domains/points/store";
-import { primaryButton, surfaceCard, UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { formatEgp } from "@/utils/credits";
@@ -113,54 +111,76 @@ export function AiConsultationCard({ directive }: Props) {
 
   if (started) {
     return (
-      <View style={[styles.card, surfaceCard(colors.card, colors.border), styles.accent, { borderLeftColor: colors.primary }]}>
-        <View style={[styles.confirmedRow, { flexDirection: dir }]}>
-          <Check size={16} color={colors.primary} />
-          <Text style={[styles.confirmedText, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.background, borderColor: colors.primary },
+        ]}
+      >
+        <View style={styles.confirmedRow}>
+          <Check size={18} color={colors.primary} />
+          <Text style={[styles.confirmedText, { color: colors.foreground }]}>
             {isRTL
-              ? `تم بدء الاستشارة مع ${directive.doctorName ?? "الطبيب"}`
-              : `Consultation started with ${directive.doctorName ?? "the doctor"}`}
+              ? `تم بدء الاستشارة مع ${directive.doctorName ?? "الطبيب"} — جاري فتح المحادثة`
+              : `Consultation started with ${directive.doctorName ?? "the doctor"} — opening chat`}
           </Text>
         </View>
       </View>
     );
   }
 
-  const selectedCount = suggestedRecords.filter((r) => selectedIds.has(r.recordId)).length;
+  const selectedCount = suggestedRecords.filter((r) =>
+    selectedIds.has(r.recordId),
+  ).length;
 
   return (
     <View
       style={[
         styles.card,
-        surfaceCard(colors.card, colors.border),
-        styles.accent,
-        { borderLeftColor: colors.primary },
+        { backgroundColor: colors.background, borderColor: colors.border },
       ]}
     >
-      <View style={[styles.header, { flexDirection: dir }]}>
-        <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}12` }]}>
-          <Stethoscope size={16} color={colors.primary} />
-        </View>
-        <View style={styles.headerText}>
-          <Text style={[styles.kicker, { color: colors.primary, textAlign: isRTL ? "right" : "left" }]}>
-            {isRTL ? "توصية استشارة" : "Consultation recommendation"}
-          </Text>
-          <Text style={[styles.doctorName, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
-            {directive.doctorName ?? (isRTL ? "طبيب" : "Doctor")}
-          </Text>
-        </View>
+      <View style={styles.titleRow}>
+        <MessageCircle size={16} color={colors.primary} />
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          {directive.doctorName
+            ? isRTL
+              ? `بدء استشارة مع ${directive.doctorName}`
+              : `Start consultation with ${directive.doctorName}`
+            : isRTL
+              ? "بدء استشارة"
+              : "Start consultation"}
+        </Text>
       </View>
 
       {directive.description ? (
-        <Text style={[styles.description, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+        <Text
+          style={[
+            styles.description,
+            {
+              color: colors.mutedForeground,
+              textAlign: isRTL ? "right" : "left",
+            },
+          ]}
+        >
           {directive.description}
         </Text>
       ) : null}
 
       {suggestedRecords.length > 0 ? (
         <View style={styles.recordsBlock}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-            {isRTL ? "السجلات المقترحة" : "Suggested records"}
+          <Text
+            style={[
+              styles.sectionLabel,
+              {
+                color: colors.mutedForeground,
+                textAlign: isRTL ? "right" : "left",
+              },
+            ]}
+          >
+            {isRTL
+              ? "السجلات المقترحة للإرفاق — أكّد أو ألغِ الاختيار"
+              : "Suggested records to attach — confirm or uncheck"}
           </Text>
           {suggestedRecords.map((record) => {
             const selected = selectedIds.has(record.recordId);
@@ -172,7 +192,10 @@ export function AiConsultationCard({ directive }: Props) {
                   styles.recordRow,
                   {
                     flexDirection: dir,
-                    backgroundColor: selected ? `${colors.primary}08` : colors.background,
+                    borderColor: selected ? colors.primary : colors.border,
+                    backgroundColor: selected
+                      ? `${colors.primary}12`
+                      : colors.card,
                   },
                 ]}
               >
@@ -185,41 +208,79 @@ export function AiConsultationCard({ directive }: Props) {
                     },
                   ]}
                 >
-                  {selected ? <Check size={10} color="#fff" /> : null}
+                  {selected ? <Check size={12} color="#fff" /> : null}
                 </View>
-                <FileText size={14} color={selected ? colors.primary : colors.mutedForeground} />
-                <Text
-                  style={[
-                    styles.recordTitle,
-                    { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {record.title}
-                </Text>
+                <FileText
+                  size={15}
+                  color={selected ? colors.primary : colors.mutedForeground}
+                />
+                <View style={styles.recordTextWrap}>
+                  <Text
+                    style={[
+                      styles.recordTitle,
+                      {
+                        color: colors.foreground,
+                        textAlign: isRTL ? "right" : "left",
+                      },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {record.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.recordType,
+                      {
+                        color: colors.mutedForeground,
+                        textAlign: isRTL ? "right" : "left",
+                      },
+                    ]}
+                  >
+                    {record.recordType}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
-          <Text style={[styles.attachHint, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+          <Text
+            style={[
+              styles.attachHint,
+              {
+                color: colors.mutedForeground,
+                textAlign: isRTL ? "right" : "left",
+              },
+            ]}
+          >
             {isRTL
-              ? `${selectedCount} سجل مرفق`
-              : `${selectedCount} record${selectedCount === 1 ? "" : "s"} attached`}
+              ? `${selectedCount} سجل سيُرفق مع الاستشارة`
+              : `${selectedCount} record${selectedCount === 1 ? "" : "s"} will be attached`}
           </Text>
         </View>
       ) : null}
 
-      <View style={[styles.footer, { flexDirection: dir }]}>
-        <Text style={[styles.price, { color: colors.foreground }]}>
-          {formatEgp(price)}
-          <Text style={{ color: colors.mutedForeground, fontWeight: "500" }}>
-            {isRTL ? " · محجوز من رصيدك" : " · reserved"}
-          </Text>
-        </Text>
-      </View>
+      <Text
+        style={[
+          styles.price,
+          { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+        ]}
+      >
+        {isRTL
+          ? `التكلفة: ${formatEgp(price)} (تُحجز من رصيدك)`
+          : `Cost: ${formatEgp(price)} (reserved from your credits)`}
+      </Text>
 
       {!hasEnoughCredits ? (
-        <Text style={[styles.errorInline, { color: colors.destructive, textAlign: isRTL ? "right" : "left" }]}>
-          {isRTL ? `رصيد غير كافٍ (${formatEgp(balance)})` : `Insufficient credits (${formatEgp(balance)})`}
+        <Text
+          style={{
+            color: colors.destructive,
+            fontWeight: "600",
+            marginBottom: 8,
+            textAlign: isRTL ? "right" : "left",
+          }}
+        >
+          {isRTL
+            ? `رصيدك غير كافٍ (${formatEgp(balance)})`
+            : `Insufficient credits (${formatEgp(balance)})`}
         </Text>
       ) : null}
 
@@ -227,7 +288,6 @@ export function AiConsultationCard({ directive }: Props) {
         onPress={() => void handleStart()}
         disabled={starting || !hasEnoughCredits}
         style={[
-          primaryButton(),
           styles.confirmBtn,
           {
             backgroundColor: colors.primary,
@@ -238,17 +298,22 @@ export function AiConsultationCard({ directive }: Props) {
         {starting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <>
-            <MessageCircle size={15} color="#fff" />
-            <Text style={styles.confirmBtnText}>
-              {isRTL ? "تأكيد وبدء المحادثة" : "Confirm & open chat"}
-            </Text>
-          </>
+          <Text style={styles.confirmBtnText}>
+            {isRTL ? "تأكيد وبدء المحادثة" : "Confirm & open chat"}
+          </Text>
         )}
       </Pressable>
 
       {error ? (
-        <Text style={[styles.errorInline, { color: colors.destructive, textAlign: "center" }]}>{error}</Text>
+        <Text
+          style={{
+            color: colors.destructive,
+            marginTop: 8,
+            textAlign: "center",
+          }}
+        >
+          {error}
+        </Text>
       ) : null}
     </View>
   );
@@ -256,114 +321,48 @@ export function AiConsultationCard({ directive }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    marginTop: UI.space.sm,
-    padding: UI.space.md,
-    gap: UI.space.sm,
-    maxWidth: 520,
-    ...Platform.select({
-      web: { transition: "box-shadow 180ms ease" } as object,
-      default: {},
-    }),
+    marginTop: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
   },
-  accent: {
-    borderLeftWidth: 3,
-  },
-  header: {
+  titleRow: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: UI.space.sm,
-  },
-  iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: UI.radius.icon,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerText: {
-    flex: 1,
-    gap: 2,
-  },
-  kicker: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
-  doctorName: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-    lineHeight: 21,
-  },
-  description: {
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "500",
-  },
-  recordsBlock: {
     gap: 6,
+    marginBottom: 8,
   },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
+  title: { fontSize: 14, fontWeight: "700", flex: 1 },
+  description: { fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  recordsBlock: { marginBottom: 10, gap: 8 },
+  sectionLabel: { fontSize: 12, fontWeight: "700", marginBottom: 2 },
   recordRow: {
     alignItems: "center",
-    gap: 8,
-    borderRadius: UI.radius.inner,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 6,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
-  recordTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
-    lineHeight: 16,
-  },
-  attachHint: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  footer: {
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  price: {
-    fontSize: 14,
-    fontWeight: "800",
-  },
+  recordTextWrap: { flex: 1, gap: 2 },
+  recordTitle: { fontSize: 13, fontWeight: "700" },
+  recordType: { fontSize: 11, fontWeight: "600", textTransform: "uppercase" },
+  attachHint: { fontSize: 12, fontWeight: "600" },
+  price: { fontSize: 13, fontWeight: "600", marginBottom: 10 },
   confirmBtn: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 2,
-  },
-  confirmBtnText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  confirmedRow: {
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: "center",
-    gap: 8,
   },
-  confirmedText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  errorInline: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  confirmBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  confirmedRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  confirmedText: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 19 },
 });

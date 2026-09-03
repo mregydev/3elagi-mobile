@@ -1,19 +1,18 @@
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect } from "react";
-import { openAsk3elagiAiWithChat } from "@/domains/ai/widget-store";
+import { Redirect, useLocalSearchParams } from "expo-router";
+import React from "react";
 
 export default function AiChatDeepLinkNative() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const chatId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : undefined;
 
-  useEffect(() => {
-    if (!chatId) return;
-    openAsk3elagiAiWithChat(chatId);
-    router.replace("/(tabs)");
-  }, [chatId, router]);
+  if (!chatId) return <Redirect href="/(tabs)/assistant" />;
 
-  if (!chatId) return <Redirect href="/(tabs)" />;
-
-  return null;
+  return (
+    <Redirect
+      href={{
+        pathname: "/(tabs)/assistant",
+        params: { chatId },
+      }}
+    />
+  );
 }

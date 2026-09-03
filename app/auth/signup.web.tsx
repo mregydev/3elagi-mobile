@@ -9,9 +9,9 @@ export default function SignupScreenWeb() {
   return (
     <WebAuthFrame
       scrollForm
-      backgroundVariant="login-hero"
       eyebrow={t.auth.signUpEyebrow}
-      showBack={false}
+      headline={t.auth.signUpHeadline}
+      description={t.auth.signUpDescription}
     >
       <AuthScreenRoot>
         <SignupScreen />

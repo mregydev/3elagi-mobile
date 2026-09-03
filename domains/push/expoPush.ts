@@ -30,16 +30,8 @@ export async function ensureVideoCallPushChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync(VIDEO_CALL_PUSH_CHANNEL_ID, {
     name: "Video calls",
     importance: Notifications.AndroidImportance.MAX,
-    // Bundled ringtone rather than the short default blip, played through the
-    // ringtone stream so it uses the ring volume and keeps looping-loud.
-    sound: "ringtone.wav",
-    audioAttributes: {
-      usage: Notifications.AndroidAudioUsage.NOTIFICATION_RINGTONE,
-      contentType: Notifications.AndroidAudioContentType.SONIFICATION,
-    },
+    sound: "default",
     vibrationPattern: [0, 500, 250, 500, 250, 500],
-    enableVibrate: true,
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: true,
   });
 }
@@ -47,32 +39,6 @@ export async function ensureVideoCallPushChannel(): Promise<void> {
 export async function ensurePushChannels(): Promise<void> {
   await ensureChatPushChannel();
   await ensureVideoCallPushChannel();
-}
-
-/**
- * Clears any ringing-call notification from the tray. Called when the call
- * stops ringing (answered, declined, or the caller hung up) so a cancelled
- * call does not sit in the shade looking live.
- */
-export async function dismissIncomingCallNotifications(
-  sessionId?: string,
-): Promise<void> {
-  if (Platform.OS === "web") return;
-  try {
-    const shown = await Notifications.getPresentedNotificationsAsync();
-    await Promise.all(
-      shown
-        .filter((item) => {
-          const data = item.request.content.data as Record<string, unknown>;
-          if (data?.type !== "incoming_video_call") return false;
-          if (!sessionId) return true;
-          return String(data.sessionId ?? data.session_id ?? "") === sessionId;
-        })
-        .map((item) => Notifications.dismissNotificationAsync(item.request.identifier)),
-    );
-  } catch {
-    // A tray we cannot read is not worth failing a call over.
-  }
 }
 
 export async function requestPushPermission(): Promise<boolean> {

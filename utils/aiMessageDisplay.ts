@@ -23,12 +23,7 @@ export function getAiUserMessageDisplay(message: AiMessage): {
   const attachmentLabel =
     message.fileName?.trim() ||
     (message.attachmentUrl ? guessFileNameFromUrl(message.attachmentUrl) : null);
-  const hasAttachment = Boolean(
-    attachmentLabel ||
-      message.attachmentUrl ||
-      message.imageUri ||
-      message.imageUrl,
-  );
+  const hasAttachment = Boolean(attachmentLabel || message.attachmentUrl);
   const text = userVisibleText(message.content, hasAttachment);
   return { text, attachmentLabel };
 }

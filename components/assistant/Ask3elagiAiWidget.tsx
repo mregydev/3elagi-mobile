@@ -1,14 +1,5 @@
 import { usePathname, useSegments } from "expo-router";
-import {
-  Bot,
-  ChevronLeft,
-  History,
-  Maximize2,
-  Minimize,
-  Minimize2,
-  Plus,
-  X,
-} from "lucide-react-native";
+import { Bot, Minus, Plus, Send, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,60 +17,24 @@ import {
   useKeyboardState,
 } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AssistantComposer } from "@/components/assistant/AssistantComposer";
-import { AssistantHistoryList } from "@/components/assistant/AssistantHistoryList";
+import { AppTextInput } from "@/components/AppTextInput";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
-import { GuestAiLimitError, sendGuestAiChat } from "@/domains/ai/guestApi";
-import {
-  GUEST_AI_MAX_MESSAGES,
-  getGuestAiSentCount,
-  getGuestAiSessionId,
-  loadGuestActiveConversationId,
-  loadGuestConversations,
-  makeGuestConversationId,
-  saveGuestActiveConversationId,
-  saveGuestConversations,
-  setGuestAiSentCount,
-} from "@/domains/ai/guestSession";
-import { useAiEnabled } from "@/domains/ai/aiPreference";
-import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
-import {
-  setActiveAiWidgetChatId,
-  setAiWidgetOpen,
-} from "@/domains/ai/push-suppression";
-import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
-import {
-  isDemoEmbedPath,
-} from "@/domains/auth/demoSession";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
-import { getApiLang } from "@/domains/i18n/store";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
-import { useAiFileAttachment } from "@/hooks/useAiFileAttachment";
-import type { AiFileAttachment } from "@/hooks/useAiFileAttachment";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
-import { AI_ATTACHMENT_ONLY_PLACEHOLDER } from "@/utils/aiMessageDisplay";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
-import { WEB_FAB_INSET } from "@/constants/webLayout";
-import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
-import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
 import { viewportPortal } from "@/utils/viewportPortal";
-
-function makeLocalId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 /** FAB size — used by pages that need bottom padding clearance. */
 export const ASK_3ELAGI_AI_FAB_SIZE = 56;
 /** Gap from the viewport edge. */
-export const ASK_3ELAGI_AI_FAB_CHROME_GAP = WEB_FAB_INSET;
-/** Extra breathing room above the native bottom tab bar. */
-export const ASK_3ELAGI_AI_FAB_TAB_BAR_GAP = 14;
+export const ASK_3ELAGI_AI_FAB_CHROME_GAP = 8;
 
 function isProfileRoute(pathname: string | null, segments: string[]): boolean {
   return segments.includes("profile") || Boolean(pathname?.includes("/profile"));
@@ -98,13 +53,6 @@ function recordsAddBarFabOffset(
   const onBodyPartRecords = Boolean(pathname?.includes("/medical/body"));
   if (!onRecordsTab && !onPatientRecords && !onBodyPartRecords) return 0;
   return MEDICAL_RECORD_ADD_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_CHROME_GAP;
-}
-
-/** The medical add / prescription forms dock a Save + Cancel bar — clear it. */
-function medicalFormSaveBarFabOffset(pathname: string | null): number {
-  if (!pathname) return 0;
-  if (!/\/medical\/(add|prescription\/add)/.test(pathname)) return 0;
-  return MEDICAL_FORM_SAVE_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_CHROME_GAP;
 }
 
 /** Profile pages dock a Save bar — lift the FAB above it. */
@@ -143,9 +91,6 @@ function shouldHideOnRoute(pathname: string | null, segments: string[]): boolean
   if (root === "admin") return true;
   if (root === "video-call") return true;
   if (root === "doctor-pending") return true;
-  // Outer dual-panel demo shell only — iframe apps (patient / doctor) keep Ask AI.
-  if (pathname === "/demo") return true;
-  if (pathname && isDemoEmbedPath(pathname)) return true;
   if (pathname?.includes("/assistant") || segments.includes("assistant")) {
     return true;
   }
@@ -169,108 +114,24 @@ function Ask3elagiAiPanel() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { isDesktop } = useWebLayout();
   const isNative = Platform.OS !== "web";
-  const profile = useAuthStore((s) => s.profile);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const hydrated = useAuthStore((s) => s.hydrated);
-  const signedIn = hydrated && isSignedIn(profile, accessToken);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
-  const expanded = useAsk3elagiAiWidgetStore((s) => s.expanded);
-  const toggleExpanded = useAsk3elagiAiWidgetStore((s) => s.toggleExpanded);
   const consumePendingQuestion = useAsk3elagiAiWidgetStore(
     (s) => s.consumePendingQuestion,
   );
-  const pendingChatId = useAsk3elagiAiWidgetStore((s) => s.pendingChatId);
-  const clearPendingChatId = useAsk3elagiAiWidgetStore((s) => s.clearPendingChatId);
   const scopedPatientUserId = useAsk3elagiAiWidgetStore((s) => s.patientUserId);
   const setPatientUserId = useAsk3elagiAiWidgetStore((s) => s.setPatientUserId);
   const assistant = useAiAssistant();
-  const aiFile = useAiFileAttachment();
   const listRef = useRef<FlatList>(null);
-  const [guestConversations, setGuestConversations] = useState<AiConversation[]>([]);
-  const [guestActiveId, setGuestActiveId] = useState<string | null>(null);
-  const [guestSending, setGuestSending] = useState(false);
-  const [guestSentCount, setGuestSentCountState] = useState(0);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [text, setText] = useState("");
+  const messages = assistant.activeConversation?.messages ?? [];
   const sentPendingRef = useRef(false);
   const patientUserId =
     scopedPatientUserId ?? patientUserIdFromPath(pathname);
-
-  const guestActiveConversation = guestConversations.find(
-    (c) => c.id === guestActiveId,
-  );
-  const messages = signedIn
-    ? (assistant.activeConversation?.messages ?? [])
-    : (guestActiveConversation?.messages ?? []);
-  const busy = signedIn
-    ? assistant.sending || assistant.streaming
-    : guestSending;
-  const loadingHistory = signedIn ? assistant.loadingHistory : false;
 
   useEffect(() => {
     const fromPath = patientUserIdFromPath(pathname);
     if (fromPath) setPatientUserId(fromPath);
   }, [pathname, setPatientUserId]);
-
-  useEffect(() => {
-    if (signedIn) return;
-    void getGuestAiSentCount().then(setGuestSentCountState);
-    void (async () => {
-      const [rows, activeId] = await Promise.all([
-        loadGuestConversations(),
-        loadGuestActiveConversationId(),
-      ]);
-      setGuestConversations(rows);
-      setGuestActiveId(activeId ?? rows[0]?.id ?? null);
-    })();
-  }, [signedIn]);
-
-  const persistGuestState = useCallback(
-    (rows: AiConversation[], activeId: string | null) => {
-      setGuestConversations(rows);
-      setGuestActiveId(activeId);
-      void saveGuestConversations(rows);
-      void saveGuestActiveConversationId(activeId);
-    },
-    [],
-  );
-
-  const patchGuestConversation = useCallback(
-    (
-      conversationId: string,
-      patch: Partial<AiConversation> | ((c: AiConversation) => AiConversation),
-    ) => {
-      setGuestConversations((prev) => {
-        const rows = prev.map((c) => {
-          if (c.id !== conversationId) return c;
-          return typeof patch === "function" ? patch(c) : { ...c, ...patch };
-        });
-        void saveGuestConversations(rows);
-        return rows;
-      });
-    },
-    [],
-  );
-
-  const ensureGuestConversation = useCallback((): {
-    id: string;
-    messages: AiMessage[];
-  } => {
-    if (guestActiveId && guestConversations.some((c) => c.id === guestActiveId)) {
-      const conv = guestConversations.find((c) => c.id === guestActiveId)!;
-      return { id: guestActiveId, messages: conv.messages };
-    }
-    const id = makeGuestConversationId();
-    const draft: AiConversation = {
-      id,
-      title: "New chat",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      messages: [],
-    };
-    const rows = [draft, ...guestConversations];
-    persistGuestState(rows, id);
-    return { id, messages: [] };
-  }, [guestActiveId, guestConversations, persistGuestState]);
 
   const scrollToLatest = useCallback((animated = false) => {
     requestAnimationFrame(() => {
@@ -278,162 +139,20 @@ function Ask3elagiAiPanel() {
     });
   }, []);
 
-  const sendGuestMessage = useCallback(
-    async (value: string, attachment?: AiFileAttachment | null) => {
-      const question = value.trim();
-      if ((!question && !attachment) || guestSending) return;
-
-      const alreadySent = await getGuestAiSentCount();
-      if (alreadySent >= GUEST_AI_MAX_MESSAGES) {
-        promptAuthForConsultation();
-        return;
-      }
-
-      const { id: conversationId, messages: priorMessages } = ensureGuestConversation();
-      const displayContent =
-        question || (attachment ? AI_ATTACHMENT_ONLY_PLACEHOLDER : "");
-      const attImageUri =
-        attachment && !attachment.isPdf && attachment.mimeType.startsWith("image/")
-          ? `data:${attachment.mimeType};base64,${attachment.data}`
-          : undefined;
-      const attFileName =
-        attachment && (attachment.isPdf || !attachment.mimeType.startsWith("image/"))
-          ? attachment.name
-          : undefined;
-
-      const userMsg: AiMessage = {
-        id: makeLocalId("guest-user"),
-        role: "user",
-        content: displayContent,
-        createdAt: new Date().toISOString(),
-        imageUri: attImageUri,
-        fileName: attFileName,
-      };
-      const assistantLocalId = makeLocalId("guest-ai");
-      const pendingAssistant: AiMessage = {
-        id: assistantLocalId,
-        role: "assistant",
-        content: "",
-        pending: true,
-        createdAt: new Date().toISOString(),
-      };
-
-      setGuestSending(true);
-      patchGuestConversation(conversationId, (c) => ({
-        ...c,
-        title:
-          c.title === "New chat" && displayContent
-            ? displayContent.slice(0, 80)
-            : c.title,
-        updatedAt: new Date().toISOString(),
-        messages: [...c.messages, userMsg, pendingAssistant],
-      }));
-
-      try {
-        const guestId = await getGuestAiSessionId();
-        const history = priorMessages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .filter((m) => !m.pending && m.content.trim())
-          .map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          }));
-        const result = await sendGuestAiChat({
-          guestId,
-          message: question || AI_ATTACHMENT_ONLY_PLACEHOLDER,
-          history,
-          locale: getApiLang(),
-          attachment,
-        });
-        await setGuestAiSentCount(result.used);
-        setGuestSentCountState(result.used);
-        patchGuestConversation(conversationId, (c) => ({
-          ...c,
-          messages: c.messages.map((m) =>
-            m.id === assistantLocalId
-              ? { ...m, pending: false, content: result.content }
-              : m,
-          ),
-        }));
-      } catch (e) {
-        if (e instanceof GuestAiLimitError) {
-          patchGuestConversation(conversationId, (c) => ({
-            ...c,
-            messages: c.messages.filter(
-              (m) => m.id !== userMsg.id && m.id !== assistantLocalId,
-            ),
-          }));
-          promptAuthForConsultation();
-          return;
-        }
-        const errText =
-          e instanceof Error ? e.message : t.auth.genericError;
-        patchGuestConversation(conversationId, (c) => ({
-          ...c,
-          messages: c.messages.map((m) =>
-            m.id === assistantLocalId
-              ? { ...m, pending: false, content: errText }
-              : m,
-          ),
-        }));
-      } finally {
-        setGuestSending(false);
-      }
-    },
-    [
-      ensureGuestConversation,
-      guestSending,
-      patchGuestConversation,
-      t.auth.genericError,
-    ],
-  );
-
   useEffect(() => {
     if (sentPendingRef.current) return;
     const pending = consumePendingQuestion();
     if (!pending?.trim()) return;
     sentPendingRef.current = true;
-    if (signedIn) {
-      void assistant.sendMessage(pending.trim(), patientUserId ?? undefined);
-    } else {
-      void sendGuestMessage(pending.trim());
-    }
-  }, [
-    consumePendingQuestion,
-    assistant,
-    patientUserId,
-    signedIn,
-    sendGuestMessage,
-  ]);
-
-  useEffect(() => {
-    if (!signedIn || !pendingChatId || loadingHistory) return;
-    assistant.setActiveId(pendingChatId);
-    clearPendingChatId();
-  }, [
-    signedIn,
-    pendingChatId,
-    loadingHistory,
-    assistant.setActiveId,
-    clearPendingChatId,
-  ]);
-
-  useEffect(() => {
-    if (!signedIn) {
-      setActiveAiWidgetChatId(null);
-      return;
-    }
-    const id = assistant.activeId;
-    if (id && !id.startsWith("draft-")) {
-      setActiveAiWidgetChatId(id);
-      return;
-    }
-    setActiveAiWidgetChatId(null);
-  }, [signedIn, assistant.activeId]);
+    void assistant.sendMessage(
+      pending.trim(),
+      patientUserId ?? undefined,
+    );
+  }, [consumePendingQuestion, assistant, patientUserId]);
 
   // Scroll to last message when the panel opens / history finishes loading.
   useEffect(() => {
-    if (loadingHistory) return;
+    if (assistant.loadingHistory) return;
     scrollToLatest(false);
     const t1 = setTimeout(() => scrollToLatest(false), 80);
     const t2 = setTimeout(() => scrollToLatest(false), 250);
@@ -442,7 +161,7 @@ function Ask3elagiAiPanel() {
       clearTimeout(t2);
     };
   }, [
-    loadingHistory,
+    assistant.loadingHistory,
     assistant.activeId,
     messages.length,
     scrollToLatest,
@@ -451,88 +170,34 @@ function Ask3elagiAiPanel() {
   useEffect(() => {
     if (messages.length === 0) return;
     scrollToLatest(true);
-  }, [messages.length, assistant.streaming, guestSending, scrollToLatest]);
+  }, [messages.length, assistant.streaming, scrollToLatest]);
 
-  const handleSend = useCallback(
-    (value: string) => {
-      const question = value.trim();
-      if (busy) return;
-
-      if (signedIn) {
-        if (!question && !aiFile.attachment) return;
-        void assistant.sendMessage(
-          question,
-          patientUserId ?? undefined,
-          aiFile.attachment ?? undefined,
-        );
-        aiFile.clear();
-        return;
-      }
-
-      if (!question && !aiFile.attachment) return;
-      const attachment = aiFile.attachment;
-      aiFile.clear();
-      void sendGuestMessage(question, attachment);
-    },
-    [
-      aiFile,
-      assistant,
-      busy,
-      patientUserId,
-      sendGuestMessage,
-      signedIn,
-    ],
-  );
+  const submit = () => {
+    const value = text.trim();
+    if (!value || assistant.sending || assistant.streaming) return;
+    setText("");
+    void assistant.sendMessage(value, patientUserId ?? undefined);
+  };
 
   const onNewChat = () => {
-    aiFile.clear();
-    sentPendingRef.current = true;
-    setHistoryOpen(false);
-    if (signedIn) {
-      assistant.startNewChat();
-      return;
-    }
-    const id = makeGuestConversationId();
-    const draft: AiConversation = {
-      id,
-      title: "New chat",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      messages: [],
-    };
-    persistGuestState([draft, ...guestConversations], id);
+    setText("");
+    sentPendingRef.current = true; // don't auto-resend pending
+    assistant.startNewChat();
   };
 
-  const historyConversations = signedIn
-    ? assistant.conversations
-    : guestConversations;
-  const historyActiveId = signedIn ? assistant.activeId : guestActiveId;
-  const historyLoading = signedIn ? assistant.loadingHistory : false;
-
-  const onSelectHistory = (id: string) => {
-    setHistoryOpen(false);
-    if (signedIn) {
-      assistant.setActiveId(id);
-      return;
-    }
-    setGuestActiveId(id);
-    void saveGuestActiveConversationId(id);
-  };
-
-  const onDeleteHistory = (id: string) => {
-    if (signedIn) {
-      void assistant.removeConversation(id);
-      return;
-    }
-    const next = guestConversations.filter((c) => c.id !== id);
-    const nextActive =
-      guestActiveId === id ? (next[0]?.id ?? null) : guestActiveId;
-    persistGuestState(next, nextActive);
-  };
-
-  const fullScreenPanel = expanded;
-  const panelStyle = fullScreenPanel
+  const panelStyle = isDesktop
     ? {
+        top: undefined as number | undefined,
+        bottom: Math.max(insets.bottom, 12) + ASK_3ELAGI_AI_FAB_CHROME_GAP,
+        ...(isRTL
+          ? { left: 16, right: undefined as number | undefined }
+          : { right: 16, left: undefined as number | undefined }),
+        width: windowWidth * 0.3,
+        maxWidth: windowWidth * 0.3,
+        height: Math.min(windowHeight * 0.75, 640),
+        borderRadius: 18,
+      }
+    : {
         top: 0,
         bottom: 0,
         left: 0,
@@ -541,37 +206,11 @@ function Ask3elagiAiPanel() {
         maxWidth: windowWidth,
         height: windowHeight,
         borderRadius: 0,
-        paddingTop: isNative ? insets.top : 0,
+        paddingTop: insets.top,
+        // Safe area when keyboard closed; sticky composer sits on keyboard when open.
         paddingBottom:
-          isNative && keyboardVisible ? 0 : isNative ? Math.max(insets.bottom, 8) : 0,
-      }
-    : isDesktop
-      ? {
-          top: undefined as number | undefined,
-          bottom: Math.max(insets.bottom, 12) + ASK_3ELAGI_AI_FAB_CHROME_GAP,
-          ...(isRTL
-            ? { left: 16, right: undefined as number | undefined }
-            : { right: 16, left: undefined as number | undefined }),
-          width: windowWidth * 0.3,
-          maxWidth: windowWidth * 0.3,
-          height: Math.min(windowHeight * 0.75, 640),
-          borderRadius: 18,
-        }
-      : {
-          top: undefined as number | undefined,
-          bottom: 0,
-          left: 0,
-          right: 0,
-          width: windowWidth,
-          maxWidth: windowWidth,
-          height: Math.round(
-            Math.min(windowHeight * 0.68, windowHeight - insets.top - 72),
-          ),
-          borderRadius: 18,
-          paddingTop: 12,
-          paddingBottom:
-            isNative && keyboardVisible ? 0 : Math.max(insets.bottom, 8),
-        };
+          isNative && keyboardVisible ? 0 : Math.max(insets.bottom, 8),
+      };
 
   const webShadow =
     Platform.OS === "web"
@@ -605,7 +244,7 @@ function Ask3elagiAiPanel() {
           {
             backgroundColor: colors.card,
             borderColor: ASK_3ELAGI_AI_FAB_RED,
-            borderWidth: isDesktop && !fullScreenPanel ? 2 : 0,
+            borderWidth: isDesktop ? 2 : 0,
             borderRadius: panelStyle.borderRadius,
           },
         ]}
@@ -621,50 +260,19 @@ function Ask3elagiAiPanel() {
         ]}
       >
         <View style={[styles.headerLeft, { flexDirection: dir, flex: 1 }]}>
-          {historyOpen ? (
-            <Pressable
-              onPress={() => setHistoryOpen(false)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "رجوع" : "Back to chat"}
-              style={styles.iconBtn}
-            >
-              <ChevronLeft
-                size={20}
-                color={ASK_3ELAGI_AI_FAB_ON_RED}
-                style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
-              />
-            </Pressable>
-          ) : (
-            <View
-              style={[styles.iconBubble, { backgroundColor: ASK_3ELAGI_AI_FAB_RED_SOFT }]}
-            >
-              <Bot size={16} color={ASK_3ELAGI_AI_FAB_ON_RED} />
-            </View>
-          )}
+          <View
+            style={[styles.iconBubble, { backgroundColor: ASK_3ELAGI_AI_FAB_RED_SOFT }]}
+          >
+            <Bot size={16} color={ASK_3ELAGI_AI_FAB_ON_RED} />
+          </View>
           <Text
             style={[styles.title, { color: ASK_3ELAGI_AI_FAB_ON_RED, flexShrink: 1 }]}
             numberOfLines={1}
           >
-            {historyOpen
-              ? isRTL
-                ? "محادثات الذكاء الاصطناعي"
-                : "AI Chats"
-              : t.records.ask3elagiAi}
+            {t.records.ask3elagiAi}
           </Text>
         </View>
         <View style={[styles.headerActions, { flexDirection: dir }]}>
-          {!historyOpen ? (
-            <Pressable
-              onPress={() => setHistoryOpen(true)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t.tabs.history}
-              style={styles.iconBtn}
-            >
-              <History size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-            </Pressable>
-          ) : null}
           <Pressable
             onPress={onNewChat}
             hitSlop={8}
@@ -676,76 +284,34 @@ function Ask3elagiAiPanel() {
             ]}
           >
             <Plus size={14} color={ASK_3ELAGI_AI_FAB_ON_RED} />
-            {!isDesktop ? null : (
-              <Text style={[styles.newChatLabel, { color: ASK_3ELAGI_AI_FAB_ON_RED }]}>
-                {t.records.ask3elagiAiNewChat}
-              </Text>
-            )}
+            <Text style={[styles.newChatLabel, { color: ASK_3ELAGI_AI_FAB_ON_RED }]}>
+              {t.records.ask3elagiAiNewChat}
+            </Text>
           </Pressable>
           {isDesktop ? (
-            <Pressable
-              onPress={toggleExpanded}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={expanded ? "Restore panel size" : "Expand panel"}
-              style={styles.iconBtn}
-            >
-              {expanded ? (
-                <Minimize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-              ) : (
-                <Maximize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-              )}
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={toggleExpanded}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={expanded ? "Restore panel size" : "Expand panel"}
-              style={styles.iconBtn}
-            >
-              {expanded ? (
-                <Minimize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-              ) : (
-                <Maximize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-              )}
-            </Pressable>
-          )}
-          <Pressable
-            onPress={closeWidget}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Minimize"
-            style={styles.iconBtn}
-          >
-            <Minimize size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-          </Pressable>
-          {!isDesktop ? (
             <Pressable
               onPress={closeWidget}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel="Minimize"
               style={styles.iconBtn}
             >
-              <X size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+              <Minus size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
             </Pressable>
           ) : null}
+          <Pressable
+            onPress={closeWidget}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            style={styles.iconBtn}
+          >
+            <X size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+          </Pressable>
         </View>
       </View>
 
-      {historyOpen ? (
-        <View style={[styles.historyPane, { backgroundColor: colors.background }]}>
-          <AssistantHistoryList
-            conversations={historyConversations}
-            activeId={historyActiveId}
-            loading={historyLoading}
-            onSelect={onSelectHistory}
-            onNewChat={onNewChat}
-            onDelete={onDeleteHistory}
-          />
-        </View>
-      ) : loadingHistory ? (
+      {assistant.loadingHistory ? (
         <View style={[styles.chatLoading, { backgroundColor: colors.background }]}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -753,7 +319,7 @@ function Ask3elagiAiPanel() {
         <FlatList
           ref={listRef}
           data={messages}
-          key={signedIn ? (assistant.activeId ?? "new") : (guestActiveId ?? "guest")}
+          key={assistant.activeId ?? "new"}
           keyExtractor={(item) => item.id}
           style={[styles.chatList, { backgroundColor: colors.background }]}
           contentContainerStyle={styles.chatListContent}
@@ -777,48 +343,58 @@ function Ask3elagiAiPanel() {
         />
       )}
 
-      {!historyOpen && !signedIn ? (
-        <Text
+      <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
+        <View
           style={[
-            styles.guestQuota,
-            { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+            styles.composer,
+            {
+              flexDirection: dir,
+              borderTopColor: colors.border,
+              backgroundColor: colors.secondary,
+            },
           ]}
         >
-          {t.ai.guestMessagesLeft(
-            Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount),
-            GUEST_AI_MAX_MESSAGES,
-          )}
-        </Text>
-      ) : null}
-
-      {!historyOpen ? (
-        <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
-          <AssistantComposer
-            key={signedIn ? (assistant.activeId ?? "widget-new") : "widget-guest"}
-            compact
-            isRTL={isRTL}
-            sending={busy}
-            disabled={loadingHistory}
+          <AppTextInput
+            value={text}
+            onChangeText={setText}
             placeholder={t.records.ask3elagiAiPlaceholder}
-            onSend={handleSend}
-            aiAttachment={
-              aiFile.attachment
-                ? {
-                    previewUri: aiFile.attachment.previewUri,
-                    name: aiFile.attachment.name,
-                    isPdf: aiFile.attachment.isPdf,
-                  }
-                : null
-            }
-            onAttachAiFile={() => void aiFile.pickFile()}
-            onScanAiFile={
-              aiFile.canScan ? () => void aiFile.scanFile() : undefined
-            }
-            aiAttachLoading={aiFile.loading}
-            onRemoveAiAttachment={aiFile.clear}
+            style={[
+              styles.input,
+              {
+                color: colors.foreground,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderWidth: 1,
+              },
+            ]}
+            editable={!assistant.sending && !assistant.streaming}
+            onSubmitEditing={submit}
+            returnKeyType="send"
           />
-        </KeyboardStickyView>
-      ) : null}
+          <Pressable
+            onPress={submit}
+            disabled={assistant.sending || assistant.streaming || !text.trim()}
+            style={[
+              styles.sendBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity:
+                  assistant.sending || assistant.streaming || !text.trim()
+                    ? 0.5
+                    : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t.records.ask3elagiAi}
+          >
+            {assistant.sending || assistant.streaming ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Send size={16} color="#fff" />
+            )}
+          </Pressable>
+        </View>
+      </KeyboardStickyView>
       </View>
     </PanelShell>
   );
@@ -839,40 +415,20 @@ export function Ask3elagiAiWidget() {
   const openWidget = useAsk3elagiAiWidgetStore((s) => s.openWidget);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
 
-  const aiEnabled = useAiEnabled();
-  const signedIn = hydrated && isSignedIn(profile, accessToken);
+  const signedIn = isSignedIn(profile, accessToken);
   const roleOk =
     role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
-  /** Guests + patient/doctor accounts; hide for admin / unsupported roles when signed in. */
-  const canUseWidget = (!signedIn || roleOk) && aiEnabled;
   const hidden = shouldHideOnRoute(pathname, segments as string[]);
   // Circle icon-only on native + mobile web; labeled pill on desktop web.
   const iconOnlyFab = Platform.OS !== "web" || !isDesktop;
 
   useEffect(() => {
-    if (!canUseWidget || hidden) closeWidget();
-  }, [canUseWidget, hidden, closeWidget]);
+    if (!signedIn || !roleOk || hidden) closeWidget();
+  }, [signedIn, roleOk, hidden, closeWidget]);
 
-  useEffect(() => {
-    setAiWidgetOpen(open);
-    return () => setAiWidgetOpen(false);
-  }, [open]);
+  if (!hydrated || !signedIn || !roleOk || hidden) return null;
 
-  // Escape key closes the floating AI chat (web / mobile browser).
-  useEffect(() => {
-    if (Platform.OS !== "web" || !open || typeof window === "undefined") return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      closeWidget();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, closeWidget]);
-
-  if (!hydrated || !canUseWidget || hidden) return null;
-
-  const edge = WEB_FAB_INSET;
+  const edge = 16;
   const addBarLift = recordsAddBarFabOffset(
     pathname,
     segments as string[],
@@ -884,19 +440,10 @@ export function Ask3elagiAiWidget() {
     isDesktop,
   );
   const hideFab = hideFabOnChatRoute(pathname, segments as string[]);
-  const medicalFormLift = medicalFormSaveBarFabOffset(pathname);
-  // Native tab screens sit under the bottom bar; lift the FAB clear of it,
-  // plus a gap so the two never touch (the base already covers the inset).
-  const tabBarLift =
-    Platform.OS !== "web" && (segments as string[]).includes("(tabs)")
-      ? NATIVE_TAB_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_TAB_BAR_GAP
-      : 0;
   const bottom =
     Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) +
-    tabBarLift +
     addBarLift +
-    profileLift +
-    medicalFormLift;
+    profileLift;
   // Bottom-right in English (LTR), bottom-left in Arabic (RTL).
   const sideStyle = isRTL
     ? { left: edge, right: undefined as number | undefined }
@@ -1047,20 +594,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  historyPane: {
-    flex: 1,
-    minHeight: 0,
-  },
   emptyHint: {
     textAlign: "center",
     fontSize: 13,
     marginTop: 24,
     paddingHorizontal: 16,
   },
-  guestQuota: {
-    fontSize: 12,
-    fontWeight: "700",
-    paddingHorizontal: 14,
-    paddingTop: 6,
+  composer: {
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

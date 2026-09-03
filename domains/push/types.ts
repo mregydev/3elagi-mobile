@@ -6,8 +6,7 @@ export type PushNotificationType =
   | "appointment_status"
   | "appointment_reminder"
   | "intake_exam_reminder"
-  | "system_notification"
-  | "consultation_removed";
+  | "system_notification";
 
 export type ChatPushData = {
   type: "chat";
@@ -53,13 +52,6 @@ export type SystemNotificationPushData = {
   type: "system_notification";
 };
 
-export type ConsultationRemovedPushData = {
-  type: "consultation_removed";
-  chatId: string;
-  consultationId?: string;
-  removedBy?: string;
-};
-
 export type IntakeExamReminderPushData = {
   type: "intake_exam_reminder";
   instanceId: string;
@@ -73,8 +65,7 @@ export type PushNotificationData =
   | AppointmentReminderPushData
   | AppointmentStatusPushData
   | IntakeExamReminderPushData
-  | SystemNotificationPushData
-  | ConsultationRemovedPushData;
+  | SystemNotificationPushData;
 
 function readString(
   data: Record<string, unknown>,
@@ -146,18 +137,6 @@ export function parsePushNotificationData(
       type: "appointment_status",
       appointmentId: readString(data, "appointmentId", "appointment_id") || undefined,
       action: (readString(data, "action") as "confirm" | "reject" | "cancel") || undefined,
-    };
-  }
-
-  if (type === "consultation_removed") {
-    const chatId = readString(data, "chatId", "chat_id");
-    if (!chatId) return null;
-    return {
-      type: "consultation_removed",
-      chatId,
-      consultationId:
-        readString(data, "consultationId", "consultation_id") || undefined,
-      removedBy: readString(data, "removedBy", "removed_by") || undefined,
     };
   }
 

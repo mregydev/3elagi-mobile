@@ -1,8 +1,6 @@
-import { usePathname, useRouter } from "expo-router";
-import { ClipboardList, Plus } from "lucide-react-native";
+import { router } from "expo-router";
+import { ArrowLeft, ClipboardList, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import { AppBackButton } from "@/components/nav/AppBackButton";
-import { canNavigateBack } from "@/utils/appNavigation";
 import {
   ActivityIndicator,
   Alert,
@@ -35,11 +33,8 @@ type IntakeExamsScreenProps = {
 export function IntakeExamsScreen({ showBack = false }: IntakeExamsScreenProps) {
   const colors = useColors();
   const { isRTL, t } = useI18n();
-  const router = useRouter();
-  usePathname();
   const accessToken = useAuthStore((s) => s.accessToken);
   const textAlign = isRTL ? "right" : "left";
-  const canGo = canNavigateBack(router);
 
   const [tests, setTests] = useState<IntakeTestTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,8 +128,10 @@ export function IntakeExamsScreen({ showBack = false }: IntakeExamsScreenProps) 
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader />
       <View style={[styles.headerRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-        {showBack && canGo ? (
-          <AppBackButton color={colors.foreground} size={20} style={styles.backBtn} />
+        {showBack ? (
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={20} color={colors.foreground} />
+          </Pressable>
         ) : (
           <View style={styles.backBtn} />
         )}

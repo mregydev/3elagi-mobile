@@ -1,34 +1,27 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import {
-  Bell,
   Bot,
   CalendarClock,
   ClipboardList,
   Coins,
   History,
-  HelpCircle,
   Home,
-  Info,
   ListChecks,
   MessageSquare,
   Star,
-  Stethoscope,
   User,
   Users,
 } from "lucide-react-native";
 import React from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
-import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
 export default function TabsLayout() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -38,35 +31,19 @@ export default function TabsLayout() {
   const isDoctor = role?.toLowerCase() === "doctor";
 
   if (!hydrated) return null;
-
-  // Guests may browse home + our doctors; other tabs stay signed-in only.
-  const authOnlyHref = signedIn ? undefined : null;
-  // About us is a marketing page — drop it from the tabs once signed in.
-  const guestOnlyHref = signedIn ? null : undefined;
-
-  // The bottom bar holds five tabs at most; everything else stays reachable
-  // from the drawer. Patients: Home / Appointments / Messages / Records /
-  // Profile. Doctors swap Records for Patients.
-  const patientTabHref = signedIn && !isDoctor ? undefined : null;
-  const doctorTabHref = signedIn && isDoctor ? undefined : null;
+  if (!signedIn) return <Redirect href="/welcome" />;
 
   return (
     <AppSidebarProvider>
       <Tabs
+        tabBar={() => null}
         screenOptions={{
           headerShown: false,
           freezeOnBlur: true,
           lazy: true,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.mutedForeground,
-          tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-          tabBarStyle: {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            height: NATIVE_TAB_BAR_HEIGHT + insets.bottom,
-            paddingBottom: Math.max(insets.bottom, 6),
-            paddingTop: 6,
-          },
+          tabBarStyle: { display: "none" },
         }}
       >
         <Tabs.Screen
@@ -77,59 +54,10 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="about-us"
-          options={{
-            title: t.tabs.aboutUs,
-            href: guestOnlyHref,
-            tabBarIcon: ({ color, size }) => (
-              <Info color={color} size={size} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="for-doctors"
-          options={{
-            title: t.tabs.forDoctors,
-            href: guestOnlyHref,
-            tabBarIcon: ({ color, size }) => (
-              <Stethoscope color={color} size={size} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="faq"
-          options={{
-            title: t.tabs.faq,
-            href: guestOnlyHref,
-            tabBarIcon: ({ color, size }) => (
-              <HelpCircle color={color} size={size} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="pricing"
-          options={{
-            title: t.tabs.pricing,
-            href: null,
-            tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="notifications"
-          options={{
-            title: t.tabs.notifications,
-            href: null,
-            tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
           name="assistant"
           options={{
             title: t.tabs.assistant,
             tabBarIcon: ({ color, size }) => <Bot color={color} size={size} />,
-            href: null,
-            // Full-height chat — composer sits on the home indicator, not above the tab bar.
-            tabBarStyle: { display: "none" },
           }}
         />
         <Tabs.Screen
@@ -143,7 +71,6 @@ export default function TabsLayout() {
           name="appointments"
           options={{
             title: t.tabs.appointments,
-            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => (
               <CalendarClock color={color} size={size} />
             ),
@@ -153,7 +80,6 @@ export default function TabsLayout() {
           name="consultations"
           options={{
             title: t.tabs.consultations,
-            href: null,
             tabBarIcon: ({ color, size }) => (
               <MessageSquare color={color} size={size} />
             ),
@@ -163,7 +89,6 @@ export default function TabsLayout() {
           name="history"
           options={{
             title: t.tabs.history,
-            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
           }}
         />
@@ -171,7 +96,7 @@ export default function TabsLayout() {
           name="records"
           options={{
             title: t.tabs.records,
-            href: patientTabHref,
+            href: isDoctor ? null : undefined,
             tabBarIcon: ({ color, size }) => (
               <ClipboardList color={color} size={size} />
             ),
@@ -181,7 +106,7 @@ export default function TabsLayout() {
           name="patients"
           options={{
             title: t.tabs.patients,
-            href: doctorTabHref,
+            href: isDoctor ? undefined : null,
             tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
           }}
         />
@@ -205,7 +130,7 @@ export default function TabsLayout() {
           name="points"
           options={{
             title: t.tabs.points,
-            href: null,
+            href: isDoctor ? null : undefined,
             tabBarIcon: ({ color, size }) => <Coins color={color} size={size} />,
           }}
         />
@@ -213,7 +138,6 @@ export default function TabsLayout() {
           name="profile"
           options={{
             title: t.tabs.profile,
-            href: authOnlyHref,
             tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
           }}
         />

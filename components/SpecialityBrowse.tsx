@@ -1,95 +1,71 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { SpecialityGlassShell } from "@/components/SpecialityGlassShell";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import type { Speciality } from "@/domains/home/api";
-import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
   specialityGradient,
   specialityVisual,
 } from "@/domains/home/specialityVisuals";
 import { useColors } from "@/hooks/useColors";
-import { useI18n } from "@/hooks/useI18n";
-
-/** Sized for ≥3 tiles per row on narrow native phones. */
-const CIRCLE = 72;
-const COLUMNS = 3;
 
 function SpecialityTile({
   item,
+  isRTL,
+  index,
   onPress,
 }: {
   item: Speciality;
+  isRTL: boolean;
+  index: number;
   onPress: () => void;
 }) {
   const colors = useColors();
-  const { locale, isRTL } = useI18n();
-  const label = specialityLabel(item, locale);
-  const { icon: Icon, color, image, imageResizeMode } = specialityVisual(item.nameEn);
-  const illustration = image ?? (item.imageUrl ? { uri: item.imageUrl } : null);
-  const illustrationFit = imageResizeMode ?? "contain";
-  const isArabic = locale === "ar";
-
-  const circleVisual = (pressed: boolean) =>
-    illustration ? (
-      <View
-        style={[
-          styles.circle,
-          {
-            backgroundColor: `${color}18`,
-            borderColor: `${color}55`,
-            transform: [{ scale: pressed ? 0.94 : 1 }],
-          },
-        ]}
-      >
-        <Image
-          source={illustration}
-          style={[styles.illustration, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
-          resizeMode={illustrationFit}
-        />
-      </View>
-    ) : (
-      <LinearGradient
-        colors={specialityGradient(color)}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.circle,
-          styles.orbFallback,
-          { borderColor: `${color}55`, transform: [{ scale: pressed ? 0.94 : 1 }] },
-        ]}
-      >
-        <Icon size={28} color="#fff" />
-      </LinearGradient>
-    );
+  const label = isRTL ? item.nameAr : item.nameEn;
+  const { icon: Icon, color } = specialityVisual(item.nameEn);
+  const scale = useSharedValue(1);
+  const orbStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <View style={styles.tile}>
+    <Animated.View
+      entering={FadeInDown.delay(index * 55).springify().damping(14)}
+      style={styles.tile}
+    >
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.pressable, { opacity: pressed ? 0.88 : 1 }]}
+        onPressIn={() => {
+          scale.value = withSpring(0.86, { damping: 12 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 10 });
+        }}
+        style={styles.pressable}
       >
-        {({ pressed }) => (
-          <>
-            {circleVisual(pressed)}
-            <Text
-          style={[
-            styles.primaryLabel,
-            {
-              color: colors.foreground,
-              fontSize: isArabic ? 16 : 13,
-              lineHeight: isArabic ? 22 : 18,
-              writingDirection: isRTL ? "rtl" : "ltr",
-            },
-          ]}
+        <Animated.View style={[styles.orbShadow, { shadowColor: color }, orbStyle]}>
+          <LinearGradient
+            colors={specialityGradient(color)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.orb}
+          >
+            <Icon size={26} color="#fff" />
+          </LinearGradient>
+        </Animated.View>
+        <Text
+          style={[styles.tileLabel, { color: colors.foreground }]}
           numberOfLines={2}
         >
           {label}
         </Text>
-          </>
-        )}
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -97,109 +73,89 @@ interface SpecialityGridProps {
   specialities: Speciality[];
   isRTL: boolean;
   onSelect: (speciality: Speciality) => void;
-  /** Directory page: fill the viewport rather than hugging the tiles. */
-  fullHeight?: boolean;
 }
 
 export function SpecialityGrid({
   specialities,
   isRTL,
   onSelect,
-  fullHeight = false,
 }: SpecialityGridProps) {
-  const colors = useColors();
-  const { height: viewportHeight } = useWindowDimensions();
-  const { locale } = useI18n();
-  const heading =
-    locale === "ar"
-      ? "التخصصات الطبية"
-      : locale === "de"
-        ? "Medizinische Fachgebiete"
-        : locale === "es"
-          ? "Especialidades médicas"
-          : "Medical Specialities";
-
-  const isArabic = locale === "ar";
-
   return (
-    <SpecialityGlassShell
-      isRTL={isRTL}
-      style={fullHeight ? { minHeight: viewportHeight * 0.9 } : undefined}
-    >
-      <View style={styles.headingRow}>
+    <View style={styles.wrap}>
+      <View
+        style={[
+          styles.headingRow,
+          { flexDirection: isRTL ? "row-reverse" : "row" },
+        ]}
+      >
         <Image
           source={require("@/assets/images/splash-mark.png")}
-          style={[styles.logo, { tintColor: colors.primary }]}
+          style={styles.logo}
           resizeMode="contain"
         />
-        <Text
-          style={[
-            styles.heading,
-            {
-              color: colors.foreground,
-              fontSize: isArabic ? 22 : 18,
-              writingDirection: isRTL ? "rtl" : "ltr",
-            },
-          ]}
-        >
-          {heading}
+        <Text style={styles.heading}>
+          {isRTL ? "التخصصات الطبية" : "Medical Specialities"}
         </Text>
       </View>
       <View style={styles.grid}>
-        {specialities.map((item) => (
-          <SpecialityTile key={item.id} item={item} onPress={() => onSelect(item)} />
+        {specialities.map((item, index) => (
+          <SpecialityTile
+            key={item.id}
+            item={item}
+            isRTL={isRTL}
+            index={index}
+            onPress={() => onSelect(item)}
+          />
         ))}
       </View>
-    </SpecialityGlassShell>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    marginHorizontal: 12,
+    marginVertical: 8,
+    paddingHorizontal: 8,
+    paddingTop: 20,
+    paddingBottom: 20,
+    backgroundColor: "#F4F7FF",
+    borderRadius: 24,
+  },
   headingRow: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    flexWrap: "nowrap",
     gap: 10,
-    marginBottom: 18,
+    marginBottom: 48,
   },
-  logo: { width: 26, height: 26, flexShrink: 0, opacity: 0.9 },
+  logo: { width: 30, height: 30 },
   heading: {
-    fontWeight: "700",
+    fontSize: 21,
+    fontWeight: "800",
     textAlign: "center",
-    letterSpacing: -0.2,
-    flexShrink: 1,
+    letterSpacing: 0.3,
+    color: "#1D4ED8",
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
-  },
-  tile: {
-    width: `${100 / COLUMNS}%`,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-  },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  // 4 per row; row spacing comes from the tile's vertical padding.
+  tile: { width: "25%", paddingVertical: 12, paddingHorizontal: 4 },
   pressable: { alignItems: "center" },
-  circle: {
-    width: CIRCLE,
-    height: CIRCLE,
-    borderRadius: CIRCLE / 2,
-    overflow: "hidden",
-    borderWidth: 1,
-    marginBottom: 8,
+  // Colored glow — wrapper carries the shadow so the clipped orb keeps it.
+  orbShadow: {
+    borderRadius: 30,
+    marginBottom: 9,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.4,
+    shadowRadius: 9,
+    elevation: 7,
   },
-  illustration: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "transparent",
-  },
-  orbFallback: {
+  orb: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
-  primaryLabel: {
-    fontWeight: "600",
-    textAlign: "center",
-  },
+  tileLabel: { fontSize: 12, fontWeight: "600", textAlign: "center" },
 });

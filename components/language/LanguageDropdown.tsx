@@ -1,7 +1,6 @@
 import { ChevronDown, ChevronUp } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import {
-  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -9,7 +8,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { LANGUAGE_OPTIONS } from "@/components/language/LanguageFlags";
+import {
+  FLAG_RATIO,
+  Flag,
+  FlagFrame,
+  LANGUAGE_OPTIONS,
+} from "@/components/language/LanguageFlags";
 import type { Locale } from "@/domains/i18n/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -25,111 +29,18 @@ type Props = {
   fullWidth?: boolean;
 };
 
-type MenuPos = {
+type WebMenuPos = {
   top: number;
   left: number;
   width: number;
-  /** Cap so a menu pinned below the trigger still fits on screen. */
-  maxHeight: number;
 };
 
 const MENU_MIN_WIDTH = 220;
 const MENU_ITEM_HEIGHT = 56;
 const IS_WEB = Platform.OS === "web";
-const VIEWPORT_PADDING = 8;
-/** Space between the trigger and the menu — roomier on touch. */
-const GAP = IS_WEB ? 6 : 12;
 
 function estimatedMenuHeight(): number {
   return LANGUAGE_OPTIONS.length * MENU_ITEM_HEIGHT + 2;
-}
-
-/** Viewport-relative box — reliable inside nested Modals (side drawer). */
-function measureTriggerInViewport(
-  node: View | null,
-  cb: (x: number, y: number, width: number, height: number) => void,
-): void {
-  if (!node) return;
-
-  if (IS_WEB) {
-    const host = node as unknown as HTMLElement & {
-      getBoundingClientRect?: () => DOMRect;
-      measureInWindow?: (
-        callback: (x: number, y: number, width: number, height: number) => void,
-      ) => void;
-    };
-
-    const el =
-      typeof host.getBoundingClientRect === "function"
-        ? host
-        : ((host as unknown as { _node?: HTMLElement })._node ?? null);
-
-    if (el && typeof el.getBoundingClientRect === "function") {
-      const rect = el.getBoundingClientRect();
-      cb(rect.left, rect.top, rect.width, rect.height);
-      return;
-    }
-  }
-
-  node.measureInWindow((x, y, width, height) => {
-    cb(x, y, width, height);
-  });
-}
-
-function computeMenuPos(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  opts: { fullWidth: boolean; isRTL: boolean; opensUp: boolean },
-): MenuPos {
-  const menuWidth = opts.fullWidth ? width : Math.max(MENU_MIN_WIDTH, width);
-  // Dimensions works on both platforms; window.innerWidth is web-only and its
-  // fallback pinned the viewport at a made-up 800px, so anchoring on native
-  // clamped to the wrong bounds.
-  const viewport = Dimensions.get("window");
-  const viewportWidth = viewport.width;
-  const viewportHeight = viewport.height;
-  const menuHeight = estimatedMenuHeight();
-
-  let left = opts.fullWidth
-    ? x
-    : opts.isRTL
-      ? x
-      : x + width - menuWidth;
-  left = Math.max(
-    VIEWPORT_PADDING,
-    Math.min(left, viewportWidth - menuWidth - VIEWPORT_PADDING),
-  );
-
-  const below = y + height + GAP;
-
-  if (opts.opensUp) {
-    // Sidebar/footer usage: above the trigger, dropping below only if it fits.
-    let top = y - menuHeight - GAP;
-    if (top < VIEWPORT_PADDING) {
-      top =
-        below + menuHeight <= viewportHeight - VIEWPORT_PADDING
-          ? below
-          : VIEWPORT_PADDING;
-    }
-    return {
-      top,
-      left,
-      width: menuWidth,
-      maxHeight: viewportHeight - top - VIEWPORT_PADDING,
-    };
-  }
-
-  // Always directly under the trigger. Previously this could flip above or
-  // clamp to the top of the screen when the menu did not fit, which drew it
-  // over the very control that opened it. Now it stays put and scrolls.
-  return {
-    top: below,
-    left,
-    width: menuWidth,
-    maxHeight: Math.max(120, viewportHeight - below - VIEWPORT_PADDING),
-  };
 }
 
 export function LanguageDropdown({
@@ -145,8 +56,11 @@ export function LanguageDropdown({
   const locale = value ?? storeLocale;
   const applyLocale = onChange ?? setLocale;
   const [open, setOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
+  const [webMenuPos, setWebMenuPos] = useState<WebMenuPos | null>(null);
   const triggerRef = useRef<View>(null);
+  const clipSuffix = useId().replace(/:/g, "");
+  const flagW = compact ? 24 : 30;
+  const flagH = Math.round(flagW / FLAG_RATIO);
   const current =
     LANGUAGE_OPTIONS.find((option) => option.locale === locale) ??
     LANGUAGE_OPTIONS[1];
@@ -154,25 +68,40 @@ export function LanguageDropdown({
   const ChevronIcon = opensUp ? ChevronUp : ChevronDown;
 
   const openMenu = () => {
-    const apply = () => {
-      measureTriggerInViewport(triggerRef.current, (x, y, width, height) => {
-        setMenuPos(
-          computeMenuPos(x, y, width, height, {
-            fullWidth,
-            isRTL,
-            opensUp,
-          }),
+    if (IS_WEB && triggerRef.current) {
+      triggerRef.current.measureInWindow((x, y, width, height) => {
+        const menuWidth = fullWidth
+          ? width
+          : Math.max(MENU_MIN_WIDTH, width);
+        const viewportWidth =
+          typeof window !== "undefined" ? window.innerWidth : menuWidth;
+        const padding = 8;
+        let left = fullWidth
+          ? x
+          : isRTL
+            ? x
+            : x + width - menuWidth;
+        left = Math.max(
+          padding,
+          Math.min(left, viewportWidth - menuWidth - padding),
         );
+
+        const menuHeight = estimatedMenuHeight();
+        let top =
+          opensUp
+            ? y - menuHeight - 6
+            : y + height + 6;
+        if (opensUp && top < padding) {
+          top = y + height + 6;
+        }
+
+        setWebMenuPos({ top, left, width: menuWidth });
         setOpen(true);
       });
-    };
-
-    // Nested drawer Modals need a frame for DOM layout to settle.
-    if (IS_WEB && typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => requestAnimationFrame(apply));
       return;
     }
-    apply();
+    setWebMenuPos(null);
+    setOpen(true);
   };
 
   const closeMenu = () => {
@@ -181,30 +110,9 @@ export function LanguageDropdown({
 
   useEffect(() => {
     if (!open) {
-      setMenuPos(null);
-      return;
+      setWebMenuPos(null);
     }
-    if (!IS_WEB || typeof window === "undefined") return;
-
-    const reposition = () => {
-      measureTriggerInViewport(triggerRef.current, (x, y, width, height) => {
-        setMenuPos(
-          computeMenuPos(x, y, width, height, {
-            fullWidth,
-            isRTL,
-            opensUp,
-          }),
-        );
-      });
-    };
-
-    window.addEventListener("resize", reposition);
-    window.addEventListener("scroll", reposition, true);
-    return () => {
-      window.removeEventListener("resize", reposition);
-      window.removeEventListener("scroll", reposition, true);
-    };
-  }, [open, fullWidth, isRTL, opensUp]);
+  }, [open]);
 
   const selectLocale = (next: Locale) => {
     closeMenu();
@@ -213,10 +121,8 @@ export function LanguageDropdown({
 
   const menu = (
     <View
-      // Fills the positioned wrapper so its maxHeight applies to the list.
       style={[
         styles.menu,
-        styles.menuFill,
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
@@ -243,12 +149,20 @@ export function LanguageDropdown({
               },
             ]}
           >
+            <FlagFrame w={flagW} h={flagH} selected={active} colors={colors}>
+              <Flag
+                locale={option.locale}
+                w={flagW}
+                h={flagH}
+                clipSuffix={`menu-${option.locale}-${clipSuffix}`}
+              />
+            </FlagFrame>
             <View style={styles.menuText}>
               <Text
                 style={[
                   styles.menuLabel,
                   {
-                    color: active ? colors.primary : colors.foreground,
+                    color: colors.foreground,
                     textAlign: isRTL ? "right" : "left",
                   },
                 ]}
@@ -275,59 +189,52 @@ export function LanguageDropdown({
 
   return (
     <View style={[styles.wrap, fullWidth && styles.wrapFullWidth]}>
-      {/* Outer View ref: reliable getBoundingClientRect inside nested drawer Modals. */}
-      <View ref={triggerRef} collapsable={false}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={current.label}
-          onPress={openMenu}
+      <Pressable
+        ref={triggerRef}
+        accessibilityRole="button"
+        accessibilityLabel={current.label}
+        onPress={openMenu}
+        style={[
+          styles.trigger,
+          fullWidth && styles.triggerFullWidth,
+          {
+            flexDirection: isRTL ? "row-reverse" : "row",
+            borderColor: colors.border,
+            backgroundColor: colors.card,
+          },
+        ]}
+      >
+        <View
           style={[
-            styles.trigger,
-            fullWidth && styles.triggerFullWidth,
-            {
-              flexDirection: isRTL ? "row-reverse" : "row",
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-            },
+            styles.triggerLeading,
+            { flexDirection: isRTL ? "row-reverse" : "row" },
           ]}
         >
-          <View
-            style={[
-              styles.triggerLeading,
-              // flex:1 only when the trigger has a definite width; in the
-              // compact pill the parent sizes to content, and a flexed child
-              // there collapses to zero — an empty-looking selector.
-              fullWidth && styles.triggerLeadingFullWidth,
-              { flexDirection: isRTL ? "row-reverse" : "row" },
-            ]}
-          >
+          <FlagFrame w={flagW} h={flagH} selected colors={colors}>
+            <Flag
+              locale={locale}
+              w={flagW}
+              h={flagH}
+              clipSuffix={`trigger-${clipSuffix}`}
+            />
+          </FlagFrame>
+          {showLabel ? (
             <Text
-              style={[
-                styles.triggerLabel,
-                {
-                  color: colors.foreground,
-                  fontSize: compact ? 13 : 14,
-                },
-              ]}
+              style={[styles.triggerLabel, { color: colors.foreground }]}
               numberOfLines={1}
             >
               {current.label}
             </Text>
-          </View>
-          <ChevronIcon size={compact ? 14 : 16} color={colors.mutedForeground} />
-        </Pressable>
-      </View>
+          ) : null}
+        </View>
+        <ChevronIcon size={compact ? 14 : 16} color={colors.mutedForeground} />
+      </Pressable>
 
       <Modal
         visible={open}
         transparent
         animationType={IS_WEB ? "none" : "fade"}
         onRequestClose={closeMenu}
-        // Without this the modal's content starts below the status bar on
-        // Android, while measureInWindow includes it — the menu then renders a
-        // status-bar-height too high and covers the trigger.
-        statusBarTranslucent
-        navigationBarTranslucent
       >
         <View style={styles.modalRoot}>
           <Pressable
@@ -336,22 +243,22 @@ export function LanguageDropdown({
             accessibilityRole="button"
             accessibilityLabel="Close language menu"
           />
-          {menuPos ? (
+          {IS_WEB && webMenuPos ? (
             <View
               pointerEvents="box-none"
               style={[
-                styles.menuFixed,
+                styles.menuWebFixed,
                 {
-                  top: menuPos.top,
-                  left: menuPos.left,
-                  width: menuPos.width,
-                  maxHeight: menuPos.maxHeight,
+                  top: webMenuPos.top,
+                  left: webMenuPos.left,
+                  width: webMenuPos.width,
                 },
               ]}
             >
               {menu}
             </View>
-          ) : !IS_WEB ? (
+          ) : null}
+          {!IS_WEB ? (
             <View style={styles.modalCenter} pointerEvents="box-none">
               <View
                 style={[
@@ -399,10 +306,8 @@ const styles = StyleSheet.create({
   triggerLeading: {
     alignItems: "center",
     gap: 10,
-    minWidth: 0,
-  },
-  triggerLeadingFullWidth: {
     flex: 1,
+    minWidth: 0,
   },
   triggerLabel: {
     fontSize: 14,
@@ -416,21 +321,15 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "transparent",
   },
-  menuFixed: {
+  menuWebFixed: {
     position: "absolute",
     zIndex: 2,
   },
   modalCenter: {
     flex: 1,
     justifyContent: "center",
-    // Centred horizontally too — this is the native popup, not an anchored menu.
-    alignItems: "center",
     padding: 24,
     zIndex: 2,
-  },
-  menuFill: {
-    flexShrink: 1,
-    minHeight: 0,
   },
   menu: {
     borderWidth: 1,
@@ -465,7 +364,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     overflow: "hidden",
-    width: "100%",
-    maxWidth: 320,
   },
 });

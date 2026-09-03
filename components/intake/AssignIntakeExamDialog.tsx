@@ -1,4 +1,3 @@
-import { Plus } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,7 +15,6 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { IntakeExamBuilderForm } from "@/components/intake/IntakeExamBuilderForm";
 import {
   assignIntakeExam,
-  createIntakeTest,
   fetchIntakeTests,
 } from "@/domains/intake-exams/api";
 import type { IntakeExamRecurrence, IntakeTestTemplate } from "@/domains/intake-exams/types";
@@ -49,8 +47,6 @@ interface Props {
   onAssigned: (instance: Awaited<ReturnType<typeof assignIntakeExam>>) => void;
 }
 
-type Step = "assign" | "build";
-
 export function AssignIntakeExamDialog({
   visible,
   isRTL,
@@ -62,23 +58,21 @@ export function AssignIntakeExamDialog({
 }: Props) {
   const colors = useColors();
   const textAlign = isRTL ? "right" : "left";
-  const [step, setStep] = useState<Step>("assign");
   const [tests, setTests] = useState<IntakeTestTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deadlineDate, setDeadlineDate] = useState(defaultDeadlineDate);
   const [deadlineTime, setDeadlineTime] = useState("09:00");
-  const [recurrence, setRecurrence] = useState<IntakeExamRecurrence>("none");
+  const [recurrence, setRecurrence] = useState<IntakeExamRecurrence>("weekly");
   const [interval, setInterval] = useState("1");
   const [assigning, setAssigning] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   useEffect(() => {
     if (!visible || !accessToken) return;
-    setStep("assign");
     setDeadlineDate(defaultDeadlineDate());
     setDeadlineTime("09:00");
-    setRecurrence("none");
+    setRecurrence("weekly");
     setInterval("1");
     setLoading(true);
     void fetchIntakeTests(accessToken)
@@ -86,8 +80,6 @@ export function AssignIntakeExamDialog({
         const active = rows.filter((t) => t.is_active);
         setTests(active);
         setSelectedId(active[0]?.id ?? null);
-        // Empty catalog → open builder on the same screen immediately.
-        setStep(active.length === 0 ? "build" : "assign");
       })
       .catch((e) => Alert.alert(isRTL ? "خطأ" : "Error", (e as Error).message))
       .finally(() => setLoading(false));
@@ -97,8 +89,6 @@ export function AssignIntakeExamDialog({
     () => tests.find((t) => t.id === selectedId) ?? null,
     [tests, selectedId],
   );
-
-  const busy = assigning || saving || creating;
 
   const assign = async () => {
     if (!selectedId || !deadlineDate.trim()) {
@@ -145,25 +135,6 @@ export function AssignIntakeExamDialog({
     }
   };
 
-  const handleCreateExam = async (payload: {
-    name: string;
-    description?: string;
-    is_active: boolean;
-    questions: Parameters<typeof createIntakeTest>[0]["questions"];
-  }) => {
-    setCreating(true);
-    try {
-      const created = await createIntakeTest(payload, accessToken);
-      setTests((prev) => [created, ...prev.filter((t) => t.id !== created.id)]);
-      setSelectedId(created.id);
-      setStep("assign");
-    } catch (e) {
-      Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const isWeb = Platform.OS === "web";
   const frequencyHint =
     recurrence === "weekly"
@@ -187,142 +158,71 @@ export function AssignIntakeExamDialog({
               : "One-time exam only.";
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} disabled={busy} />
-        <View
-          style={[
-            styles.dialog,
-            step === "build" && styles.dialogBuild,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
-            {step === "build"
-              ? isRTL
-                ? "إنشاء فحص متابعة"
-                : "Create follow-up exam"
-              : isRTL
-                ? "إضافة فحص متابعة"
-                : "Assign follow-up exam"}
-          </Text>
-          {step === "build" ? (
-            <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
-              {isRTL
-                ? "أنشئ الفحص هنا، ثم أرسله للمريض مباشرة."
-                : "Build the exam here, then send it to the patient on the next step."}
+    <>
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={onClose} disabled={assigning || saving} />
+          <View style={[styles.dialog, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
+              {isRTL ? "إضافة فحص متابعة" : "Assign follow-up exam"}
             </Text>
-          ) : null}
 
-          {loading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
-          ) : step === "build" ? (
-            <View style={styles.builderHost}>
-              <IntakeExamBuilderForm
-                isRTL={isRTL}
-                saving={creating}
-                onCancel={() => {
-                  if (tests.length === 0) {
-                    onClose();
-                    return;
-                  }
-                  setStep("assign");
-                }}
-                onSubmit={(payload) => void handleCreateExam(payload)}
-              />
-            </View>
-          ) : (
-            <>
-              <ScrollView
-                style={{ maxHeight: isWeb ? 520 : 460 }}
-                keyboardShouldPersistTaps="handled"
-              >
+            {loading ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
+            ) : tests.length === 0 ? (
+              <View style={{ gap: 12 }}>
+                <Text style={{ color: colors.mutedForeground, textAlign }}>
+                  {isRTL
+                    ? "لا توجد فحوصات. أنشئ فحصًا أولاً."
+                    : "No exams yet. Create one first."}
+                </Text>
                 <Pressable
-                  onPress={() => setStep("build")}
-                  disabled={busy}
-                  style={({ pressed }) => [
-                    styles.createBtn,
-                    {
-                      flexDirection: isRTL ? "row-reverse" : "row",
-                      borderColor: colors.primary,
-                      backgroundColor: pressed
-                        ? `${colors.primary}14`
-                        : `${colors.primary}0A`,
-                    },
-                  ]}
+                  onPress={() => setBuilderOpen(true)}
+                  style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
                 >
-                  <Plus size={18} color={colors.primary} />
-                  <Text style={{ color: colors.primary, fontWeight: "800", flex: 1, textAlign }}>
-                    {isRTL ? "إنشاء فحص جديد" : "Create new exam"}
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>
+                    {isRTL ? "إنشاء فحص" : "Create exam"}
                   </Text>
                 </Pressable>
-                <Text
-                  style={[
-                    styles.hint,
-                    { color: colors.mutedForeground, textAlign, marginBottom: 10 },
-                  ]}
-                >
-                  {isRTL
-                    ? "إذا لم يناسبك أي فحص موجود، أنشئ واحدًا ثم أرسله من نفس الشاشة."
-                    : "If none of the existing exams fit, create one and send it from this same screen."}
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: isWeb ? 520 : 460 }}>
+                <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
+                  {isRTL ? "اختر الفحص *" : "Select exam *"}
                 </Text>
-
-                {tests.length === 0 ? (
-                  <Text style={{ color: colors.mutedForeground, textAlign, marginBottom: 8 }}>
-                    {isRTL
-                      ? "لا توجد فحوصات بعد. أنشئ فحصًا أولاً."
-                      : "No exams yet. Create one first."}
-                  </Text>
-                ) : (
-                  <>
-                    <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
-                      {isRTL ? "اختر الفحص *" : "Select exam *"}
-                    </Text>
-                    {tests.map((test) => {
-                      const active = test.id === selectedId;
-                      return (
-                        <Pressable
-                          key={test.id}
-                          onPress={() => setSelectedId(test.id)}
-                          style={[
-                            styles.testRow,
-                            {
-                              borderColor: active ? colors.primary : colors.border,
-                              backgroundColor: active
-                                ? `${colors.primary}12`
-                                : colors.background,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              color: colors.foreground,
-                              fontWeight: "700",
-                              textAlign,
-                            }}
-                          >
-                            {test.name}
-                          </Text>
-                          <Text
-                            style={{
-                              color: colors.mutedForeground,
-                              fontSize: 12,
-                              textAlign,
-                            }}
-                          >
-                            {(test.questions ?? []).length}{" "}
-                            {isRTL ? "أسئلة" : "questions"}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </>
-                )}
+                {tests.map((test) => {
+                  const active = test.id === selectedId;
+                  return (
+                    <Pressable
+                      key={test.id}
+                      onPress={() => setSelectedId(test.id)}
+                      style={[
+                        styles.testRow,
+                        {
+                          borderColor: active ? colors.primary : colors.border,
+                          backgroundColor: active ? `${colors.primary}12` : colors.background,
+                        },
+                      ]}
+                    >
+                      <Text style={{ color: colors.foreground, fontWeight: "700", textAlign }}>
+                        {test.name}
+                      </Text>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
+                        {(test.questions ?? []).length} {isRTL ? "أسئلة" : "questions"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
 
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
                   {isRTL ? "الموعد النهائي *" : "Deadline *"}
                 </Text>
-                <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+                <Text
+                  style={[
+                    styles.hint,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
                   {isRTL
                     ? "متى يجب أن يُكمل المريض هذا الفحص؟"
                     : "When should the patient complete this exam?"}
@@ -339,9 +239,7 @@ export function AssignIntakeExamDialog({
                       {
                         flex: 1,
                         color: colors.foreground,
-                        borderColor: !deadlineDate.trim()
-                          ? colors.destructive
-                          : colors.border,
+                        borderColor: !deadlineDate.trim() ? colors.destructive : colors.border,
                         textAlign,
                       },
                     ]}
@@ -367,7 +265,12 @@ export function AssignIntakeExamDialog({
                 <Text style={[styles.label, { color: colors.mutedForeground, textAlign }]}>
                   {isRTL ? "كم مرة يُعاد الفحص؟ *" : "How often should it happen? *"}
                 </Text>
-                <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+                <Text
+                  style={[
+                    styles.hint,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
                   {isRTL
                     ? "مرة واحدة، أسبوعيًا، شهريًا، أو أكثر."
                     : "Once, weekly, monthly, or another cadence."}
@@ -383,9 +286,7 @@ export function AssignIntakeExamDialog({
                           styles.chip,
                           {
                             borderColor: active ? colors.primary : colors.border,
-                            backgroundColor: active
-                              ? `${colors.primary}18`
-                              : colors.background,
+                            backgroundColor: active ? `${colors.primary}18` : colors.background,
                           },
                         ]}
                       >
@@ -422,69 +323,105 @@ export function AssignIntakeExamDialog({
                       keyboardType="number-pad"
                       style={[
                         styles.input,
-                        {
-                          color: colors.foreground,
-                          borderColor: colors.border,
-                          textAlign,
-                        },
+                        { color: colors.foreground, borderColor: colors.border, textAlign },
                       ]}
                     />
+                    <Text
+                      style={[
+                        styles.hint,
+                        { color: colors.mutedForeground, textAlign },
+                      ]}
+                    >
+                      {isRTL
+                        ? recurrence === "weekly"
+                          ? "مثال: 1 = كل أسبوع، 2 = كل أسبوعين"
+                          : recurrence === "monthly"
+                            ? "مثال: 1 = كل شهر، 2 = كل شهرين"
+                            : "مثال: 1 = كل فترة"
+                        : recurrence === "weekly"
+                          ? "e.g. 1 = every week, 2 = every 2 weeks"
+                          : recurrence === "monthly"
+                            ? "e.g. 1 = every month, 2 = every 2 months"
+                            : "e.g. 1 = every period"}
+                    </Text>
                   </>
                 ) : null}
 
                 {selected?.description ? (
-                  <Text
-                    style={{ color: colors.mutedForeground, marginTop: 8, textAlign }}
-                  >
+                  <Text style={{ color: colors.mutedForeground, marginTop: 8, textAlign }}>
                     {selected.description}
                   </Text>
                 ) : null}
               </ScrollView>
+            )}
 
-              <View style={[styles.actions, { borderTopColor: colors.border }]}>
+            <View style={[styles.actions, { borderTopColor: colors.border }]}>
+              <Pressable
+                onPress={onClose}
+                disabled={assigning || saving}
+                style={[
+                  styles.cancelBtn,
+                  isWeb && styles.actionBtnWeb,
+                  {
+                    backgroundColor:
+                      assigning || saving ? colors.muted : colors.destructive,
+                    opacity: assigning || saving ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.cancelBtnText}>{isRTL ? "إلغاء" : "Cancel"}</Text>
+              </Pressable>
+
+              <View style={styles.footer}>
                 <Pressable
-                  onPress={onClose}
-                  disabled={busy}
+                  onPress={() => void assign()}
+                  disabled={assigning || saving || loading || tests.length === 0}
                   style={[
-                    styles.cancelBtn,
+                    styles.primaryBtn,
                     isWeb && styles.actionBtnWeb,
                     {
-                      backgroundColor: busy ? colors.muted : colors.destructive,
-                      opacity: busy ? 0.7 : 1,
+                      backgroundColor:
+                        assigning || saving || tests.length === 0 ? colors.muted : colors.primary,
                     },
                   ]}
                 >
-                  <Text style={styles.cancelBtnText}>{isRTL ? "إلغاء" : "Cancel"}</Text>
+                  {assigning ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={{ color: "#fff", fontWeight: "700" }}>
+                      {isRTL ? "إرسال للمريض" : "Send to patient"}
+                    </Text>
+                  )}
                 </Pressable>
-
-                <View style={styles.footer}>
-                  <Pressable
-                    onPress={() => void assign()}
-                    disabled={busy || loading || !selectedId}
-                    style={[
-                      styles.primaryBtn,
-                      isWeb && styles.actionBtnWeb,
-                      {
-                        backgroundColor:
-                          busy || !selectedId ? colors.muted : colors.primary,
-                      },
-                    ]}
-                  >
-                    {assigning ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={{ color: "#fff", fontWeight: "700" }}>
-                        {isRTL ? "إرسال للمريض" : "Send to patient"}
-                      </Text>
-                    )}
-                  </Pressable>
-                </View>
               </View>
-            </>
-          )}
+            </View>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <Modal visible={builderOpen} animationType="slide" onRequestClose={() => setBuilderOpen(false)}>
+        <View style={[styles.builderRoot, { backgroundColor: colors.background }]}>
+          <IntakeExamBuilderForm
+            isRTL={isRTL}
+            saving={assigning}
+            onCancel={() => setBuilderOpen(false)}
+            onSubmit={(payload) => {
+              void (async () => {
+                try {
+                  const { createIntakeTest } = await import("@/domains/intake-exams/api");
+                  const created = await createIntakeTest(payload, accessToken);
+                  setTests((prev) => [created, ...prev]);
+                  setSelectedId(created.id);
+                  setBuilderOpen(false);
+                } catch (e) {
+                  Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+                }
+              })();
+            }}
+          />
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -500,31 +437,15 @@ const styles = StyleSheet.create({
   dialog: {
     width: "100%",
     maxWidth: 520,
-    maxHeight: "92%",
     borderRadius: 18,
     borderWidth: 1,
     padding: 18,
     zIndex: 1,
     gap: 12,
   },
-  dialogBuild: {
-    maxWidth: 640,
-    minHeight: Platform.OS === "web" ? 560 : 520,
-  },
   title: { fontSize: 18, fontWeight: "800" },
-  subtitle: { fontSize: 13, fontWeight: "500", marginTop: -4 },
   label: { fontSize: 13, fontWeight: "700", marginTop: 10 },
   hint: { fontSize: 12, fontWeight: "500", marginBottom: 6, marginTop: 2 },
-  createBtn: {
-    alignItems: "center",
-    gap: 10,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    borderStyle: "dashed",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 4,
-  },
   testRow: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   row: { flexDirection: "row", alignItems: "center" },
@@ -560,9 +481,5 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     cursor: "pointer",
   } as ViewStyle,
-  builderHost: {
-    flexGrow: 1,
-    minHeight: 360,
-    maxHeight: Platform.OS === "web" ? 620 : 520,
-  },
+  builderRoot: { flex: 1, paddingTop: 48 },
 });

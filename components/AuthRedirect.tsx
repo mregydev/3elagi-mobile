@@ -1,12 +1,7 @@
 import { useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
-import { isGuestAllowedRoot, isSignedInPublicRoot } from "@/domains/auth/guestBrowse";
-import {
-  navigatePostAuth,
-  navigateToWelcome,
-} from "@/domains/auth/navigation";
-import { hydratePendingAuthReturn } from "@/domains/auth/pendingAuthReturn";
+import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 
@@ -20,7 +15,7 @@ function isDoctorPendingApproval(
   );
 }
 
-/** Guests may browse home/doctors; signed-in users are routed into the app. */
+/** Keeps unauthenticated users on welcome; sends signed-in users to the app. */
 export function AuthRedirect() {
   const router = useRouter();
   const segments = useSegments();
@@ -32,39 +27,24 @@ export function AuthRedirect() {
   const signedIn = isSignedIn(profile, accessToken);
 
   useEffect(() => {
-    void hydratePendingAuthReturn();
-  }, []);
-
-  useEffect(() => {
     if (!hydrated) return;
 
-    const root = segments[0] as string | undefined;
-    const second = segments[1] as string | undefined;
-    const authScreen = root === "auth" ? String(second ?? "") : "";
-    // Password reset / forgot / verify must stay reachable even when a session exists.
-    const isAuthUtilityRoute =
-      authScreen === "forgot-password" ||
-      authScreen === "reset-password" ||
-      authScreen === "verify-email";
+    const root = segments[0];
+    const isPublic =
+      root === "welcome" ||
+      root === "auth" ||
+      root === undefined;
     const isAdminRoute = root === "admin";
     const isPendingRoute = root === "doctor-pending";
 
     if (!signedIn) {
-      if (!isGuestAllowedRoot(root, second)) {
+      if (!isPublic) {
         if (Platform.OS === "web") {
           navigateToWelcome(router);
         } else {
           router.replace("/welcome");
         }
       }
-      return;
-    }
-
-    if (isAuthUtilityRoute) {
-      return;
-    }
-
-    if (isSignedInPublicRoot(root)) {
       return;
     }
 
@@ -75,8 +55,7 @@ export function AuthRedirect() {
         router.replace("/welcome");
         return;
       }
-      const isChatRoute = root === "chat";
-      if (!isAdminRoute && !isChatRoute) {
+      if (!isAdminRoute) {
         router.replace("/admin");
       }
       return;
@@ -90,8 +69,7 @@ export function AuthRedirect() {
     }
 
     if (signedIn && (root === "welcome" || root === "auth")) {
-      // Honors pending guest chat return (same helper as login/signup forms).
-      navigatePostAuth(router, role, doctorApprovalStatus);
+      router.replace("/(tabs)");
       return;
     }
 

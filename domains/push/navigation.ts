@@ -1,5 +1,6 @@
+import { Platform } from "react-native";
 import type { Router } from "expo-router";
-import { openAsk3elagiAiWithChat } from "@/domains/ai/widget-store";
+import { isMobileAiPushDisabled } from "@/domains/ai/push-suppression";
 import type { PushNotificationData } from "@/domains/push/types";
 
 export function getPushNotificationPath(data: PushNotificationData): string {
@@ -12,9 +13,6 @@ export function getPushNotificationPath(data: PushNotificationData): string {
   if (data.type === "appointment_status") {
     return "/(tabs)/appointments";
   }
-  if (data.type === "consultation_removed") {
-    return `/chat/${data.chatId}`;
-  }
   if (data.type === "system_notification") {
     return "/(tabs)";
   }
@@ -25,8 +23,7 @@ export function getPushNotificationPath(data: PushNotificationData): string {
     return `/chat/${data.chatId}`;
   }
   if (data.type === "chat") return `/chat/${data.chatId}`;
-  if (data.type === "ai") return "/(tabs)";
-  return "/(tabs)";
+  return `/ai/${data.chatId}`;
 }
 
 export function navigateFromPushNotification(
@@ -51,11 +48,6 @@ export function navigateFromPushNotification(
     return;
   }
 
-  if (data.type === "consultation_removed") {
-    router.push(`/chat/${data.chatId}`);
-    return;
-  }
-
   if (data.type === "system_notification") {
     router.push("/(tabs)");
     return;
@@ -76,9 +68,7 @@ export function navigateFromPushNotification(
     return;
   }
 
-  if (data.type === "ai") {
-    router.push("/(tabs)");
-    openAsk3elagiAiWithChat(data.chatId);
-    return;
-  }
+  if (Platform.OS !== "web" && isMobileAiPushDisabled()) return;
+
+  router.push(getPushNotificationPath(data));
 }

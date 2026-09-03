@@ -1,5 +1,4 @@
 import { API_BASE } from "@/constants/api";
-import { withAuthRequestInit } from "@/domains/auth/http";
 import type { MessageEmotionType } from "@/domains/emotions";
 import { mapEmotionRows } from "@/domains/emotions";
 import type {
@@ -24,7 +23,6 @@ export interface ChatContactRow {
   doctor_id?: string | null;
   consultation_price?: number | null;
   video_consultation_price?: number | null;
-  immediate_call_enabled?: boolean | null;
   rating_average?: number | null;
   rating_total?: number | null;
   /** ISO 3166-1 alpha-2 residence country. */
@@ -60,27 +58,18 @@ export interface ConversationRow {
 }
 
 function mapContact(row: ChatContactRow): ChatUser {
-  const role =
-    row.role === "doctor"
-      ? "doctor"
-      : row.role === "patient"
-        ? "patient"
-        : row.role === "admin"
-          ? "support"
-          : undefined;
   return {
     id: row.id,
     name: row.name,
     photoUrl: row.photo_url,
     presence: "offline",
-    role,
+    role: row.role === "doctor" ? "doctor" : row.role === "patient" ? "patient" : undefined,
     specialty: row.specialty?.trim() || undefined,
     country: row.country?.trim().toUpperCase() || undefined,
     rating: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
     consultationPrice: row.consultation_price ?? undefined,
     videoConsultationPrice: row.video_consultation_price ?? undefined,
-    immediateCallEnabled: !!row.immediate_call_enabled,
     doctorEntityId: row.doctor_id ?? undefined,
   };
 }
@@ -119,30 +108,15 @@ export function mapMessageRow(
         ? (row.attachment_meta as ConsultationActionMeta | undefined) ?? null
         : null,
     editedAt: row.edited_at ?? null,
-    readAt: row.read_at ?? null,
     pointsBalance: row.points_balance,
     emotions: mapEmotionRows(row.emotions),
   };
 }
 
-async function chatFetch(
-  token: string,
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  try {
-    return await fetch(`${API_BASE}${path}`, withAuthRequestInit(token, init));
-  } catch (err) {
-    const raw = err instanceof Error ? err.message : "";
-    if (err instanceof TypeError || raw === "Failed to fetch") {
-      throw new Error("Could not reach the server. Check your connection and try again.");
-    }
-    throw err instanceof Error ? err : new Error("Network request failed");
-  }
-}
-
 export async function fetchChatContacts(token: string): Promise<ChatUser[]> {
-  const res = await chatFetch(token, "/users/contacts");
+  const res = await fetch(`${API_BASE}/users/contacts`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const data = (await res.json().catch(() => [])) as ChatContactRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -156,7 +130,9 @@ export async function fetchContactById(
   token: string,
   userId: string,
 ): Promise<ChatUser> {
-  const res = await chatFetch(token, `/users/contacts/${userId}`);
+  const res = await fetch(`${API_BASE}/users/contacts/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const data = (await res.json().catch(() => ({}))) as ChatContactRow & {
     message?: string;
   };
@@ -170,7 +146,9 @@ export async function fetchConversations(
   token: string,
   selfId: string,
 ): Promise<{ peerId: string; user: ChatUser; lastMessage: ChatMessage; unreadCount: number }[]> {
-  const res = await chatFetch(token, "/messages/conversations");
+  const res = await fetch(`${API_BASE}/messages/conversations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const data = (await res.json().catch(() => [])) as ConversationRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -190,7 +168,9 @@ export async function fetchMessagesWithPeer(
   peerId: string,
   selfId: string,
 ): Promise<ChatMessage[]> {
-  const res = await chatFetch(token, `/messages/with/${peerId}`);
+  const res = await fetch(`${API_BASE}/messages/with/${peerId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const data = (await res.json().catch(() => [])) as MessageRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -205,8 +185,12 @@ export async function sendChatMessage(
   input: SendMessageInput,
   selfId: string,
 ): Promise<ChatMessage> {
-  const res = await chatFetch(token, "/messages", {
+  const res = await fetch(`${API_BASE}/messages`, {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       recipient_id: input.recipientId,
       type: input.type ?? "text",
@@ -230,8 +214,9 @@ export async function markMessagesRead(
   token: string,
   peerId: string,
 ): Promise<void> {
-  const res = await chatFetch(token, `/messages/with/${peerId}/read`, {
+  const res = await fetch(`${API_BASE}/messages/with/${peerId}/read`, {
     method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
@@ -239,48 +224,13 @@ export async function markMessagesRead(
   }
 }
 
-export async function markChatMessageRead(
-  token: string,
-  messageId: string,
-  peerId: string,
-  selfId: string,
-): Promise<ChatMessage> {
-  const res = await chatFetch(token, `/messages/${messageId}/read`, {
-    method: "POST",
-  });
-  const data = (await res.json().catch(() => ({}))) as MessageRow & {
-    message?: string;
-  };
-  if (!res.ok) {
-    throw new Error(data.message ?? `Failed to mark read (${res.status})`);
-  }
-  return mapMessageRow(data, peerId, selfId);
-}
-
-export async function markChatMessageUnread(
-  token: string,
-  messageId: string,
-  peerId: string,
-  selfId: string,
-): Promise<ChatMessage> {
-  const res = await chatFetch(token, `/messages/${messageId}/unread`, {
-    method: "POST",
-  });
-  const data = (await res.json().catch(() => ({}))) as MessageRow & {
-    message?: string;
-  };
-  if (!res.ok) {
-    throw new Error(data.message ?? `Failed to mark unread (${res.status})`);
-  }
-  return mapMessageRow(data, peerId, selfId);
-}
-
 export async function deleteChatMessage(
   token: string,
   messageId: string,
 ): Promise<void> {
-  const res = await chatFetch(token, `/messages/${messageId}`, {
+  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
     method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
@@ -295,8 +245,12 @@ export async function editChatMessage(
   peerId: string,
   selfId: string,
 ): Promise<ChatMessage> {
-  const res = await chatFetch(token, `/messages/${messageId}`, {
+  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
     method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ content }),
   });
   const data = (await res.json().catch(() => ({}))) as MessageRow & { message?: string };
@@ -313,8 +267,12 @@ export async function editChatMedicalMessage(
   selfId: string,
   input: { content: string; medicalLink: MedicalLinkMeta },
 ): Promise<ChatMessage> {
-  const res = await chatFetch(token, `/messages/${messageId}`, {
+  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
     method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       content: input.content,
       attachment_meta: input.medicalLink,

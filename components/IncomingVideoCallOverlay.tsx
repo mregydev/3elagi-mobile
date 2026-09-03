@@ -1,11 +1,9 @@
 import { useRouter } from "expo-router";
 import { Phone, PhoneOff } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  AppState,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -13,21 +11,9 @@ import {
 } from "react-native";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { useAuthStore } from "@/domains/auth/store";
-import { onIncomingVideoCall, onVideoCallStatus } from "@/domains/presence/socket";
+import { onIncomingVideoCall } from "@/domains/presence/socket";
 import { acceptVideoCall, declineVideoCall } from "@/domains/video-call/api";
-import {
-  startIncomingCallRing,
-  stopIncomingCallRing,
-} from "@/domains/video-call/incomingCallRing";
-import { consumeAndroidIncomingCallLaunchIntent } from "@/domains/video-call/androidIncomingCall";
 import { useI18n } from "@/hooks/useI18n";
-import { dismissIncomingCallNotifications } from "@/domains/push/expoPush";
-import { useRinger } from "@/hooks/useRinger";
-import {
-  VIDEO_CALL_EVENTS,
-  type IncomingVideoCallPushPayload,
-} from "@/domains/video-call/events";
-import { on } from "@/utils/eventBus";
 
 type IncomingCall = {
   sessionId: string;
@@ -42,131 +28,24 @@ export function IncomingVideoCallOverlay() {
   const role = useAuthStore((s) => s.role);
   const [incoming, setIncoming] = useState<IncomingCall | null>(null);
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
-  const launchHandledRef = useRef(new Set<string>());
 
   const isDoctor = role?.toLowerCase() === "doctor";
-  const useNativeAndroidRing = Platform.OS === "android";
-  useRinger("ringtone", !!incoming && isDoctor && !busy && !useNativeAndroidRing);
 
   useEffect(() => {
     onIncomingVideoCall((payload) => {
       if (!isDoctor) return;
-      const next = {
+      setIncoming({
         sessionId: payload.session_id,
         callerId: payload.caller_id,
         callerName: payload.caller_name,
-      };
-      setIncoming((current) =>
-        current?.sessionId === next.sessionId ? current : next,
-      );
-      startIncomingCallRing(next);
+      });
     });
     return () => onIncomingVideoCall(null);
   }, [isDoctor]);
 
-  // Push fallback: with the socket down (backgrounded, flaky network) the
-  // event above never lands, so the push raises the overlay instead.
-  useEffect(() => {
-    if (!isDoctor) return;
-    return on<IncomingVideoCallPushPayload>(
-      VIDEO_CALL_EVENTS.INCOMING_PUSH,
-      (payload) => {
-        setIncoming((current) =>
-          current?.sessionId === payload.sessionId
-            ? current
-            : {
-                sessionId: payload.sessionId,
-                callerId: payload.callerId ?? "",
-                callerName: payload.callerName,
-              },
-        );
-        startIncomingCallRing({
-          sessionId: payload.sessionId,
-          callerId: payload.callerId,
-          callerName: payload.callerName,
-        });
-      },
-    );
-  }, [isDoctor]);
-
-  // Notification accept / decline / full-screen intent when app was killed or backgrounded.
-  useEffect(() => {
-    if (!isDoctor || Platform.OS !== "android" || !accessToken) return;
-
-    const handleLaunchIntent = async () => {
-      const launch = await consumeAndroidIncomingCallLaunchIntent();
-      if (!launch?.sessionId) return;
-
-      const launchKey = `${launch.sessionId}:${launch.acceptCall ? "accept" : launch.declineCall ? "decline" : "open"}`;
-      if (launchHandledRef.current.has(launchKey)) return;
-      launchHandledRef.current.add(launchKey);
-
-      stopIncomingCallRing(launch.sessionId);
-      void dismissIncomingCallNotifications(launch.sessionId);
-
-      if (launch.declineCall) {
-        try {
-          await declineVideoCall(accessToken, launch.sessionId);
-        } catch {
-          // ignore
-        }
-        return;
-      }
-
-      if (launch.acceptCall) {
-        setBusy("accept");
-        try {
-          await acceptVideoCall(accessToken, launch.sessionId);
-          router.push({
-            pathname: "/video-call",
-            params: { sessionId: launch.sessionId },
-          });
-        } catch {
-          // fall through to overlay if accept fails
-          setIncoming({
-            sessionId: launch.sessionId,
-            callerId: launch.callerId,
-            callerName: launch.callerName,
-          });
-        } finally {
-          setBusy(null);
-        }
-        return;
-      }
-
-      setIncoming({
-        sessionId: launch.sessionId,
-        callerId: launch.callerId,
-        callerName: launch.callerName,
-      });
-    };
-
-    void handleLaunchIntent();
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void handleLaunchIntent();
-    });
-    return () => sub.remove();
-  }, [isDoctor, accessToken, router]);
-
-  // Caller hung up before we answered — stop ringing.
-  useEffect(() => {
-    onVideoCallStatus((payload) => {
-      setIncoming((current) => {
-        if (!current || current.sessionId !== payload.session_id) return current;
-        // The push is still sitting in the tray ringing for a call that is over.
-        void dismissIncomingCallNotifications(payload.session_id);
-        stopIncomingCallRing(payload.session_id);
-        return null;
-      });
-    });
-    return () => onVideoCallStatus(null);
-  }, []);
-
-  const dismiss = (sessionId?: string) => {
+  const dismiss = () => {
     setBusy(null);
     setIncoming(null);
-    stopIncomingCallRing(sessionId);
-    void dismissIncomingCallNotifications(sessionId);
   };
 
   const handleAccept = async () => {
@@ -174,13 +53,13 @@ export function IncomingVideoCallOverlay() {
     setBusy("accept");
     try {
       await acceptVideoCall(accessToken, incoming.sessionId);
-      dismiss(incoming.sessionId);
+      dismiss();
       router.push({
         pathname: "/video-call",
         params: { sessionId: incoming.sessionId },
       });
     } catch {
-      dismiss(incoming.sessionId);
+      dismiss();
     }
   };
 
@@ -192,7 +71,7 @@ export function IncomingVideoCallOverlay() {
     } catch {
       // ignore
     } finally {
-      dismiss(incoming.sessionId);
+      dismiss();
     }
   };
 

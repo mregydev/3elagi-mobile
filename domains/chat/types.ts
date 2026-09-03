@@ -13,26 +13,8 @@ export type ChatMessageType =
   | "appointment_action"
   | "consultation_action";
 
-/** `pending` = the doctor has not accepted or rejected the request yet. */
-export type ConsultationStatus =
-  | "pending"
-  | "open"
-  | "ended"
-  | "cancelled"
-  | "rejected";
-export type ConsultationActionType =
-  | "start"
-  | "accept"
-  | "reject"
-  | "end"
-  | "cancel"
-  | "payment_request"
-  | "payment_submitted"
-  | "payment_approved"
-  | "payment_rejected"
-  | "cancel_request"
-  | "cancel_approved"
-  | "cancel_declined";
+export type ConsultationStatus = "open" | "ended" | "cancelled";
+export type ConsultationActionType = "start" | "end" | "cancel";
 export type ConsultationCancelReasonType =
   | "video_consultation"
   | "onsite_visit"
@@ -49,15 +31,11 @@ export interface ConsultationDiagnosisSummary {
   }[];
 }
 
-export interface ConsultationActionMeta
-  extends PaymentActionMeta,
-    PendingChangeMeta {
+export interface ConsultationActionMeta {
   consultation_id: string;
   action: ConsultationActionType;
   status: ConsultationStatus;
   reserved_points?: number;
-  /** ISO-2 country of the patient, from their IP at request time. */
-  patient_country?: string | null;
   cancel_reason_type?: ConsultationCancelReasonType;
   cancel_reason?: string;
   diagnosis_id?: string | null;
@@ -76,43 +54,9 @@ export interface AccessActionMeta {
   action: AccessActionType;
 }
 
-export type AppointmentActionType =
-  | "request"
-  | "confirm"
-  | "reject"
-  | "cancel"
-  | "payment_request"
-  | "payment_submitted"
-  | "payment_approved"
-  | "payment_rejected"
-  | "reschedule_request"
-  | "reschedule_accepted"
-  | "reschedule_declined"
-  | "cancel_request"
-  | "cancel_approved"
-  | "cancel_declined";
+export type AppointmentActionType = "request" | "confirm" | "reject" | "cancel";
 
-/** A change waiting on the other side: a new slot, or cancelling. */
-export interface PendingChangeMeta {
-  /** Who asked — only the other side may answer. */
-  pending_by?: string | null;
-  proposed_date?: string | null;
-  proposed_time?: string | null;
-}
-
-/** Cash the doctor asked for, paid outside the app. */
-export interface PaymentActionMeta {
-  payment_status?: "none" | "awaiting_payment" | "proof_submitted" | "paid";
-  payment_amount?: number | null;
-  payment_currency?: string | null;
-  /** The doctor's own payment link. */
-  payment_link?: string | null;
-  payment_proof_url?: string | null;
-}
-
-export interface AppointmentActionMeta
-  extends PaymentActionMeta,
-    PendingChangeMeta {
+export interface AppointmentActionMeta {
   appointment_id: string;
   action: AppointmentActionType;
   date: string;
@@ -126,7 +70,7 @@ export interface AppointmentActionMeta
 }
 
 export interface MedicalLinkMeta {
-  record_type: "lab" | "xray" | "diagnosis" | "intake" | "prescription";
+  record_type: "lab" | "xray" | "diagnosis" | "intake";
   record_id: string;
   title: string;
   note?: string;
@@ -156,18 +100,7 @@ export interface ChatUser {
   ratingTotal?: number;
   consultationPrice?: number;
   videoConsultationPrice?: number;
-  /** Cash fees: local currency at home, USD abroad — see domains/doctor/fees. */
-  textPriceLocal?: number | null;
-  textPriceUsd?: number | null;
-  videoPriceLocal?: number | null;
-  videoPriceUsd?: number | null;
-  /** Doctor takes immediate calls from the chat. */
-  immediateCallEnabled?: boolean;
-  /** Doctor's call line was busy when this was fetched (live updates via presence). */
-  onCall?: boolean;
   doctorEntityId?: string;
-  /** Profile tags (canonical labels). */
-  tags?: string[];
 }
 
 export interface ChatMessage {
@@ -187,8 +120,6 @@ export interface ChatMessage {
   pending?: boolean;
   failed?: boolean;
   editedAt?: string | null;
-  /** When the recipient read this message (ISO). */
-  readAt?: string | null;
   pointsBalance?: number;
   emotions?: MessageEmotionItem[];
 }

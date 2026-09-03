@@ -1,20 +1,8 @@
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  Beaker,
-  ClipboardList,
-  MessageSquare,
-  Pill,
-  Phone,
-  PhoneOff,
-  ScanLine,
-  Stethoscope,
-} from "lucide-react-native";
-import { AppBackButton } from "@/components/nav/AppBackButton";
-import { navigateBack } from "@/utils/appNavigation";
+import { ArrowLeft, Pill, Phone, PhoneOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -23,19 +11,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { WherebyMeetingEmbed } from "@/components/video-call/WherebyMeetingEmbed";
-import { InMeetingChatPanel } from "@/components/video-call/InMeetingChatPanel";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
-import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
-import { ChatActionsMenu, type ChatAction } from "@/components/chat/ChatActionsMenu";
-import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
-import type { MedicalDocumentRequestType } from "@/domains/medical/api";
 import { useAuthStore } from "@/domains/auth/store";
-import { useChatStore } from "@/domains/chat/store";
-import type { MedicalLinkMeta } from "@/domains/chat/types";
-import { mapInstance } from "@/domains/intake-exams/api";
 import { createDiagnosis } from "@/domains/medical/api";
-import { useMedicalStore } from "@/domains/medical/store";
-import { onVideoCallStatus } from "@/domains/presence/socket";
 import {
   acceptVideoCall,
   declineVideoCall,
@@ -44,16 +22,8 @@ import {
   toVideoEmbedUrl,
   type VideoCallSession,
 } from "@/domains/video-call/api";
-import {
-  buildDirectMeetingSession,
-  resolveMeetingChatPeerId,
-} from "@/domains/video-call/meetingChat";
-import { formatVideoParticipantName } from "@/domains/video-call/participantNames";
-import { stopIncomingCallRing } from "@/domains/video-call/incomingCallRing";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { useRinger } from "@/hooks/useRinger";
-import { useWebLayout } from "@/hooks/useWebLayout";
 import { chatFlexRow } from "@/utils/rtl";
 import { showInfoToast, showSuccessToast, showErrorToast } from "@/utils/toast";
 
@@ -81,38 +51,24 @@ function formatRemainingTime(totalSeconds: number): string {
 
 export default function VideoCallScreen() {
   const colors = useColors();
-  const { isRTL, t } = useI18n();
+  const { isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const profile = useAuthStore((s) => s.profile);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
-  const resolveChatPeer = useChatStore((s) => s.resolvePeer);
-  const sendMessage = useChatStore((s) => s.sendMessage);
-  const addPendingMessage = useChatStore((s) => s.addPendingMessage);
-  const notifyMedicalHistoryChanged = useMedicalStore(
-    (s) => s.notifyMedicalHistoryChanged,
-  );
   const [diagnosisOpen, setDiagnosisOpen] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
-  const [intakeExamOpen, setIntakeExamOpen] = useState(false);
-  const [documentRequestType, setDocumentRequestType] =
-    useState<MedicalDocumentRequestType | null>(null);
-  const [assigningIntakeExam, setAssigningIntakeExam] = useState(false);
   const params = useLocalSearchParams<{
     sessionId?: string | string[];
     meetingUrl?: string | string[];
     patientUserId?: string | string[];
-    peerUserId?: string | string[];
-    peerName?: string | string[];
     durationMinutes?: string | string[];
   }>();
 
   const sessionId = readParam(params.sessionId);
   const meetingUrlParam = readParam(params.meetingUrl);
   const patientUserIdParam = readParam(params.patientUserId);
-  const peerUserIdParam = readParam(params.peerUserId);
-  const peerNameParam = readParam(params.peerName);
   const durationParam = parseDurationMinutes(params.durationMinutes);
 
   const isDoctor = role?.toLowerCase() === "doctor";
@@ -133,10 +89,6 @@ export default function VideoCallScreen() {
     DEFAULT_MEETING_DURATION_MIN * 60,
   );
   const [meetingExpired, setMeetingExpired] = useState(false);
-  const { isTablet, isDesktop } = useWebLayout();
-  const [chatOpen, setChatOpen] = useState(false);
-  const chatDefaultedRef = useRef(false);
-  const [meetingMedicalPicker, setMeetingMedicalPicker] = useState<React.ReactNode>(null);
 
   const clearPoll = useCallback(() => {
     if (pollRef.current) {
@@ -164,18 +116,16 @@ export default function VideoCallScreen() {
 
     try {
       if (meetingUrlParam) {
-        setSession(
-          buildDirectMeetingSession({
-            meetingUrl: meetingUrlParam,
-            durationMinutes: durationParam ?? DEFAULT_MEETING_DURATION_MIN,
-            isDoctor,
-            selfUserId: profile?.id ?? "",
-            selfName: profile?.name,
-            peerUserId: peerUserIdParam,
-            peerName: peerNameParam,
-            patientUserIdParam,
-          }),
-        );
+        setSession({
+          id: "direct",
+          status: "accepted",
+          roomUrl: meetingUrlParam,
+          patientUserId: "",
+          doctorUserId: "",
+          patientName: "",
+          doctorName: "",
+          durationMinutes: durationParam ?? DEFAULT_MEETING_DURATION_MIN,
+        });
         return;
       }
 
@@ -184,7 +134,7 @@ export default function VideoCallScreen() {
           isRTL ? "بيانات المكالمة غير متوفرة" : "Call details are missing",
         );
       }
-//
+
       const next = await fetchVideoCallSession(accessToken, sessionId);
       setSession(next);
     } catch (e) {
@@ -199,19 +149,7 @@ export default function VideoCallScreen() {
     } finally {
       setLoading(false);
     }
-  }, [
-    accessToken,
-    durationParam,
-    isDoctor,
-    isRTL,
-    meetingUrlParam,
-    patientUserIdParam,
-    peerUserIdParam,
-    peerNameParam,
-    profile?.id,
-    profile?.name,
-    sessionId,
-  ]);
+  }, [accessToken, isDoctor, isRTL, meetingUrlParam, sessionId, durationParam]);
 
   useEffect(() => {
     void loadSession();
@@ -220,46 +158,6 @@ export default function VideoCallScreen() {
       clearMeetingTimer();
     };
   }, [loadSession, clearMeetingTimer, clearPoll]);
-
-  // Socket first (instant, like Messenger); the poll below is the fallback.
-  useEffect(() => {
-    onVideoCallStatus((payload) => {
-      setSession((current) =>
-        current && current.id === payload.session_id
-          ? { ...current, status: payload.status }
-          : current,
-      );
-    });
-    return () => onVideoCallStatus(null);
-  }, []);
-
-  // The doctor declined: drop a note in the thread and return the caller to it
-  // rather than leaving them on a dead call screen.
-  const declineHandledRef = useRef(false);
-  useEffect(() => {
-    if (session?.status !== "declined" || !isPatient) return;
-    if (declineHandledRef.current) return;
-    declineHandledRef.current = true;
-
-    const peerId = session.doctorUserId;
-    if (peerId) {
-      addPendingMessage(peerId, {
-        id: `call-declined-${session.id}`,
-        conversationId: peerId,
-        senderId: peerId,
-        text: t.auth.callDeclined,
-        createdAt: new Date().toISOString(),
-        type: "text",
-        pending: false,
-      });
-    }
-    showInfoToast(t.auth.callDeclined);
-    if (peerId) {
-      router.replace({ pathname: "/chat/[id]", params: { id: peerId } });
-    } else {
-      navigateBack();
-    }
-  }, [session?.status, session?.id, session?.doctorUserId, isPatient, addPendingMessage, t]);
 
   useEffect(() => {
     clearPoll();
@@ -279,19 +177,12 @@ export default function VideoCallScreen() {
     return clearPoll;
   }, [accessToken, clearPoll, isPatient, session?.id, session?.status]);
 
-  useEffect(() => {
-    if (Platform.OS !== "android" || !session?.id) return;
-    if (session.status !== "ringing") {
-      stopIncomingCallRing(session.id);
-    }
-  }, [session?.id, session?.status]);
-
   const handleLeave = () => {
     clearMeetingTimer();
     if (accessToken && session?.id && session.id !== "direct") {
       void endVideoCall(accessToken, session.id).catch(() => undefined);
     }
-    navigateBack(router, "/(tabs)/history");
+    router.back();
   };
 
   const handleAccept = async () => {
@@ -299,7 +190,6 @@ export default function VideoCallScreen() {
     setActing("accept");
     try {
       const next = await acceptVideoCall(accessToken, session.id);
-      stopIncomingCallRing(session.id);
       setSession(next);
     } catch (e) {
       setError(
@@ -319,8 +209,7 @@ export default function VideoCallScreen() {
     setActing("reject");
     try {
       await declineVideoCall(accessToken, session.id);
-      stopIncomingCallRing(session.id);
-      navigateBack(router, "/(tabs)/history");
+      router.back();
     } catch (e) {
       setError(
         e instanceof Error
@@ -368,159 +257,21 @@ export default function VideoCallScreen() {
     }
   };
 
-  const handleIntakeExamAssigned = async (
-    instance: Awaited<
-      ReturnType<typeof import("@/domains/intake-exams/api").assignIntakeExam>
-    >,
-  ) => {
-    const targetPatientId = session?.patientUserId?.trim() || patientUserIdParam;
-    if (!accessToken || !profile?.id || !targetPatientId) return;
-
-    const mapped = mapInstance(instance);
-    const title =
-      mapped.title?.trim() || (isRTL ? "فحص متابعة" : "Follow-up exam");
-    const meta: MedicalLinkMeta = {
-      record_type: "intake",
-      record_id: mapped.id,
-      title,
-    };
-
-    try {
-      await sendMessage(
-        targetPatientId,
-        {
-          recipientId: targetPatientId,
-          type: "medical_link",
-          content: title,
-          medicalLink: meta,
-        },
-        accessToken,
-        profile.id,
-        role,
-      );
-      notifyMedicalHistoryChanged(targetPatientId);
-      showSuccessToast(
-        isRTL ? "تم إرسال فحص المتابعة للمريض" : "Follow-up exam shared with patient",
-      );
-    } catch (e) {
-      // Assignment already succeeded — still notify history even if chat share fails.
-      notifyMedicalHistoryChanged(targetPatientId);
-      showErrorToast(
-        isRTL ? "تم التعيين لكن تعذر الإرسال في المحادثة" : "Assigned, but could not share in chat",
-        e instanceof Error ? e.message : undefined,
-      );
-    }
-  };
-
   const rowDir = chatFlexRow();
-  const selfRoleLabel = isDoctor ? t.auth.doctor : t.auth.patient;
-  const peerRoleLabel = isDoctor ? t.auth.patient : t.auth.doctor;
-  const rawSelfName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
-  // No role-word fallback here: formatVideoParticipantName already falls back
-  // to the role label, and pre-filling it produced "Doctor Doctor".
-  const chatPeerId = resolveMeetingChatPeerId({
-    isDoctor,
-    session,
-    peerUserIdParam,
-    patientUserIdParam,
-  });
-  // Appointment rooms are built client-side and often carry no patient name,
-  // so fall back to the conversation the two already share.
-  const rawPeerName =
-    (isDoctor ? session?.patientName : session?.doctorName)?.trim() ||
-    peerNameParam?.trim() ||
-    (chatPeerId ? resolveChatPeer(chatPeerId)?.name?.trim() : "") ||
-    "";
-  const displayName = formatVideoParticipantName({
-    role: isDoctor ? "doctor" : "patient",
-    name: rawSelfName,
-    roleLabel: selfRoleLabel,
-  });
-  const peerName = formatVideoParticipantName({
-    role: isDoctor ? "patient" : "doctor",
-    name: rawPeerName,
-    roleLabel: peerRoleLabel,
-  });
+  const peerName =
+    session && isDoctor
+      ? session.patientName
+      : session?.doctorName ?? (isRTL ? "الطبيب" : "Doctor");
+  const displayName = profile?.name?.trim() || (isRTL ? "مستخدم" : "User");
   const canJoin = !!session?.roomUrl && session.status === "accepted" && !meetingExpired;
-  const canUseMeetingChat = canJoin && !!chatPeerId;
-  const useSideChatLayout = isTablet || isDesktop;
-  const chatLayout = useSideChatLayout ? "side" : "overlay";
-
-  useEffect(() => {
-    if (!canUseMeetingChat || chatDefaultedRef.current) return;
-    chatDefaultedRef.current = true;
-    setChatOpen(useSideChatLayout);
-  }, [canUseMeetingChat, useSideChatLayout]);
-
-  useEffect(() => {
-    if (!canUseMeetingChat) {
-      chatDefaultedRef.current = false;
-      setChatOpen(false);
-    }
-  }, [canUseMeetingChat]);
-
   const diagPatientId = session?.patientUserId?.trim() || patientUserIdParam || null;
   const canAddClinicalNotes =
     isDoctor && canJoin && !!diagPatientId && !!accessToken;
-
-  // Everything the doctor may file during the call, collapsed under the plus.
-  const clinicalActions: ChatAction[] = [
-    {
-      key: "diagnosis",
-      label: isRTL ? "تشخيص جديد" : "Add diagnosis",
-      Icon: Stethoscope,
-      onPress: () => setDiagnosisOpen(true),
-    },
-    {
-      key: "prescription",
-      label: isRTL ? "روشتة جديدة" : "Add prescription",
-      Icon: Pill,
-      onPress: () =>
-        router.push({
-          pathname: "/medical/prescription/add",
-          // Come back to the call instead of the records list.
-          params: {
-            patientUserId: diagPatientId!,
-            ...(sessionId
-              ? { returnTo: `/video-call?sessionId=${sessionId}` }
-              : {}),
-          },
-        }),
-    },
-    {
-      key: "intake",
-      label: isRTL ? "فحص متابعة" : "Follow-up exam",
-      Icon: ClipboardList,
-      onPress: () => setIntakeExamOpen(true),
-    },
-    {
-      key: "lab",
-      label: t.records.requestLab,
-      Icon: Beaker,
-      onPress: () => setDocumentRequestType("lab"),
-    },
-    {
-      key: "xray",
-      label: t.records.requestXray,
-      Icon: ScanLine,
-      onPress: () => setDocumentRequestType("xray"),
-    },
-  ];
   const waitingForDoctor =
     !!session && isPatient && session.status === "ringing";
   const incomingForDoctor =
     !!session && isDoctor && session.status === "ringing";
-  // Patient hears the ringback while dialing; the doctor hears the ringtone.
-  useRinger("ringback", waitingForDoctor);
-  useRinger("ringtone", incomingForDoctor && !acting && Platform.OS !== "android");
   const countdownLabel = formatRemainingTime(remainingSeconds);
-  // Wall-clock end = now + whatever is left, which tracks the same timer the
-  // countdown used (and so survives a late join or a reconnect).
-  const endTimeLabel = new Date(Date.now() + remainingSeconds * 1000)
-    .toLocaleTimeString(isRTL ? "ar" : "en", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
 
   const endMeetingForTimeout = useCallback(() => {
     if (endingRef.current) return;
@@ -598,13 +349,14 @@ export default function VideoCallScreen() {
         ]}
       >
         <View style={[styles.headerTop, { flexDirection: rowDir }]}>
-          <AppBackButton
-            color={colors.foreground}
-            style={styles.backBtn}
-            fallback="/(tabs)/history"
+          <Pressable
             onPress={handleLeave}
+            accessibilityRole="button"
             accessibilityLabel={isRTL ? "رجوع" : "Back"}
-          />
+            style={styles.backBtn}
+          >
+            <ArrowLeft size={22} color={colors.foreground} />
+          </Pressable>
 
           <View style={[styles.brandRow, { flexDirection: rowDir }]}>
             <Logo3elagi height={28} markOnly />
@@ -624,34 +376,6 @@ export default function VideoCallScreen() {
             </View>
           </View>
 
-          {canUseMeetingChat ? (
-            <Pressable
-              onPress={() => setChatOpen((open) => !open)}
-              style={[
-                styles.chatToggleBtn,
-                {
-                  backgroundColor: chatOpen ? colors.primary : colors.muted,
-                  borderColor: colors.border,
-                  flexDirection: rowDir,
-                  gap: 6,
-                  paddingHorizontal: chatOpen || useSideChatLayout ? 10 : 0,
-                  width: chatOpen || useSideChatLayout ? undefined : 40,
-                },
-              ]}
-              accessibilityLabel={isRTL ? "محادثة الاجتماع" : "Meeting chat"}
-            >
-              <MessageSquare
-                size={18}
-                color={chatOpen ? "#fff" : colors.foreground}
-              />
-              {!chatOpen && useSideChatLayout ? (
-                <Text style={[styles.chatToggleLabel, { color: colors.foreground }]}>
-                  {isRTL ? "محادثة" : "Chat"}
-                </Text>
-              ) : null}
-            </Pressable>
-          ) : null}
-
           {canJoin ? (
             <View
               style={[
@@ -665,10 +389,10 @@ export default function VideoCallScreen() {
               <Text
                 style={[styles.timerLabel, { color: colors.mutedForeground }]}
               >
-                {isRTL ? "ينتهي في" : "Ends at"}
+                {isRTL ? "الوقت المتبقي" : "Time left"}
               </Text>
               <Text style={[styles.timerValue, { color: colors.foreground }]}>
-                {endTimeLabel}
+                {countdownLabel}
               </Text>
             </View>
           ) : null}
@@ -676,13 +400,47 @@ export default function VideoCallScreen() {
 
         {canAddClinicalNotes ? (
           <View style={[styles.clinicalActions, { flexDirection: rowDir }]}>
-            <ChatActionsMenu isRTL={isRTL} actions={clinicalActions} />
-            <Text
-              style={[styles.clinicalHint, { color: colors.mutedForeground }]}
-              numberOfLines={1}
+            <Pressable
+              onPress={() => setDiagnosisOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
+              style={[
+                styles.diagnosisBtn,
+                { backgroundColor: colors.primary, flex: 1 },
+              ]}
             >
-              {isRTL ? "إجراءات المريض" : "Patient actions"}
-            </Text>
+              <Stethoscope size={16} color="#fff" />
+              <Text style={styles.diagnosisBtnText} numberOfLines={1}>
+                {isRTL ? "تشخيص" : "Diagnosis"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/medical/prescription/add",
+                  params: { patientUserId: diagPatientId! },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "إضافة روشتة" : "Add prescription"}
+              style={[
+                styles.diagnosisBtn,
+                {
+                  flex: 1,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                },
+              ]}
+            >
+              <Pill size={16} color={colors.primary} />
+              <Text
+                style={[styles.diagnosisBtnText, { color: colors.primary }]}
+                numberOfLines={1}
+              >
+                {isRTL ? "روشتة" : "Prescription"}
+              </Text>
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -784,45 +542,12 @@ export default function VideoCallScreen() {
             </View>
           </View>
         ) : canJoin ? (
-          <View style={[styles.meetingBody, { flexDirection: rowDir }]}>
-            <View style={styles.videoPane}>
-              <WherebyMeetingEmbed
-                roomUrl={session.roomUrl}
-                embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
-              />
-            </View>
-            {chatOpen && chatPeerId ? (
-              <InMeetingChatPanel
-                clinicalActions={isDoctor ? clinicalActions : undefined}
-                peerId={chatPeerId}
-                peerName={peerName}
-                isDoctor={isDoctor}
-                layout={chatLayout}
-                onClose={chatLayout === "overlay" ? () => setChatOpen(false) : undefined}
-                renderMedicalPicker={setMeetingMedicalPicker}
-              />
-            ) : null}
-          </View>
+          <WherebyMeetingEmbed
+            roomUrl={session.roomUrl}
+            embedUrl={toVideoEmbedUrl(session.roomUrl, displayName)}
+          />
         ) : null}
       </View>
-
-      {canUseMeetingChat && !chatOpen && !useSideChatLayout ? (
-        <Pressable
-          onPress={() => setChatOpen(true)}
-          style={[
-            styles.chatFab,
-            {
-              backgroundColor: colors.primary,
-              bottom: insets.bottom + 20,
-              flexDirection: rowDir,
-            },
-          ]}
-          accessibilityLabel={isRTL ? "فتح محادثة الاجتماع" : "Open meeting chat"}
-        >
-          <MessageSquare size={22} color="#fff" />
-          <Text style={styles.chatFabLabel}>{isRTL ? "محادثة" : "Chat"}</Text>
-        </Pressable>
-      ) : null}
 
       {canAddClinicalNotes && diagPatientId && accessToken ? (
         <DiagnosisChatModal
@@ -838,39 +563,6 @@ export default function VideoCallScreen() {
           onSubmit={(payload) => void handleDiagnosisSubmit(payload)}
         />
       ) : null}
-
-      {canAddClinicalNotes && diagPatientId && accessToken ? (
-        <AssignIntakeExamDialog
-          visible={intakeExamOpen}
-          isRTL={isRTL}
-          patientUserId={diagPatientId}
-          accessToken={accessToken}
-          saving={assigningIntakeExam}
-          onClose={() => {
-            if (assigningIntakeExam) return;
-            setIntakeExamOpen(false);
-          }}
-          onAssigned={(instance) => {
-            setAssigningIntakeExam(true);
-            void handleIntakeExamAssigned(instance).finally(() => {
-              setAssigningIntakeExam(false);
-              setIntakeExamOpen(false);
-            });
-          }}
-        />
-      ) : null}
-
-      {canAddClinicalNotes && diagPatientId && accessToken && documentRequestType ? (
-        <DoctorMedicalRequestDialog
-          visible
-          patientUserId={diagPatientId}
-          accessToken={accessToken}
-          initialType={documentRequestType}
-          onClose={() => setDocumentRequestType(null)}
-        />
-      ) : null}
-
-      {meetingMedicalPicker}
     </View>
   );
 }
@@ -940,58 +632,25 @@ const styles = StyleSheet.create({
     minHeight: 0,
     position: "relative",
   },
-  meetingBody: {
-    flex: 1,
-    minHeight: 0,
-    width: "100%",
-  },
-  videoPane: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 0,
-  },
-  chatToggleBtn: {
-    minWidth: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  chatToggleLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  chatFab: {
-    position: "absolute",
-    right: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 999,
-    zIndex: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  chatFabLabel: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "800",
-  },
   clinicalActions: {
     alignItems: "center",
     gap: 8,
     width: "100%",
   },
-  clinicalHint: {
+  diagnosisBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 0,
+  },
+  diagnosisBtnText: {
+    color: "#fff",
+    fontWeight: "800",
     fontSize: 13,
-    fontWeight: "600",
     flexShrink: 1,
   },
   center: {

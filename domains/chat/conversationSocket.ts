@@ -72,27 +72,6 @@ export function connectConversationSocket({
     },
   );
 
-  socket.on(
-    "consultation:removed",
-    (payload: {
-      consultation_id?: string;
-      peer_id?: string;
-      message_ids?: string[];
-    }) => {
-      if (!isThisPeer(payload?.peer_id) || !payload?.consultation_id) return;
-      store().handleConsultationRemoved(
-        {
-          consultation_id: payload.consultation_id,
-          peer_id: payload.peer_id!,
-          message_ids: payload.message_ids,
-        },
-        accessToken,
-        selfId,
-        null,
-      );
-    },
-  );
-
   socket.on("chat:typing", (payload: { peer_id: string }) => {
     if (!isThisPeer(payload?.peer_id) || payload.peer_id === selfId) return;
     store().setPeerTyping(payload.peer_id, true);

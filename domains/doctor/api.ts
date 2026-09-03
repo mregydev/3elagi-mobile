@@ -1,14 +1,6 @@
 import { API_BASE } from "@/constants/api";
 import { resolveMediaUrl } from "@/domains/chat";
 
-export interface PublicDoctorClinic {
-  id: string;
-  name: string;
-  location: string;
-  phone?: string | null;
-  logoUrl?: string | null;
-}
-
 export interface PublicDoctorProfile {
   id: string;
   userId: string;
@@ -20,20 +12,11 @@ export interface PublicDoctorProfile {
   experienceYears?: number | null;
   consultationFeeEgp?: number | null;
   consultationPrice: number;
-  /** Doctor's own country + cash fees, for pricing by the viewer's country. */
-  country?: string | null;
-  textPriceLocal?: number | null;
-  textPriceUsd?: number | null;
-  videoPriceLocal?: number | null;
-  videoPriceUsd?: number | null;
   specialty?: string | null;
   specialtyAr?: string | null;
   ratingAverage: number;
   ratingTotal: number;
   tags: string[];
-  /** Doctor profile page — personal clinic address for maps. */
-  location?: string | null;
-  clinic: PublicDoctorClinic | null;
 }
 
 export interface DoctorReviewItem {
@@ -79,22 +62,6 @@ async function authJson<T>(path: string, token: string, init?: RequestInit): Pro
   return data as T;
 }
 
-/** Approved doctors, for resolving a /doctor/name/[name] link. */
-export async function fetchPublicDoctors(): Promise<
-  { id: string; userId: string; name: string }[]
-> {
-  const res = await fetch(`${API_BASE}/public/doctors`);
-  const data = (await res.json().catch(() => [])) as Record<string, unknown>[];
-  if (!res.ok || !Array.isArray(data)) {
-    throw new Error(`Failed to load doctors (${res.status})`);
-  }
-  return data.map((d) => ({
-    id: String(d.id ?? ""),
-    userId: String(d.user_id ?? ""),
-    name: String(d.name ?? ""),
-  }));
-}
-
 export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorProfile> {
   const res = await fetch(`${API_BASE}/public/doctors/${doctorId}`);
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown> & { message?: string };
@@ -115,38 +82,11 @@ export async function fetchPublicDoctor(doctorId: string): Promise<PublicDoctorP
     experienceYears: (data.experience_years as number | null) ?? null,
     consultationFeeEgp: (data.consultation_fee_egp as number | null) ?? null,
     consultationPrice: Number(data.consultation_price ?? 1),
-    country: (data.country as string | null) ?? null,
-    textPriceLocal: (data.text_price_local as number | null) ?? null,
-    textPriceUsd: (data.text_price_usd as number | null) ?? null,
-    videoPriceLocal: (data.video_price_local as number | null) ?? null,
-    videoPriceUsd: (data.video_price_usd as number | null) ?? null,
     specialty: (data.specialty as string | null) ?? null,
     specialtyAr: (data.specialty_ar as string | null) ?? null,
     ratingAverage: Number(data.rating_average ?? 0),
     ratingTotal: Number(data.rating_total ?? 0),
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-    location: (() => {
-      const raw = data.personal_clinic_location;
-      if (typeof raw !== "string") return null;
-      const trimmed = raw.trim();
-      return trimmed || null;
-    })(),
-    clinic: (() => {
-      const raw = data.clinic;
-      if (!raw || typeof raw !== "object") return null;
-      const c = raw as Record<string, unknown>;
-      const name = typeof c.name === "string" ? c.name.trim() : "";
-      const location = typeof c.location === "string" ? c.location.trim() : "";
-      const id = typeof c.id === "string" ? c.id : "";
-      if (!id || (!name && !location)) return null;
-      return {
-        id,
-        name,
-        location,
-        phone: (c.phone as string | null) ?? null,
-        logoUrl: (c.logo_url as string | null) ?? null,
-      };
-    })(),
   };
 }
 

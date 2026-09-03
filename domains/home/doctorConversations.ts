@@ -17,14 +17,7 @@ export function doctorsToConversations(
       rating: d.ratingAverage ?? undefined,
       ratingTotal: d.ratingTotal ?? undefined,
       consultationPrice: d.consultationPrice ?? 1,
-      textPriceLocal: d.textPriceLocal ?? null,
-      textPriceUsd: d.textPriceUsd ?? null,
-      videoPriceLocal: d.videoPriceLocal ?? null,
-      videoPriceUsd: d.videoPriceUsd ?? null,
-      immediateCallEnabled: !!d.immediateCallEnabled,
-      onCall: !!d.onCall,
       doctorEntityId: d.doctorId,
-      tags: d.tags?.length ? d.tags : undefined,
     }),
   );
 
