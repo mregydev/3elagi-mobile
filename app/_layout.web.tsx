@@ -171,6 +171,7 @@ export default function RootLayout() {
             <Stack.Screen name="admin/complaints" />
             <Stack.Screen name="admin/contact-messages" />
             <Stack.Screen name="admin/doctor-registrations" />
+            <Stack.Screen name="admin/doctor-speciality-changes" />
             <Stack.Screen name="admin/app-reviews" />
             <Stack.Screen name="admin/marketing" />
             <Stack.Screen name="doctor-pending" />

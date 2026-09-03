@@ -29,6 +29,7 @@ type AdminNavKey =
   | "chats"
   | "contact"
   | "doctorRegistrations"
+  | "doctorSpecialityChanges"
   | "appReviews"
   | "specialities"
   | "pricing"
@@ -68,6 +69,12 @@ const NAV: {
     key: "doctorRegistrations",
     label: "Doctor registrations",
     href: "/admin/doctor-registrations",
+    Icon: Stethoscope,
+  },
+  {
+    key: "doctorSpecialityChanges",
+    label: "Speciality changes",
+    href: "/admin/doctor-speciality-changes",
     Icon: Stethoscope,
   },
   {
@@ -114,6 +121,7 @@ function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/chats")) return "chats";
   if (pathname.includes("/admin/contact-messages")) return "contact";
   if (pathname.includes("/admin/doctor-registrations")) return "doctorRegistrations";
+  if (pathname.includes("/admin/doctor-speciality-changes")) return "doctorSpecialityChanges";
   if (pathname.includes("/admin/app-reviews")) return "appReviews";
   if (pathname.includes("/admin/specialities")) return "specialities";
   if (pathname.includes("/admin/pricing")) return "pricing";

@@ -81,6 +81,20 @@ interface RawDoctor {
   video_price_usd?: string | number | null;
   payment_link?: string | null;
   tags?: string[] | null;
+  pending_speciality_change?: PendingSpecialityChange | null;
+}
+
+export interface PendingSpecialityChange {
+  id: string;
+  status: "pending";
+  current_speciality_id: string | null;
+  current_speciality_name_en: string | null;
+  current_speciality_name_ar: string | null;
+  requested_speciality_id: string;
+  requested_speciality_ids: string[];
+  requested_speciality_name_en: string;
+  requested_speciality_name_ar: string;
+  created_at: string;
 }
 
 export interface DoctorCertification {
@@ -124,6 +138,7 @@ export interface AccountProfile {
   tags?: string[];
   photoUrl?: string;
   role: string;
+  pendingSpecialityChange?: PendingSpecialityChange | null;
 }
 
 /** Money columns arrive as numeric strings from Postgres. */
@@ -186,6 +201,7 @@ export async function fetchAccountProfile(
       tags: Array.isArray(doctor.tags) ? doctor.tags : [],
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
+      pendingSpecialityChange: doctor.pending_speciality_change ?? null,
     };
   }
 

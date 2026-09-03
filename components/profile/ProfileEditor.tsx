@@ -33,6 +33,7 @@ import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField"
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
 import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
+import { PendingSpecialityChangeBanner } from "@/components/profile/PendingSpecialityChangeBanner";
 import { DoctorTagsInput } from "@/components/profile/DoctorTagsInput";
 import {
   profileSaveChromeHeight,
@@ -134,6 +135,7 @@ export function ProfileEditor({
     displayPhoto,
     pickPhoto,
     save,
+    pendingSpecialityChange,
   } = editor;
 
   const displayName = name.trim() || (isRTL ? "مستخدم" : "Your name");
@@ -316,6 +318,13 @@ export function ProfileEditor({
                   >
                     {isRTL ? "التخصصات" : "Specialities"}
                   </Text>
+                  {pendingSpecialityChange ? (
+                    <PendingSpecialityChangeBanner
+                      pending={pendingSpecialityChange}
+                      isRTL={isRTL}
+                      colors={colors}
+                    />
+                  ) : null}
                   <SpecialityMultiSelect
                     specialities={specialities}
                     selectedIds={specialityIds}

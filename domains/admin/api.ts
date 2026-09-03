@@ -410,6 +410,55 @@ export async function fetchAdminDoctorRegistration(
   );
 }
 
+export interface AdminDoctorSpecialityChangeRow {
+  id: string;
+  doctor_id: string;
+  doctor_user_id: string;
+  doctor_name: string;
+  doctor_email: string | null;
+  current_speciality_id: string | null;
+  current_speciality_name_en: string | null;
+  current_speciality_name_ar: string | null;
+  requested_speciality_id: string;
+  requested_speciality_ids: string[];
+  requested_speciality_name_en: string;
+  requested_speciality_name_ar: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+export async function fetchAdminDoctorSpecialityChanges(
+  token: string,
+): Promise<AdminDoctorSpecialityChangeRow[]> {
+  const data = await authJson<AdminDoctorSpecialityChangeRow[]>(
+    "/admin/doctor-speciality-changes",
+    token,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+export async function approveAdminDoctorSpecialityChange(
+  token: string,
+  id: string,
+): Promise<AdminDoctorSpecialityChangeRow> {
+  return authJson<AdminDoctorSpecialityChangeRow>(
+    `/admin/doctor-speciality-changes/${id}/approve`,
+    token,
+    { method: "PATCH" },
+  );
+}
+
+export async function rejectAdminDoctorSpecialityChange(
+  token: string,
+  id: string,
+): Promise<AdminDoctorSpecialityChangeRow> {
+  return authJson<AdminDoctorSpecialityChangeRow>(
+    `/admin/doctor-speciality-changes/${id}/reject`,
+    token,
+    { method: "PATCH" },
+  );
+}
+
 export interface AdminAppReviewRow {
   id: string;
   user_id: string;

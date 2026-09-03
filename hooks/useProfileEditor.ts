@@ -292,14 +292,41 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhotoUrl(updated.avatarUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
+
+      const refreshed = await fetchAccountProfile(accessToken, role);
+      setAccount(refreshed);
+      setSpecialityIds(
+        refreshed.specialityIds?.length
+          ? refreshed.specialityIds
+          : refreshed.specialityId
+            ? [refreshed.specialityId]
+            : [],
+      );
+
       if (isDoctor) {
-        const spec = specialities.find((s) => s.id === specialityId);
+        const approvedPrimaryId =
+          refreshed.specialityIds?.[0] ?? refreshed.specialityId ?? "";
+        const spec = specialities.find((s) => s.id === approvedPrimaryId);
         useAuthStore.setState({
-          specialityId: specialityId || null,
+          specialityId: approvedPrimaryId || null,
           specialty: spec?.nameEn ?? useAuthStore.getState().specialty,
         });
 
-        if (specialityId && specialityId !== previousPrimarySpecialityId) {
+        const submittedPrimaryChange =
+          !!refreshed.pendingSpecialityChange &&
+          specialityId !== previousPrimarySpecialityId;
+
+        if (submittedPrimaryChange) {
+          showSuccessToast(
+            isRTL ? "طُلب تغيير التخصص" : "Speciality change requested",
+            isRTL
+              ? "تم إرسال طلب تغيير التخصص الأساسي للمراجعة من الإدارة."
+              : "Your primary speciality change was sent to admin for approval.",
+          );
+        } else if (
+          approvedPrimaryId &&
+          approvedPrimaryId !== previousPrimarySpecialityId
+        ) {
           const tourState = await fetchDoctorMeTourState(accessToken);
           const testPatientId =
             tourState?.onboarding_test_patient_user_id ??
@@ -313,16 +340,26 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
               .getState()
               .loadConversations(accessToken, profileId, role);
           }
+          showSuccessToast(
+            isRTL ? "تم الحفظ" : "Saved",
+            isRTL ? "تم تحديث ملفك." : "Profile updated.",
+          );
+        } else {
+          showSuccessToast(
+            isRTL ? "تم الحفظ" : "Saved",
+            isRTL ? "تم تحديث ملفك." : "Profile updated.",
+          );
         }
+      } else {
+        showSuccessToast(
+          isRTL ? "تم الحفظ" : "Saved",
+          isRTL ? "تم تحديث ملفك." : "Profile updated.",
+        );
       }
       if (isDoctor && digitalSignatureDirty) {
         setDigitalSignatureDirty(false);
         setDigitalSignatureLocalUri(null);
       }
-      showSuccessToast(
-        isRTL ? "تم الحفظ" : "Saved",
-        isRTL ? "تم تحديث ملفك." : "Profile updated.",
-      );
       return true;
     } catch (e) {
       showErrorToast(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
@@ -394,5 +431,6 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     displayPhoto: photoUri ?? photoUrl,
     pickPhoto,
     save,
+    pendingSpecialityChange: account?.pendingSpecialityChange ?? null,
   };
 }

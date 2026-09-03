@@ -29,6 +29,7 @@ import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField"
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
+import { PendingSpecialityChangeBanner } from "@/components/profile/PendingSpecialityChangeBanner";
 import { DoctorTagsInput } from "@/components/profile/DoctorTagsInput";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
@@ -171,6 +172,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
     displayPhoto,
     pickPhoto,
     save,
+    pendingSpecialityChange,
   } = editor;
 
   const roleLabel = isDoctor ? t.auth.doctor : t.auth.patient;
@@ -502,6 +504,13 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                         <Text style={[styles.sectionLabel, styles.sectionLabelTight, { color: colors.foreground, textAlign }]}>
                           {isRTL ? "التخصصات" : "Specialities"}
                         </Text>
+                        {pendingSpecialityChange ? (
+                          <PendingSpecialityChangeBanner
+                            pending={pendingSpecialityChange}
+                            isRTL={isRTL}
+                            colors={colors}
+                          />
+                        ) : null}
                         <SpecialityMultiSelect
                           specialities={specialities}
                           selectedIds={specialityIds}
