@@ -8,7 +8,6 @@ import {
   Text,
   useWindowDimensions,
   View,
-  type ViewStyle,
 } from "react-native";
 import {
   currentTourStep,
@@ -29,14 +28,122 @@ interface Props {
 }
 
 const SPOT_PAD = 8;
-const CARD_MAX_WIDTH = 360;
-const CARD_GAP = 14;
+const CARD_MAX_WIDTH = 320;
+const CARD_GAP = 12;
+const ARROW_SIZE = 10;
+const EST_CARD_HEIGHT = 108;
+
+type ArrowDirection = "up" | "down";
+
+interface TooltipLayout {
+  left: number;
+  top: number;
+  width: number;
+  arrowDirection: ArrowDirection;
+  arrowOffset: number;
+}
 
 function resolveAnchorRect(anchorId: string) {
   const storedRect = useTourAnchorStore.getState().rects[anchorId];
   if (storedRect && storedRect.width > 0 && storedRect.height > 0) return storedRect;
   if (Platform.OS === "web") return measureAnchorOnWeb(anchorId);
   return null;
+}
+
+function computeTooltipLayout(
+  anchorId: string,
+  screenW: number,
+  screenH: number,
+): TooltipLayout | null {
+  const rect = resolveAnchorRect(anchorId);
+  if (!rect || rect.width < 1 || rect.height < 1) return null;
+
+  const spotX = Math.max(0, rect.x - SPOT_PAD);
+  const spotY = Math.max(0, rect.y - SPOT_PAD);
+  const spotW = rect.width + SPOT_PAD * 2;
+  const spotH = rect.height + SPOT_PAD * 2;
+  const cardW = Math.min(CARD_MAX_WIDTH, screenW - 32);
+  const targetCenterX = spotX + spotW / 2;
+
+  let left = targetCenterX - cardW / 2;
+  left = Math.max(16, Math.min(left, screenW - cardW - 16));
+
+  const belowY = spotY + spotH + CARD_GAP + ARROW_SIZE;
+  const fitsBelow = belowY + EST_CARD_HEIGHT < screenH - 24;
+  const arrowDirection: ArrowDirection = fitsBelow ? "up" : "down";
+  const top = fitsBelow
+    ? belowY
+    : Math.max(24, spotY - EST_CARD_HEIGHT - CARD_GAP - ARROW_SIZE);
+
+  const arrowOffset = Math.max(20, Math.min(cardW - 20, targetCenterX - left));
+
+  return { left, top, width: cardW, arrowDirection, arrowOffset };
+}
+
+function TooltipArrow({
+  direction,
+  offset,
+  fill,
+  border,
+}: {
+  direction: ArrowDirection;
+  offset: number;
+  fill: string;
+  border: string;
+}) {
+  const pointingUp = direction === "up";
+  const edgeStyle = pointingUp
+    ? {
+        borderLeftWidth: ARROW_SIZE,
+        borderRightWidth: ARROW_SIZE,
+        borderBottomWidth: ARROW_SIZE,
+        borderLeftColor: "transparent" as const,
+        borderRightColor: "transparent" as const,
+        borderBottomColor: fill,
+      }
+    : {
+        borderLeftWidth: ARROW_SIZE,
+        borderRightWidth: ARROW_SIZE,
+        borderTopWidth: ARROW_SIZE,
+        borderLeftColor: "transparent" as const,
+        borderRightColor: "transparent" as const,
+        borderTopColor: fill,
+      };
+
+  const borderEdgeStyle = pointingUp
+    ? {
+        borderLeftWidth: ARROW_SIZE + 1,
+        borderRightWidth: ARROW_SIZE + 1,
+        borderBottomWidth: ARROW_SIZE + 1,
+        borderLeftColor: "transparent" as const,
+        borderRightColor: "transparent" as const,
+        borderBottomColor: border,
+      }
+    : {
+        borderLeftWidth: ARROW_SIZE + 1,
+        borderRightWidth: ARROW_SIZE + 1,
+        borderTopWidth: ARROW_SIZE + 1,
+        borderLeftColor: "transparent" as const,
+        borderRightColor: "transparent" as const,
+        borderTopColor: border,
+      };
+
+  const containerStyle = pointingUp
+    ? { top: -ARROW_SIZE, left: offset - ARROW_SIZE }
+    : { bottom: -ARROW_SIZE, left: offset - ARROW_SIZE };
+
+  return (
+    <View style={[styles.arrowHost, containerStyle]} pointerEvents="none">
+      <View style={[styles.arrowBorder, borderEdgeStyle]} />
+      <View
+        style={[
+          styles.arrowFill,
+          edgeStyle,
+          pointingUp ? { marginTop: 1 } : { marginTop: -1 },
+        ]}
+      />
+    </View>
+  );
 }
 
 function SpotlightBackdrop({ anchorId }: { anchorId: string }) {
@@ -73,46 +180,6 @@ function SpotlightBackdrop({ anchorId }: { anchorId: string }) {
   );
 }
 
-function tooltipStyle(
-  anchorId: string,
-  screenW: number,
-  screenH: number,
-): ViewStyle {
-  const rect = resolveAnchorRect(anchorId);
-  if (!rect || rect.width < 1 || rect.height < 1) {
-    return {
-      alignSelf: "center",
-      width: "100%",
-      maxWidth: CARD_MAX_WIDTH,
-      marginTop: "auto" as unknown as number,
-    };
-  }
-
-  const spotX = Math.max(0, rect.x - SPOT_PAD);
-  const spotY = Math.max(0, rect.y - SPOT_PAD);
-  const spotW = rect.width + SPOT_PAD * 2;
-  const spotH = rect.height + SPOT_PAD * 2;
-  const cardW = Math.min(CARD_MAX_WIDTH, screenW - 32);
-  let left = spotX + spotW / 2 - cardW / 2;
-  left = Math.max(16, Math.min(left, screenW - cardW - 16));
-
-  const estCardH = 190;
-  const belowY = spotY + spotH + CARD_GAP;
-  const fitsBelow = belowY + estCardH < screenH - 24;
-  const top = fitsBelow
-    ? belowY
-    : Math.max(24, spotY - estCardH - CARD_GAP);
-
-  return {
-    position: "absolute",
-    left,
-    top,
-    width: cardW,
-    maxWidth: CARD_MAX_WIDTH,
-    zIndex: 3,
-  };
-}
-
 /** Spotlight-style tooltip tour for new doctors. */
 export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }: Props) {
   const colors = useColors();
@@ -126,10 +193,18 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
 
   const step = currentTourStep(phase, stepIndex);
   const totalSteps = currentTourSteps(phase).length;
+  const anchorRect = useTourAnchorStore((s) =>
+    step ? s.rects[step.anchor] : undefined,
+  );
 
   const route = useMemo(
     () => tourRouteForStep(step, testPatientUserId),
     [step, testPatientUserId],
+  );
+
+  const layout = useMemo(
+    () => (step ? computeTooltipLayout(step.anchor, screenW, screenH) : null),
+    [step, screenW, screenH, anchorRect],
   );
 
   useEffect(() => {
@@ -172,7 +247,20 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
     next();
   };
 
-  const cardPosition = tooltipStyle(step.anchor, screenW, screenH);
+  const cardShellStyle = layout
+    ? {
+        position: "absolute" as const,
+        left: layout.left,
+        top: layout.top,
+        width: layout.width,
+        zIndex: 3,
+      }
+    : {
+        alignSelf: "center" as const,
+        width: "100%" as const,
+        maxWidth: CARD_MAX_WIDTH,
+        marginTop: "auto" as unknown as number,
+      };
 
   return (
     <Modal
@@ -187,33 +275,43 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
         pointerEvents="box-none"
       >
         <SpotlightBackdrop anchorId={step.anchor} />
-        <View
-          style={[styles.card, cardPosition, { backgroundColor: colors.card, borderColor: colors.border }]}
-          pointerEvents="auto"
-        >
-          <Text style={[styles.kicker, { color: colors.primary }]}>
-            {phase === "profile" ? "Profile tour" : "Getting started"} · {stepIndex + 1}/
-            {totalSteps}
-          </Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>{step.title}</Text>
-          <Text style={[styles.body, { color: colors.mutedForeground }]}>{step.body}</Text>
-          {step.waitForTap ? (
-            <Text style={[styles.hint, { color: colors.primary }]}>
-              Click the highlighted item to continue
-            </Text>
+        <View style={cardShellStyle} pointerEvents="box-none">
+          {layout ? (
+            <TooltipArrow
+              direction={layout.arrowDirection}
+              offset={layout.arrowOffset}
+              fill={colors.card}
+              border={colors.border}
+            />
           ) : null}
-          <View style={styles.actions}>
-            <Pressable onPress={handleSkip} style={styles.skipBtn}>
-              <Text style={{ color: colors.mutedForeground, fontWeight: "700" }}>Skip tour</Text>
-            </Pressable>
-            {!step.waitForTap ? (
-              <Pressable
-                onPress={onPrimary}
-                style={[styles.nextBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={{ color: colors.primaryForeground, fontWeight: "800" }}>Got it</Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+            pointerEvents="auto"
+          >
+            <Text style={[styles.message, { color: colors.foreground }]}>{step.message}</Text>
+            <View style={styles.actions}>
+              <Pressable onPress={handleSkip} style={styles.skipBtn}>
+                <Text style={{ color: colors.mutedForeground, fontWeight: "700" }}>
+                  Skip tour
+                </Text>
               </Pressable>
-            ) : null}
+              <Text style={[styles.stepCount, { color: colors.mutedForeground }]}>
+                {stepIndex + 1} / {totalSteps}
+              </Text>
+              {!step.waitForTap ? (
+                <Pressable
+                  onPress={onPrimary}
+                  style={[styles.nextBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={{ color: colors.primaryForeground, fontWeight: "800" }}>
+                    Next
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         </View>
       </View>
@@ -252,33 +350,53 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
+  arrowHost: {
+    position: "absolute",
+    width: ARROW_SIZE * 2,
+    height: ARROW_SIZE,
+    zIndex: 2,
+  },
+  arrowBorder: {
+    position: "absolute",
+    width: 0,
+    height: 0,
+  },
+  arrowFill: {
+    position: "absolute",
+    width: 0,
+    height: 0,
+  },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 18,
-    gap: 8,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
+    gap: 14,
     shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    elevation: 10,
   },
-  kicker: { fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
-  title: { fontSize: 18, fontWeight: "800" },
-  body: { fontSize: 14, lineHeight: 21 },
-  hint: { fontSize: 13, fontWeight: "700", marginTop: 2 },
+  message: {
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 24,
+    textAlign: "center",
+  },
+  stepCount: { fontSize: 12, fontWeight: "700" },
   actions: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
     gap: 12,
   },
-  skipBtn: { paddingVertical: 10, paddingHorizontal: 4, cursor: "pointer" as "auto" },
+  skipBtn: { paddingVertical: 6, paddingHorizontal: 4, cursor: "pointer" as "auto" },
   nextBtn: {
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     cursor: "pointer" as "auto",
   },
 });

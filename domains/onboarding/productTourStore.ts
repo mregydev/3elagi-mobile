@@ -19,8 +19,8 @@ export type TourAnchor =
 export interface TourStep {
   id: string;
   anchor: TourAnchor;
-  title: string;
-  body: string;
+  /** Single clear instruction shown in the tooltip. */
+  message: string;
   /** Route to open before highlighting (optional). */
   route?: string;
   /** Wait for user to tap the anchor before advancing. */
@@ -49,38 +49,33 @@ export const MAIN_DOCTOR_TOUR: TourStep[] = [
   {
     id: "open-history",
     anchor: "nav-history",
-    title: "Chat history",
-    body: "Activity is expanded for you. Click Chat history here to find your test patient.",
+    message: "Click on Chat history",
     route: "/(tabs)",
     waitForTap: true,
   },
   {
     id: "open-test-chat",
     anchor: "chat-test-row",
-    title: "Your test patient",
-    body: "Click this conversation — your test patient already sent you a welcome message.",
+    message: "Click on your test patient",
     route: "/(tabs)/history",
     waitForTap: true,
   },
   {
     id: "view-records",
     anchor: "chat-view-records",
-    title: "Medical records",
-    body: "Click View Record to open this patient's medical history.",
+    message: "Click on View Record",
     waitForTap: true,
   },
   {
     id: "skeleton-toggle",
     anchor: "records-skeleton-toggle",
-    title: "Skeleton view",
-    body: "Click Skeleton view to browse records by body region.",
+    message: "Click on Skeleton view",
     waitForTap: true,
   },
   {
     id: "skeleton-body",
     anchor: "records-skeleton-body",
-    title: "Explore body regions",
-    body: "Click any body region, pick an organ, and view the medical records for it.",
+    message: "Click a body part, then pick an organ",
     waitForTap: true,
   },
 ];
@@ -89,29 +84,25 @@ export const PROFILE_DOCTOR_TOUR: TourStep[] = [
   {
     id: "local-price",
     anchor: "profile-local-price",
-    title: "Your local price",
-    body: "This is your consultation price inside Egypt or Jordan, based on your country.",
+    message: "Set your local consultation price",
     route: "/(tabs)/profile",
   },
   {
     id: "outside-price",
     anchor: "profile-outside-price",
-    title: "Price abroad",
-    body: "This is what patients outside your country pay in USD.",
+    message: "Set your price for patients abroad",
     route: "/(tabs)/profile",
   },
   {
     id: "calendar",
     anchor: "profile-calendar",
-    title: "Availability",
-    body: "Choose one or more days, set your time availability, then press Save.",
+    message: "Choose your available days and times",
     route: "/(tabs)/profile",
   },
   {
     id: "save",
     anchor: "profile-save",
-    title: "Save changes",
-    body: "Always save after updating prices or availability.",
+    message: "Click Save when you're done",
     waitForTap: true,
   },
 ];
