@@ -1,5 +1,14 @@
 import { usePathname, useSegments } from "expo-router";
-import { Bot, History, Maximize2, Minimize, Minimize2, Plus, X } from "lucide-react-native";
+import {
+  Bot,
+  ChevronLeft,
+  History,
+  Maximize2,
+  Minimize,
+  Minimize2,
+  Plus,
+  X,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,7 +27,7 @@ import {
 } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssistantComposer } from "@/components/assistant/AssistantComposer";
-import { AssistantHistoryModal } from "@/components/assistant/AssistantHistoryModal";
+import { AssistantHistoryList } from "@/components/assistant/AssistantHistoryList";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
 import { GuestAiLimitError, sendGuestAiChat } from "@/domains/ai/guestApi";
 import {
@@ -470,6 +479,7 @@ function Ask3elagiAiPanel() {
   const historyLoading = signedIn ? assistant.loadingHistory : false;
 
   const onSelectHistory = (id: string) => {
+    setHistoryOpen(false);
     if (signedIn) {
       assistant.setActiveId(id);
       return;
@@ -489,35 +499,48 @@ function Ask3elagiAiPanel() {
     persistGuestState(next, nextActive);
   };
 
-  const panelStyle = isDesktop
+  const fullScreenPanel = expanded;
+  const panelStyle = fullScreenPanel
     ? {
-        top: undefined as number | undefined,
-        bottom: Math.max(insets.bottom, 12) + ASK_3ELAGI_AI_FAB_CHROME_GAP,
-        ...(isRTL
-          ? { left: 16, right: undefined as number | undefined }
-          : { right: 16, left: undefined as number | undefined }),
-        width: expanded ? Math.min(windowWidth * 0.52, 720) : windowWidth * 0.3,
-        maxWidth: expanded ? Math.min(windowWidth * 0.52, 720) : windowWidth * 0.3,
-        height: expanded
-          ? Math.min(windowHeight * 0.88, 760)
-          : Math.min(windowHeight * 0.75, 640),
-        borderRadius: 18,
-      }
-    : {
-        top: expanded ? 0 : undefined,
+        top: 0,
         bottom: 0,
         left: 0,
         right: 0,
         width: windowWidth,
         maxWidth: windowWidth,
-        height: expanded
-          ? windowHeight
-          : Math.round(Math.min(windowHeight * 0.68, windowHeight - insets.top - 72)),
-        borderRadius: expanded ? 0 : 18,
-        paddingTop: expanded ? insets.top : 12,
+        height: windowHeight,
+        borderRadius: 0,
+        paddingTop: isNative ? insets.top : 0,
         paddingBottom:
-          isNative && keyboardVisible ? 0 : Math.max(insets.bottom, 8),
-      };
+          isNative && keyboardVisible ? 0 : isNative ? Math.max(insets.bottom, 8) : 0,
+      }
+    : isDesktop
+      ? {
+          top: undefined as number | undefined,
+          bottom: Math.max(insets.bottom, 12) + ASK_3ELAGI_AI_FAB_CHROME_GAP,
+          ...(isRTL
+            ? { left: 16, right: undefined as number | undefined }
+            : { right: 16, left: undefined as number | undefined }),
+          width: windowWidth * 0.3,
+          maxWidth: windowWidth * 0.3,
+          height: Math.min(windowHeight * 0.75, 640),
+          borderRadius: 18,
+        }
+      : {
+          top: undefined as number | undefined,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: windowWidth,
+          maxWidth: windowWidth,
+          height: Math.round(
+            Math.min(windowHeight * 0.68, windowHeight - insets.top - 72),
+          ),
+          borderRadius: 18,
+          paddingTop: 12,
+          paddingBottom:
+            isNative && keyboardVisible ? 0 : Math.max(insets.bottom, 8),
+        };
 
   const webShadow =
     Platform.OS === "web"
@@ -551,7 +574,7 @@ function Ask3elagiAiPanel() {
           {
             backgroundColor: colors.card,
             borderColor: ASK_3ELAGI_AI_FAB_RED,
-            borderWidth: isDesktop ? 2 : 0,
+            borderWidth: isDesktop && !fullScreenPanel ? 2 : 0,
             borderRadius: panelStyle.borderRadius,
           },
         ]}
@@ -567,28 +590,50 @@ function Ask3elagiAiPanel() {
         ]}
       >
         <View style={[styles.headerLeft, { flexDirection: dir, flex: 1 }]}>
-          <View
-            style={[styles.iconBubble, { backgroundColor: ASK_3ELAGI_AI_FAB_RED_SOFT }]}
-          >
-            <Bot size={16} color={ASK_3ELAGI_AI_FAB_ON_RED} />
-          </View>
+          {historyOpen ? (
+            <Pressable
+              onPress={() => setHistoryOpen(false)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={isRTL ? "رجوع" : "Back to chat"}
+              style={styles.iconBtn}
+            >
+              <ChevronLeft
+                size={20}
+                color={ASK_3ELAGI_AI_FAB_ON_RED}
+                style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
+              />
+            </Pressable>
+          ) : (
+            <View
+              style={[styles.iconBubble, { backgroundColor: ASK_3ELAGI_AI_FAB_RED_SOFT }]}
+            >
+              <Bot size={16} color={ASK_3ELAGI_AI_FAB_ON_RED} />
+            </View>
+          )}
           <Text
             style={[styles.title, { color: ASK_3ELAGI_AI_FAB_ON_RED, flexShrink: 1 }]}
             numberOfLines={1}
           >
-            {t.records.ask3elagiAi}
+            {historyOpen
+              ? isRTL
+                ? "محادثات الذكاء الاصطناعي"
+                : "AI Chats"
+              : t.records.ask3elagiAi}
           </Text>
         </View>
         <View style={[styles.headerActions, { flexDirection: dir }]}>
-          <Pressable
-            onPress={() => setHistoryOpen(true)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t.tabs.history}
-            style={styles.iconBtn}
-          >
-            <History size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-          </Pressable>
+          {!historyOpen ? (
+            <Pressable
+              onPress={() => setHistoryOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t.tabs.history}
+              style={styles.iconBtn}
+            >
+              <History size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={onNewChat}
             hitSlop={8}
@@ -658,7 +703,18 @@ function Ask3elagiAiPanel() {
         </View>
       </View>
 
-      {loadingHistory ? (
+      {historyOpen ? (
+        <View style={[styles.historyPane, { backgroundColor: colors.background }]}>
+          <AssistantHistoryList
+            conversations={historyConversations}
+            activeId={historyActiveId}
+            loading={historyLoading}
+            onSelect={onSelectHistory}
+            onNewChat={onNewChat}
+            onDelete={onDeleteHistory}
+          />
+        </View>
+      ) : loadingHistory ? (
         <View style={[styles.chatLoading, { backgroundColor: colors.background }]}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -690,7 +746,7 @@ function Ask3elagiAiPanel() {
         />
       )}
 
-      {!signedIn ? (
+      {!historyOpen && !signedIn ? (
         <Text
           style={[
             styles.guestQuota,
@@ -704,43 +760,34 @@ function Ask3elagiAiPanel() {
         </Text>
       ) : null}
 
-      <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
-        <AssistantComposer
-          key={signedIn ? (assistant.activeId ?? "widget-new") : "widget-guest"}
-          compact
-          isRTL={isRTL}
-          sending={busy}
-          disabled={loadingHistory}
-          placeholder={t.records.ask3elagiAiPlaceholder}
-          onSend={handleSend}
-          aiAttachment={
-            aiFile.attachment
-              ? {
-                  previewUri: aiFile.attachment.previewUri,
-                  name: aiFile.attachment.name,
-                  isPdf: aiFile.attachment.isPdf,
-                }
-              : null
-          }
-          onAttachAiFile={() => void aiFile.pickFile()}
-          onScanAiFile={
-            aiFile.canScan ? () => void aiFile.scanFile() : undefined
-          }
-          aiAttachLoading={aiFile.loading}
-          onRemoveAiAttachment={aiFile.clear}
-        />
-      </KeyboardStickyView>
-
-      <AssistantHistoryModal
-        visible={historyOpen}
-        conversations={historyConversations}
-        activeId={historyActiveId}
-        loading={historyLoading}
-        onClose={() => setHistoryOpen(false)}
-        onSelect={onSelectHistory}
-        onNewChat={onNewChat}
-        onDelete={onDeleteHistory}
-      />
+      {!historyOpen ? (
+        <KeyboardStickyView enabled={isNative} offset={{ closed: 0, opened: 0 }}>
+          <AssistantComposer
+            key={signedIn ? (assistant.activeId ?? "widget-new") : "widget-guest"}
+            compact
+            isRTL={isRTL}
+            sending={busy}
+            disabled={loadingHistory}
+            placeholder={t.records.ask3elagiAiPlaceholder}
+            onSend={handleSend}
+            aiAttachment={
+              aiFile.attachment
+                ? {
+                    previewUri: aiFile.attachment.previewUri,
+                    name: aiFile.attachment.name,
+                    isPdf: aiFile.attachment.isPdf,
+                  }
+                : null
+            }
+            onAttachAiFile={() => void aiFile.pickFile()}
+            onScanAiFile={
+              aiFile.canScan ? () => void aiFile.scanFile() : undefined
+            }
+            aiAttachLoading={aiFile.loading}
+            onRemoveAiAttachment={aiFile.clear}
+          />
+        </KeyboardStickyView>
+      ) : null}
       </View>
     </PanelShell>
   );
@@ -963,6 +1010,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  historyPane: {
+    flex: 1,
+    minHeight: 0,
   },
   emptyHint: {
     textAlign: "center",

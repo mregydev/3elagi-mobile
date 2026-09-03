@@ -18,9 +18,6 @@ function isApproved(
   return fromApi === "approved" || fromStore === "approved";
 }
 
-/** Temporary: ignore server tour flags and show the main tour on every page load. */
-const ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR = true;
-
 /** Starts doctor onboarding tours once per doctor (tracked on the server). */
 export function DoctorTourBootstrap() {
   const pathname = usePathname();
@@ -38,7 +35,14 @@ export function DoctorTourBootstrap() {
   const completedPhase = useProductTourStore((s) => s.completedPhase);
   const clearExit = useProductTourStore((s) => s.clearExit);
   const setDoctorApprovalStatus = useAuthStore((s) => s.setDoctorApprovalStatus);
-  const autoStartedRef = useRef(false);
+  /** Avoid re-launching the same tour on every route change in one session. */
+  const mainTourStartedRef = useRef(false);
+  const profileTourStartedRef = useRef(false);
+
+  useEffect(() => {
+    mainTourStartedRef.current = false;
+    profileTourStartedRef.current = false;
+  }, [profile?.id]);
 
   const refreshChats = useCallback(async () => {
     if (!accessToken || !profile?.id || role?.toLowerCase() !== "doctor" || !canUseChat(role)) {
@@ -60,7 +64,10 @@ export function DoctorTourBootstrap() {
 
     if (!state) {
       // API read failed — still start the tour for approved doctors so onboarding is not blocked.
-      if (!useProductTourStore.getState().active) startMainTour();
+      if (!useProductTourStore.getState().active && !mainTourStartedRef.current) {
+        startMainTour();
+        mainTourStartedRef.current = true;
+      }
       return;
     }
 
@@ -73,24 +80,20 @@ export function DoctorTourBootstrap() {
     await refreshChats();
 
     const tourActive = useProductTourStore.getState().active;
+    const productDone = Boolean(state.product_tour_completed_at);
+    const profileDone = Boolean(state.profile_tour_completed_at);
 
-    if (ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) {
-      if (!tourActive && !autoStartedRef.current) {
+    if (!productDone) {
+      if (!tourActive && !mainTourStartedRef.current) {
         startMainTour();
-        autoStartedRef.current = true;
+        mainTourStartedRef.current = true;
       }
       return;
     }
 
-    const productDone = Boolean(state?.product_tour_completed_at);
-    const profileDone = Boolean(state?.profile_tour_completed_at);
-
-    if (!productDone) {
-      if (!tourActive) startMainTour();
-      return;
-    }
-    if (!profileDone && !tourActive) {
+    if (!profileDone && !tourActive && !profileTourStartedRef.current) {
       startProfileTour();
+      profileTourStartedRef.current = true;
     }
   }, [
     hydrated,
@@ -113,12 +116,10 @@ export function DoctorTourBootstrap() {
 
     const finish = async () => {
       if (completedPhase === "main") {
-        if (!ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) {
-          await markDoctorTourComplete(accessToken, "product");
-          const state = await fetchDoctorMeTourState(accessToken);
-          if (state && !state.profile_tour_completed_at) {
-            if (!useProductTourStore.getState().active) startProfileTour();
-          }
+        await markDoctorTourComplete(accessToken, "product");
+        const state = await fetchDoctorMeTourState(accessToken);
+        if (state && !state.profile_tour_completed_at) {
+          if (!useProductTourStore.getState().active) startProfileTour();
         }
       } else if (completedPhase === "profile") {
         await markDoctorTourComplete(accessToken, "profile");
@@ -140,12 +141,9 @@ export function DoctorTourBootstrap() {
   return (
     <ProductTourOverlay
       onSkip={() => {
-        if (!ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) {
-          void markDoctorTourComplete(accessToken, "product");
-        }
+        void markDoctorTourComplete(accessToken, "product");
       }}
       onCompleteMain={async () => {
-        if (ALWAYS_SHOW_DOCTOR_PRODUCT_TOUR) return;
         await markDoctorTourComplete(accessToken, "product");
         const state = await fetchDoctorMeTourState(accessToken);
         if (state && !state.profile_tour_completed_at) {
