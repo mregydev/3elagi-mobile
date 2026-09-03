@@ -48,7 +48,6 @@ import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
-import type { DoctorWelcomeEmailState } from "@/components/admin/DoctorWelcomeEmailPanel.web";
 
 type LocalFile = SignupFile & { label: string };
 
@@ -58,8 +57,7 @@ interface Props {
   onGoogleNoAccount?: (payload: GoogleNoAccountPayload) => void;
   /** Admin panel: create a doctor without replacing the admin session. */
   adminDoctorMode?: boolean;
-  onAdminDoctorCreated?: (result?: { welcomeEmailOk?: boolean; welcomeEmailError?: string }) => void;
-  welcomeEmail?: DoctorWelcomeEmailState;
+  onAdminDoctorCreated?: () => void;
 }
 
 function initialSignupCountry(): PatientCountryCode {
@@ -72,7 +70,6 @@ export function WelcomeSignupForm({
   onGoogleNoAccount,
   adminDoctorMode = false,
   onAdminDoctorCreated,
-  welcomeEmail,
 }: Props) {
   const colors = useColors();
   const accentGradient = useAccentGradient();
@@ -309,20 +306,9 @@ export function WelcomeSignupForm({
         if (!adminToken) {
           throw new Error("Admin session expired. Please log in again.");
         }
-        const result = await authRepository.createAdminDoctor(
-          adminToken,
-          payload,
-          welcomeEmail?.enabled
-            ? {
-                send: true,
-                language: welcomeEmail.language,
-                themeColor: welcomeEmail.themeColor,
-                sections: welcomeEmail.sections,
-              }
-            : undefined,
-        );
+        await authRepository.createAdminDoctor(adminToken, payload);
         useAuthStore.setState({ ...adminSession, loading: false, error: null });
-        onAdminDoctorCreated?.(result);
+        onAdminDoctorCreated?.();
         return;
       }
 

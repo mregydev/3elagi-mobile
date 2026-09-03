@@ -9,6 +9,7 @@ import {
   Megaphone,
   MessageSquare,
   BarChart3,
+  Send,
   Star,
   Stethoscope,
   Trash2,
@@ -27,6 +28,7 @@ import { useColors } from "@/hooks/useColors";
 type AdminNavKey =
   | "doctors"
   | "doctorSignup"
+  | "doctorWelcomeEmail"
   | "chats"
   | "contact"
   | "doctorRegistrations"
@@ -53,6 +55,12 @@ const NAV: {
     label: "Add doctor",
     href: "/admin/doctor-signup",
     Icon: UserPlus,
+  },
+  {
+    key: "doctorWelcomeEmail",
+    label: "Welcome email",
+    href: "/admin/doctor-welcome-email",
+    Icon: Send,
   },
   { key: "chats", label: "Chats", href: "/admin/chats", Icon: MessageSquare },
   {
@@ -126,6 +134,7 @@ const NAV: {
 
 function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/doctor-signup")) return "doctorSignup";
+  if (pathname.includes("/admin/doctor-welcome-email")) return "doctorWelcomeEmail";
   if (pathname.includes("/admin/chats")) return "chats";
   if (pathname.includes("/admin/contact-messages")) return "contact";
   if (pathname.includes("/admin/doctor-registrations")) return "doctorRegistrations";

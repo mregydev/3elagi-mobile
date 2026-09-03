@@ -633,6 +633,29 @@ export async function fetchAdminDoctorWelcomePreview(
   });
 }
 
+export interface AdminDoctorWelcomeEmailInput {
+  name: string;
+  email: string;
+  password: string;
+  sections: MarketingEmailSection[];
+  language: MarketingEmailLanguage;
+  themeColor?: MarketingEmailTheme;
+}
+
+export async function sendAdminDoctorWelcomeEmail(
+  token: string,
+  input: AdminDoctorWelcomeEmailInput,
+): Promise<{ ok: boolean; email: string }> {
+  return authJson<{ ok: boolean; email: string }>(
+    "/admin/doctor-welcome/send",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
 export async function fetchAdminInvitedDoctorTemplate(
   token: string,
   language: MarketingEmailLanguage,
