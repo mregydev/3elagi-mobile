@@ -12,6 +12,7 @@ import {
   Star,
   Stethoscope,
   Trash2,
+  UserCheck,
   UserPlus,
 } from "lucide-react-native";
 import React from "react";
@@ -36,6 +37,7 @@ type AdminNavKey =
   | "rag"
   | "complaints"
   | "marketing"
+  | "invitedDoctors"
   | "deletedAccounts"
   | "analytics";
 
@@ -64,6 +66,12 @@ const NAV: {
     label: "Marketing",
     href: "/admin/marketing",
     Icon: Megaphone,
+  },
+  {
+    key: "invitedDoctors",
+    label: "Invited doctors",
+    href: "/admin/invited-doctors",
+    Icon: UserCheck,
   },
   {
     key: "doctorRegistrations",
@@ -128,6 +136,7 @@ function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/rag")) return "rag";
   if (pathname.includes("/admin/complaints")) return "complaints";
   if (pathname.includes("/admin/marketing")) return "marketing";
+  if (pathname.includes("/admin/invited-doctors")) return "invitedDoctors";
   if (pathname.includes("/admin/deleted-accounts")) return "deletedAccounts";
   if (pathname.includes("/admin/analytics")) return "analytics";
   return "doctors";

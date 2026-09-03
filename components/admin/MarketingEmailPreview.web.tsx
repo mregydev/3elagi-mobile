@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import {
   fetchAdminDoctorWelcomePreview,
+  fetchAdminInvitedDoctorPreview,
   fetchAdminMarketingPreview,
   type MarketingEmailLanguage,
   type MarketingEmailTheme,
@@ -16,7 +17,7 @@ interface Props {
   themeColor: MarketingEmailTheme;
   previewName: string;
   active: boolean;
-  previewKind?: "marketing" | "doctor-welcome";
+  previewKind?: "marketing" | "doctor-welcome" | "invited-doctor";
   previewEmail?: string;
   previewPassword?: string;
 }
@@ -61,7 +62,16 @@ export function MarketingEmailPreview({
             previewEmail,
             previewPassword,
           })
-        : fetchAdminMarketingPreview(accessToken, {
+        : previewKind === "invited-doctor"
+          ? fetchAdminInvitedDoctorPreview(accessToken, {
+              sections,
+              language,
+              themeColor,
+              name: previewName,
+              email: previewEmail ?? "",
+              password: previewPassword ?? "",
+            })
+          : fetchAdminMarketingPreview(accessToken, {
             sections,
             language,
             themeColor,

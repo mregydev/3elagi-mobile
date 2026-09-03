@@ -633,6 +633,51 @@ export async function fetchAdminDoctorWelcomePreview(
   });
 }
 
+export async function fetchAdminInvitedDoctorTemplate(
+  token: string,
+  language: MarketingEmailLanguage,
+  themeColor: MarketingEmailTheme = "blue",
+): Promise<AdminMarketingTemplate> {
+  const themeQuery = encodeURIComponent(themeColor);
+  return authJson<AdminMarketingTemplate>(
+    `/admin/invited-doctors/template/${language}?theme=${themeQuery}`,
+    token,
+  );
+}
+
+export interface AdminInvitedDoctorEmailInput {
+  name: string;
+  email: string;
+  password: string;
+  sections: MarketingEmailSection[];
+  language: MarketingEmailLanguage;
+  themeColor?: MarketingEmailTheme;
+}
+
+export async function fetchAdminInvitedDoctorPreview(
+  token: string,
+  input: AdminInvitedDoctorEmailInput,
+): Promise<AdminMarketingPreview> {
+  return authJson<AdminMarketingPreview>("/admin/invited-doctors/preview", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function sendAdminInvitedDoctorEmail(
+  token: string,
+  input: AdminInvitedDoctorEmailInput,
+): Promise<{ ok: boolean; email: string }> {
+  return authJson<{ ok: boolean; email: string }>(
+    "/admin/invited-doctors/send",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
 export async function fetchAdminMarketingPreview(
   token: string,
   input: AdminMarketingPreviewInput,
