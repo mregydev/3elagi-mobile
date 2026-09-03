@@ -49,13 +49,11 @@ function MedicalDataLoader() {
   const clear = useMedicalStore((s) => s.clear);
 
   const isPatient = role?.toLowerCase() === "patient";
-  const isDoctor = role?.toLowerCase() === "doctor";
-  const loadOwnRecords = isPatient || isDoctor;
 
   useEffect(() => {
     if (!hydrated) return;
 
-    if (!profile || !accessToken || !loadOwnRecords) {
+    if (!profile || !accessToken || !isPatient) {
       clear();
       return;
     }
@@ -73,7 +71,7 @@ function MedicalDataLoader() {
     return () => {
       cancelled = true;
     };
-  }, [hydrated, profile?.id, accessToken, loadOwnRecords, role, setRecordsFromApi, clear]);
+  }, [hydrated, profile?.id, accessToken, isPatient, role, setRecordsFromApi, clear]);
 
   return null;
 }

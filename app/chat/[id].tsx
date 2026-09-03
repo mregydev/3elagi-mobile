@@ -413,6 +413,13 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [id, accessToken, isDoctor, isDoctorPatientChat, messages.length]);
 
   useEffect(() => {
+    if (!id || !accessToken || !isDoctor || !isDemoPatientChat) return;
+    void fetchAllMedicalHistory(id, accessToken, role ?? undefined).then((rows) =>
+      setRecordsFromApi(rows, id),
+    );
+  }, [id, accessToken, isDoctor, isDemoPatientChat, role, setRecordsFromApi]);
+
+  useEffect(() => {
     if (!id) return;
     onChatAccessUpdated((payload) => {
       if (payload.peer_id === id) setAccessStatus(payload.status);
