@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import { withAuthRequestInit } from "@/domains/auth/http";
 import type { MessageEmotionType } from "@/domains/emotions";
 import { mapEmotionRows } from "@/domains/emotions";
 import type {
@@ -124,10 +125,24 @@ export function mapMessageRow(
   };
 }
 
+async function chatFetch(
+  token: string,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(`${API_BASE}${path}`, withAuthRequestInit(token, init));
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : "";
+    if (err instanceof TypeError || raw === "Failed to fetch") {
+      throw new Error("Could not reach the server. Check your connection and try again.");
+    }
+    throw err instanceof Error ? err : new Error("Network request failed");
+  }
+}
+
 export async function fetchChatContacts(token: string): Promise<ChatUser[]> {
-  const res = await fetch(`${API_BASE}/users/contacts`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await chatFetch(token, "/users/contacts");
   const data = (await res.json().catch(() => [])) as ChatContactRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -141,9 +156,7 @@ export async function fetchContactById(
   token: string,
   userId: string,
 ): Promise<ChatUser> {
-  const res = await fetch(`${API_BASE}/users/contacts/${userId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await chatFetch(token, `/users/contacts/${userId}`);
   const data = (await res.json().catch(() => ({}))) as ChatContactRow & {
     message?: string;
   };
@@ -157,9 +170,7 @@ export async function fetchConversations(
   token: string,
   selfId: string,
 ): Promise<{ peerId: string; user: ChatUser; lastMessage: ChatMessage; unreadCount: number }[]> {
-  const res = await fetch(`${API_BASE}/messages/conversations`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await chatFetch(token, "/messages/conversations");
   const data = (await res.json().catch(() => [])) as ConversationRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -179,9 +190,7 @@ export async function fetchMessagesWithPeer(
   peerId: string,
   selfId: string,
 ): Promise<ChatMessage[]> {
-  const res = await fetch(`${API_BASE}/messages/with/${peerId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await chatFetch(token, `/messages/with/${peerId}`);
   const data = (await res.json().catch(() => [])) as MessageRow[];
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(
@@ -196,12 +205,8 @@ export async function sendChatMessage(
   input: SendMessageInput,
   selfId: string,
 ): Promise<ChatMessage> {
-  const res = await fetch(`${API_BASE}/messages`, {
+  const res = await chatFetch(token, "/messages", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       recipient_id: input.recipientId,
       type: input.type ?? "text",
@@ -225,9 +230,8 @@ export async function markMessagesRead(
   token: string,
   peerId: string,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/messages/with/${peerId}/read`, {
+  const res = await chatFetch(token, `/messages/with/${peerId}/read`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
@@ -241,9 +245,8 @@ export async function markChatMessageRead(
   peerId: string,
   selfId: string,
 ): Promise<ChatMessage> {
-  const res = await fetch(`${API_BASE}/messages/${messageId}/read`, {
+  const res = await chatFetch(token, `/messages/${messageId}/read`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
   });
   const data = (await res.json().catch(() => ({}))) as MessageRow & {
     message?: string;
@@ -260,9 +263,8 @@ export async function markChatMessageUnread(
   peerId: string,
   selfId: string,
 ): Promise<ChatMessage> {
-  const res = await fetch(`${API_BASE}/messages/${messageId}/unread`, {
+  const res = await chatFetch(token, `/messages/${messageId}/unread`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
   });
   const data = (await res.json().catch(() => ({}))) as MessageRow & {
     message?: string;
@@ -277,9 +279,8 @@ export async function deleteChatMessage(
   token: string,
   messageId: string,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
+  const res = await chatFetch(token, `/messages/${messageId}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
@@ -294,12 +295,8 @@ export async function editChatMessage(
   peerId: string,
   selfId: string,
 ): Promise<ChatMessage> {
-  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
+  const res = await chatFetch(token, `/messages/${messageId}`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({ content }),
   });
   const data = (await res.json().catch(() => ({}))) as MessageRow & { message?: string };
@@ -316,12 +313,8 @@ export async function editChatMedicalMessage(
   selfId: string,
   input: { content: string; medicalLink: MedicalLinkMeta },
 ): Promise<ChatMessage> {
-  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
+  const res = await chatFetch(token, `/messages/${messageId}`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       content: input.content,
       attachment_meta: input.medicalLink,

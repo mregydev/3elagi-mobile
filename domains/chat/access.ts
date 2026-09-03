@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import { withAuthRequestInit } from "@/domains/auth/http";
 import type { AccessActionType } from "./types";
 
 export interface DoctorPatientAccessStatus {
@@ -16,9 +17,10 @@ export async function fetchDoctorPatientAccess(
   token: string,
   peerId: string,
 ): Promise<DoctorPatientAccessStatus> {
-  const res = await fetch(`${API_BASE}/doctor-patient-access/with/${peerId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await fetch(
+    `${API_BASE}/doctor-patient-access/with/${peerId}`,
+    withAuthRequestInit(token),
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(

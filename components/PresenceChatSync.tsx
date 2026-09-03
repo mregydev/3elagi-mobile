@@ -27,7 +27,7 @@ export function PresenceChatSync() {
       return;
     }
 
-    void loadConversations(accessToken, profile.id, role);
+    void loadConversations(accessToken, profile.id, role).catch(() => undefined);
   }, [hydrated, profile?.id, accessToken, role, loadConversations, clear]);
 
   const onlineUserIds = Object.keys(onlineUsers).sort().join(",");
