@@ -1,3 +1,9 @@
+import { Platform } from "react-native";
+
+/** Show the BETA pill beside the logo on web (set EXPO_PUBLIC_SHOW_BETA_BADGE=false to hide). */
+export const SHOW_BETA_BADGE =
+  Platform.OS === "web" && process.env.EXPO_PUBLIC_SHOW_BETA_BADGE !== "false";
+
 /** Shared logo heights for consistent branding across native and web. */
 export const LOGO_HEIGHT = {
   /** Main tab header (native + web mobile). */

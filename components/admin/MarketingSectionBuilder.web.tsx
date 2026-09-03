@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { AppTextInput } from "@/components/AppTextInput";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { EmailBuilderTextField } from "@/components/admin/EmailBuilderTextField.web";
 import {
   MARKETING_SECTION_TYPES,
   SECTION_TYPE_LABELS,
@@ -105,21 +105,11 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
             section.type === "callout" ||
             section.type === "cta") && (
             <Field label={section.type === "heading" ? "Text" : "HTML content"} colors={colors}>
-              <TextInput
+              <EmailBuilderTextField
                 value={section.html ?? ""}
                 onChangeText={(html) => patch(section.id, { html })}
                 multiline
-                textAlignVertical="top"
-                style={[
-                  styles.input,
-                  styles.multiline,
-                  {
-                    color: colors.foreground,
-                    borderColor: colors.border,
-                    backgroundColor: colors.background,
-                    textAlign,
-                  },
-                ]}
+                textAlign={textAlign}
               />
             </Field>
           )}
@@ -128,18 +118,10 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
             section.type === "callout" ||
             section.type === "screenshots") && (
             <Field label="Title" colors={colors}>
-              <AppTextInput
+              <EmailBuilderTextField
                 value={section.title ?? ""}
                 onChangeText={(title) => patch(section.id, { title })}
-                style={[
-                  styles.input,
-                  {
-                    color: colors.foreground,
-                    borderColor: colors.border,
-                    backgroundColor: colors.background,
-                    textAlign,
-                  },
-                ]}
+                textAlign={textAlign}
               />
             </Field>
           )}
@@ -179,7 +161,7 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
 
           {section.type === "feature_box" && (
             <Field label="Bullet items (one per line)" colors={colors}>
-              <TextInput
+              <EmailBuilderTextField
                 value={(section.items ?? []).join("\n")}
                 onChangeText={(raw) =>
                   patch(section.id, {
@@ -187,17 +169,7 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
                   })
                 }
                 multiline
-                textAlignVertical="top"
-                style={[
-                  styles.input,
-                  styles.multiline,
-                  {
-                    color: colors.foreground,
-                    borderColor: colors.border,
-                    backgroundColor: colors.background,
-                    textAlign,
-                  },
-                ]}
+                textAlign={textAlign}
               />
             </Field>
           )}
@@ -205,34 +177,18 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
           {section.type === "cta" && (
             <>
               <Field label="Button label" colors={colors}>
-                <AppTextInput
+                <EmailBuilderTextField
                   value={section.buttonLabel ?? ""}
                   onChangeText={(buttonLabel) => patch(section.id, { buttonLabel })}
-                  style={[
-                    styles.input,
-                    {
-                      color: colors.foreground,
-                      borderColor: colors.border,
-                      backgroundColor: colors.background,
-                      textAlign,
-                    },
-                  ]}
+                  textAlign={textAlign}
                 />
               </Field>
               <Field label="Button URL" colors={colors}>
-                <AppTextInput
+                <EmailBuilderTextField
                   value={section.buttonUrl ?? ""}
                   onChangeText={(buttonUrl) => patch(section.id, { buttonUrl })}
                   autoCapitalize="none"
-                  style={[
-                    styles.input,
-                    {
-                      color: colors.foreground,
-                      borderColor: colors.border,
-                      backgroundColor: colors.background,
-                      textAlign,
-                    },
-                  ]}
+                  textAlign={textAlign}
                 />
               </Field>
             </>
@@ -281,7 +237,8 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
       ) : null}
 
       <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-        Use {"{{name}}"} for the doctor&apos;s name. Header logo and footer are added when sending.
+        Use {"{{name}}"} for the doctor&apos;s name. Click Add emoji to insert
+        icons beside your text. Header logo and footer are added when sending.
       </Text>
     </View>
   );
@@ -331,14 +288,6 @@ const styles = StyleSheet.create({
   },
   field: { gap: 6 },
   label: { fontSize: 12, fontWeight: "700" },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  multiline: { minHeight: 88, lineHeight: 20 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
