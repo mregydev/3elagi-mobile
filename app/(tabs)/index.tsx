@@ -259,7 +259,6 @@ function ChatsHomeBrowse() {
               signedIn={signedIn}
               besideMedia
               onFindDoctor={openDoctorDirectory}
-              onVideoConsultation={openDoctorDirectory}
             />
           </HomeHeroWithTvVideo>
           <HomeHealthSummary signedIn={signedIn} />

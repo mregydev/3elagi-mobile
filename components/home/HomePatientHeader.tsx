@@ -1,9 +1,8 @@
 import { router } from "expo-router";
 import {
-  CalendarClock,
   ChevronRight,
+  FileText,
   Stethoscope,
-  Video,
 } from "lucide-react-native";
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
@@ -35,7 +34,6 @@ interface Props {
   aiEnabled?: boolean;
   signedIn?: boolean;
   onFindDoctor?: () => void;
-  onVideoConsultation?: () => void;
   /** Desktop hero row with TV video — stack actions in the narrow copy column. */
   besideMedia?: boolean;
   /** Native mobile: TV banner inserted between greeting and quick actions. */
@@ -46,7 +44,6 @@ export function HomePatientHeader({
   aiEnabled = true,
   signedIn = true,
   onFindDoctor,
-  onVideoConsultation,
   besideMedia = false,
   mediaAfterGreeting,
 }: Props) {
@@ -70,28 +67,19 @@ export function HomePatientHeader({
 
   const actions: QuickAction[] = [
     {
-      key: "video",
-      label: t.home.videoConsultation,
-      hint: t.home.videoConsultationHint,
-      icon: <Video size={20} color={colors.primaryForeground} />,
-      onPress: () => (onVideoConsultation ?? onFindDoctor)?.(),
-      primary: true,
-      badge: t.home.videoConsultationBadge,
-    },
-    {
-      key: "appointment",
-      label: t.home.bookAppointment,
-      hint: t.home.bookAppointmentHint,
-      icon: <CalendarClock size={18} color={colors.primary} />,
-      // Booking starts by picking a physician, not by opening the bookings list.
-      onPress: () => router.push("/doctors"),
-    },
-    {
       key: "find",
       label: t.home.findDoctor,
       hint: t.home.findDoctorHint,
-      icon: <Stethoscope size={18} color={colors.primary} />,
-      onPress: () => onFindDoctor?.(),
+      icon: <Stethoscope size={18} color={colors.primaryForeground} />,
+      onPress: () => (onFindDoctor ?? (() => router.push("/doctors")))(),
+      primary: true,
+    },
+    {
+      key: "records",
+      label: t.home.manageMedicalRecords,
+      hint: t.home.manageMedicalRecordsHint,
+      icon: <FileText size={18} color={colors.primary} />,
+      onPress: () => router.push("/(tabs)/records"),
     },
   ];
 
