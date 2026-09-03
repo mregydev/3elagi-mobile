@@ -234,8 +234,6 @@ export function ConsultationBar({
       .finally(() => setRecordsLoading(false));
   }, [modal, isPatient, selfId, token, selfRole, records.length]);
 
-  if (!enabled) return null;
-
   const label = (en: string, ar: string) => (isRTL ? ar : en);
 
   const closeStart = () => {
@@ -529,7 +527,10 @@ export function ConsultationBar({
     );
 
   useEffect(() => {
-    if (!onMenuActionsChange) return;
+    if (!enabled || !onMenuActionsChange) {
+      onMenuActionsChange?.([]);
+      return;
+    }
 
     const next: ChatAction[] = [];
     if (isPatient && !isOpen && !isPending) {
@@ -586,6 +587,7 @@ export function ConsultationBar({
     }
     onMenuActionsChange(next);
   }, [
+    enabled,
     onMenuActionsChange,
     isPatient,
     isDoctor,
@@ -604,6 +606,8 @@ export function ConsultationBar({
     if (!onMenuActionsChange) return;
     return () => onMenuActionsChange([]);
   }, [onMenuActionsChange]);
+
+  if (!enabled) return null;
 
   return (
     <>

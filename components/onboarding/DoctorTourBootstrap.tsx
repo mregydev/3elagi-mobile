@@ -8,6 +8,7 @@ import {
 } from "@/domains/onboarding/doctorTourApi";
 import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useAuthStore } from "@/domains/auth/store";
+import { isSignedIn } from "@/domains/auth/session";
 import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
 
@@ -48,11 +49,12 @@ export function DoctorTourBootstrap() {
     if (!accessToken || !profile?.id || role?.toLowerCase() !== "doctor" || !canUseChat(role)) {
       return;
     }
-    await loadConversations(accessToken, profile.id, role);
+    await loadConversations(accessToken, profile.id, role).catch(() => undefined);
   }, [accessToken, profile?.id, role, loadConversations]);
 
   const bootstrap = useCallback(async () => {
     if (!hydrated || !role || role.toLowerCase() !== "doctor") return;
+    if (!isSignedIn(profile, accessToken)) return;
 
     const state = await fetchDoctorMeTourState(accessToken);
 
@@ -91,6 +93,7 @@ export function DoctorTourBootstrap() {
   }, [
     hydrated,
     accessToken,
+    profile,
     role,
     doctorApprovalStatus,
     setDoctorApprovalStatus,
@@ -101,8 +104,8 @@ export function DoctorTourBootstrap() {
   ]);
 
   useEffect(() => {
-    void bootstrap();
-  }, [bootstrap, pathname, doctorApprovalStatus, accessToken]);
+    void bootstrap().catch(() => undefined);
+  }, [bootstrap, pathname, doctorApprovalStatus, accessToken, profile?.id]);
 
   useEffect(() => {
     if (exitReason !== "complete" || !completedPhase) return;
@@ -120,7 +123,7 @@ export function DoctorTourBootstrap() {
       clearExit();
     };
 
-    void finish();
+    void finish().catch(() => clearExit());
   }, [
     exitReason,
     completedPhase,

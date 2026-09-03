@@ -13,8 +13,12 @@ async function doctorAuthFetch(
   accessToken: string | null,
   path: string,
   init?: RequestInit,
-): Promise<Response> {
-  return fetch(`${API_BASE}${path}`, withAuthRequestInit(accessToken, init));
+): Promise<Response | null> {
+  try {
+    return await fetch(`${API_BASE}${path}`, withAuthRequestInit(accessToken, init));
+  } catch {
+    return null;
+  }
 }
 
 /** Loads doctor profile + tour flags (works with cookie and bearer auth). */
@@ -22,8 +26,12 @@ export async function fetchDoctorMeTourState(
   accessToken: string | null,
 ): Promise<DoctorMeTourState | null> {
   const res = await doctorAuthFetch(accessToken, "/doctors/me");
-  if (!res.ok) return null;
-  return (await res.json()) as DoctorMeTourState;
+  if (!res?.ok) return null;
+  try {
+    return (await res.json()) as DoctorMeTourState;
+  } catch {
+    return null;
+  }
 }
 
 export async function ensureDoctorOnboarding(
@@ -32,9 +40,13 @@ export async function ensureDoctorOnboarding(
   const res = await doctorAuthFetch(accessToken, "/doctors/me/onboarding", {
     method: "POST",
   });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { test_patient_user_id?: string | null };
-  return data.test_patient_user_id ?? null;
+  if (!res?.ok) return null;
+  try {
+    const data = (await res.json()) as { test_patient_user_id?: string | null };
+    return data.test_patient_user_id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function markDoctorTourComplete(
@@ -45,5 +57,5 @@ export async function markDoctorTourComplete(
     method: "PATCH",
     body: JSON.stringify({ kind }),
   });
-  return res.ok;
+  return res?.ok ?? false;
 }
