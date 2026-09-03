@@ -17,6 +17,7 @@ import type { AppNotification } from "@/domains/notifications/api";
 import { useNotificationsStore } from "@/domains/notifications/store";
 import { navigateFromPushNotification } from "@/domains/push/navigation";
 import { parsePushNotificationData } from "@/domains/push/types";
+import { openAsk3elagiAiWithChat } from "@/domains/ai/widget-store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow } from "@/utils/rtl";
@@ -64,6 +65,10 @@ export default function NotificationsTab() {
       await markRead(accessToken, item.id);
     }
     const parsed = parsePushNotificationData(item.data);
+    if (parsed?.type === "ai") {
+      openAsk3elagiAiWithChat(parsed.chatId);
+      return;
+    }
     if (parsed) {
       navigateFromPushNotification(router, parsed);
       return;
@@ -71,10 +76,7 @@ export default function NotificationsTab() {
     // Fallback: chat / AI ids in data without type.
     const chatId = item.data.chatId || item.data.chat_id;
     if (item.type === "ai" && chatId) {
-      router.push({
-        pathname: "/(tabs)/assistant",
-        params: { chatId: String(chatId) },
-      });
+      openAsk3elagiAiWithChat(String(chatId));
       return;
     }
     if (chatId) {

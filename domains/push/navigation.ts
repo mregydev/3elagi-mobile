@@ -1,6 +1,5 @@
-import { Platform } from "react-native";
 import type { Router } from "expo-router";
-import { isMobileAiPushDisabled } from "@/domains/ai/push-suppression";
+import { openAsk3elagiAiWithChat } from "@/domains/ai/widget-store";
 import type { PushNotificationData } from "@/domains/push/types";
 
 export function getPushNotificationPath(data: PushNotificationData): string {
@@ -26,7 +25,8 @@ export function getPushNotificationPath(data: PushNotificationData): string {
     return `/chat/${data.chatId}`;
   }
   if (data.type === "chat") return `/chat/${data.chatId}`;
-  return `/(tabs)/assistant?chatId=${encodeURIComponent(data.chatId)}`;
+  if (data.type === "ai") return "/(tabs)";
+  return "/(tabs)";
 }
 
 export function navigateFromPushNotification(
@@ -77,15 +77,8 @@ export function navigateFromPushNotification(
   }
 
   if (data.type === "ai") {
-    if (Platform.OS !== "web" && isMobileAiPushDisabled()) return;
-    router.push({
-      pathname: "/(tabs)/assistant",
-      params: { chatId: data.chatId },
-    });
+    router.push("/(tabs)");
+    openAsk3elagiAiWithChat(data.chatId);
     return;
   }
-
-  if (Platform.OS !== "web" && isMobileAiPushDisabled()) return;
-
-  router.push(getPushNotificationPath(data));
 }

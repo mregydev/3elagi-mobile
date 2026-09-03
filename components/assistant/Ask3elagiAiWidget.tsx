@@ -44,6 +44,10 @@ import {
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import { useAsk3elagiAiWidgetStore } from "@/domains/ai/widget-store";
+import {
+  setActiveAiWidgetChatId,
+  setAiWidgetOpen,
+} from "@/domains/ai/push-suppression";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
   isDemoEmbedPath,
@@ -175,6 +179,8 @@ function Ask3elagiAiPanel() {
   const consumePendingQuestion = useAsk3elagiAiWidgetStore(
     (s) => s.consumePendingQuestion,
   );
+  const pendingChatId = useAsk3elagiAiWidgetStore((s) => s.pendingChatId);
+  const clearPendingChatId = useAsk3elagiAiWidgetStore((s) => s.clearPendingChatId);
   const scopedPatientUserId = useAsk3elagiAiWidgetStore((s) => s.patientUserId);
   const setPatientUserId = useAsk3elagiAiWidgetStore((s) => s.setPatientUserId);
   const assistant = useAiAssistant();
@@ -399,6 +405,31 @@ function Ask3elagiAiPanel() {
     signedIn,
     sendGuestMessage,
   ]);
+
+  useEffect(() => {
+    if (!signedIn || !pendingChatId || loadingHistory) return;
+    assistant.setActiveId(pendingChatId);
+    clearPendingChatId();
+  }, [
+    signedIn,
+    pendingChatId,
+    loadingHistory,
+    assistant.setActiveId,
+    clearPendingChatId,
+  ]);
+
+  useEffect(() => {
+    if (!signedIn) {
+      setActiveAiWidgetChatId(null);
+      return;
+    }
+    const id = assistant.activeId;
+    if (id && !id.startsWith("draft-")) {
+      setActiveAiWidgetChatId(id);
+      return;
+    }
+    setActiveAiWidgetChatId(null);
+  }, [signedIn, assistant.activeId]);
 
   // Scroll to last message when the panel opens / history finishes loading.
   useEffect(() => {
@@ -821,6 +852,11 @@ export function Ask3elagiAiWidget() {
   useEffect(() => {
     if (!canUseWidget || hidden) closeWidget();
   }, [canUseWidget, hidden, closeWidget]);
+
+  useEffect(() => {
+    setAiWidgetOpen(open);
+    return () => setAiWidgetOpen(false);
+  }, [open]);
 
   // Escape key closes the floating AI chat (web / mobile browser).
   useEffect(() => {
