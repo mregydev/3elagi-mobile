@@ -87,6 +87,7 @@ import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
 import { TourAnchor } from "@/components/onboarding/TourAnchor";
+import { registerTourAnchorHandler } from "@/domains/onboarding/tourAnchorActions";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
@@ -241,6 +242,29 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     isDoctor &&
     peer?.role === "patient" &&
     canDoctorViewPatientRecords(accessStatus);
+
+  const openPatientRecord = useCallback(() => {
+    if (!id || !isDoctor || peer?.role !== "patient") return;
+    if (!canDoctorViewPatientRecords(accessStatus)) {
+      Alert.alert(
+        isRTL ? "لا يوجد صلاحية" : "No access",
+        isRTL
+          ? "المريض لم يمنحك صلاحية عرض السجل الطبي بعد."
+          : "The patient has not granted permission to view medical records yet.",
+      );
+      return;
+    }
+    router.push({
+      pathname: "/patients/[userId]",
+      params: { userId: id, name: peer?.name ?? "" },
+    });
+  }, [id, isDoctor, peer?.role, peer?.name, accessStatus, isRTL, router]);
+
+  useEffect(() => {
+    if (!canOpenPatientRecord) return;
+    return registerTourAnchorHandler("chat-view-records", openPatientRecord);
+  }, [canOpenPatientRecord, openPatientRecord]);
+
   const isDoctorPatientChat =
     (isDoctor && peer?.role === "patient") || (isPatient && peer?.role === "doctor");
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
@@ -565,23 +589,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   if (!isSignedIn(profile, accessToken)) {
     return <Redirect href="/welcome" />;
   }
-
-  const openPatientRecord = () => {
-    if (!id || !isDoctor || peer?.role !== "patient") return;
-    if (!canDoctorViewPatientRecords(accessStatus)) {
-      Alert.alert(
-        isRTL ? "لا يوجد صلاحية" : "No access",
-        isRTL
-          ? "المريض لم يمنحك صلاحية عرض السجل الطبي بعد."
-          : "The patient has not granted permission to view medical records yet.",
-      );
-      return;
-    }
-    router.push({
-      pathname: "/patients/[userId]",
-      params: { userId: id, name: peer?.name ?? "" },
-    });
-  };
 
   const openDoctorProfile = () => {
     if (!isPatient || peer?.role !== "doctor" || !id) return;

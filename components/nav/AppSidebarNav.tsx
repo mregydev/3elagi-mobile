@@ -38,6 +38,7 @@ import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
 import { useProductTourStore, currentTourStep } from "@/domains/onboarding/productTourStore";
 import { TourAnchor } from "@/components/onboarding/TourAnchor";
+import { tourAnchorDataSet } from "@/domains/onboarding/tourAnchorStore";
 import { isSignedIn } from "@/domains/auth/session";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useNotificationsStore } from "@/domains/notifications/store";
@@ -85,11 +86,11 @@ export function AppSidebarNav({
     s.conversations.reduce((total, c) => total + (c.unreadCount ?? 0), 0),
   );
   const aiEnabled = useAiEnabled();
-  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const tourActive = useProductTourStore((s) => s.active);
   const tourPhase = useProductTourStore((s) => s.phase);
   const tourStepIndex = useProductTourStore((s) => s.stepIndex);
   const tourStep = currentTourStep(tourPhase, tourStepIndex);
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const highlightChatHistory = tourActive && tourStep?.anchor === "nav-history";
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
@@ -158,35 +159,28 @@ export function AppSidebarNav({
   const renderNavItem = ({ href, labelKey, active, Icon }: (typeof items)[number]) => {
     const badgeCount =
       labelKey === "notifications" ? unreadCount : labelKey === "history" ? chatUnreadCount : 0;
-    const row = (
-      <Pressable
-        key={String(href)}
-        testID={`nav-${labelKey}`}
-        onPress={() => {
-          if (labelKey === "history") advanceOnAnchorTap("nav-history");
-          go(href);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={t.tabs[labelKey]}
-        accessibilityState={{ selected: active }}
-        style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-          styles.navItem,
-          collapsed && styles.navItemRail,
-          collapsed && active && styles.navItemRailActive,
-          {
-            flexDirection: dir,
-            backgroundColor: active
-              ? colors.accent
-              : pressed || hovered
-                ? colors.muted
-                : "transparent",
-            borderLeftWidth: active && !isRTL && !collapsed ? 3 : 0,
-            borderRightWidth: active && isRTL && !collapsed ? 3 : 0,
-            borderLeftColor: active && !isRTL ? colors.primary : "transparent",
-            borderRightColor: active && isRTL ? colors.primary : "transparent",
-          },
-        ]}
-      >
+    const isTourHistory = labelKey === "history" && !collapsed;
+
+    const navItemStyle = ({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+      styles.navItem,
+      collapsed && styles.navItemRail,
+      collapsed && active && styles.navItemRailActive,
+      {
+        flexDirection: dir,
+        backgroundColor: active
+          ? colors.accent
+          : pressed || hovered
+            ? colors.muted
+            : "transparent",
+        borderLeftWidth: active && !isRTL && !collapsed ? 3 : 0,
+        borderRightWidth: active && isRTL && !collapsed ? 3 : 0,
+        borderLeftColor: active && !isRTL ? colors.primary : "transparent",
+        borderRightColor: active && isRTL ? colors.primary : "transparent",
+      },
+    ];
+
+    const navItemContent = (
+      <>
         <Icon
           size={18}
           color={active ? colors.primary : colors.mutedForeground}
@@ -221,18 +215,43 @@ export function AppSidebarNav({
             ) : null}
           </>
         )}
-      </Pressable>
+      </>
     );
 
-    if (labelKey === "history" && !collapsed) {
+    if (isTourHistory) {
       return (
-        <TourAnchor key={String(href)} id="nav-history" testID="nav-history">
-          {row}
+        <TourAnchor key={String(href)} id="nav-history">
+          <Pressable
+            testID="nav-history"
+            {...tourAnchorDataSet("nav-history")}
+            onPress={() => {
+              advanceOnAnchorTap("nav-history");
+              go(href);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t.tabs[labelKey]}
+            accessibilityState={{ selected: active }}
+            style={navItemStyle}
+          >
+            {navItemContent}
+          </Pressable>
         </TourAnchor>
       );
     }
 
-    return row;
+    return (
+      <Pressable
+        key={String(href)}
+        testID={`nav-${labelKey}`}
+        onPress={() => go(href)}
+        accessibilityRole="button"
+        accessibilityLabel={t.tabs[labelKey]}
+        accessibilityState={{ selected: active }}
+        style={navItemStyle}
+      >
+        {navItemContent}
+      </Pressable>
+    );
   };
 
   const renderSettingsButton = (rail = false) => (

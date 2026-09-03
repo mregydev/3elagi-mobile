@@ -19,8 +19,16 @@ export type TourAnchor =
 export interface TourStep {
   id: string;
   anchor: TourAnchor;
-  /** Single clear instruction shown in the tooltip. */
+  /** Short instruction for bottom-bar steps. */
   message: string;
+  /** Rich popover title (contextual steps). */
+  title?: string;
+  /** Rich popover body (contextual steps). */
+  description?: string;
+  /** Primary button label on contextual popovers. */
+  primaryCta?: string;
+  /** Tooltip placement strategy. */
+  placement?: "bottom" | "contextual";
   /** Route to open before highlighting (optional). */
   route?: string;
   /** Wait for user to tap the anchor before advancing. */
@@ -63,7 +71,12 @@ export const MAIN_DOCTOR_TOUR: TourStep[] = [
   {
     id: "view-records",
     anchor: "chat-view-records",
-    message: "Click on View Record",
+    message: "View the patient's medical record",
+    title: "View the patient's medical record",
+    description:
+      "Access medical history, files, and attachments before starting the consultation.",
+    primaryCta: "View Record",
+    placement: "contextual",
     waitForTap: true,
   },
   {
@@ -126,6 +139,43 @@ export function tourRouteForStep(
     return `/patients/${testPatientUserId}`;
   }
   return undefined;
+}
+
+function tourPathHas(path: string, segment: string): boolean {
+  return path.includes(`/${segment}`) || path.endsWith(segment);
+}
+
+/** True when the app is already on the screen the tour step wants to open. */
+export function isTourRouteActive(pathname: string | null, route: string): boolean {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/$/, "") || "/";
+  const target = route.replace(/\/$/, "") || "/";
+
+  if (path === target) return true;
+
+  if (target === "/(tabs)") {
+    return (
+      path === "/" ||
+      path === "/(tabs)" ||
+      (path.includes("(tabs)") &&
+        !tourPathHas(path, "history") &&
+        !tourPathHas(path, "records") &&
+        !tourPathHas(path, "profile") &&
+        !tourPathHas(path, "patients") &&
+        !tourPathHas(path, "chat"))
+    );
+  }
+
+  if (target === "/(tabs)/history") return tourPathHas(path, "history");
+  if (target === "/(tabs)/profile") return tourPathHas(path, "profile");
+
+  const chatMatch = target.match(/^\/chat\/([^/]+)$/);
+  if (chatMatch) return new RegExp(`^/chat/${chatMatch[1]}$`).test(path);
+
+  const patientMatch = target.match(/^\/patients\/([^/]+)$/);
+  if (patientMatch) return new RegExp(`^/patients/${patientMatch[1]}$`).test(path);
+
+  return path.includes(target.slice(1));
 }
 
 export const useProductTourStore = create<ProductTourState>((set, get) => ({

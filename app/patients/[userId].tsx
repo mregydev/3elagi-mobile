@@ -23,12 +23,16 @@ import {
 import { fetchPatientMedicalHistoryAsDoctor } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
-import { useProductTourStore } from "@/domains/onboarding/productTourStore";
+import {
+  currentTourStep,
+  useProductTourStore,
+} from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { WEB_CONTENT_PADDING } from "@/constants/webLayout";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { navigateBack } from "@/utils/appNavigation";
+import { readRouteParam } from "@/utils/routeParams";
 
 export default function PatientRecordScreen() {
   const router = useRouter();
@@ -40,6 +44,9 @@ export default function PatientRecordScreen() {
   const role = useAuthStore((s) => s.role);
   const consumePendingRefresh = useMedicalStore((s) => s.consumePendingRefresh);
   const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
+  const tourActive = useProductTourStore((s) => s.active);
+  const tourPhase = useProductTourStore((s) => s.phase);
+  const tourStepIndex = useProductTourStore((s) => s.stepIndex);
   const params = useLocalSearchParams<{ userId?: string | string[]; name?: string | string[] }>();
   const userId = readRouteParam(params.userId);
   const name = readRouteParam(params.name);
@@ -74,6 +81,14 @@ export default function PatientRecordScreen() {
     const data = await fetchPatientMedicalHistoryAsDoctor(userId, accessToken);
     setRecords(data);
   }, [accessToken, userId, isDoctor]);
+
+  useEffect(() => {
+    if (!tourActive) return;
+    const step = currentTourStep(tourPhase, tourStepIndex);
+    if (step?.anchor === "records-skeleton-body") {
+      setRecordsViewMode("skeleton");
+    }
+  }, [tourActive, tourPhase, tourStepIndex]);
 
   useEffect(() => {
     if (!isDoctor || !userId) {

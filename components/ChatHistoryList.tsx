@@ -13,6 +13,8 @@ import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { messagePreviewText } from "@/domains/chat/messagePreview";
 import type { Conversation } from "@/domains/chat/types";
+import { tourAnchorDataSet } from "@/domains/onboarding/tourAnchorStore";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { usePresenceStore } from "@/domains/presence/store";
 import { useColors } from "@/hooks/useColors";
 
@@ -43,6 +45,7 @@ function ConversationRow({
   emptyPreview?: string;
   tourHighlight?: boolean;
 }) {
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = isRTL ? "row-reverse" : "row";
   const peerRole = item.user.role === "doctor" ? "doctor" : "patient";
   const isOnline = usePresenceStore((s) => s.isOnline(item.user.id));
@@ -122,14 +125,22 @@ function ConversationRow({
 
   if (tourHighlight) {
     return (
-      <TourAnchor
-        id="chat-test-row"
-        testID="chat-test-row"
-        pressable
-        onPress={onPress}
-        style={[styles.row, { flexDirection: dir }]}
-      >
-        {rowContent}
+      <TourAnchor id="chat-test-row">
+        <Pressable
+          testID="chat-test-row"
+          {...tourAnchorDataSet("chat-test-row")}
+          onPress={() => {
+            advanceOnAnchorTap("chat-test-row");
+            onPress();
+          }}
+          style={({ pressed }) => [
+            styles.row,
+            { flexDirection: dir },
+            pressed && { backgroundColor: colors.muted },
+          ]}
+        >
+          {rowContent}
+        </Pressable>
       </TourAnchor>
     );
   }
