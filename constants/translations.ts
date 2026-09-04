@@ -116,9 +116,6 @@ const en = {
     saving: "Saving…",
   },
   auth: {
-    comingSoonTitle: "Under construction",
-    comingSoonSubtitle: "Stay connected for our launch soon",
-    comingSoonAccess: "Already have access? Sign in",
     title: "Welcome",
     subtitle: "Sign in to continue",
     welcomeBack: "Welcome back",
@@ -1116,9 +1113,6 @@ const ar: typeof en = {
     saving: "جاري الحفظ…",
   },
   auth: {
-    comingSoonTitle: "قيد الإنشاء",
-    comingSoonSubtitle: "ابقَ على تواصل لإطلاقنا قريبًا",
-    comingSoonAccess: "هل لديك صلاحية الدخول؟ سجّل الدخول",
     title: "مرحباً بك",
     subtitle: "سجل دخولك للمتابعة",
     welcomeBack: "مرحباً بعودتك",
@@ -2102,9 +2096,6 @@ const de: typeof en = {
     saving: "Wird gespeichert…",
   },
   auth: {
-    comingSoonTitle: "Im Aufbau",
-    comingSoonSubtitle: "Bleiben Sie dran – unser Launch kommt bald",
-    comingSoonAccess: "Bereits Zugang? Anmelden",
     title: "Willkommen",
     subtitle: "Melden Sie sich an, um fortzufahren",
     welcomeBack: "Willkommen zurück",
@@ -3094,9 +3085,6 @@ const es: typeof en = {
     saving: "Guardando…",
   },
   auth: {
-    comingSoonTitle: "En construcción",
-    comingSoonSubtitle: "Mantente conectado: nuestro lanzamiento llega pronto",
-    comingSoonAccess: "¿Ya tienes acceso? Inicia sesión",
     title: "Bienvenido",
     subtitle: "Inicia sesión para continuar",
     welcomeBack: "Bienvenido de nuevo",
