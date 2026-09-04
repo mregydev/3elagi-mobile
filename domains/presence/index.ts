@@ -9,6 +9,7 @@ export {
   emitChatStopTyping,
   onChatMessageNew,
   onChatMessageDeleted,
+  onConsultationRemoved,
   onChatMessageUpdated,
   onChatTyping,
   onChatStopTyping,

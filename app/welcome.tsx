@@ -1,16 +1,19 @@
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WelcomeLoginForm } from "@/components/auth/WelcomeLoginForm";
 import { WelcomeSignupForm } from "@/components/auth/WelcomeSignupForm";
+import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
 import { Logo3elagi } from "@/components/Logo3elagi";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors, useResolvedTheme } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { flexRow } from "@/utils/rtl";
 
@@ -20,13 +23,21 @@ type WelcomePanel = "home" | "login" | "signup";
 
 export default function WelcomeScreen() {
   const colors = useColors();
+  const isDark = useResolvedTheme() === "dark";
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const logoHeight = Math.min(64, screenWidth * 0.18);
   const [panel, setPanel] = useState<WelcomePanel>("home");
+  const [googlePrefill, setGooglePrefill] = useState<GoogleNoAccountPayload | null>(null);
   const showForm = panel !== "home";
+
+  const handleGoogleNoAccount = (payload: GoogleNoAccountPayload) => {
+    setGooglePrefill(payload);
+    setPanel("signup");
+  };
 
   const formTitle =
     panel === "login" ? t.auth.logIn : panel === "signup" ? t.auth.register : "";
@@ -57,7 +68,7 @@ export default function WelcomeScreen() {
         style={[
           styles.page,
           {
-            paddingTop: insets.top + 8,
+            paddingTop: insets.top + 4,
             paddingBottom: insets.bottom + 8,
           },
         ]}
@@ -80,6 +91,7 @@ export default function WelcomeScreen() {
             <View style={styles.backBtnPlaceholder} />
           )}
           <View style={styles.topBarSpacer} />
+          <ThemeToggle />
           <AuthLanguageField />
         </View>
 
@@ -106,8 +118,21 @@ export default function WelcomeScreen() {
               />
             ) : (
               <>
-                <BlurView intensity={85} tint="light" style={styles.footerBlur} />
-                <View style={styles.footerTint} />
+                <BlurView
+                  intensity={85}
+                  tint={isDark ? "dark" : "light"}
+                  style={styles.footerBlur}
+                />
+                <View
+                  style={[
+                    styles.footerTint,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(15,20,25,0.42)"
+                        : "rgba(255,255,255,0.32)",
+                    },
+                  ]}
+                />
               </>
             )}
 
@@ -123,9 +148,16 @@ export default function WelcomeScreen() {
                 </Text>
 
                 {panel === "login" ? (
-                  <WelcomeLoginForm onSwitchToSignup={() => setPanel("signup")} />
+                  <WelcomeLoginForm
+                    onSwitchToSignup={() => setPanel("signup")}
+                    onGoogleNoAccount={handleGoogleNoAccount}
+                  />
                 ) : (
-                  <WelcomeSignupForm onSwitchToLogin={() => setPanel("login")} />
+                  <WelcomeSignupForm
+                    onSwitchToLogin={() => setPanel("login")}
+                    googlePrefill={googlePrefill}
+                    onGoogleNoAccount={handleGoogleNoAccount}
+                  />
                 )}
               </KeyboardSafeScrollView>
             ) : (
@@ -142,13 +174,19 @@ export default function WelcomeScreen() {
                   style={({ pressed }) => [
                     styles.btnPrimary,
                     {
-                      backgroundColor: colors.primary,
                       opacity: pressed ? 0.92 : 1,
                       shadowColor: colors.primary,
                     },
                   ]}
                 >
-                  <Text style={styles.btnPrimaryText}>{t.auth.logIn}</Text>
+                  <LinearGradient
+                    colors={accentGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.btnPrimaryGradient}
+                  >
+                    <Text style={styles.btnPrimaryText}>{t.auth.logIn}</Text>
+                  </LinearGradient>
                 </Pressable>
 
                 <Pressable
@@ -158,13 +196,25 @@ export default function WelcomeScreen() {
                     {
                       borderColor: colors.primary,
                       backgroundColor: pressed
-                        ? "rgba(255,255,255,0.45)"
-                        : "rgba(255,255,255,0.55)",
+                        ? colors.primary + "29"
+                        : colors.primary + "14",
                     },
                   ]}
                 >
                   <Text style={[styles.btnGhostText, { color: colors.primary }]}>
                     {t.auth.register}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.replace("/(tabs)")}
+                  style={({ pressed }) => [
+                    styles.btnBrowse,
+                    { opacity: pressed ? 0.75 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.btnBrowseText, { color: colors.foreground }]}>
+                    {isRTL ? "تصفح التخصصات والأطباء" : "Browse specialties & doctors"}
                   </Text>
                 </Pressable>
               </View>
@@ -225,7 +275,7 @@ const styles = StyleSheet.create({
   },
   footerOuterExpanded: {
     flex: 1,
-    marginTop: 8,
+    marginTop: 4,
     minHeight: 0,
   },
   footer: {
@@ -246,7 +296,6 @@ const styles = StyleSheet.create({
   },
   footerTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.32)",
   },
   formScroll: {
     flex: 1,
@@ -255,15 +304,15 @@ const styles = StyleSheet.create({
   footerContent: {
     gap: 12,
     paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   formTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
     textAlign: "center",
     letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: 0,
   },
   ctaTitle: {
     fontSize: 24,
@@ -278,13 +327,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   btnPrimary: {
-    paddingVertical: 16,
     borderRadius: 16,
-    alignItems: "center",
+    overflow: "hidden",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  btnPrimaryGradient: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   btnPrimaryText: {
     color: "#fff",
@@ -301,5 +354,14 @@ const styles = StyleSheet.create({
   btnGhostText: {
     fontWeight: "800",
     fontSize: 16,
+  },
+  btnBrowse: {
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  btnBrowseText: {
+    fontWeight: "700",
+    fontSize: 14,
+    textDecorationLine: "underline",
   },
 });

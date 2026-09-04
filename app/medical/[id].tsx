@@ -1,8 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Activity,
-  ArrowLeft,
-  ArrowRight,
   Beaker,
   Bone,
   Calendar,
@@ -10,6 +8,7 @@ import {
   FileDown,
   FileText,
   Hash,
+  MessageCircle,
   Pill,
   ScanLine,
   Trash2,
@@ -26,10 +25,14 @@ import {
   View,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { navigateBack } from "@/utils/appNavigation";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
+import { MedicalPdfViewer, type MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
+import { confirmDestructiveAction } from "@/utils/confirmDestructiveAction";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -42,6 +45,7 @@ import {
   fetchAllMedicalHistory,
   fetchDiagnosisById,
   fetchDoctorDiagnosisById,
+  findDoctorRecordById,
   fetchDocumentsForPatientUser,
   fetchPatientDocuments,
   fetchPrescriptionById,
@@ -51,6 +55,7 @@ import {
   updateDiagnosis,
   updatePatientMedicalDocument,
 } from "@/domains/medical/api";
+import { readRouteParam } from "@/utils/routeParams";
 import {
   deleteIntakeExamInstance,
   fetchIntakeExamInstance,
@@ -59,10 +64,13 @@ import {
   saveIntakeExamAnswers,
 } from "@/domains/intake-exams/api";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
-import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
+import {
+  IntakeExamTaker,
+  type IntakeExamTakerHandle,
+} from "@/components/intake/IntakeExamTaker";
 import { MedicalRecordAiInsightSection } from "@/components/medical/MedicalRecordAiInsightSection";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
-import { isMedicalImageAttachment } from "@/components/medical/medicalRecordMeta";
+import { isMedicalImageAttachment, isMedicalPdfAttachment } from "@/components/medical/medicalRecordMeta";
 import { useMedicalStore } from "@/domains/medical/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import {
@@ -71,8 +79,9 @@ import {
   canEditDiagnosis,
 } from "@/domains/medical/permissions";
 import { useColors } from "@/hooks/useColors";
-import { useI18n } from "@/hooks/useI18n";
+import type { LinkedConsultationSummary } from "@/domains/medical/types";
 import { useApiLang } from "@/hooks/useApiLang";
+import { useI18n } from "@/hooks/useI18n";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
 import { showAppAlert } from "@/utils/appAlert";
 import { openBlankPdfTab, openPdfInNewTab } from "@/utils/openPdfInNewTab";
@@ -89,22 +98,45 @@ const CATEGORY_META: Record<
   intake:  { labelEn: "Intake Exam", labelAr: "فحص الاستقبال", Icon: ClipboardList, color: "#3057F2" },
 };
 
+function consultationStatusLabel(
+  status: LinkedConsultationSummary["status"],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  switch (status) {
+    case "open":
+      return t.consultations.open;
+    case "pending":
+      return t.consultations.waitingActive;
+    case "ended":
+      return t.consultations.completed;
+    case "cancelled":
+    case "rejected":
+      return t.consultations.cancelled;
+    default:
+      return status;
+  }
+}
+
 export default function MedicalRecordDetail() {
   const colors = useColors();
   const { isRTL, t } = useI18n();
   const apiLang = useApiLang();
   const insets = useSafeAreaInsets();
-  const { id, doctorView, patientUserId } = useLocalSearchParams<{
-    id: string;
-    doctorView?: string;
-    patientUserId?: string;
+  const routeParams = useLocalSearchParams<{
+    id?: string | string[];
+    doctorView?: string | string[];
+    patientUserId?: string | string[];
   }>();
+  const id = readRouteParam(routeParams.id);
+  const doctorView = readRouteParam(routeParams.doctorView);
+  const patientUserId = readRouteParam(routeParams.patientUserId) || undefined;
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
   const isDoctorView = doctorView === "1";
+  const isDoctorRole = role?.toLowerCase() === "doctor";
   const records = useMedicalStore((s) => s.records);
   const remove = useMedicalStore((s) => s.remove);
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
@@ -115,6 +147,9 @@ export default function MedicalRecordDetail() {
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const intakeDraftDirtyRef = useRef(false);
   const intakeAnswersDraftRef = useRef<Record<string, string[]>>({});
+  const intakeExamTakerRef = useRef<IntakeExamTakerHandle | null>(null);
+  /** Bumped to ignore in-flight instance fetches after a local save/reset. */
+  const intakeLoadSeqRef = useRef(0);
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadState, setLoadState] = useState<"loading" | "done">("loading");
@@ -124,6 +159,7 @@ export default function MedicalRecordDetail() {
   const [editingDiagnosis, setEditingDiagnosis] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
   const [generatingInsight, setGeneratingInsight] = useState(false);
   const [intakeAnswersDraft, setIntakeAnswersDraft] = useState<Record<string, string[]>>({});
   const [savingIntake, setSavingIntake] = useState(false);
@@ -205,9 +241,12 @@ export default function MedicalRecordDetail() {
       setLoadState("done");
     };
 
-    const applyIntake = (raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>) => {
+    const applyIntake = (
+      raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>,
+      seq: number,
+    ) => {
       const mapped = mapInstance(raw);
-      if (cancelled) return mapped;
+      if (cancelled || seq !== intakeLoadSeqRef.current) return mapped;
       setDetail(mapped);
       upsertIntake(mapped);
       if (!intakeDraftDirtyRef.current) {
@@ -216,11 +255,13 @@ export default function MedicalRecordDetail() {
       return mapped;
     };
 
-    const loadIntakeInstance = () =>
-      fetchIntakeExamInstance(id, accessToken)
-        .then(applyIntake)
+    const loadIntakeInstance = () => {
+      const seq = ++intakeLoadSeqRef.current;
+      return fetchIntakeExamInstance(id, accessToken)
+        .then((raw) => applyIntake(raw, seq))
         .then(() => true)
         .catch(() => false);
+    };
 
     if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
       if (cached?.intakeExam?.answers && !intakeDraftDirtyRef.current) {
@@ -274,6 +315,35 @@ export default function MedicalRecordDetail() {
             } catch {
               // not found
             }
+          }
+        } finally {
+          finish();
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Doctor opened a bare /medical/:id link (no doctorView) — don't use patient endpoints.
+    if (isDoctorRole) {
+      void (async () => {
+        if (await loadIntakeInstance()) {
+          finish();
+          return;
+        }
+        try {
+          const d = await fetchDoctorDiagnosisById(id, accessToken);
+          if (!cancelled) {
+            setDetail(d);
+            setEditDesc(d.title);
+            upsertDiagnosis(d);
+          }
+        } catch {
+          const found = await findDoctorRecordById(id, accessToken);
+          if (found && !cancelled) {
+            setDetail(found);
+            if (found.category === "prescription") upsertPrescription(found);
           }
         } finally {
           finish();
@@ -343,6 +413,7 @@ export default function MedicalRecordDetail() {
     cached?.id,
     cached?.category,
     isDoctorView,
+    isDoctorRole,
     patientUserId,
     profile?.id,
     upsertDiagnosis,
@@ -369,17 +440,32 @@ export default function MedicalRecordDetail() {
 
     const timer = setTimeout(() => {
       if (!intakeDraftDirtyRef.current) return;
-      const snapshot = intakeAnswersDraftRef.current;
-      void saveIntakeExamAnswers(id, { answers: snapshot, complete: false }, accessToken)
-        .then((raw) => {
+      void (async () => {
+        try {
+          await intakeExamTakerRef.current?.flushPendingAudio();
+        } catch {
+          /* still save other answers */
+        }
+        if (!intakeDraftDirtyRef.current) return;
+        const snapshot = intakeAnswersDraftRef.current;
+        try {
+          const raw = await saveIntakeExamAnswers(
+            id,
+            { answers: snapshot, complete: false },
+            accessToken,
+          );
           const mapped = mapInstance(raw);
+          intakeLoadSeqRef.current += 1;
           setDetail(mapped);
           upsertIntake(mapped);
           if (intakeAnswersDraftRef.current === snapshot) {
             intakeDraftDirtyRef.current = false;
+            setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
           }
-        })
-        .catch(() => undefined);
+        } catch {
+          /* keep dirty for retry */
+        }
+      })();
     }, 900);
 
     return () => clearTimeout(timer);
@@ -395,13 +481,12 @@ export default function MedicalRecordDetail() {
   if (needsDoctorAccess && !accessChecked) {
     return (
       <View style={[styles.loadingRoot, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={styles.loadingBack} hitSlop={10}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          style={styles.loadingBack}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
         <View style={styles.loadingBody}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -412,13 +497,12 @@ export default function MedicalRecordDetail() {
   if (needsDoctorAccess && !hasDoctorAccess) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={[styles.loadingBack, { alignSelf: "flex-start", marginLeft: 12 }]} hitSlop={10}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          style={[styles.loadingBack, { alignSelf: "flex-start", marginLeft: 12 }]}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
         <DoctorPatientAccessDenied isRTL={isRTL} />
       </View>
     );
@@ -427,13 +511,12 @@ export default function MedicalRecordDetail() {
   if (!record && loadState === "loading") {
     return (
       <View style={[styles.loadingRoot, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={styles.loadingBack} hitSlop={10}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          style={styles.loadingBack}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
         <View style={styles.loadingBody}>
           <ActivityIndicator size="large" color={colors.primary} />
         <Text style={{ color: colors.mutedForeground, marginTop: 12, fontSize: 14, textAlign }}>
@@ -471,6 +554,7 @@ export default function MedicalRecordDetail() {
   const isPrescription = record.category === "prescription";
   const isLabOrXray = record.category === "lab" || record.category === "xray";
   const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
+  const isDocPdf = isMedicalPdfAttachment(record.fileUrl, record.fileName);
   const canEditLabDetails = isLabOrXray && !isDoctorView && !!accessToken;
   const canPrintPrescription =
     isPrescription &&
@@ -594,41 +678,42 @@ export default function MedicalRecordDetail() {
     }
   };
 
+  const performDelete = async () => {
+    if (!accessToken) {
+      Alert.alert(
+        isRTL ? "فشل الحذف" : "Delete failed",
+        isRTL ? "يجب تسجيل الدخول." : "You must be signed in.",
+      );
+      return;
+    }
+
+    try {
+      if (record.category === "lab" || record.category === "xray") {
+        await deletePatientMedicalDocument(record.id, accessToken);
+      } else if (record.category === "intake") {
+        await deleteIntakeExamInstance(record.id, accessToken);
+      } else {
+        throw new Error(
+          isRTL ? "لا يمكن حذف هذا النوع من السجلات." : "This record type cannot be deleted.",
+        );
+      }
+      await refetchListsAfterChange();
+      remove(profile!.id, record.id);
+      navigateBack(router, "/(tabs)/records");
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحذف" : "Delete failed", (e as Error).message);
+    }
+  };
+
   const confirmDelete = () => {
     if (!canDeleteRecord) return;
-    Alert.alert(
-      isRTL ? "حذف السجل" : "Delete record",
-      isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
-      [
-        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-        {
-          text: isRTL ? "حذف" : "Delete",
-          style: "destructive",
-          onPress: () => {
-            void (async () => {
-              try {
-                if (
-                  (record.category === "lab" || record.category === "xray") &&
-                  accessToken
-                ) {
-                  await deletePatientMedicalDocument(record.id, accessToken);
-                } else if (record.category === "intake" && accessToken) {
-                  await deleteIntakeExamInstance(record.id, accessToken);
-                }
-                await refetchListsAfterChange();
-                remove(profile!.id, record.id);
-                router.back();
-              } catch (e) {
-                Alert.alert(
-                  isRTL ? "فشل الحذف" : "Delete failed",
-                  (e as Error).message,
-                );
-              }
-            })();
-          },
-        },
-      ],
-    );
+    confirmDestructiveAction({
+      title: isRTL ? "حذف السجل" : "Delete record",
+      message: isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
+      confirmLabel: isRTL ? "حذف" : "Delete",
+      cancelLabel: isRTL ? "إلغاء" : "Cancel",
+      onConfirm: performDelete,
+    });
   };
 
   return (
@@ -644,11 +729,12 @@ export default function MedicalRecordDetail() {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={styles.headerBtn} hitSlop={10}>
-          {isRTL
-            ? <ArrowRight size={22} color="#fff" />
-            : <ArrowLeft  size={22} color="#fff" />}
-        </Pressable>
+        <AppBackButton
+          color="#fff"
+          style={styles.headerBtn}
+          hitSlop={10}
+          fallback="/(tabs)/records"
+        />
 
         {/* Category chip */}
         <View style={[styles.categoryChip, { flexDirection: dir }]}>
@@ -713,7 +799,21 @@ export default function MedicalRecordDetail() {
           </Pressable>
         )}
 
-        {(isLabOrXray || isPrescription) && record.fileUrl && !isDocImage && (
+        {(isLabOrXray || isPrescription) && record.fileUrl && isDocPdf && (
+          <Pressable
+            onPress={() =>
+              setPdfView({ uri: record.fileUrl!, fileName: record.fileName })
+            }
+            style={[styles.fileLinkCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <FileText size={32} color={color} />
+            <Text style={{ color: colors.primary, fontWeight: "600", textAlign }}>
+              {record.fileName?.trim() || (isRTL ? "عرض PDF" : "View PDF")}
+            </Text>
+          </Pressable>
+        )}
+
+        {(isLabOrXray || isPrescription) && record.fileUrl && !isDocImage && !isDocPdf && (
           <Pressable
             onPress={() => Linking.openURL(record.fileUrl!)}
             style={[styles.fileLinkCard, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -935,6 +1035,7 @@ export default function MedicalRecordDetail() {
                   : "Complete exam"}
             </Text>
             <IntakeExamTaker
+              ref={intakeExamTakerRef}
               isRTL={isRTL}
               questions={record.intakeExam.questions}
               answers={
@@ -967,6 +1068,7 @@ export default function MedicalRecordDetail() {
                           onPress: () => {
                             void resetIntakeExamAnswers(record.id, accessToken).then((raw) => {
                               const mapped = mapInstance(raw);
+                              intakeLoadSeqRef.current += 1;
                               intakeDraftDirtyRef.current = false;
                               setDetail(mapped);
                               upsertIntake(mapped);
@@ -996,24 +1098,32 @@ export default function MedicalRecordDetail() {
                   onPress={() => {
                     if (!accessToken) return;
                     setSavingIntake(true);
-                    void saveIntakeExamAnswers(
-                      record.id,
-                      { answers: intakeAnswersDraft, complete: false },
-                      accessToken,
-                    )
-                      .then((raw) => {
+                    void (async () => {
+                      try {
+                        try {
+                          await intakeExamTakerRef.current?.flushPendingAudio();
+                        } catch {
+                          /* still save other answers */
+                        }
+                        const raw = await saveIntakeExamAnswers(
+                          record.id,
+                          { answers: intakeAnswersDraftRef.current, complete: false },
+                          accessToken,
+                        );
                         const mapped = mapInstance(raw);
+                        intakeLoadSeqRef.current += 1;
                         intakeDraftDirtyRef.current = false;
                         setDetail(mapped);
                         upsertIntake(mapped);
                         setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
                         void refetchListsAfterChange();
                         showSuccessToast(isRTL ? "تم حفظ المسودة" : "Draft saved");
-                      })
-                      .catch((e) =>
-                        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message),
-                      )
-                      .finally(() => setSavingIntake(false));
+                      } catch (e) {
+                        Alert.alert(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
+                      } finally {
+                        setSavingIntake(false);
+                      }
+                    })();
                   }}
                   disabled={savingIntake}
                   style={[styles.addSymptomBtn, { backgroundColor: colors.muted }]}
@@ -1026,23 +1136,31 @@ export default function MedicalRecordDetail() {
                   onPress={() => {
                     if (!accessToken) return;
                     setSavingIntake(true);
-                    void saveIntakeExamAnswers(
-                      record.id,
-                      { answers: intakeAnswersDraft, complete: true },
-                      accessToken,
-                    )
-                      .then((raw) => {
+                    void (async () => {
+                      try {
+                        try {
+                          await intakeExamTakerRef.current?.flushPendingAudio();
+                        } catch {
+                          /* continue */
+                        }
+                        const raw = await saveIntakeExamAnswers(
+                          record.id,
+                          { answers: intakeAnswersDraftRef.current, complete: true },
+                          accessToken,
+                        );
                         const mapped = mapInstance(raw);
+                        intakeLoadSeqRef.current += 1;
                         intakeDraftDirtyRef.current = false;
                         setDetail(mapped);
                         upsertIntake(mapped);
                         setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
                         void refetchListsAfterChange();
-                      })
-                      .catch((e) =>
-                        Alert.alert(isRTL ? "فشل الإرسال" : "Submit failed", (e as Error).message),
-                      )
-                      .finally(() => setSavingIntake(false));
+                      } catch (e) {
+                        Alert.alert(isRTL ? "فشل الإرسال" : "Submit failed", (e as Error).message);
+                      } finally {
+                        setSavingIntake(false);
+                      }
+                    })();
                   }}
                   disabled={savingIntake}
                   style={[styles.addSymptomBtn, { backgroundColor: colors.primary }]}
@@ -1388,6 +1506,60 @@ export default function MedicalRecordDetail() {
           </View>
         ) : null}
 
+        {isPrescription && record.linkedConsultations && record.linkedConsultations.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.cardHeader, { flexDirection: dir }]}>
+              <View style={[styles.cardIconWrap, { backgroundColor: `${colors.primary}18` }]}>
+                <MessageCircle size={18} color={colors.primary} />
+              </View>
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
+                {isRTL ? "استشارات مرتبطة" : "Linked consultations"}
+              </Text>
+            </View>
+            {record.linkedConsultations.map((consultation) => {
+              const peerId = isDoctorView ? consultation.patientId : consultation.doctorId;
+              const title = isDoctorView ? consultation.patientName : consultation.doctorName;
+              return (
+                <Pressable
+                  key={consultation.id}
+                  onPress={() => router.push({ pathname: "/chat/[id]", params: { id: peerId } })}
+                  style={[
+                    styles.linkedDocRow,
+                    { borderColor: colors.border, flexDirection: dir },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.linkedThumb,
+                      styles.linkedThumbPlaceholder,
+                      { backgroundColor: `${colors.primary}22` },
+                    ]}
+                  >
+                    <MessageCircle size={22} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={{ color: colors.foreground, fontWeight: "700", textAlign }}
+                      numberOfLines={2}
+                    >
+                      {title}
+                    </Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
+                      {consultationStatusLabel(consultation.status, t)}
+                      {" · "}
+                      {new Date(consultation.createdAt).toLocaleDateString(localeTag(isRTL), {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
         <DetailCard
           icon={<Calendar size={18} color={color} />}
           label={isRTL ? "التاريخ" : "Date"}
@@ -1439,6 +1611,11 @@ export default function MedicalRecordDetail() {
       <FullscreenImageViewer
         uri={zoomImageUri}
         onClose={() => setZoomImageUri(null)}
+      />
+      <MedicalPdfViewer
+        view={pdfView}
+        onClose={() => setPdfView(null)}
+        isRTL={isRTL}
       />
     </View>
   );

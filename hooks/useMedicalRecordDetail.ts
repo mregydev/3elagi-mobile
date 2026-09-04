@@ -1,7 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
-import { isMedicalImageAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
+import { isMedicalImageAttachment, isMedicalPdfAttachment, MEDICAL_RECORD_CATEGORY_META } from "@/components/medical/medicalRecordMeta";
+import type { MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
+import { navigateBack } from "@/utils/appNavigation";
+import { confirmDestructiveAction } from "@/utils/confirmDestructiveAction";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -30,9 +33,10 @@ import {
   resetIntakeExamAnswers,
   saveIntakeExamAnswers,
 } from "@/domains/intake-exams/api";
+import type { IntakeExamTakerHandle } from "@/components/intake/IntakeExamTaker";
 import { useMedicalStore } from "@/domains/medical/store";
 import { getApiLang } from "@/domains/i18n/store";
-import type { MedicalRecord } from "@/domains/medical/types";
+import type { LinkedConsultationSummary, MedicalRecord } from "@/domains/medical/types";
 import {
   canAddDiagnosisSymptom,
   canDeleteMedicalRecord,
@@ -40,20 +44,25 @@ import {
 } from "@/domains/medical/permissions";
 import { showAppAlert } from "@/utils/appAlert";
 import { openBlankPdfTab, openPdfInNewTab } from "@/utils/openPdfInNewTab";
+import { readRouteParam } from "@/utils/routeParams";
 import { showSuccessToast } from "@/utils/toast";
 
 export function useMedicalRecordDetail(isRTL: boolean) {
-  const { id, doctorView, patientUserId } = useLocalSearchParams<{
-    id: string;
-    doctorView?: string;
-    patientUserId?: string;
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    doctorView?: string | string[];
+    patientUserId?: string | string[];
   }>();
+  const id = readRouteParam(params.id);
+  const doctorView = readRouteParam(params.doctorView);
+  const patientUserId = readRouteParam(params.patientUserId) || undefined;
 
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const doctorId = useAuthStore((s) => s.doctorId);
   const isDoctorView = doctorView === "1";
+  const isDoctorRole = role?.toLowerCase() === "doctor";
   const records = useMedicalStore((s) => s.records);
   const remove = useMedicalStore((s) => s.remove);
   const upsertDiagnosis = useMedicalStore((s) => s.upsertDiagnosis);
@@ -64,6 +73,9 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const notifyMedicalHistoryChanged = useMedicalStore((s) => s.notifyMedicalHistoryChanged);
   const intakeDraftDirtyRef = useRef(false);
   const intakeAnswersDraftRef = useRef<Record<string, string[]>>({});
+  const intakeExamTakerRef = useRef<IntakeExamTakerHandle | null>(null);
+  /** Bumped to ignore in-flight instance fetches after a local save/reset. */
+  const intakeLoadSeqRef = useRef(0);
 
   const [detail, setDetail] = useState<MedicalRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -74,6 +86,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
   const [editingDiagnosis, setEditingDiagnosis] = useState(false);
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
+  const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
   const [editingLabDetails, setEditingLabDetails] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -153,9 +166,13 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       setLoadState("done");
     };
 
-    const applyIntake = (raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>) => {
+    const applyIntake = (
+      raw: Awaited<ReturnType<typeof fetchIntakeExamInstance>>,
+      seq: number,
+    ) => {
       const mapped = mapInstance(raw);
-      if (cancelled) return mapped;
+      // Ignore stale responses (superseded load, or a save completed while this was in flight).
+      if (cancelled || seq !== intakeLoadSeqRef.current) return mapped;
       setDetail(mapped);
       upsertIntake(mapped);
       // Never wipe in-progress local edits with a slower network response.
@@ -165,11 +182,13 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       return mapped;
     };
 
-    const loadIntakeInstance = () =>
-      fetchIntakeExamInstance(id, accessToken)
-        .then(applyIntake)
+    const loadIntakeInstance = () => {
+      const seq = ++intakeLoadSeqRef.current;
+      return fetchIntakeExamInstance(id, accessToken)
+        .then((raw) => applyIntake(raw, seq))
         .then(() => true)
         .catch(() => false);
+    };
 
     if (cached?.category === "intake" || records.find((r) => r.id === id)?.category === "intake") {
       if (cached?.intakeExam?.answers && !intakeDraftDirtyRef.current) {
@@ -240,7 +259,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     // shared URL or one without patient context): the /patient/* endpoints are
     // patient-scoped and 404 for doctors, so use the doctor-scoped diagnosis
     // endpoint (server enforces doctor-patient access).
-    if (role === "doctor") {
+    if (isDoctorRole) {
       void (async () => {
         if (await loadIntakeInstance()) {
           finish();
@@ -327,6 +346,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     cached?.id,
     cached?.category,
     isDoctorView,
+    isDoctorRole,
     patientUserId,
     profile?.id,
     role,
@@ -360,6 +380,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
         isPrescription: false,
         isLabOrXray: false,
         isDocImage: false,
+        isDocPdf: false,
         isIntakeExam: false,
         canTakeIntakeExam: false,
         canPrintPrescription: false,
@@ -372,6 +393,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     const isPrescription = record.category === "prescription";
     const isLabOrXray = record.category === "lab" || record.category === "xray";
     const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
+    const isDocPdf = isMedicalPdfAttachment(record.fileUrl, record.fileName);
 
     return {
       meta,
@@ -385,6 +407,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
       isPrescription,
       isLabOrXray,
       isDocImage,
+      isDocPdf,
       canPrintPrescription:
         isPrescription &&
         !!accessToken &&
@@ -488,41 +511,43 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     }
   };
 
+  const performDelete = async () => {
+    if (!record || !profile) return;
+    if (!accessToken) {
+      showAppAlert(
+        isRTL ? "فشل الحذف" : "Delete failed",
+        isRTL ? "يجب تسجيل الدخول." : "You must be signed in.",
+      );
+      return;
+    }
+
+    try {
+      if (record.category === "lab" || record.category === "xray") {
+        await deletePatientMedicalDocument(record.id, accessToken);
+      } else if (record.category === "intake") {
+        await deleteIntakeExamInstance(record.id, accessToken);
+      } else {
+        throw new Error(
+          isRTL ? "لا يمكن حذف هذا النوع من السجلات." : "This record type cannot be deleted.",
+        );
+      }
+      await refetchListsAfterChange();
+      remove(profile.id, record.id);
+      navigateBack(router, "/(tabs)/records");
+    } catch (e) {
+      Alert.alert(isRTL ? "فشل الحذف" : "Delete failed", (e as Error).message);
+    }
+  };
+
   const confirmDelete = () => {
     if (!record || !derived.canDeleteRecord || !profile) return;
-    Alert.alert(
-      isRTL ? "حذف السجل" : "Delete record",
-      isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
-      [
-        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-        {
-          text: isRTL ? "حذف" : "Delete",
-          style: "destructive",
-          onPress: () => {
-            void (async () => {
-              try {
-                if (
-                  (record.category === "lab" || record.category === "xray") &&
-                  accessToken
-                ) {
-                  await deletePatientMedicalDocument(record.id, accessToken);
-                } else if (record.category === "intake" && accessToken) {
-                  await deleteIntakeExamInstance(record.id, accessToken);
-                }
-                await refetchListsAfterChange();
-                remove(profile.id, record.id);
-                router.back();
-              } catch (e) {
-                Alert.alert(
-                  isRTL ? "فشل الحذف" : "Delete failed",
-                  (e as Error).message,
-                );
-              }
-            })();
-          },
-        },
-      ],
-    );
+    confirmDestructiveAction({
+      title: isRTL ? "حذف السجل" : "Delete record",
+      message: isRTL ? `حذف "${record.title}"؟` : `Delete "${record.title}"?`,
+      confirmLabel: isRTL ? "حذف" : "Delete",
+      cancelLabel: isRTL ? "إلغاء" : "Cancel",
+      onConfirm: performDelete,
+    });
   };
 
   const updateIntakeAnswersDraft = useCallback((answers: Record<string, string[]>) => {
@@ -543,20 +568,35 @@ export function useMedicalRecordDetail(isRTL: boolean) {
 
     const timer = setTimeout(() => {
       if (!intakeDraftDirtyRef.current) return;
-      const snapshot = intakeAnswersDraftRef.current;
-      void saveIntakeExamAnswers(id, { answers: snapshot, complete: false }, accessToken)
-        .then((updated) => {
+      void (async () => {
+        // Best-effort: never block saving other answers if audio flush fails.
+        try {
+          await intakeExamTakerRef.current?.flushPendingAudio();
+        } catch {
+          /* keep going */
+        }
+        if (!intakeDraftDirtyRef.current) return;
+        const snapshot = intakeAnswersDraftRef.current;
+        try {
+          const updated = await saveIntakeExamAnswers(
+            id,
+            { answers: snapshot, complete: false },
+            accessToken,
+          );
           const mapped = mapInstance(updated);
+          // Invalidate in-flight detail fetches so they can't wipe this save.
+          intakeLoadSeqRef.current += 1;
           setDetail(mapped);
           upsertIntake(mapped);
           // Only clear dirty if the user hasn't typed more since this save started.
           if (intakeAnswersDraftRef.current === snapshot) {
             intakeDraftDirtyRef.current = false;
+            setIntakeAnswersDraft(mapped.intakeExam?.answers ?? {});
           }
-        })
-        .catch(() => {
+        } catch {
           // Keep dirty so the next edit / manual save can retry.
-        });
+        }
+      })();
     }, 900);
 
     return () => clearTimeout(timer);
@@ -573,12 +613,20 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     if (!record?.intakeExam || !accessToken || isDoctorView) return;
     setSavingIntake(true);
     try {
+      try {
+        await intakeExamTakerRef.current?.flushPendingAudio();
+      } catch {
+        // Still save whatever answers we already have (text/choices/uploaded media).
+      }
+      const answers = intakeAnswersDraftRef.current;
       const updated = await saveIntakeExamAnswers(
         record.id,
-        { answers: intakeAnswersDraft, complete: false },
+        { answers, complete: false },
         accessToken,
       );
       const mapped = mapInstance(updated);
+      // Prevent the original open-fetch from overwriting this save with empty answers.
+      intakeLoadSeqRef.current += 1;
       intakeDraftDirtyRef.current = false;
       setDetail(mapped);
       upsertIntake(mapped);
@@ -596,12 +644,19 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     if (!record?.intakeExam || !accessToken || isDoctorView) return;
     setSavingIntake(true);
     try {
+      try {
+        await intakeExamTakerRef.current?.flushPendingAudio();
+      } catch {
+        /* continue */
+      }
+      const answers = intakeAnswersDraftRef.current;
       const updated = await saveIntakeExamAnswers(
         record.id,
-        { answers: intakeAnswersDraft, complete: true },
+        { answers, complete: true },
         accessToken,
       );
       const mapped = mapInstance(updated);
+      intakeLoadSeqRef.current += 1;
       intakeDraftDirtyRef.current = false;
       setDetail(mapped);
       upsertIntake(mapped);
@@ -632,6 +687,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
               try {
                 const updated = await resetIntakeExamAnswers(record.id, accessToken);
                 const mapped = mapInstance(updated);
+                intakeLoadSeqRef.current += 1;
                 intakeDraftDirtyRef.current = false;
                 setDetail(mapped);
                 upsertIntake(mapped);
@@ -658,6 +714,11 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     } else {
       router.push(`/medical/${docId}`);
     }
+  };
+
+  const openLinkedConsultation = (consultation: LinkedConsultationSummary) => {
+    const peerId = isDoctorView ? consultation.patientId : consultation.doctorId;
+    router.push({ pathname: "/chat/[id]", params: { id: peerId } });
   };
 
   const printPrescription = async () => {
@@ -710,6 +771,12 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     savingDiagnosis,
     zoomImageUri,
     setZoomImageUri,
+    pdfView,
+    setPdfView,
+    openPdfAttachment: () => {
+      if (!record?.fileUrl) return;
+      setPdfView({ uri: record.fileUrl, fileName: record.fileName });
+    },
     editingLabDetails,
     setEditingLabDetails,
     editTitle,
@@ -722,6 +789,7 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     generateLabDetails,
     intakeAnswersDraft,
     setIntakeAnswersDraft: updateIntakeAnswersDraft,
+    intakeExamTakerRef,
     savingIntake,
     saveIntakeDraft,
     submitIntakeExam,
@@ -733,6 +801,9 @@ export function useMedicalRecordDetail(isRTL: boolean) {
     submitSymptom,
     confirmDelete,
     openLinkedDoc,
-    goBack: () => router.back(),
+    openLinkedConsultation,
+    goBack: () => {
+      navigateBack(router, "/(tabs)/records");
+    },
   };
 }

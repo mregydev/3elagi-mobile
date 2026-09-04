@@ -23,9 +23,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { BodyPartPicker } from "@/components/records/BodyPartPicker";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { useAuthStore } from "@/domains/auth/store";
+import { sharePrescriptionToChat } from "@/domains/medical/sharePrescriptionToChat";
 import {
   createPrescriptionForPatientUser,
   draftAiPrescriptionForDiagnosis,
@@ -152,12 +155,18 @@ function FormField({
 
 export function PrescriptionAddWebView() {
   const colors = useColors();
+  const aiEnabled = useAiEnabled();
   const { isRTL, t, locale } = useI18n();
   const apiLang = useApiLang();
   const { isDesktop, isTablet } = useWebLayout();
-  const { patientUserId: patientUserIdParam, bodyPart: bodyPartParam } = useLocalSearchParams<{
+  const {
+    patientUserId: patientUserIdParam,
+    bodyPart: bodyPartParam,
+    returnTo: returnToParam,
+  } = useLocalSearchParams<{
     patientUserId?: string;
     bodyPart?: string;
+    returnTo?: string;
   }>();
 
   const profile = useAuthStore((s) => s.profile);
@@ -170,12 +179,14 @@ export function PrescriptionAddWebView() {
 
   const patientUserId = resolveMedicalOwnerUserId(patientUserIdParam, profile?.id);
 
+  const returnTo = Array.isArray(returnToParam) ? returnToParam[0] : returnToParam;
+
   const exitAfterSave = () => {
     const fallback =
       role?.toLowerCase() === "doctor" && patientUserIdParam?.trim()
         ? (`/patients/${patientUserIdParam.trim()}` as `/patients/${string}`)
         : "/(tabs)/records";
-    leaveMedicalForm(fallback);
+    leaveMedicalForm(fallback, returnTo);
   };
 
   const [title, setTitle] = useState("");
@@ -389,6 +400,16 @@ export function PrescriptionAddWebView() {
       );
       upsertPrescription(saved);
       scheduleReminder(saved);
+      if (isDoctor && patientUserIdParam && profile?.id) {
+        await sharePrescriptionToChat({
+          patientUserId,
+          prescriptionId: saved.id,
+          title: trimmedTitle,
+          token: accessToken,
+          selfId: profile.id,
+          selfRole: role,
+        });
+      }
       notifyMedicalHistoryChanged(patientUserId);
       const history = await fetchAllMedicalHistory(patientUserId, accessToken, role ?? undefined);
       setRecordsFromApi(history, patientUserId);
@@ -480,7 +501,7 @@ export function PrescriptionAddWebView() {
                 colors={colors}
                 textAlign={textAlign}
               />
-              {isDoctor ? (
+              {isDoctor && aiEnabled ? (
                 <Pressable
                   onPress={() => void completeWithAi()}
                   disabled={!title.trim() || busy}
@@ -832,6 +853,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
+    // Pinned height so the Ask AI FAB knows exactly how far to lift.
+    minHeight: MEDICAL_FORM_SAVE_BAR_HEIGHT,
   },
   cancelBtn: {
     paddingHorizontal: 16,

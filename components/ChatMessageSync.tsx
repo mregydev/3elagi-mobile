@@ -8,6 +8,8 @@ import {
   onChatMessageDeleted,
   onChatMessageNew,
   onChatMessageUpdated,
+  onConsultationRemoved,
+  onChatMessagesRead,
   onChatStopTyping,
   onChatTyping,
   onMessageEmotionUpdated,
@@ -20,9 +22,11 @@ export function ChatMessageSync() {
   const activeChatPeerId = useChatStore((s) => s.activeChatPeerId);
   const handleIncomingMessage = useChatStore((s) => s.handleIncomingMessage);
   const handleIncomingMessageDelete = useChatStore((s) => s.handleIncomingMessageDelete);
+  const handleConsultationRemoved = useChatStore((s) => s.handleConsultationRemoved);
   const handleIncomingMessageUpdate = useChatStore((s) => s.handleIncomingMessageUpdate);
   const updateMessageEmotions = useChatStore((s) => s.updateMessageEmotions);
   const setPeerTyping = useChatStore((s) => s.setPeerTyping);
+  const markThreadReadByPeer = useChatStore((s) => s.markThreadReadByPeer);
 
   useEffect(() => {
     if (!accessToken || !selfId || !canUseChat(role)) return;
@@ -33,6 +37,9 @@ export function ChatMessageSync() {
       });
       onChatMessageDeleted((payload) => {
         handleIncomingMessageDelete(payload, accessToken, selfId);
+      });
+      onConsultationRemoved((payload) => {
+        handleConsultationRemoved(payload, accessToken, selfId, role);
       });
       onChatMessageUpdated((payload) => {
         handleIncomingMessageUpdate(payload, accessToken, selfId);
@@ -48,7 +55,15 @@ export function ChatMessageSync() {
     return () => {
       socket?.off("connect", onConnect);
     };
-  }, [accessToken, selfId, role, handleIncomingMessage, handleIncomingMessageDelete, handleIncomingMessageUpdate]);
+  }, [accessToken, selfId, role, handleIncomingMessage, handleIncomingMessageDelete, handleConsultationRemoved, handleIncomingMessageUpdate]);
+
+  // Peer opened our thread — flip our sent messages to read straight away.
+  useEffect(() => {
+    onChatMessagesRead((payload) => {
+      markThreadReadByPeer(payload.peer_id, payload.read_at);
+    });
+    return () => onChatMessagesRead(null);
+  }, [markThreadReadByPeer]);
 
   useEffect(() => {
     onMessageEmotionUpdated((payload) => {

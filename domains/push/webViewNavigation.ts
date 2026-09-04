@@ -1,4 +1,5 @@
 import { getPushNotificationPath } from "@/domains/push/navigation";
+import { openAsk3elagiAiWithChat } from "@/domains/ai/widget-store";
 import type { PushNotificationData } from "@/domains/push/types";
 
 type WebAppNavigator = (path: string) => void;
@@ -45,5 +46,9 @@ export function navigateWebAppPath(path: string): void {
 }
 
 export function navigateFromPushToWebApp(data: PushNotificationData): void {
+  if (data.type === "ai") {
+    openAsk3elagiAiWithChat(data.chatId);
+    return;
+  }
   navigateWebAppPath(getPushNotificationPath(data));
 }

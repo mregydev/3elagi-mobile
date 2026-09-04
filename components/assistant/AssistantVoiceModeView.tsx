@@ -54,7 +54,7 @@ export function AssistantVoiceModeView({
   const isProcessing = isTranscribing || sending || streaming;
   const isActive = isRecording || isProcessing || isTalking;
   const voiceText = liveTranscript.trim();
-  const sendDisabled = isProcessing || isTalking || !voiceText;
+  const sendDisabled = isProcessing || isTalking || (!voiceText && !isRecording);
 
   useEffect(() => {
     if (!isRecording) {
@@ -117,8 +117,8 @@ export function AssistantVoiceModeView({
     if (sending || streaming) return isEn ? "Thinking…" : "جاري التفكير…";
     if (isTalking) return isEn ? "Speaking…" : "جاري الرد…";
     return isEn
-      ? "Voice chat — tap send when done"
-      : "محادثة صوتية — اضغط إرسال عند الانتهاء";
+      ? "Mic — tap send when done"
+      : "الميكروفون — اضغط إرسال عند الانتهاء";
   })();
 
   const webLogoProps =
@@ -140,7 +140,7 @@ export function AssistantVoiceModeView({
         onPress={onExit}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel={isEn ? "Exit voice mode" : "إغلاق وضع الصوت"}
+        accessibilityLabel={isEn ? "Exit mic mode" : "إغلاق وضع الميكروفون"}
         style={[styles.closeBtn, isRTL && styles.closeBtnRtl]}
       >
         <X color={colors.mutedForeground} size={22} />

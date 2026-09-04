@@ -4,6 +4,7 @@ import { AppTextInput } from "@/components/AppTextInput";
 import { useColors } from "@/hooks/useColors";
 import { useInputContainerFocus } from "@/hooks/useInputContainerFocus";
 import { useI18n } from "@/hooks/useI18n";
+import { currencySuffix } from "@/utils/credits";
 import { flexRow } from "@/utils/rtl";
 
 const MIN_EGP = 1;
@@ -111,7 +112,7 @@ export function EgpPriceInput({
             { color: colors.mutedForeground },
           ]}
         >
-          {t.credits.currencySuffix}
+          {currencySuffix(t)}
         </Text>
       </View>
     </View>

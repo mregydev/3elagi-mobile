@@ -1,89 +1,264 @@
-import { Redirect } from "expo-router";
-import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { Redirect, router } from "expo-router";
+import { ChevronLeft, ChevronRight, MessageSquare, Users } from "lucide-react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { AppHeader } from "@/components/AppHeader";
+import { PatientSearchFilterPanel } from "@/components/PatientSearchFilterPanel";
+import {
+  EMPTY_PATIENT_FILTERS,
+  type PatientSearchFilters,
+} from "@/domains/patients/search";
+import {
+  fetchMyConsultations,
+  type DoctorConsultation,
+} from "@/domains/consultations/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
-import { HubEmbeddedProvider } from "@/hooks/useHubEmbedded";
 import { useI18n } from "@/hooks/useI18n";
-import IntakeTab from "./intake";
-import ReviewsTab from "./reviews";
+import { showErrorToast } from "@/utils/toast";
+import { alignText, flexRow, localeTag } from "@/utils/rtl";
 
-type SectionKey = "intake" | "reviews";
+type ConsultationPatientRow = {
+  patient_id: string;
+  patient_name: string;
+  last_at: string;
+  open_count: number;
+  total_count: number;
+};
 
+function dedupeConsultationPatients(
+  items: DoctorConsultation[],
+): ConsultationPatientRow[] {
+  const map = new Map<string, ConsultationPatientRow>();
+  for (const c of items) {
+    const existing = map.get(c.patient_id);
+    if (!existing) {
+      map.set(c.patient_id, {
+        patient_id: c.patient_id,
+        patient_name: c.patient_name || "Patient",
+        last_at: c.created_at,
+        open_count: c.status === "open" ? 1 : 0,
+        total_count: 1,
+      });
+      continue;
+    }
+    existing.total_count += 1;
+    if (c.status === "open") existing.open_count += 1;
+    if (new Date(c.created_at).getTime() > new Date(existing.last_at).getTime()) {
+      existing.last_at = c.created_at;
+      if (c.patient_name) existing.patient_name = c.patient_name;
+    }
+  }
+  return [...map.values()].sort(
+    (a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime(),
+  );
+}
+
+/** Doctor Patients tab — patients who started a consultation with this doctor. */
 export default function PatientsTab() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const role = useAuthStore((s) => s.role);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const isDoctor = role?.toLowerCase() === "doctor";
-  const [active, setActive] = useState<SectionKey>("intake");
+  const dir = flexRow(isRTL);
+  const textAlign = alignText(isRTL);
+  const Chevron = isRTL ? ChevronLeft : ChevronRight;
+
+  const [rows, setRows] = useState<ConsultationPatientRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filters, setFilters] = useState<PatientSearchFilters>(EMPTY_PATIENT_FILTERS);
+
+  const load = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const list = await fetchMyConsultations(accessToken);
+      setRows(dedupeConsultationPatients(list));
+    } catch (e) {
+      showErrorToast(t.common.error, (e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, t.common.error]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isDoctor) return;
+      void load();
+    }, [isDoctor, load]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
+  const filtered = useMemo(() => {
+    const q = filters.text.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => r.patient_name.toLowerCase().includes(q));
+  }, [rows, filters.text]);
 
   if (!isDoctor) return <Redirect href="/(tabs)" />;
 
-  const sections: { key: SectionKey; label: string; Comp: React.ComponentType }[] = [
-    { key: "intake", label: t.tabs.intake, Comp: IntakeTab },
-    { key: "reviews", label: t.tabs.reviews, Comp: ReviewsTab },
-  ];
-  const ActiveComp = sections.find((s) => s.key === active)?.Comp ?? IntakeTab;
+  const openPatient = (row: ConsultationPatientRow) => {
+    router.push({
+      pathname: "/patients/[userId]",
+      params: { userId: row.patient_id, name: row.patient_name },
+    });
+  };
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString(localeTag(isRTL), {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return iso;
+    }
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader />
-      <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.tabRow,
-            { flexDirection: isRTL ? "row-reverse" : "row" },
-          ]}
-        >
-          {sections.map((s) => {
-            const on = active === s.key;
-            return (
-              <Pressable
-                key={s.key}
-                onPress={() => setActive(s.key)}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.foreground, textAlign }]}>
+          {t.patients.title}
+        </Text>
+        <Text style={[styles.sub, { color: colors.mutedForeground, textAlign }]}>
+          {t.patients.consultationPatientsSub}
+        </Text>
+      </View>
+
+      <View style={styles.searchWrap}>
+        <PatientSearchFilterPanel
+          filters={filters}
+          onChange={setFilters}
+          isRTL={isRTL}
+          dir={dir}
+        />
+      </View>
+
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.patient_id}
+          contentContainerStyle={
+            filtered.length === 0 ? styles.emptyList : styles.list
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Users size={40} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                {t.patients.noPatientsYet}
+              </Text>
+              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+                {t.patients.noPatientsYetSub}
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => openPatient(item)}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  flexDirection: dir,
+                },
+              ]}
+            >
+              <View
                 style={[
-                  styles.chip,
-                  {
-                    backgroundColor: on ? colors.primary : colors.muted,
-                    borderColor: on ? colors.primary : colors.border,
-                  },
+                  styles.avatar,
+                  { backgroundColor: `${colors.primary}18` },
                 ]}
               >
-                <Text
-                  style={{
-                    color: on ? "#fff" : colors.foreground,
-                    fontWeight: "700",
-                    fontSize: 13,
-                  }}
-                >
-                  {s.label}
+                <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 16 }}>
+                  {(item.patient_name || "?").charAt(0).toUpperCase()}
                 </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-      <View style={styles.body}>
-        <HubEmbeddedProvider>
-          <ActiveComp />
-        </HubEmbeddedProvider>
-      </View>
+              </View>
+              <View style={styles.cardBody}>
+                <Text
+                  style={[styles.name, { color: colors.foreground, textAlign }]}
+                  numberOfLines={1}
+                >
+                  {item.patient_name}
+                </Text>
+                <View style={[styles.metaRow, { flexDirection: dir }]}>
+                  <MessageSquare size={12} color={colors.mutedForeground} />
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                    {item.open_count > 0
+                      ? t.patients.openConsultations(item.open_count)
+                      : t.patients.consultationCount(item.total_count)}
+                  </Text>
+                </View>
+                <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
+                  {t.patients.lastVisit} {formatDate(item.last_at)}
+                </Text>
+              </View>
+              <Chevron size={18} color={colors.mutedForeground} />
+            </Pressable>
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  tabBar: { borderBottomWidth: StyleSheet.hairlineWidth },
-  tabRow: { gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 4,
   },
-  body: { flex: 1, minHeight: 0 },
+  title: { fontSize: 20, fontWeight: "800" },
+  sub: { fontSize: 13, lineHeight: 18 },
+  searchWrap: { paddingHorizontal: 12, paddingVertical: 8 },
+  list: { paddingHorizontal: 12, paddingBottom: 24, gap: 8 },
+  emptyList: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+  empty: { alignItems: "center", gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: "800", marginTop: 8 },
+  emptySub: { fontSize: 13, textAlign: "center", maxWidth: 280 },
+  card: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    alignItems: "center",
+    gap: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardBody: { flex: 1, gap: 2, minWidth: 0 },
+  name: { fontSize: 15, fontWeight: "800" },
+  metaRow: { alignItems: "center", gap: 4 },
 });

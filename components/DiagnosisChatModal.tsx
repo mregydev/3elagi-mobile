@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   webDialog: {
     width: "100%",
     maxWidth: 560,
-    maxHeight: "min(88vh, 720px)" as unknown as number,
+    maxHeight: "min(72vh, 600px)" as unknown as number,
     borderRadius: 20,
     borderWidth: 1,
     paddingTop: 16,
@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     paddingTop: 16,
     paddingHorizontal: 16,
-    maxHeight: "90%",
+    maxHeight: "72%",
   },
 });

@@ -6,6 +6,7 @@ import { useChatStore } from "@/domains/chat/store";
 import { AUTH_EVENTS } from "@/domains/auth/events";
 import { CHAT_EVENTS } from "@/domains/chat/events";
 import { navigateFromPushNotification } from "@/domains/push/navigation";
+import { getNotificationsEnabled } from "@/domains/push/notificationsPreference";
 import { getPushProvider } from "@/domains/push/push-provider.factory";
 import { parsePushNotificationData } from "@/domains/push/types";
 import { emit, on } from "@/utils/eventBus";
@@ -43,14 +44,20 @@ export function PushNotificationsBootstrap() {
     let cancelled = false;
 
     const attemptRegister = (label: string) => {
-      void provider
-        .register(accessToken)
-        .then((token) => {
-          if (cancelled) return;
-          if (token) {
-            tokenRef.current = token;
-            console.log(`[push] Expo push token registered (${label})`);
+      void getNotificationsEnabled()
+        .then((enabled) => {
+          if (cancelled || !enabled) {
+            if (!enabled) {
+              console.log(`[push] Skipping registration — notifications disabled (${label})`);
+            }
+            return null;
           }
+          return provider.register(accessToken);
+        })
+        .then((token) => {
+          if (cancelled || !token) return;
+          tokenRef.current = token;
+          console.log(`[push] Expo push token registered (${label})`);
         })
         .catch((err: unknown) => {
           if (cancelled) return;

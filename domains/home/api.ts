@@ -30,6 +30,13 @@ export interface SpecialityDoctorRow {
   rating_average?: number | null;
   rating_total?: number | null;
   consultation_price?: number | null;
+  text_price_local?: number | null;
+  text_price_usd?: number | null;
+  video_price_local?: number | null;
+  video_price_usd?: number | null;
+  immediate_call_enabled?: boolean | null;
+  on_call?: boolean | null;
+  tags?: string[] | null;
   role: "doctor";
 }
 
@@ -63,14 +70,27 @@ export interface SpecialityDoctor {
   ratingAverage?: number | null;
   ratingTotal?: number | null;
   consultationPrice?: number | null;
+  /** Cash fees the doctor set; which one applies depends on the viewer. */
+  textPriceLocal?: number | null;
+  textPriceUsd?: number | null;
+  videoPriceLocal?: number | null;
+  videoPriceUsd?: number | null;
+  immediateCallEnabled?: boolean;
+  onCall?: boolean;
+  tags?: string[];
 }
 
 function mapAdvertisement(row: AdvertisementRow): Advertisement {
+  const bannerUrl = resolveAssetUrl(row.banner_image_url);
+  // Bust cache when campaign art is replaced under the same filename.
+  const bannerImageUrl = bannerUrl
+    ? `${bannerUrl}${bannerUrl.includes("?") ? "&" : "?"}v=app-ar-1200x320`
+    : bannerUrl;
   return {
     id: row.id,
     title: row.title,
     description: row.description,
-    bannerImageUrl: row.banner_image_url,
+    bannerImageUrl,
     clinicId: row.clinic_id,
     clinicName: row.clinic_name,
   };
@@ -107,6 +127,15 @@ function mapDoctor(row: SpecialityDoctorRow): SpecialityDoctor {
     ratingAverage: row.rating_average ?? undefined,
     ratingTotal: row.rating_total ?? undefined,
     consultationPrice: row.consultation_price ?? 1,
+    textPriceLocal: row.text_price_local ?? null,
+    textPriceUsd: row.text_price_usd ?? null,
+    videoPriceLocal: row.video_price_local ?? null,
+    videoPriceUsd: row.video_price_usd ?? null,
+    immediateCallEnabled: !!row.immediate_call_enabled,
+    onCall: !!row.on_call,
+    tags: Array.isArray(row.tags)
+      ? row.tags.map((t) => String(t).trim()).filter(Boolean)
+      : [],
   };
 }
 
@@ -122,6 +151,7 @@ export async function fetchAdvertisements(): Promise<Advertisement[]> {
   return data.map(mapAdvertisement);
 }
 
+/** Every speciality, all markets — country is a UI filter now, not a URL one. */
 export async function fetchSpecialities(): Promise<Speciality[]> {
   const res = await fetch(`${API_BASE}/specialities`);
   const data = (await res.json().catch(() => [])) as SpecialityRow[];
@@ -134,6 +164,7 @@ export async function fetchSpecialities(): Promise<Speciality[]> {
   return data.map(mapSpeciality);
 }
 
+/** Doctors from every market; the roster filters by country in the UI. */
 export async function fetchDoctorsBySpeciality(
   specialityId: string,
 ): Promise<SpecialityDoctor[]> {

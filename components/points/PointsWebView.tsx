@@ -15,7 +15,9 @@ import { AppTextInput } from "@/components/AppTextInput";
 
 import { router } from "expo-router";
 import { PointsPieChart } from "@/components/PointsPieChart";
+import { useIpPointPricing } from "@/hooks/useIpPointPricing";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { useColors } from "@/hooks/useColors";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useI18n } from "@/hooks/useI18n";
@@ -24,6 +26,7 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 import { useAuthStore } from "@/domains/auth/store";
 import { usePointsStore } from "@/domains/points/store";
 import { reimbursePoints } from "@/domains/points/api";
+import { formatMoney } from "@/utils/credits";
 import { webConfirm } from "@/utils/webConfirm";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 import type { Translations } from "@/constants/translations";
@@ -97,6 +100,12 @@ function AddPointsForm({
 }) {
   const dir = flexRow(isRTL);
   const textAlign = isRTL ? "right" : "left";
+  const { rate, currency, moneyForAmount } = useIpPointPricing();
+  const ptsPreview = parseInt(amountText.trim(), 10);
+  const duePreview =
+    Number.isFinite(ptsPreview) && ptsPreview >= 1
+      ? moneyForAmount(ptsPreview)
+      : null;
 
   const handleContinue = () => {
     const amount = parseAmount();
@@ -108,6 +117,9 @@ function AddPointsForm({
   return (
     <View style={{ gap: 16 }}>
       <View style={styles.addCardIntro}>
+        <Text style={[styles.addCardHint, { color: colors.mutedForeground, textAlign }]}>
+          {t.credits.pricePerPointLabel(rate, currency)}
+        </Text>
         <Text style={[styles.addCardHint, { color: colors.mutedForeground, textAlign }]}>
           {t.credits.creditAmountHint}
         </Text>
@@ -140,6 +152,11 @@ function AddPointsForm({
               },
             ]}
           />
+          {duePreview != null ? (
+            <Text style={{ color: colors.primary, fontWeight: "800", textAlign, marginTop: 8 }}>
+              {t.credits.checkoutAmount}: {formatMoney(duePreview, t)}
+            </Text>
+          ) : null}
         </View>
 
         <Pressable
@@ -269,12 +286,14 @@ export function PointsWebView() {
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
       <ScrollView
+        nativeID={BRAND_SCROLL_NATIVE_ID}
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           useSplitLayout && styles.scrollContentDesktop,
         ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
       >
         <View
           style={[

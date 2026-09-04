@@ -1,3 +1,6 @@
+/** Shared nativeID for branded scrollbars on web ScrollViews / overflow panels. */
+export const BRAND_SCROLL_NATIVE_ID = "brand-scroll";
+
 export const GLOBAL_WEB_CSS = `
 html, body, #root {
   height: 100%;
@@ -7,9 +10,37 @@ html, body, #root {
 body {
   margin: 0;
   overflow: hidden;
-  background: #f5f7fa;
+  background: var(--app-bg, #f5f7fa);
+  color: var(--app-fg, #1a2132);
+  color-scheme: light dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Arabic typography — Cairo (loaded in +html.tsx). Keyed off [lang="ar"], not
+ * [dir="rtl"]: the document stays dir="ltr" on purpose (see LocaleBootstrap).
+ * RN Web writes no font-family of its own, so this cascades to every Text.
+ */
+html[lang="ar"],
+html[lang="ar"] body,
+html[lang="ar"] input,
+html[lang="ar"] textarea,
+html[lang="ar"] button,
+html[lang="ar"] select {
+  font-family: "Cairo", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/*
+ * Latin tracking is set per-component (headlines run down to -0.6px) and it
+ * pulls Arabic glyphs out of their joins, so drop it whenever Arabic renders.
+ */
+html[lang="ar"] * {
+  letter-spacing: normal !important;
+}
+
+html[lang="ar"] body {
+  line-height: 1.7;
 }
 
 @media (max-width: 1023px) {
@@ -36,40 +67,59 @@ textarea:focus-visible {
   box-shadow: none;
 }
 
-@media (min-width: 1024px) {
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(93, 111, 135, 0.35);
-    border-radius: 999px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
+/*
+ * Chromium ignores ::-webkit-scrollbar-* when scrollbar-color is set (including via inheritance).
+ * Keep scrollbar-color for Firefox only; use webkit rules for Chrome/Safari/Edge.
+ */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--scrollbar-thumb, #3057f2) var(--scrollbar-track, rgba(48, 87, 242, 0.1)) !important;
   }
 }
 
-#auth-form-scroll {
+/* Branded scrollbars on every overflow container (incl. RN Web ScrollView). */
+*::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb, #3057f2) !important;
+  border-radius: 999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover, #2546c4) !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, rgba(48, 87, 242, 0.1)) !important;
+}
+
+#auth-form-scroll,
+#brand-scroll {
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #3057f2 rgba(48, 87, 242, 0.1);
 }
 
-#auth-form-scroll::-webkit-scrollbar {
-  width: 8px;
+/*
+ * Arabic: the scrollbar belongs on the leading (left) edge. Only the scroll
+ * containers flip; children are reset to ltr so the hand-rolled RTL layout
+ * (explicit flexDirection / textAlign) renders exactly as before.
+ */
+html[lang="ar"] #auth-form-scroll,
+html[lang="ar"] #brand-scroll {
+  direction: rtl;
 }
 
-#auth-form-scroll::-webkit-scrollbar-thumb {
-  background: #3057f2;
-  border-radius: 999px;
-}
-
-#auth-form-scroll::-webkit-scrollbar-track {
-  background: rgba(48, 87, 242, 0.1);
+html[lang="ar"] #auth-form-scroll > *,
+html[lang="ar"] #brand-scroll > * {
+  direction: ltr;
 }
 
 @media (min-width: 1024px) {
@@ -82,8 +132,8 @@ textarea:focus-visible {
   }
 
   [data-testid="points-quick-chip"]:hover {
-    border-color: #3057f2 !important;
-    background: rgba(48, 87, 242, 0.08) !important;
+    border-color: #0f766e !important;
+    background: rgba(15, 118, 110, 0.08) !important;
   }
 
   [data-testid="points-add-btn"]:hover {

@@ -55,7 +55,22 @@ export function ChatAccessBanner({ isRTL, isDoctor, access }: Props) {
       <View style={[styles.wrap, { backgroundColor: `${colors.primary}10` }]}>
         <ShieldCheck size={16} color={colors.primary} />
         <Text style={[styles.text, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
-          {isRTL ? "الطبيب يمكنه تعديل سجلك الطبي" : "Doctor can edit your medical records"}
+          {isRTL
+            ? "الطبيب يمكنه عرض وتعديل سجلك الطبي — يمكنك إلغاء الصلاحية من الأزرار بالأسفل"
+            : "Doctor can view and edit your medical records — revoke access from the buttons below"}
+        </Text>
+      </View>
+    );
+  }
+
+  if (!isDoctor && !access.records_allowed) {
+    return (
+      <View style={[styles.wrap, { backgroundColor: `${colors.primary}12` }]}>
+        <ShieldAlert size={16} color={colors.primary} />
+        <Text style={[styles.text, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
+          {isRTL
+            ? "لم تمنح هذا الطبيب صلاحية السجل الطبي بعد — استخدم «منح صلاحية السجل» بالأسفل"
+            : "This doctor does not have record access yet — use “Grant record access” below"}
         </Text>
       </View>
     );

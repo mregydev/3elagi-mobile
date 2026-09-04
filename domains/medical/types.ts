@@ -26,6 +26,18 @@ export interface LinkedDiagnosisSummary {
   title: string;
 }
 
+export interface LinkedConsultationSummary {
+  id: string;
+  status: "pending" | "open" | "ended" | "cancelled" | "rejected";
+  createdAt: string;
+  closedAt: string | null;
+  doctorId: string;
+  patientId: string;
+  diagnosisId: string | null;
+  doctorName: string;
+  patientName: string;
+}
+
 export interface IntakeExamDetail {
   instanceId: string;
   assignmentId: string;
@@ -63,6 +75,8 @@ export interface MedicalRecord {
   linkedDocuments?: MedicalRecord[];
   /** Diagnoses linked to this lab/xray record */
   linkedDiagnoses?: LinkedDiagnosisSummary[];
+  /** Consultations that produced this prescription (via shared diagnosis). */
+  linkedConsultations?: LinkedConsultationSummary[];
   /** @deprecated Use linkedDiagnoses — kept for older API responses */
   diagnosisId?: string | null;
   /** Medication rows when category is prescription */

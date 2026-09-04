@@ -299,6 +299,7 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
       </Pressable>
 
       <View
+        testID="profile-calendar"
         style={[
           styles.calendarWrap,
           isMobileLayout && styles.calendarWrapMobile,

@@ -15,6 +15,7 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
+import { useProductTourStore, currentTourStep } from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -28,6 +29,11 @@ export default function HistoryTab() {
   const loading = useChatStore((s) => s.loading);
   const error = useChatStore((s) => s.error);
   const loadConversations = useChatStore((s) => s.loadConversations);
+  const tourHighlightUserId = useProductTourStore((s) => s.testPatientUserId);
+  const tourActive = useProductTourStore((s) => s.active);
+  const tourPhase = useProductTourStore((s) => s.phase);
+  const tourStepIndex = useProductTourStore((s) => s.stepIndex);
+  const tourStep = currentTourStep(tourPhase, tourStepIndex);
   const [query, setQuery] = useState("");
 
   const refresh = useCallback(() => {
@@ -43,9 +49,22 @@ export default function HistoryTab() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => c.user.name.toLowerCase().includes(q));
-  }, [conversations, query]);
+    let list = q
+      ? conversations.filter((c) => c.user.name.toLowerCase().includes(q))
+      : conversations;
+    if (
+      tourHighlightUserId &&
+      tourActive &&
+      tourStep?.anchor === "chat-test-row"
+    ) {
+      list = [...list].sort((a, b) => {
+        if (a.user.id === tourHighlightUserId) return -1;
+        if (b.user.id === tourHighlightUserId) return 1;
+        return 0;
+      });
+    }
+    return list;
+  }, [conversations, query, tourHighlightUserId, tourActive, tourStep?.anchor]);
 
   const dir = isRTL ? "row-reverse" : "row";
   const isDoctor = role?.toLowerCase() === "doctor";
@@ -95,6 +114,7 @@ export default function HistoryTab() {
         isRTL={isRTL}
         onSelect={(id) => router.push(`/chat/${id}`)}
         emptyLabel={emptyLabel}
+        tourHighlightUserId={tourHighlightUserId}
       />
     </View>
   );

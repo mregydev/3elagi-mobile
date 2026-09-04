@@ -1,5 +1,5 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,26 +12,26 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
+import { AuthFormBody } from "@/components/auth/AuthFormBody";
+import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { useAuthStore } from "@/domains/auth/store";
-import { getPostAuthRoute } from "@/domains/auth/navigation";
+import { getPostLoginRoute } from "@/domains/auth/navigation";
 import {
   hasFieldErrors,
   validateLoginFields,
   type LoginFieldErrors,
 } from "@/domains/auth/validation";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
-import { WEB_MOBILE_AUTH_EXTRA_BOTTOM_PADDING } from "@/constants/webLayout";
 
 export default function LoginScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const login = useAuthStore((s) => s.login);
@@ -41,8 +41,11 @@ export default function LoginScreen() {
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const passwordRef = useRef<TextInput>(null);
-  const hideIntro = Platform.OS === "web" && isDesktop;
-  const hideWebTopBar = Platform.OS === "web";
+  const isWeb = Platform.OS === "web";
+  /** Desktop web: show title only (hero image carries branding). */
+  const showTitle = true;
+  const showSubtitle = !(isWeb && isDesktop);
+  const hideWebTopBar = isWeb;
 
   const submit = async () => {
     const errors = validateLoginFields(email, password, t.auth);
@@ -58,7 +61,8 @@ export default function LoginScreen() {
     try {
       await login({ email: email.trim(), password });
       const { role, doctorApprovalStatus } = useAuthStore.getState();
-      router.replace(getPostAuthRoute(role, doctorApprovalStatus));
+
+      router.replace(getPostLoginRoute(role, doctorApprovalStatus));
     } catch (e) {
       const message = (e as Error).message;
       if (message === "__UNSUPPORTED_ROLE__") {
@@ -82,37 +86,53 @@ export default function LoginScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 16 : insets.top + 8,
+              // Native sits inside the auth card, which already clears the notch.
+              paddingTop: Platform.OS === "web" ? 8 : 4,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
-          <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
-            <ArrowLeft size={22} color={colors.foreground} />
-          </Pressable>
+          <AuthHomeLink compact />
           <AuthLanguageField />
         </View>
       ) : null}
-      <KeyboardSafeScrollView
+      <AuthFormBody
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
+          Platform.OS !== "web" && styles.bodyNative,
           Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
         ]}
         bottomOffset={32}
       >
-        {!hideIntro ? (
-          <>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              {t.auth.welcomeBack}
-            </Text>
-            <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              {t.auth.signInSubtitle}
-            </Text>
-          </>
+        {showTitle ? (
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.foreground,
+                alignSelf: isRTL ? "flex-end" : "flex-start",
+                width: "100%",
+                textAlign: isRTL ? "right" : "left",
+              },
+            ]}
+          >
+            {isWeb ? t.auth.logIn : t.auth.welcomeBack}
+          </Text>
+        ) : null}
+        {showSubtitle ? (
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            {t.auth.signInSubtitle}
+          </Text>
         ) : null}
 
-        <View style={{ width: "100%", gap: 12, marginTop: hideIntro ? 0 : 28 }}>
+        <View
+          style={{
+            width: "100%",
+            gap: 12,
+            marginTop: Platform.OS === "web" ? (showSubtitle ? 28 : 20) : showSubtitle ? 14 : 10,
+          }}
+        >
           {formError ? <AuthFormError message={formError} colors={colors} /> : null}
           <AuthFormField
             label={t.auth.email}
@@ -152,34 +172,53 @@ export default function LoginScreen() {
             isRTL={isRTL}
           />
           <Pressable
+            onPress={() => router.push("/auth/forgot-password")}
+            style={{ alignItems: isRTL ? "flex-start" : "flex-end", paddingVertical: 2 }}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
+              {t.auth.forgotPassword}
+            </Text>
+          </Pressable>
+          <Pressable
             onPress={submit}
             disabled={loading}
-            style={[
+            style={({ pressed }) => [
               styles.btn,
               {
-                backgroundColor: loading
-                  ? colors.mutedForeground
-                  : colors.primary,
-                marginTop: 8,
+                shadowColor: colors.primary,
+                opacity: loading ? 0.7 : pressed ? 0.92 : 1,
               },
             ]}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>{t.auth.logIn}</Text>
-            )}
+            <LinearGradient
+              colors={loading ? ["#94A3B8", "#94A3B8"] : accentGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.btnGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>{t.auth.logIn}</Text>
+              )}
+            </LinearGradient>
           </Pressable>
+          <GoogleAuthButton />
           <Pressable
             onPress={() => router.replace("/auth/signup")}
-            style={{ paddingVertical: 8, alignItems: "center" }}
+            style={{ paddingVertical: Platform.OS === "web" ? 8 : 4, alignItems: "center" }}
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
               {t.auth.noAccountSignUp}
             </Text>
           </Pressable>
+          {Platform.OS === "web" ? (
+            <View style={{ alignItems: "center" }}>
+              <AuthHomeLink />
+            </View>
+          ) : null}
         </View>
-      </KeyboardSafeScrollView>
+      </AuthFormBody>
     </View>
   );
 
@@ -191,7 +230,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  // Content-sized on native: the auth card hugs the form, the shell scrolls.
+  screen: { flexShrink: 1 },
   flex: { flex: 1 },
   screenWeb: { flex: 0, width: "100%", height: "auto" },
   topBar: {
@@ -199,14 +239,32 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
   },
-  body: { padding: 24, alignItems: "center", paddingBottom: Platform.OS === "web" ? 32 : 24 },
-  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 16 },
-  title: { fontSize: 28, fontWeight: "800" },
+  body: {
+    paddingHorizontal: Platform.OS === "web" ? 24 : 16,
+    paddingTop: 12,
+    alignItems: "center",
+    paddingBottom: Platform.OS === "web" ? 32 : 24,
+  },
+  bodyNative: {
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+  bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 8 },
+  title: { fontSize: Platform.OS === "web" ? 28 : 24, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4 },
   btn: {
-    paddingVertical: 14,
+    marginTop: Platform.OS === "web" ? 8 : 4,
     borderRadius: 14,
-    alignItems: "center",
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
 });

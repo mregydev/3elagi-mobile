@@ -1,4 +1,2 @@
-// Single entry for all platforms: the app runs natively through Expo Router.
-// (The old native WebView shell has been removed.) AppSplash in app/_layout.tsx
-// hides the native splash screen once the JS splash renders.
+// Native Google Sign-In completes in-process; no browser redirect to finish.
 require("expo-router/entry");

@@ -16,16 +16,22 @@ import {
   type ZoneTapAnchor,
 } from "@/components/records/BodyAnatomyFigure";
 import { BODY_PART_ICONS, BodyPartIcon } from "@/components/records/bodyPartIcons";
+import { ZONE_ACCENT } from "@/components/records/bodyZoneAccents";
+import { RecordPulseDot } from "@/components/records/RecordPulseDot";
+import { recordsBottomChromeHeight } from "@/components/records/RecordsBottomChrome";
+import { WEB_BREAKPOINTS } from "@/constants/webLayout";
 import {
   BODY_PARTS_BY_ZONE,
+  BODY_ZONES,
+  zoneForBodyPart,
   type BodyPart,
   type BodyZone,
 } from "@/domains/medical/bodyParts";
 import type { MedicalRecord } from "@/domains/medical/types";
-import { WEB_BREAKPOINTS } from "@/constants/webLayout";
-import { recordsBottomChromeHeight } from "@/components/records/RecordsBottomChrome";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { TourAnchor } from "@/components/onboarding/TourAnchor";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 
@@ -39,17 +45,6 @@ interface Props {
    */
   onOpenPart?: (part: BodyPart) => void;
 }
-
-const ZONE_ACCENT: Record<BodyZone, string> = {
-  head_neck: "#6366F1",
-  chest: "#0EA5E9",
-  abdomen: "#0D9488",
-  pelvis: "#A855F7",
-  left_arm: "#F59E0B",
-  right_arm: "#D97706",
-  left_leg: "#EA580C",
-  right_leg: "#C2410C",
-};
 
 const DESKTOP_FIGURE_HEIGHT_RATIO = 0.72;
 /** Fallback when parent hasn't laid out yet — leave room for header + add bar. */
@@ -103,6 +98,7 @@ export function BodySkeletonView({
 }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const dir = flexRow(isRTL);
   const { isDesktop } = useWebLayout();
   const { width, height: screenHeight } = useWindowDimensions();
@@ -119,6 +115,19 @@ export function BodySkeletonView({
     }
     return set;
   }, [records]);
+
+  const zonesWithRecords = useMemo(() => {
+    const set = new Set<BodyZone>();
+    for (const part of partsWithRecords) {
+      const zone = zoneForBodyPart(part);
+      if (zone) set.add(zone);
+    }
+    return set;
+  }, [partsWithRecords]);
+
+  // Nothing on the figure is ever highlighted. This only marks which zone's
+  // picker is open in the side legend.
+  const activeZone = openZone;
 
   const onPaneLayout = (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
@@ -165,6 +174,7 @@ export function BodySkeletonView({
     }
     const next = selectedPart === part ? null : part;
     onSelectPart(next);
+    if (next) advanceOnAnchorTap("records-skeleton-body");
     closePartPicker();
   };
 
@@ -183,6 +193,13 @@ export function BodySkeletonView({
     setMenuAnchor({
       x: Number.isFinite(anchor.x) ? anchor.x : width / 2,
       y: Number.isFinite(anchor.y) ? anchor.y : screenHeight / 2,
+    });
+  };
+
+  const openZoneFromLegend = (zone: BodyZone) => {
+    selectZone(zone, {
+      x: width / 2,
+      y: Math.round(screenHeight * 0.35),
     });
   };
 
@@ -215,9 +232,11 @@ export function BodySkeletonView({
           </Text>
           {selectedPart ? (
             <Pressable
+              testID="records-reset"
               onPress={() => {
                 onSelectPart(null);
                 closePartPicker();
+                advanceOnAnchorTap("records-reset");
               }}
               accessibilityRole="button"
               accessibilityLabel={t.records.bodyPartReset}
@@ -245,7 +264,9 @@ export function BodySkeletonView({
         </View>
       </View>
 
-      <View
+      <TourAnchor
+        id="records-skeleton-body"
+        testID="records-skeleton-body"
         style={isDesktop ? styles.diagramCard : [styles.diagramCardMobile, mobileBoxStyle]}
         onLayout={onDiagramLayout}
       >
@@ -256,9 +277,68 @@ export function BodySkeletonView({
             zoneLabels={t.records.bodyZones}
             onSelectZone={selectZone}
             compact={!isDesktop}
+            partsWithRecords={partsWithRecords}
+            zonesWithRecords={zonesWithRecords}
+            // The figure is never painted: tapping a zone opens its picker and
+            // nothing on the body lights up, selected or not.
+            highlightedZone={null}
+            highlightedPart={null}
           />
         ) : null}
-      </View>
+
+        {/* Compact legend overlaid top-left — keeps skeleton at full size. */}
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.legendOverlay,
+            isRTL ? styles.legendOverlayRtl : styles.legendOverlayLtr,
+          ]}
+        >
+          <View style={styles.legend}>
+            {BODY_ZONES.map((zone) => {
+              const active = activeZone === zone;
+              const hasRecords = zonesWithRecords.has(zone);
+              const accent = ZONE_ACCENT[zone];
+              return (
+                <Pressable
+                  key={zone}
+                  onPress={() => openZoneFromLegend(zone)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={t.records.bodyZones[zone]}
+                  style={[
+                    styles.legendChip,
+                    {
+                      flexDirection: dir,
+                      borderColor: active ? accent : "transparent",
+                      backgroundColor: active ? `${accent}22` : "transparent",
+                    },
+                  ]}
+                >
+                  <View style={[styles.legendSwatch, { backgroundColor: accent }]} />
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: active ? accent : colors.foreground,
+                      fontWeight: active ? "800" : "600",
+                      fontSize: 9,
+                      maxWidth: 72,
+                      textAlign: isRTL ? "right" : "left",
+                    }}
+                  >
+                    {t.records.bodyZones[zone]}
+                  </Text>
+                  {hasRecords ? (
+                    <View style={styles.legendPulseWrap}>
+                      <RecordPulseDot size="sm" />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </TourAnchor>
 
       <Modal
         visible={openZone != null}
@@ -332,7 +412,7 @@ export function BodySkeletonView({
                 {zoneParts.map((part) => {
                   const Icon = BODY_PART_ICONS[part];
                   const active = selectedPart === part;
-                  const hasDot = partsWithRecords.has(part);
+                  const hasRecords = partsWithRecords.has(part);
                   const accent = ZONE_ACCENT[openZone];
                   return (
                     <Pressable
@@ -343,46 +423,66 @@ export function BodySkeletonView({
                       style={({ pressed }) => [
                         styles.partTile,
                         {
-                          borderColor: active ? accent : colors.border,
-                          backgroundColor: active
-                            ? `${accent}16`
-                            : pressed
-                              ? colors.muted
-                              : colors.background,
+                          borderColor: hasRecords
+                            ? "#EF4444"
+                            : active
+                              ? accent
+                              : colors.border,
+                          borderWidth: hasRecords || active ? 2 : 1.5,
+                          backgroundColor: hasRecords
+                            ? "rgba(239, 68, 68, 0.08)"
+                            : active
+                              ? `${accent}16`
+                              : pressed
+                                ? colors.muted
+                                : colors.background,
                           transform: pressed ? [{ scale: 0.97 }] : undefined,
                         },
                       ]}
                     >
-                      {hasDot ? (
+                      {hasRecords ? (
                         <View
                           style={[
-                            styles.partRecordDot,
-                            isRTL ? { left: 5 } : { right: 5 },
-                            { backgroundColor: accent },
+                            styles.partRecordBadge,
+                            isRTL ? { left: 2 } : { right: 2 },
                           ]}
-                        />
+                        >
+                          <RecordPulseDot size="md" />
+                        </View>
                       ) : null}
                       <View
                         style={[
                           styles.partIconBubble,
                           {
-                            backgroundColor: active
-                              ? `${accent}22`
-                              : `${colors.foreground}08`,
+                            backgroundColor: hasRecords
+                              ? "rgba(239, 68, 68, 0.14)"
+                              : active
+                                ? `${accent}22`
+                                : `${colors.foreground}08`,
                           },
                         ]}
                       >
                         <BodyPartIcon
                           icon={Icon}
                           size={18}
-                          color={active ? accent : colors.foreground}
+                          color={
+                            hasRecords
+                              ? "#EF4444"
+                              : active
+                                ? accent
+                                : colors.foreground
+                          }
                         />
                       </View>
                       <Text
                         numberOfLines={2}
                         style={{
-                          color: active ? accent : colors.foreground,
-                          fontWeight: active ? "800" : "600",
+                          color: hasRecords
+                            ? "#EF4444"
+                            : active
+                              ? accent
+                              : colors.foreground,
+                          fontWeight: hasRecords || active ? "800" : "600",
                           fontSize: 11,
                           textAlign: "center",
                           lineHeight: 14,
@@ -408,7 +508,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     width: "100%",
     gap: 6,
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   wrapMobile: {
     flex: 1,
@@ -455,6 +555,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     overflow: "hidden",
     borderWidth: 0,
+    position: "relative",
   },
   diagramCardMobile: {
     flex: 1,
@@ -464,6 +565,43 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "transparent",
     overflow: "hidden",
+    position: "relative",
+  },
+  legendOverlay: {
+    position: "absolute",
+    top: 4,
+    zIndex: 20,
+    maxWidth: "42%",
+  },
+  legendOverlayLtr: {
+    left: 4,
+  },
+  legendOverlayRtl: {
+    right: 4,
+  },
+  legend: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    gap: 8,
+  },
+  legendChip: {
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
+  },
+  legendSwatch: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendPulseWrap: {
+    transform: [{ scale: 0.65 }],
+    marginHorizontal: -2,
   },
   menuRoot: {
     flex: 1,
@@ -528,7 +666,6 @@ const styles = StyleSheet.create({
     maxWidth: "32%",
     alignItems: "center",
     gap: 4,
-    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 6,
     paddingVertical: 8,
@@ -541,11 +678,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  partRecordDot: {
+  partRecordBadge: {
     position: "absolute",
-    top: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    top: 0,
+    zIndex: 2,
   },
 });

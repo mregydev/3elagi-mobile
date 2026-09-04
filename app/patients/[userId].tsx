@@ -1,11 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useLocalSearchParams, router } from "expo-router";
-import { ArrowLeft, ArrowRight } from "lucide-react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -25,33 +23,53 @@ import {
 import { fetchPatientMedicalHistoryAsDoctor } from "@/domains/medical/api";
 import type { MedicalRecord } from "@/domains/medical/types";
 import { useMedicalStore } from "@/domains/medical/store";
+import {
+  currentTourStep,
+  useProductTourStore,
+} from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { WEB_CONTENT_PADDING } from "@/constants/webLayout";
+import { useWebLayout } from "@/hooks/useWebLayout";
+import { navigateBack } from "@/utils/appNavigation";
+import { readRouteParam } from "@/utils/routeParams";
 
 export default function PatientRecordScreen() {
+  const router = useRouter();
   const colors = useColors();
   const { isRTL } = useI18n();
+  const { isDesktop } = useWebLayout();
   const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const consumePendingRefresh = useMedicalStore((s) => s.consumePendingRefresh);
-  const { userId, name } = useLocalSearchParams<{ userId: string; name?: string }>();
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
+  const tourActive = useProductTourStore((s) => s.active);
+  const tourPhase = useProductTourStore((s) => s.phase);
+  const tourStepIndex = useProductTourStore((s) => s.stepIndex);
+  const params = useLocalSearchParams<{ userId?: string | string[]; name?: string | string[] }>();
+  const userId = readRouteParam(params.userId);
+  const name = readRouteParam(params.name);
 
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [accessStatus, setAccessStatus] = useState<DoctorPatientAccessStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
-  const skeletonView = Platform.OS === "web" && recordsViewMode === "skeleton";
+  /** Non-scrolling host so split dashboard / skeleton get a real flex height (web + native). */
+  const fixedBodyHost =
+    recordsViewMode === "skeleton" || (isDesktop && recordsViewMode === "table");
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const dir = isRTL ? "row-reverse" : "row";
-  const patientName = name?.trim() || (isRTL ? "المريض" : "Patient");
+  const patientName = name || (isRTL ? "المريض" : "Patient");
   const hasAccess = canDoctorViewPatientRecords(accessStatus);
 
   const loadScreen = useCallback(async () => {
     if (!accessToken || !userId || !isDoctor) return;
 
+    setLoadError(null);
     const status = await fetchDoctorPatientAccess(accessToken, userId);
     setAccessStatus(status);
 
@@ -65,15 +83,24 @@ export default function PatientRecordScreen() {
   }, [accessToken, userId, isDoctor]);
 
   useEffect(() => {
+    if (!tourActive) return;
+    const step = currentTourStep(tourPhase, tourStepIndex);
+    if (step?.anchor === "records-skeleton-body") {
+      setRecordsViewMode("skeleton");
+    }
+  }, [tourActive, tourPhase, tourStepIndex]);
+
+  useEffect(() => {
     if (!isDoctor || !userId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     loadScreen()
-      .catch(() => {
+      .catch((e) => {
         setAccessStatus(null);
         setRecords([]);
+        setLoadError(e instanceof Error ? e.message : "Failed to load patient");
       })
       .finally(() => setLoading(false));
   }, [isDoctor, userId, loadScreen]);
@@ -82,8 +109,9 @@ export default function PatientRecordScreen() {
     useCallback(() => {
       if (!isDoctor || !userId) return;
       consumePendingRefresh();
-      void loadScreen().catch(() => {
+      void loadScreen().catch((e) => {
         setRecords([]);
+        setLoadError(e instanceof Error ? e.message : "Failed to load patient");
       });
     }, [isDoctor, userId, consumePendingRefresh, loadScreen]),
   );
@@ -113,6 +141,7 @@ export default function PatientRecordScreen() {
     <MedicalHistoryList
       records={records}
       patientUserId={userId!}
+      patientLabel={patientName}
       canAdd={false}
       doctorView
       showIntake
@@ -137,13 +166,18 @@ export default function PatientRecordScreen() {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          {isRTL ? (
-            <ArrowRight size={22} color={colors.primary} />
-          ) : (
-            <ArrowLeft size={22} color={colors.primary} />
-          )}
-        </Pressable>
+        <AppBackButton
+          testID="records-back"
+          color={colors.primary}
+          style={styles.backBtn}
+          hitSlop={12}
+          fallback="/(tabs)/history"
+          accessibilityLabel={isRTL ? "رجوع" : "Back"}
+          onPress={() => {
+            advanceOnAnchorTap("records-back");
+            navigateBack(router, "/(tabs)/history");
+          }}
+        />
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
             {isRTL ? `سجل ${patientName}` : `${patientName}'s record`}
@@ -153,19 +187,22 @@ export default function PatientRecordScreen() {
 
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+      ) : loadError ? (
+        <View style={styles.center}>
+          <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
+            {loadError}
+          </Text>
+        </View>
       ) : !hasAccess ? (
         <DoctorPatientAccessDenied isRTL={isRTL} />
-      ) : skeletonView ? (
-        // Non-scrolling host so the Skeleton/Tabular toggle stays pressable.
+      ) : fixedBodyHost ? (
+        // Non-scrolling host so the split dashboard / skeleton toggle stays pressable.
         <View style={styles.body}>
           {historyList}
         </View>
       ) : (
         <ScrollView
-          style={[
-            styles.body,
-            Platform.OS === "web" ? ({ overflow: "auto" } as const) : null,
-          ]}
+          style={styles.body}
           contentContainerStyle={styles.bodyContent}
           nestedScrollEnabled
           showsVerticalScrollIndicator
@@ -192,7 +229,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: WEB_CONTENT_PADDING,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexShrink: 0,

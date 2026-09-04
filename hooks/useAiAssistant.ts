@@ -4,6 +4,22 @@ import { useAuthStore } from "@/domains/auth/store";
 import { fetchAiHistory, deleteAiConversation } from "@/domains/ai/api";
 import { formatAiChatError } from "@/domains/ai/errors";
 import { AI_EVENTS } from "@/domains/ai/events";
+import {
+  GuestAiLimitError,
+  sendGuestAiChat,
+} from "@/domains/ai/guestApi";
+import {
+  GUEST_AI_MAX_MESSAGES,
+  getGuestAiSentCount,
+  getGuestAiSessionId,
+  setGuestAiSentCount,
+} from "@/domains/ai/guestSession";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
+import { isSignedIn } from "@/domains/auth/session";
+import {
+  isAuthErrorMessage,
+  logoutOnAuthFailure,
+} from "@/domains/auth/sessionFailure";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionItem, type MessageEmotionType, type AiFeedbackType } from "@/domains/emotions/types";
 import {
@@ -22,6 +38,11 @@ import { useMedicalStore } from "@/domains/medical/store";
 import { useI18n } from "@/hooks/useI18n";
 import { emit } from "@/utils/eventBus";
 import { formatMedicalRecordInsightReply } from "@/utils/medicalAiInsightChat";
+import { AI_ATTACHMENT_ONLY_PLACEHOLDER } from "@/utils/aiMessageDisplay";
+import type { AiFileAttachment } from "@/hooks/useAiFileAttachment";
+
+/** Single local conversation guests chat in (never persisted server-side). */
+const GUEST_CONVERSATION_ID = "guest-chat";
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -261,6 +282,9 @@ export function useAiAssistant() {
   const [rateLimitReached, setRateLimitReached] = useState(false);
   const [canRetry, setCanRetry] = useState(true);
   const [lastQuestion, setLastQuestion] = useState<string | null>(null);
+  const [guestSentCount, setGuestSentCount] = useState(0);
+  const signedIn = isSignedIn(profile, accessToken);
+  const isGuest = !signedIn;
 
   const updateMessageEmotions = useCallback(
     (messageId: string, emotions: MessageEmotionItem[]) => {
@@ -282,7 +306,13 @@ export function useAiAssistant() {
   );
 
   const loadHistory = useCallback(async () => {
-    if (!accessToken) return;
+    if (!signedIn || !accessToken) {
+      setConversations([]);
+      setActiveId(null);
+      setLoadingHistory(false);
+      setHistoryError(null);
+      return;
+    }
     setLoadingHistory(true);
     setHistoryError(null);
     try {
@@ -290,25 +320,35 @@ export function useAiAssistant() {
       setConversations(rows);
       setActiveId((current) => current ?? rows[0]?.id ?? null);
     } catch (err) {
-      setHistoryError(
-        err instanceof Error ? err.message : "Failed to load history",
-      );
+      const message = err instanceof Error ? err.message : "Failed to load history";
+      if (isAuthErrorMessage(message)) {
+        logoutOnAuthFailure();
+      }
+      setHistoryError(message);
     } finally {
       setLoadingHistory(false);
     }
-  }, [accessToken]);
+  }, [accessToken, signedIn]);
 
   // The AI chat has its own dedicated socket (separate from the presence/main
   // socket); connect while the assistant is mounted, tear down on leave.
   useEffect(() => {
-    if (!accessToken) return;
+    if (!signedIn || !accessToken) {
+      disconnectAiSocket();
+      return;
+    }
     connectAiSocket(accessToken);
     return () => disconnectAiSocket();
-  }, [accessToken]);
+  }, [accessToken, signedIn]);
 
   useEffect(() => {
     void loadHistory();
   }, [loadHistory]);
+
+  useEffect(() => {
+    if (!isGuest) return;
+    void getGuestAiSentCount().then(setGuestSentCount);
+  }, [isGuest]);
 
   const startNewChat = useCallback(() => {
     setActiveId(null);
@@ -331,6 +371,127 @@ export function useAiAssistant() {
     [accessToken, activeId],
   );
 
+  // Free tier: logged-out visitors get GUEST_AI_MAX_MESSAGES turns against the
+  // public /ai/guest/chat endpoint.
+  const sendGuestMessage = useCallback(
+    async (text: string, attachment?: AiFileAttachment | null) => {
+      const question = text.trim();
+      if (!question && !attachment) return;
+      if ((await getGuestAiSentCount()) >= GUEST_AI_MAX_MESSAGES) {
+        promptAuthForConsultation();
+        return;
+      }
+
+      const displayContent =
+        question || (attachment ? AI_ATTACHMENT_ONLY_PLACEHOLDER : "");
+      const attImageUri =
+        attachment && !attachment.isPdf && attachment.mimeType.startsWith("image/")
+          ? `data:${attachment.mimeType};base64,${attachment.data}`
+          : undefined;
+      const attFileName =
+        attachment && (attachment.isPdf || !attachment.mimeType.startsWith("image/"))
+          ? attachment.name
+          : undefined;
+
+      const userMessage: AiMessage = {
+        id: makeId("guest-user"),
+        role: "user",
+        content: displayContent,
+        createdAt: new Date().toISOString(),
+        imageUri: attImageUri,
+        fileName: attFileName,
+      };
+      const assistantLocalId = makeId("guest-assistant");
+      const assistantMessage: AiMessage = {
+        id: assistantLocalId,
+        role: "assistant",
+        content: "",
+        createdAt: new Date().toISOString(),
+        pending: true,
+      };
+      const history = (
+        conversations.find((c) => c.id === GUEST_CONVERSATION_ID)?.messages ?? []
+      )
+        .filter((m) => !m.pending && m.content.trim())
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+      setLastQuestion(question);
+      setChatError(null);
+      setCanRetry(true);
+      setSending(true);
+      setStreaming(true);
+      setConversations((prev) => {
+        const existing = prev.find((c) => c.id === GUEST_CONVERSATION_ID);
+        const next: AiConversation = existing
+          ? {
+              ...existing,
+              updatedAt: new Date().toISOString(),
+              messages: [...existing.messages, userMessage, assistantMessage],
+            }
+          : {
+              id: GUEST_CONVERSATION_ID,
+              title: question.slice(0, 80) || "New chat",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              messages: [userMessage, assistantMessage],
+            };
+        return [next, ...prev.filter((c) => c.id !== GUEST_CONVERSATION_ID)];
+      });
+      setActiveId(GUEST_CONVERSATION_ID);
+
+      try {
+        const result = await sendGuestAiChat({
+          guestId: await getGuestAiSessionId(),
+          message: question || AI_ATTACHMENT_ONLY_PLACEHOLDER,
+          history,
+          locale: getApiLang(),
+          attachment,
+        });
+        await setGuestAiSentCount(result.used);
+        setGuestSentCount(result.used);
+        setConversations((prev) =>
+          patchAssistantMessage(prev, GUEST_CONVERSATION_ID, assistantLocalId, {
+            pending: false,
+            content: result.content,
+          }),
+        );
+      } catch (e) {
+        if (e instanceof GuestAiLimitError) {
+          await setGuestAiSentCount(GUEST_AI_MAX_MESSAGES);
+          setGuestSentCount(GUEST_AI_MAX_MESSAGES);
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === GUEST_CONVERSATION_ID
+                ? {
+                    ...c,
+                    messages: c.messages.filter(
+                      (m) => m.id !== userMessage.id && m.id !== assistantLocalId,
+                    ),
+                  }
+                : c,
+            ),
+          );
+          promptAuthForConsultation();
+          return;
+        }
+        const message = e instanceof Error ? e.message : t.auth.genericError;
+        setChatError(message);
+        setConversations((prev) =>
+          patchAssistantMessage(prev, GUEST_CONVERSATION_ID, assistantLocalId, {
+            pending: false,
+            error: true,
+            content: message,
+          }),
+        );
+      } finally {
+        setSending(false);
+        setStreaming(false);
+      }
+    },
+    [conversations, t.auth.genericError],
+  );
+
   const sendMessage = useCallback(
     async (
       text: string,
@@ -345,7 +506,11 @@ export function useAiAssistant() {
         isPdf?: boolean;
       },
     ) => {
-      if (!accessToken || (!text.trim() && !attachment)) return;
+      if (!text.trim() && !attachment) return;
+      if (!signedIn || !accessToken) {
+        await sendGuestMessage(text, attachment ?? null);
+        return;
+      }
       const question = text.trim();
       const attImageUri =
         attachment && !attachment.isPdf && attachment.mimeType.startsWith("image/")
@@ -513,6 +678,9 @@ export function useAiAssistant() {
                 event.code,
                 t,
               );
+              if (isAuthErrorMessage(event.error) || isAuthErrorMessage(formatted.message)) {
+                logoutOnAuthFailure();
+              }
               setChatError(formatted.message);
               setRateLimitReached(formatted.isRateLimit);
               setCanRetry(formatted.canRetry);
@@ -556,6 +724,10 @@ export function useAiAssistant() {
         setRateLimitReached(formatted.isRateLimit);
         setCanRetry(formatted.canRetry);
 
+        if (isAuthErrorMessage(formatted.message) || isAuthErrorMessage(err instanceof Error ? err.message : undefined)) {
+          logoutOnAuthFailure();
+        }
+
         if (!ackReceived) {
           setConversations((prev) => {
             const next = prev
@@ -596,7 +768,7 @@ export function useAiAssistant() {
         setStreaming(false);
       }
     },
-    [accessToken, activeId, isRTL],
+    [accessToken, activeId, isRTL, sendGuestMessage, signedIn, t],
   );
 
   useEffect(() => {
@@ -889,5 +1061,9 @@ export function useAiAssistant() {
     lastQuestion,
     selfUserId,
     toggleMessageEmotion,
+    isGuest,
+    guestSentCount,
+    guestRemaining: Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount),
+    guestMax: GUEST_AI_MAX_MESSAGES,
   };
 }

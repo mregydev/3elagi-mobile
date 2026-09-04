@@ -1,7 +1,17 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
-import { ArrowLeft, Camera, Check, FileText, Stethoscope, UserRound, X } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import {
+  Camera,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Stethoscope,
+  UserRound,
+  X,
+} from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,43 +26,71 @@ import {
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
-import { EgpPriceInput } from "@/components/EgpPriceInput";
+import { AuthFormBody } from "@/components/auth/AuthFormBody";
+import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
+import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
+import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
-import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import { CountrySelectField } from "@/components/auth/CountrySelectField";
+import { DoctorSignupMarketField } from "@/components/auth/DoctorSignupMarketField";
+import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import {
   DEFAULT_PATIENT_COUNTRY,
+  PATIENT_COUNTRY_CODES,
+  type DoctorSignupCountryCode,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
+import { defaultDoctorFeeFormValues, feeValue } from "@/domains/doctor/fees";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
-import { useAuthStore } from "@/domains/auth/store";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
+import { useAuthStore } from "@/domains/auth/store";
 import type { SignupFile, SignupRole } from "@/domains/auth/types";
+import { DOCTOR_APPLY_ROUTE } from "@/constants/doctorSignup";
 import {
   hasFieldErrors,
   validateSignupFields,
   type SignupFieldErrors,
 } from "@/domains/auth/validation";
-import { useColors } from "@/hooks/useColors";
+import {
+  getDoctorSignupMarket,
+  setDoctorSignupMarketOverride,
+} from "@/domains/market/doctorSignupMarket";
+import { getUrlMarketCountry } from "@/domains/market/resolveMarketCountry";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING } from "@/constants/webLayout";
 
 type LocalFile = SignupFile & { label: string };
 
+function initialSignupCountry(): PatientCountryCode {
+  return getUrlMarketCountry() ?? DEFAULT_PATIENT_COUNTRY;
+}
+
 export default function SignupScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const { isDesktop, isMobile } = useWebLayout();
   const signup = useAuthStore((s) => s.signup);
   const loading = useAuthStore((s) => s.loading);
+  const {
+    role: roleParam,
+    error: errorParam,
+    email: emailParam,
+    name: nameParam,
+  } = useLocalSearchParams<{
+    role?: string;
+    error?: string;
+    email?: string;
+    name?: string;
+  }>();
 
   const [role, setRole] = useState<SignupRole>("patient");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(nameParam ?? "");
+  const [email, setEmail] = useState(emailParam ?? "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [photo, setPhoto] = useState<SignupFile | null>(null);
@@ -61,29 +99,66 @@ export default function SignupScreen() {
   const [workPermit, setWorkPermit] = useState<LocalFile | null>(null);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [specialityId, setSpecialityId] = useState<string>("");
-  const [consultationPrice, setConsultationPrice] = useState(1);
-  const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const initialDoctorMarket = getDoctorSignupMarket() ?? "EG";
+  const initialDoctorFees = defaultDoctorFeeFormValues(initialDoctorMarket);
+  const [doctorMarket, setDoctorMarket] = useState<DoctorSignupCountryCode>(initialDoctorMarket);
+  const [textPriceLocal, setTextPriceLocal] = useState(initialDoctorFees.textLocal);
+  const [textPriceUsd, setTextPriceUsd] = useState(initialDoctorFees.textUsd);
+  const [videoPriceLocal, setVideoPriceLocal] = useState(initialDoctorFees.videoLocal);
+  const [videoPriceUsd, setVideoPriceUsd] = useState(initialDoctorFees.videoUsd);
+  const [paymentLink, setPaymentLink] = useState("");
+  const [country, setCountry] = useState<PatientCountryCode>(initialSignupCountry);
   const [medicalRecordsConsent, setMedicalRecordsConsent] = useState(false);
+  const [formOpen, setFormOpen] = useState(true);
+  const googleNoAccount = errorParam === "google_no_account";
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
+  useEffect(() => {
+    if (roleParam === "doctor") {
+      router.replace(DOCTOR_APPLY_ROUTE);
+    }
+  }, [roleParam]);
+
+  useEffect(() => {
+    if (!emailParam && !nameParam) return;
+    if (emailParam) setEmail(String(emailParam));
+    if (nameParam) setName(String(nameParam));
+    if (errorParam === "google_no_account") setFormOpen(true);
+  }, [emailParam, nameParam, errorParam]);
+
   const isDoctor = role === "doctor";
+  const urlMarket = getUrlMarketCountry();
+  const phonePlaceholder =
+    urlMarket === "JO" ||
+    (isDoctor && getDoctorSignupMarket() === "JO") ||
+    (!isDoctor && country === "JO")
+      ? t.auth.phonePlaceholderJordan
+      : t.auth.phonePlaceholder;
+
+  const applyDoctorMarket = (market: DoctorSignupCountryCode) => {
+    setDoctorMarket(market);
+    const fees = defaultDoctorFeeFormValues(market);
+    setTextPriceLocal(fees.textLocal);
+    setTextPriceUsd(fees.textUsd);
+    setVideoPriceLocal(fees.videoLocal);
+    setVideoPriceUsd(fees.videoUsd);
+  };
 
   useEffect(() => {
     if (!isDoctor) return;
     void fetchSpecialities()
-      .then((rows) => {
-        setSpecialities(rows);
-        if (rows[0] && !specialityId) setSpecialityId(rows[0].id);
-      })
+      .then(setSpecialities)
       .catch(() => setSpecialities([]));
   }, [isDoctor]);
   const dir = isRTL ? "row-reverse" : "row";
-  const hideIntro = Platform.OS === "web" && isDesktop;
-  const hideWebTopBar = Platform.OS === "web";
+  const isWeb = Platform.OS === "web";
+  const showTitle = true;
+  const showSubtitle = !(isWeb && isDesktop);
+  const hideWebTopBar = isWeb;
 
   const pickPhoto = () => {
     Alert.alert(t.auth.profilePhoto, t.auth.chooseSource, [
@@ -184,6 +259,7 @@ export default function SignupScreen() {
   };
 
   const submit = async () => {
+    const doctorCountry = isDoctor ? getDoctorSignupMarket() ?? undefined : country;
     const errors = validateSignupFields(
       {
         name,
@@ -192,7 +268,7 @@ export default function SignupScreen() {
         password,
         isDoctor,
         specialityId,
-        country,
+        country: doctorCountry,
         medicalRecordsStorageConsent: medicalRecordsConsent,
       },
       t.auth,
@@ -217,22 +293,26 @@ export default function SignupScreen() {
         graduationCert: isDoctor ? graduationCert ?? undefined : undefined,
         workPermit: isDoctor ? workPermit ?? undefined : undefined,
         specialityId: isDoctor ? specialityId : undefined,
-        consultationPrice: isDoctor ? consultationPrice : undefined,
-        country,
+        textPriceLocal: isDoctor ? feeValue(textPriceLocal) : undefined,
+        textPriceUsd: isDoctor ? feeValue(textPriceUsd) : undefined,
+        videoPriceLocal: isDoctor ? feeValue(videoPriceLocal) : undefined,
+        videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
+        paymentLink: isDoctor ? paymentLink.trim() : undefined,
+        country: doctorCountry,
         medicalRecordsStorageConsent: isDoctor ? undefined : medicalRecordsConsent,
       });
-      const { role: signedRole, doctorApprovalStatus } = useAuthStore.getState();
-      router.replace(getPostAuthRoute(signedRole, doctorApprovalStatus));
+      const { role: nextRole, doctorApprovalStatus } = useAuthStore.getState();
+      router.replace(getPostAuthRoute(nextRole, doctorApprovalStatus));
     } catch (e) {
       setFormError((e as Error).message || t.auth.genericError);
     }
   };
 
-  return (
+  const screen = (
     <View
       style={[
         styles.screen,
-        { backgroundColor: Platform.OS === "web" ? "transparent" : colors.background },
+        { backgroundColor: "transparent" },
         Platform.OS === "web" && styles.screenWeb,
       ]}
     >
@@ -241,42 +321,73 @@ export default function SignupScreen() {
           style={[
             styles.topBar,
             {
-              paddingTop: Platform.OS === "web" ? 16 : insets.top + 8,
+              // Native sits inside the auth card, which already clears the notch.
+              paddingTop: Platform.OS === "web" ? 8 : 4,
               flexDirection: dir,
             },
           ]}
         >
-          <Pressable onPress={() => router.back()} style={{ padding: 6 }}>
-            <ArrowLeft size={22} color={colors.foreground} />
-          </Pressable>
+          <AuthHomeLink compact />
           <AuthLanguageField />
         </View>
       ) : null}
 
-      <KeyboardSafeScrollView
+      <AuthFormBody
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
+          Platform.OS !== "web" && styles.bodyNative,
           Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
         ]}
         bottomOffset={32}
       >
-        {!hideIntro ? (
-          <>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              {t.auth.createAccountTitle}
-            </Text>
-            <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              {t.auth.createAccountSubtitle}
-            </Text>
-          </>
+        {showTitle ? (
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.foreground,
+                alignSelf: isRTL ? "flex-end" : "flex-start",
+                width: "100%",
+                textAlign: isRTL ? "right" : "left",
+              },
+            ]}
+          >
+            {t.auth.createAccountTitle}
+          </Text>
+        ) : null}
+        {showSubtitle ? (
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            {t.auth.createAccountSubtitle}
+          </Text>
         ) : null}
 
-        <View style={[styles.roleRow, { flexDirection: dir, marginTop: hideIntro ? 0 : 20 }]}>
+        {googleNoAccount ? (
+          <AuthFormError
+            message={
+              isRTL
+                ? "لا يوجد حساب مرتبط بحساب Google هذا. أنشئ حساباً للمتابعة."
+                : "No 3elagi account is linked to that Google account. Create one to continue."
+            }
+            colors={colors}
+          />
+        ) : null}
+
+        <View
+          style={[
+            styles.roleRow,
+            {
+              flexDirection: dir,
+              marginTop:
+                Platform.OS === "web" ? (showSubtitle ? 20 : 16) : showSubtitle ? 10 : 6,
+            },
+          ]}
+        >
           <RoleChip
             active={role === "patient"}
             onPress={() => {
               setRole("patient");
+              setDoctorSignupMarketOverride(null);
               setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
             }}
             label={t.auth.patient}
@@ -285,17 +396,36 @@ export default function SignupScreen() {
           />
           <RoleChip
             active={role === "doctor"}
-            onPress={() => {
-              setRole("doctor");
-              setMedicalRecordsConsent(false);
-              setFieldErrors((prev) => ({ ...prev, medicalRecordsConsent: undefined }));
-            }}
+            onPress={() => router.push(DOCTOR_APPLY_ROUTE)}
             label={t.auth.doctor}
             Icon={Stethoscope}
             colors={colors}
           />
         </View>
 
+        <GoogleAuthButton dividerBelow signupRole="patient" />
+
+        <Pressable
+          onPress={() => setFormOpen((open) => !open)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: formOpen }}
+          style={[styles.formToggle, { borderColor: colors.border, flexDirection: dir }]}
+        >
+          <Text style={{ color: colors.foreground, fontWeight: "700", flex: 1, textAlign: isRTL ? "right" : "left" }}>
+            {isRTL ? "التسجيل بالبريد الإلكتروني" : "Sign up with email"}
+          </Text>
+          {formOpen ? (
+            <ChevronUp size={18} color={colors.mutedForeground} />
+          ) : (
+            <ChevronDown size={18} color={colors.mutedForeground} />
+          )}
+        </Pressable>
+
+        {/* Collapsed by default, and inert until consent is given — the form
+            writes medical data, so it stays dimmed until then. */}
+        <View
+          style={[styles.collapsibleForm, { display: formOpen ? "flex" : "none" }]}
+        >
         <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
           {photoPreview ? (
             <Image source={{ uri: photoPreview }} style={styles.avatar} />
@@ -356,7 +486,7 @@ export default function SignupScreen() {
               if (formError) setFormError(null);
             }}
             error={fieldErrors.phone}
-            placeholder={t.auth.phonePlaceholder}
+            placeholder={phonePlaceholder}
             keyboardType="phone-pad"
             returnKeyType="next"
             blurOnSubmit={false}
@@ -384,62 +514,66 @@ export default function SignupScreen() {
             isRTL={isRTL}
           />
 
-          <CountryChipsField
-            label={t.auth.countryOfResidence}
-            value={country}
-            onChange={(code) => {
-              setCountry(code);
-              if (fieldErrors.country) {
-                setFieldErrors((prev) => ({ ...prev, country: undefined }));
-              }
-            }}
-            error={fieldErrors.country}
-            isRTL={isRTL}
-            disabled={loading}
-          />
+          {!isDoctor ? (
+            <CountrySelectField
+              label={t.auth.countryOfResidence}
+              value={country}
+              codes={PATIENT_COUNTRY_CODES}
+              onChange={(code) => {
+                setCountry(code);
+                if (fieldErrors.country) {
+                  setFieldErrors((prev) => ({ ...prev, country: undefined }));
+                }
+              }}
+              error={fieldErrors.country}
+              isRTL={isRTL}
+              disabled={loading}
+            />
+          ) : (
+            <DoctorSignupMarketField
+              isRTL={isRTL}
+              disabled={loading}
+              error={fieldErrors.country}
+              onMarketChange={(market) => {
+                if (market) applyDoctorMarket(market);
+                if (fieldErrors.country) {
+                  setFieldErrors((prev) => ({ ...prev, country: undefined }));
+                }
+              }}
+            />
+          )}
 
           {isDoctor && (
             <View style={{ gap: 12, marginTop: 4 }}>
+              <SpecialitySelectField
+                label={t.auth.speciality}
+                value={specialityId}
+                onChange={(id) => {
+                  setSpecialityId(id);
+                  if (fieldErrors.specialityId) {
+                    setFieldErrors((prev) => ({ ...prev, specialityId: undefined }));
+                  }
+                }}
+                specialities={specialities}
+                error={fieldErrors.specialityId}
+                disabled={loading}
+              />
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                {t.auth.speciality}
+                {isRTL ? "أسعار الاستشارة" : "Consultation prices"}
               </Text>
-              <View style={[styles.specialityRow, { flexDirection: dir }]}>
-                {specialities.map((spec) => {
-                  const active = specialityId === spec.id;
-                  const label = isRTL ? spec.nameAr : spec.nameEn;
-                  return (
-                    <Pressable
-                      key={spec.id}
-                      onPress={() => {
-                        setSpecialityId(spec.id);
-                        if (fieldErrors.specialityId) {
-                          setFieldErrors((prev) => ({ ...prev, specialityId: undefined }));
-                        }
-                      }}
-                      style={[
-                        styles.specialityChip,
-                        {
-                          backgroundColor: active ? `${colors.primary}18` : colors.muted,
-                          borderColor: active ? colors.primary : colors.border,
-                        },
-                      ]}
-                    >
-                      <Text style={{ color: active ? colors.primary : colors.foreground, fontWeight: "700", fontSize: 13 }}>
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {fieldErrors.specialityId ? (
-                <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: "600" }}>
-                  {fieldErrors.specialityId}
-                </Text>
-              ) : null}
-              <EgpPriceInput
-                value={consultationPrice}
-                onChange={setConsultationPrice}
-                label={t.auth.consultationPrice}
+              <DoctorFeesFields
+                country={doctorMarket}
+                textLocal={textPriceLocal}
+                onTextLocal={setTextPriceLocal}
+                textUsd={textPriceUsd}
+                onTextUsd={setTextPriceUsd}
+                videoLocal={videoPriceLocal}
+                onVideoLocal={setVideoPriceLocal}
+                videoUsd={videoPriceUsd}
+                onVideoUsd={setVideoPriceUsd}
+                paymentLink={paymentLink}
+                onPaymentLink={setPaymentLink}
+                disabled={loading}
               />
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
                 {t.auth.documentsOptional}
@@ -468,7 +602,7 @@ export default function SignupScreen() {
           )}
 
           {!isDoctor ? (
-            <View style={{ gap: 6 }}>
+            <View style={{ gap: 6, width: "100%" }}>
               <Pressable
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: medicalRecordsConsent }}
@@ -479,10 +613,7 @@ export default function SignupScreen() {
                   }
                   if (formError) setFormError(null);
                 }}
-                style={[
-                  styles.consentRow,
-                  { flexDirection: dir, alignItems: "flex-start" },
-                ]}
+                style={[styles.consentRow, { flexDirection: dir, alignItems: "flex-start" }]}
               >
                 <View
                   style={[
@@ -493,9 +624,7 @@ export default function SignupScreen() {
                         : medicalRecordsConsent
                           ? colors.primary
                           : colors.border,
-                      backgroundColor: medicalRecordsConsent
-                        ? colors.primary
-                        : colors.card,
+                      backgroundColor: medicalRecordsConsent ? colors.primary : colors.card,
                     },
                   ]}
                 >
@@ -506,10 +635,7 @@ export default function SignupScreen() {
                 <Text
                   style={[
                     styles.consentText,
-                    {
-                      color: colors.foreground,
-                      textAlign: isRTL ? "right" : "left",
-                    },
+                    { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
                   ]}
                 >
                   {t.auth.medicalRecordsConsentLabel}
@@ -526,17 +652,28 @@ export default function SignupScreen() {
           <Pressable
             onPress={submit}
             disabled={loading}
-            style={[
+            style={({ pressed }) => [
               styles.btn,
-              { backgroundColor: loading ? colors.mutedForeground : colors.primary, marginTop: 8 },
+              {
+                shadowColor: colors.primary,
+                opacity: loading ? 0.7 : pressed ? 0.92 : 1,
+              },
             ]}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>{t.auth.signUp}</Text>
-            )}
+            <LinearGradient
+              colors={loading ? ["#94A3B8", "#94A3B8"] : accentGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.btnGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>{t.auth.signUp}</Text>
+              )}
+            </LinearGradient>
           </Pressable>
+        </View>
 
           <Pressable
             onPress={() => router.replace("/auth/login")}
@@ -546,10 +683,19 @@ export default function SignupScreen() {
               {t.auth.hasAccountLogIn}
             </Text>
           </Pressable>
+          <View style={{ alignItems: "center" }}>
+            <AuthHomeLink />
+          </View>
         </View>
-      </KeyboardSafeScrollView>
+      </AuthFormBody>
     </View>
   );
+
+  if (Platform.OS === "web") {
+    return screen;
+  }
+
+  return <AuthLoginBackground>{screen}</AuthLoginBackground>;
 }
 
 function RoleChip({
@@ -630,7 +776,8 @@ function DocUploadRow({
 const AVATAR_SIZE = 90;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  // Content-sized on native: the auth card hugs the form, the shell scrolls.
+  screen: { flexShrink: 1 },
   flex: { flex: 1 },
   screenWeb: { flex: 0, width: "100%", height: "auto" },
   topBar: {
@@ -639,16 +786,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: {
-    padding: 24,
+    paddingHorizontal: Platform.OS === "web" ? 24 : 16,
+    paddingTop: 12,
     alignItems: "center",
     paddingBottom: Platform.OS === "web" ? 40 : 40,
   },
+  bodyNative: {
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
   bodyMobileWeb: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 40 + WEB_MOBILE_AUTH_SIGNUP_EXTRA_BOTTOM_PADDING,
   },
-  title: { fontSize: 28, fontWeight: "800" },
+  title: { fontSize: Platform.OS === "web" ? 28 : 24, fontWeight: "800" },
   sub: { fontSize: 14, marginTop: 4, textAlign: "center" },
   roleRow: { gap: 10, width: "100%" },
   roleChip: {
@@ -662,9 +814,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   avatarWrap: {
-    marginTop: 24,
+    marginTop: Platform.OS === "web" ? 24 : 14,
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
+    // The collapsible wrapper now stretches full width, so the avatar needs to
+    // centre itself rather than inheriting the old shrink-wrapped alignment.
+    alignSelf: "center",
     position: "relative",
   },
   avatar: {
@@ -686,13 +841,6 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   sectionLabel: { fontSize: 14, fontWeight: "800" },
-  specialityRow: { flexWrap: "wrap", gap: 8 },
-  specialityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-  },
   docRow: {
     alignItems: "center",
     gap: 10,
@@ -727,6 +875,34 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
-  btn: { paddingVertical: 14, borderRadius: 14, alignItems: "center" },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btn: {
+    marginTop: 8,
+    borderRadius: 14,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  collapsibleForm: {
+    width: "100%",
+    alignSelf: "stretch",
+  },
+  formToggle: {
+    width: "100%",
+    alignSelf: "stretch",
+    alignItems: "center",
+    gap: 8,
+    marginTop: Platform.OS === "web" ? 14 : 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
 });

@@ -10,14 +10,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssistantComposer } from "@/components/assistant/AssistantComposer";
-import { ChatMedicalRecordPills } from "@/components/chat/ChatMedicalRecordPills";
 import { AssistantAvatar } from "@/components/assistant/AssistantAvatar";
 import { AssistantLoadingIndicator } from "@/components/assistant/AssistantLoadingIndicator";
 import { AssistantMessageBubble } from "@/components/assistant/AssistantMessageBubble";
 import { AssistantVoiceModeView } from "@/components/assistant/AssistantVoiceModeView";
-import { AssistantCreateRecordDialog } from "@/components/assistant/AssistantCreateRecordDialog";
 import { AssistantVoiceWebStyles } from "@/components/assistant/AssistantVoiceWebStyles";
-import type { MedicalRecord } from "@/domains/medical/types";
 import type { AiConversation, AiMessage } from "@/domains/ai/types";
 import type { AiFeedbackType } from "@/domains/emotions/types";
 import { useAuthStore } from "@/domains/auth/store";
@@ -62,7 +59,6 @@ interface Props {
     addToMedicalRecords: boolean;
     generateAiInsight: boolean;
   }) => void;
-  onMedicalRecordCreated?: (record: MedicalRecord, previewUri?: string) => void;
 }
 
 const DISCLAIMER_EN =
@@ -88,16 +84,12 @@ export function AssistantWebView({
   selfUserId,
   onToggleMessageEmotion,
   medicalImageBusy = false,
-  onMedicalRecordCreated,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isRTL } = useI18n();
   const isEn = !isRTL;
-  const accessToken = useAuthStore((s) => s.accessToken);
   const isDoctor = useAuthStore((s) => s.role?.toLowerCase() === "doctor");
-  const [dictatedText, setDictatedText] = useState<string | null>(null);
-  const [createRecordOpen, setCreateRecordOpen] = useState(false);
   const listRef = useRef<FlatList<AiMessage>>(null);
   const isNearBottomRef = useRef(true);
   const initialScrollPendingRef = useRef(true);
@@ -194,7 +186,7 @@ export function AssistantWebView({
           isRTL ? styles.historyRtl : styles.historyLtr,
         ]}
       >
-        <View style={styles.historyHeader}>
+        <View style={[styles.historyHeader, { borderBottomColor: colors.border }]}>
           <Text style={[styles.historyTitle, { color: colors.foreground }]}>
             {isEn ? "Chats" : "المحادثات"}
           </Text>
@@ -231,10 +223,7 @@ export function AssistantWebView({
                   style={[
                     styles.historyItem,
                     {
-                      backgroundColor: selected
-                        ? colors.muted
-                        : "transparent",
-                      borderColor: colors.border,
+                      backgroundColor: selected ? colors.background : "transparent",
                     },
                   ]}
                 >
@@ -398,23 +387,10 @@ export function AssistantWebView({
         ) : null}
 
         {!voice.isVoiceMode ? (
-          <>
-            {!isDoctor ? (
-              <ChatMedicalRecordPills
-                isRTL={isRTL}
-                onAddMedicalRecord={() => setCreateRecordOpen(true)}
-                disabled={loadingHistory || medicalImageBusy}
-              />
-            ) : null}
           <AssistantComposer
             isRTL={isRTL}
             sending={sending || medicalImageBusy}
             disabled={loadingHistory || medicalImageBusy}
-            isDictating={voice.isDictating}
-            micLoading={voice.isDictating && voice.isTranscribing}
-            onMicPress={() =>
-              voice.toggleDictation((text) => setDictatedText(text))
-            }
             aiAttachment={
               aiFile.attachment
                 ? {
@@ -427,8 +403,6 @@ export function AssistantWebView({
             onAttachAiFile={() => void aiFile.pickFile()}
             aiAttachLoading={aiFile.loading}
             onRemoveAiAttachment={aiFile.clear}
-            dictatedText={dictatedText}
-            onDictatedTextConsumed={() => setDictatedText(null)}
             placeholder={
               isDoctor
                 ? isEn
@@ -440,21 +414,8 @@ export function AssistantWebView({
             }
             onSend={handleSend}
           />
-          </>
         ) : null}
       </View>
-
-      {accessToken ? (
-        <AssistantCreateRecordDialog
-          visible={createRecordOpen}
-          token={accessToken}
-          onClose={() => setCreateRecordOpen(false)}
-          onCreated={(record, previewUri) => {
-            onMedicalRecordCreated?.(record, previewUri);
-            setCreateRecordOpen(false);
-          }}
-        />
-      ) : null}
     </View>
   );
 }
@@ -462,7 +423,7 @@ export function AssistantWebView({
 const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: "row", minHeight: 0 },
   historyPanel: {
-    width: 280,
+    width: 272,
     borderRightWidth: StyleSheet.hairlineWidth,
     borderLeftWidth: StyleSheet.hairlineWidth,
     minHeight: 0,
@@ -475,28 +436,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "transparent",
   },
-  historyTitle: { fontSize: 16, fontWeight: "700" },
+  historyTitle: { fontSize: 15, fontWeight: "800", letterSpacing: -0.2 },
   newBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
-  newBtnText: { fontSize: 13, fontWeight: "600" },
-  historyList: { paddingHorizontal: 10, paddingBottom: 16, gap: 6 },
+  newBtnText: { fontSize: 12, fontWeight: "800" },
+  historyList: { paddingHorizontal: 8, paddingTop: 8, paddingBottom: 16, gap: 4 },
   historyItem: {
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  historyItemTitle: { flex: 1, fontSize: 14, fontWeight: "500" },
+  historyItemTitle: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 18 },
   deleteBtn: { padding: 4 },
   emptyHistory: { padding: 16, fontSize: 14 },
   historyLoading: {

@@ -1,4 +1,5 @@
 import type { Translations } from "@/constants/translations";
+import { isDoctorSignupCountryCode } from "@/constants/patientCountries";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -68,7 +69,11 @@ export function validateSignupFields(
     errors.specialityId = t.specialityRequiredMsg;
   }
 
-  if (!input.country?.trim()) {
+  if (input.isDoctor) {
+    if (!input.country?.trim() || !isDoctorSignupCountryCode(input.country)) {
+      errors.country = t.doctorMarketRequired;
+    }
+  } else if (!input.country?.trim()) {
     errors.country = t.countryRequired;
   }
 

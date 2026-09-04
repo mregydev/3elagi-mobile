@@ -1,7 +1,9 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,21 +13,25 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { useAuthStore } from "@/domains/auth/store";
-import { getPostAuthRoute } from "@/domains/auth/navigation";
+import { getPostLoginRoute } from "@/domains/auth/navigation";
 import {
   hasFieldErrors,
   validateLoginFields,
   type LoginFieldErrors,
 } from "@/domains/auth/validation";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import type { GoogleNoAccountPayload } from "@/domains/auth/googleAuthFlow";
 
 interface Props {
   onSwitchToSignup: () => void;
+  onGoogleNoAccount?: (payload: GoogleNoAccountPayload) => void;
 }
 
-export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
+export function WelcomeLoginForm({ onSwitchToSignup, onGoogleNoAccount }: Props) {
   const colors = useColors();
+  const accentGradient = useAccentGradient();
   const { t, isRTL } = useI18n();
   const login = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
@@ -49,7 +55,7 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
     try {
       await login({ email: email.trim(), password });
       const { role, doctorApprovalStatus } = useAuthStore.getState();
-      router.replace(getPostAuthRoute(role, doctorApprovalStatus));
+      router.replace(getPostLoginRoute(role, doctorApprovalStatus));
     } catch (e) {
       const message = (e as Error).message;
       if (message === "__UNSUPPORTED_ROLE__") {
@@ -101,19 +107,38 @@ export function WelcomeLoginForm({ onSwitchToSignup }: Props) {
         isRTL={isRTL}
       />
       <Pressable
+        onPress={() => router.push("/auth/forgot-password")}
+        style={{ alignItems: isRTL ? "flex-start" : "flex-end", paddingVertical: 2 }}
+      >
+        <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
+          {t.auth.forgotPassword}
+        </Text>
+      </Pressable>
+      <Pressable
         onPress={submit}
         disabled={loading}
-        style={[
+        style={({ pressed }) => [
           styles.btn,
-          { backgroundColor: loading ? colors.mutedForeground : colors.primary },
+          {
+            shadowColor: colors.primary,
+            opacity: loading ? 0.7 : pressed ? 0.92 : 1,
+          },
         ]}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.btnText}>{t.auth.logIn}</Text>
-        )}
+        <LinearGradient
+          colors={loading ? ["#94A3B8", "#94A3B8"] : accentGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.btnGradient}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>{t.auth.logIn}</Text>
+          )}
+        </LinearGradient>
       </Pressable>
+      <GoogleAuthButton onAccountNotFound={onGoogleNoAccount} />
       <Pressable onPress={onSwitchToSignup} style={styles.switchLink}>
         <Text style={{ color: colors.primary, fontWeight: "600" }}>
           {t.auth.noAccountSignUp}
@@ -127,11 +152,19 @@ const styles = StyleSheet.create({
   form: { width: "100%", gap: 12 },
   btn: {
     marginTop: 8,
-    paddingVertical: 14,
     borderRadius: 14,
-    alignItems: "center",
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.32,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
   switchLink: {
     paddingVertical: 8,
     alignItems: "center",

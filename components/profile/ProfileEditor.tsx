@@ -9,18 +9,32 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppTextInput } from "@/components/AppTextInput";
+import { CountrySelectField } from "@/components/auth/CountrySelectField";
+import {
+  normalizeMarketCountry,
+  PATIENT_COUNTRY_CODES,
+} from "@/constants/patientCountries";
 import { AppHeader } from "@/components/AppHeader";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
-import { CountryChipsField } from "@/components/auth/CountryChipsField";
+import { ProfileAiField } from "@/components/profile/ProfileAiField";
+import { ProfileChangePasswordField } from "@/components/profile/ProfileChangePasswordField";
+import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
+import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
+import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
+import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
+import { SpecialityMultiSelect } from "@/components/profile/SpecialityMultiSelect";
+import { PendingSpecialityChangeBanner } from "@/components/profile/PendingSpecialityChangeBanner";
+import { DoctorTagsInput } from "@/components/profile/DoctorTagsInput";
 import {
   profileSaveChromeHeight,
   profileSaveDockBottomPad,
@@ -28,6 +42,7 @@ import {
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useI18n } from "@/hooks/useI18n";
 
 const AVATAR_SIZE = 76;
@@ -52,12 +67,13 @@ export function ProfileEditor({
   showLogout?: boolean;
 }) {
   const logout = useAuthStore((s) => s.logout);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
 
   const editor = useProfileEditor({ accessToken, role, isRTL });
+  const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
   const {
     loading,
     saving,
@@ -83,12 +99,15 @@ export function ProfileEditor({
     setCertificationDescription,
     specialities,
     specialityId,
-    setSpecialityId,
+    specialityIds,
+    toggleSpeciality,
     consultationPrice,
     setConsultationPrice,
     videoConsultationPrice,
     setVideoConsultationPrice,
     videoConsultationMinutes,
+    immediateCallEnabled,
+    setImmediateCallEnabled,
     setVideoConsultationMinutes,
     digitalSignaturePreview,
     signatureUploading,
@@ -100,16 +119,33 @@ export function ProfileEditor({
     setAccountHolderFullName,
     nationalId,
     setNationalId,
+    textPriceLocal,
+    setTextPriceLocal,
+    textPriceUsd,
+    setTextPriceUsd,
+    videoPriceLocal,
+    setVideoPriceLocal,
+    videoPriceUsd,
+    setVideoPriceUsd,
+    paymentLink,
+    setPaymentLink,
+    tags,
+    setTags,
     isDoctor,
     displayPhoto,
     pickPhoto,
     save,
+    pendingSpecialityChange,
   } = editor;
 
   const displayName = name.trim() || (isRTL ? "مستخدم" : "Your name");
   const displayEmail = account?.email ?? (isRTL ? "—" : "—");
   const saveChromeHeight = profileSaveChromeHeight({ withLogout: showLogout });
-  const dockPadBottom = profileSaveDockBottomPad(insets.bottom);
+  // Inside the tabs the bottom bar already covers the safe area, so adding the
+  // inset here again left a dead gap under Log out.
+  const dockPadBottom = profileSaveDockBottomPad(
+    Platform.OS === "web" ? insets.bottom : 0,
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -199,13 +235,6 @@ export function ProfileEditor({
                 colors={colors}
                 isRTL={isRTL}
               />
-              <CountryChipsField
-                label={t.auth.countryOfResidence}
-                value={country}
-                onChange={setCountry}
-                isRTL={isRTL}
-                disabled={saving}
-              />
               {!isDoctor ? (
                 <Field
                   label={isRTL ? "تاريخ الميلاد" : "Birth date"}
@@ -216,6 +245,24 @@ export function ProfileEditor({
                   isRTL={isRTL}
                 />
               ) : null}
+              {/* Country ships with the Save changes button, not on tap.
+                  Doctors pick a live market; patients pick where they live. */}
+              {isDoctor ? (
+                <ProfileCountryField
+                  value={normalizeMarketCountry(country)}
+                  onChange={setCountry}
+                  disabled={saving}
+                />
+              ) : (
+                <CountrySelectField
+                  label={t.auth.countryOfResidence}
+                  value={country}
+                  codes={PATIENT_COUNTRY_CODES}
+                  onChange={setCountry}
+                  isRTL={isRTL}
+                  disabled={saving}
+                />
+              )}
             </SectionCard>
 
             {isDoctor ? (
@@ -231,11 +278,26 @@ export function ProfileEditor({
                   colors={colors}
                   isRTL={isRTL}
                 />
+                <Text
+                  style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
+                >
+                  {t.settings.personalClinicLocation}
+                </Text>
+                <Text
+                  style={[
+                    styles.fieldHint,
+                    { color: colors.mutedForeground, textAlign },
+                  ]}
+                >
+                  {t.settings.googleMapsLocationHint}
+                </Text>
                 <Field
-                  label={isRTL ? "الموقع" : "Location"}
+                  label=""
                   value={location}
                   onChangeText={setLocation}
-                  placeholder={isRTL ? "المدينة، العنوان" : "City, address"}
+                  placeholder={t.settings.googleMapsLocationPlaceholder}
+                  autoCapitalize="none"
+                  multiline
                   colors={colors}
                   isRTL={isRTL}
                 />
@@ -254,48 +316,67 @@ export function ProfileEditor({
                   <Text
                     style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
                   >
-                    {isRTL ? "التخصص" : "Speciality"}
+                    {isRTL ? "التخصصات" : "Specialities"}
                   </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={[styles.specialityRow, { flexDirection: dir }]}
+                  {pendingSpecialityChange ? (
+                    <PendingSpecialityChangeBanner
+                      pending={pendingSpecialityChange}
+                      isRTL={isRTL}
+                      colors={colors}
+                    />
+                  ) : null}
+                  <SpecialityMultiSelect
+                    specialities={specialities}
+                    selectedIds={specialityIds}
+                    onToggle={toggleSpeciality}
+                    isRTL={isRTL}
+                    locale={locale}
+                    colors={colors}
+                  />
+                </View>
+                <View style={styles.block}>
+                  <Text
+                    style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}
                   >
-                    {specialities.map((spec) => {
-                      const active = specialityId === spec.id;
-                      const label = isRTL ? spec.nameAr : spec.nameEn;
-                      return (
-                        <Pressable
-                          key={spec.id}
-                          onPress={() => setSpecialityId(spec.id)}
-                          style={[
-                            styles.specialityChip,
-                            {
-                              backgroundColor: active ? `${colors.primary}18` : colors.muted,
-                              borderColor: active ? colors.primary : colors.border,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              color: active ? colors.primary : colors.foreground,
-                              fontWeight: "700",
-                              fontSize: 13,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
+                    {t.settings.doctorTags}
+                  </Text>
+                  <DoctorTagsInput
+                    tags={tags}
+                    onChange={setTags}
+                    specialityIds={specialityIds}
+                    isRTL={isRTL}
+                    colors={colors}
+                    disabled={saving}
+                  />
                 </View>
                 <EgpPriceInput
                   value={consultationPrice}
                   onChange={setConsultationPrice}
                   label={t.auth.consultationPrice}
                   compact
+                />
+              </SectionCard>
+            ) : null}
+
+            {isDoctor ? (
+              <SectionCard
+                title={isRTL ? "أسعار الاستشارة" : "Consultation prices"}
+                colors={colors}
+                textAlign={textAlign}
+              >
+                <DoctorFeesFields
+                  country={country}
+                  textLocal={textPriceLocal}
+                  onTextLocal={setTextPriceLocal}
+                  textUsd={textPriceUsd}
+                  onTextUsd={setTextPriceUsd}
+                  videoLocal={videoPriceLocal}
+                  onVideoLocal={setVideoPriceLocal}
+                  videoUsd={videoPriceUsd}
+                  onVideoUsd={setVideoPriceUsd}
+                  paymentLink={paymentLink}
+                  onPaymentLink={setPaymentLink}
+                  disabled={saving}
                 />
               </SectionCard>
             ) : null}
@@ -522,20 +603,68 @@ export function ProfileEditor({
                   label={t.auth.videoConsultationPrice}
                   compact
                 />
+
+                <View style={[styles.immediateCallRow, { flexDirection: dir }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: colors.foreground,
+                        fontWeight: "700",
+                        fontSize: 14,
+                        textAlign,
+                      }}
+                    >
+                      {t.auth.immediateCalls}
+                    </Text>
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: 12,
+                        lineHeight: 17,
+                        textAlign,
+                      }}
+                    >
+                      {t.auth.immediateCallsHint}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={immediateCallEnabled}
+                    onValueChange={setImmediateCallEnabled}
+                    trackColor={{ false: colors.border, true: `${colors.primary}88` }}
+                    thumbColor={immediateCallEnabled ? colors.primary : undefined}
+                  />
+                </View>
               </SectionCard>
             ) : null}
 
             <SectionCard
-              title={isRTL ? "التفضيلات" : "Preferences"}
+              title={t.settings.changePassword}
+              colors={colors}
+              textAlign={textAlign}
+            >
+              <ProfileChangePasswordField accessToken={accessToken} />
+            </SectionCard>
+
+            <SectionCard
+              title={t.settings.preferences}
               colors={colors}
               textAlign={textAlign}
             >
               <ProfileLanguageField embedded wideCards />
+              <ProfileThemeField />
+              {Platform.OS !== "web" ? (
+                <View style={{ marginTop: 12 }}>
+                  <ProfileNotificationsField />
+                </View>
+              ) : null}
+              <View style={{ marginTop: 12 }}>
+                <ProfileAiField />
+              </View>
             </SectionCard>
         </KeyboardSafeScrollView>
 
         <SafeAreaView
-          edges={["bottom"]}
+          edges={Platform.OS === "web" ? ["bottom"] : []}
           style={[
             styles.saveDock,
             {
@@ -545,7 +674,11 @@ export function ProfileEditor({
           ]}
         >
           <Pressable
-            onPress={() => void save()}
+            testID="profile-save"
+            onPress={() => {
+              advanceOnAnchorTap("profile-save");
+              void save();
+            }}
             disabled={saving}
             style={[
               styles.actionBtn,
@@ -663,9 +796,11 @@ function Field({
 
   return (
     <View style={styles.field}>
-      <Text style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}>
-        {label}
-      </Text>
+      {label ? (
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground, textAlign }]}>
+          {label}
+        </Text>
+      ) : null}
       <AppTextInput
         value={value}
         onChangeText={onChangeText}
@@ -768,22 +903,17 @@ const styles = StyleSheet.create({
   block: {
     gap: 8,
   },
-  specialityRow: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  specialityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
   field: {
     gap: 6,
   },
   fieldLabel: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  fieldHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 2,
   },
   input: {
     borderWidth: 1,
@@ -802,6 +932,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  immediateCallRow: {
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
   },
   certCard: {
     gap: 10,

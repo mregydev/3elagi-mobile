@@ -6,7 +6,12 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "773972750372-8hamr2cer3juf6qbh53q8aivmc8v0om9.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_MOBILE_ID": "773972750372-8ggmkp52i76ruevgvtpo0ummg1vttdeo.apps.googleusercontent.com"
+      },
+      "node": "20.20.2"
     },
     "preview": {
       "distribution": "internal",
@@ -15,8 +20,11 @@
       },
       "env": {
         "EXPO_PUBLIC_API_HOST": "https://service-3elagi-q45gskkjsa-ew.a.run.app",
-        "EXPO_PUBLIC_API_URL": "https://service-3elagi-q45gskkjsa-ew.a.run.app/3eyadahub-api"
-      }
+        "EXPO_PUBLIC_API_URL": "https://service-3elagi-q45gskkjsa-ew.a.run.app/3eyadahub-api",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "773972750372-8hamr2cer3juf6qbh53q8aivmc8v0om9.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_MOBILE_ID": "773972750372-8ggmkp52i76ruevgvtpo0ummg1vttdeo.apps.googleusercontent.com"
+      },
+      "node": "20.20.2"
     },
     "production": {
       "android": {
@@ -24,9 +32,14 @@
       },
       "env": {
         "EXPO_PUBLIC_API_HOST": "https://service-3elagi-q45gskkjsa-ew.a.run.app",
-        "EXPO_PUBLIC_API_URL": "https://service-3elagi-q45gskkjsa-ew.a.run.app/3eyadahub-api"
-      }
+        "EXPO_PUBLIC_API_URL": "https://service-3elagi-q45gskkjsa-ew.a.run.app/3eyadahub-api",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "773972750372-8hamr2cer3juf6qbh53q8aivmc8v0om9.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_MOBILE_ID": "773972750372-8ggmkp52i76ruevgvtpo0ummg1vttdeo.apps.googleusercontent.com"
+      },
+      "node": "20.20.2"
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }

@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import type { useColors } from "@/hooks/useColors";
+import { alignText } from "@/utils/rtl";
 
 interface Props {
   label: string;
@@ -33,9 +34,15 @@ export const AuthFormField = React.forwardRef<TextInput, Props>(function AuthFor
   },
   ref,
 ) {
+  // Label and error follow the input's own direction — left-aligned labels over
+  // a right-aligned Arabic field read as a broken form.
+  const textAlign = alignText(isRTL);
+
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
+      <Text style={[styles.label, { color: colors.foreground, textAlign }]}>
+        {label}
+      </Text>
       <AppTextInput
         ref={ref}
         value={value}
@@ -48,13 +55,15 @@ export const AuthFormField = React.forwardRef<TextInput, Props>(function AuthFor
           {
             backgroundColor: colors.card,
             color: colors.foreground,
-            textAlign: isRTL ? "right" : "left",
+            textAlign,
           },
         ]}
         {...rest}
       />
       {error ? (
-        <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
+        <Text style={[styles.error, { color: colors.destructive, textAlign }]}>
+          {error}
+        </Text>
       ) : null}
     </View>
   );

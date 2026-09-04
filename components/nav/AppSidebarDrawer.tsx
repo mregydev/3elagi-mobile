@@ -19,10 +19,10 @@ export function AppSidebarDrawer() {
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
   const { open, closeSidebar } = useAppSidebar();
-  const { isDesktop } = useWebLayout();
+  const { isTablet } = useWebLayout();
 
-  // Desktop web keeps the permanent sidebar; drawer is for mobile (native + web).
-  if (Platform.OS === "web" && isDesktop) return null;
+  // Tablet+ web keeps the permanent sidebar; drawer is for mobile web + native.
+  if (Platform.OS === "web" && isTablet) return null;
 
   return (
     <Modal
@@ -31,13 +31,17 @@ export function AppSidebarDrawer() {
       transparent
       onRequestClose={closeSidebar}
     >
-      <View style={styles.overlay}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={closeSidebar}
-          accessibilityRole="button"
-          accessibilityLabel={t.common.cancel}
-        />
+      {/*
+        Panel is the first flex child; row-reverse in Arabic places it on the
+        right (RTL). Avoid `direction: rtl` here — it double-flips with
+        AppSidebarNav's explicit row-reverse.
+      */}
+      <View
+        style={[
+          styles.overlay,
+          { flexDirection: isRTL ? "row-reverse" : "row" },
+        ]}
+      >
         <View
           style={[
             styles.panel,
@@ -45,7 +49,6 @@ export function AppSidebarDrawer() {
               backgroundColor: colors.card,
               paddingTop: insets.top,
               paddingBottom: insets.bottom,
-              [isRTL ? "right" : "left"]: 0,
               borderColor: colors.border,
               borderRightWidth: isRTL ? 0 : StyleSheet.hairlineWidth,
               borderLeftWidth: isRTL ? StyleSheet.hairlineWidth : 0,
@@ -71,8 +74,17 @@ export function AppSidebarDrawer() {
               <X size={22} color={colors.foreground} />
             </Pressable>
           </View>
-          <AppSidebarNav onNavigate={closeSidebar} />
+          <View style={styles.navHost}>
+            {/* Web-only: renders null on native, where the app is already installed. */}
+            <AppSidebarNav onNavigate={closeSidebar} />
+          </View>
         </View>
+        <Pressable
+          style={styles.backdrop}
+          onPress={closeSidebar}
+          accessibilityRole="button"
+          accessibilityLabel={t.common.cancel}
+        />
       </View>
     </Modal>
   );
@@ -83,9 +95,9 @@ export function AppSidebarMenuButton() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const { openSidebar } = useAppSidebar();
-  const { isDesktop } = useWebLayout();
+  const { isTablet } = useWebLayout();
 
-  if (Platform.OS === "web" && isDesktop) return null;
+  if (Platform.OS === "web" && isTablet) return null;
 
   return (
     <Pressable
@@ -96,7 +108,8 @@ export function AppSidebarMenuButton() {
       style={({ pressed }) => [
         styles.menuBtn,
         {
-          [isRTL ? "right" : "left"]: 12,
+          // Mirror hamburger to the start edge: left in LTR, right in RTL.
+          ...(isRTL ? { right: 12, left: undefined } : { left: 12, right: undefined }),
           backgroundColor: pressed ? colors.muted : "transparent",
         },
       ]}
@@ -109,19 +122,21 @@ export function AppSidebarMenuButton() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    flexDirection: "row",
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
   },
   panel: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
     width: 300,
     maxWidth: "86%",
+    height: "100%",
     zIndex: 2,
+    overflow: "hidden",
+  },
+  navHost: {
+    flex: 1,
+    minHeight: 0,
   },
   closeRow: {
     flexDirection: "row",

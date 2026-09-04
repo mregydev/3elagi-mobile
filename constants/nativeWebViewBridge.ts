@@ -44,4 +44,5 @@ export interface WebViewAuthSession {
   specialty: string | null;
   specialityId: string | null;
   doctorApprovalStatus: DoctorApprovalStatus | null;
+  emailVerified?: boolean;
 }

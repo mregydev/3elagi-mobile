@@ -34,13 +34,28 @@ export function messagePreviewText(
     case "consultation_action": {
       const meta = message.consultationAction;
       if (!meta) return message.text;
-      if (meta.action === "start") {
-        return isRTL ? "بدأت الاستشارة" : "Consultation started";
+      // Every action needs its own case: the fallback says "cancelled", so a
+      // new action type silently reads as a cancellation.
+      switch (meta.action) {
+        case "start":
+          return meta.status === "pending"
+            ? isRTL
+              ? "طلب استشارة — بانتظار رد الطبيب"
+              : "Consultation request — awaiting the doctor"
+            : isRTL
+              ? "بدأت الاستشارة"
+              : "Consultation started";
+        case "accept":
+          return isRTL ? "تم قبول الاستشارة" : "Consultation accepted";
+        case "reject":
+          return isRTL ? "تم رفض طلب الاستشارة" : "Consultation request declined";
+        case "end":
+          return isRTL ? "انتهت الاستشارة" : "Consultation ended";
+        case "cancel":
+          return isRTL ? "أُلغيت الاستشارة" : "Consultation cancelled";
+        default:
+          return message.text;
       }
-      if (meta.action === "end") {
-        return isRTL ? "انتهت الاستشارة" : "Consultation ended";
-      }
-      return isRTL ? "أُلغيت الاستشارة" : "Consultation cancelled";
     }
     default:
       return message.text;

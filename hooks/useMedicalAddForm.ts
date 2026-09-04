@@ -33,6 +33,16 @@ import type {
 import { useI18n } from "@/hooks/useI18n";
 import { getAddMedicalCategories } from "@/components/records/medicalRecordCategories";
 import { isDoctorAddingForPatient, resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
+import {
+  isDocumentScannerAvailable,
+  scanDocumentPage,
+} from "@/utils/documentScanner";
+import {
+  newSymptomLine,
+  symptomLinesFrom,
+  symptomTexts,
+  type SymptomLine,
+} from "@/utils/symptomLines";
 
 const ATTACHMENT_CATEGORIES: MedicalCategory[] = ["lab", "xray"];
 
@@ -84,7 +94,9 @@ export function useMedicalAddForm() {
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
-  const [symptomLines, setSymptomLines] = useState<string[]>([""]);
+  const [symptomLines, setSymptomLines] = useState<SymptomLine[]>(() => [
+    newSymptomLine(),
+  ]);
   const [attached, setAttached] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
@@ -93,7 +105,8 @@ export function useMedicalAddForm() {
   const [linkableDocs, setLinkableDocs] = useState<MedicalRecord[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [generateAiInsight, setGenerateAiInsight] = useState(false);
+  // The manual form never generates insights — the AI add flow does that.
+  const generateAiInsight = false;
   const [draftAiInsight, setDraftAiInsight] = useState<MedicalAiInsight | null>(null);
 
   const isDiagnosis = category === "diagnosis";
@@ -155,6 +168,7 @@ export function useMedicalAddForm() {
       accessToken,
       getApiLang(),
       attached.webFile,
+      title.trim() ? { title: title.trim() } : undefined,
     )
       .then((analyzed) => {
         if (cancelled || analyzeRunRef.current !== runId) return;
@@ -162,7 +176,8 @@ export function useMedicalAddForm() {
           !!requestIdParam?.trim() &&
           (categoryParam === "lab" || categoryParam === "xray");
         if (!locked) setCategory(analyzed.type);
-        setTitle(analyzed.title);
+        const patientTitle = title.trim();
+        setTitle(patientTitle || analyzed.title);
         setNotes(analyzed.notes);
         setDraftAiInsight(analyzed.ai_insight);
       })
@@ -200,11 +215,16 @@ export function useMedicalAddForm() {
     if (!ATTACHMENT_CATEGORIES.includes(key)) setAttached(null);
   };
 
-  const addSymptomLine = () => setSymptomLines((prev) => [...prev, ""]);
-  const updateSymptomLine = (index: number, text: string) =>
-    setSymptomLines((prev) => prev.map((s, i) => (i === index ? text : s)));
-  const removeSymptomLine = (index: number) =>
-    setSymptomLines((prev) => (prev.length <= 1 ? [""] : prev.filter((_, i) => i !== index)));
+  const addSymptomLine = () =>
+    setSymptomLines((prev) => [...prev, newSymptomLine()]);
+  const updateSymptomLine = (id: string, text: string) =>
+    setSymptomLines((prev) =>
+      prev.map((line) => (line.id === id ? { ...line, text } : line)),
+    );
+  const removeSymptomLine = (id: string) =>
+    setSymptomLines((prev) =>
+      prev.length <= 1 ? [newSymptomLine()] : prev.filter((line) => line.id !== id),
+    );
 
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -245,6 +265,19 @@ export function useMedicalAddForm() {
         name: asset.fileName ?? `photo-${Date.now()}.jpg`,
         mimeType: asset.mimeType ?? "image/jpeg",
       });
+    }
+  };
+
+  /** Native document scan — deskewed, cropped page instead of a raw photo. */
+  const scanWithCamera = async () => {
+    try {
+      const page = await scanDocumentPage();
+      if (page) setAttached(page);
+    } catch (e) {
+      showAppAlert(
+        "Scan failed",
+        e instanceof Error ? e.message : "Please try again.",
+      );
     }
   };
 
@@ -292,7 +325,7 @@ export function useMedicalAddForm() {
         accessToken,
       );
       const symptoms = result.symptoms.map((s) => s.desc).filter(Boolean);
-      setSymptomLines(symptoms.length > 0 ? symptoms : [""]);
+      setSymptomLines(symptomLinesFrom(symptoms));
       setSelectedDocumentIds(result.document_ids ?? []);
       const linkedTitles = linkableDocs
         .filter((d) => (result.document_ids ?? []).includes(d.id))
@@ -341,7 +374,7 @@ export function useMedicalAddForm() {
         );
         return;
       }
-      const symptoms = symptomLines.map((s) => s.trim()).filter(Boolean);
+      const symptoms = symptomTexts(symptomLines);
       const documentIds = selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined;
       setUploading(true);
       try {
@@ -410,12 +443,13 @@ export function useMedicalAddForm() {
             accessToken,
             getApiLang(),
             attached.webFile,
+            resolvedTitle ? { title: resolvedTitle } : undefined,
           );
-          resolvedTitle = analyzed.title;
+          resolvedTitle = resolvedTitle || analyzed.title;
           resolvedNotes = analyzed.notes;
           resolvedInsight = analyzed.ai_insight;
           setDraftAiInsight(analyzed.ai_insight);
-          setTitle(analyzed.title);
+          setTitle(resolvedTitle);
           setNotes(analyzed.notes);
         }
 
@@ -552,10 +586,11 @@ export function useMedicalAddForm() {
     isLabOrXray,
     isImage,
     generateAiInsight,
-    setGenerateAiInsight,
     pickFromCamera,
     pickFromGallery,
     pickFromFiles,
+    scanWithCamera,
+    canScanDocuments: isDocumentScannerAvailable,
     completeWithAi,
     completingAi,
     submit,

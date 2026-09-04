@@ -1,17 +1,28 @@
 import { API_BASE } from "@/constants/api";
 import type { ConsultationCancelReasonType } from "@/domains/chat/types";
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
 export interface Consultation {
   id: string;
   patient_id: string;
   doctor_id: string;
-  status: "open" | "ended" | "cancelled";
+  status: "pending" | "open" | "ended" | "cancelled" | "rejected";
   description: string;
   reserved_points: number;
   doctor_note: string | null;
   diagnosis_id: string | null;
   cancel_reason_type: ConsultationCancelReasonType | null;
   cancel_reason: string | null;
+  payment_status?: "none" | "awaiting_payment" | "proof_submitted" | "paid";
+  payment_amount?: number | null;
+  payment_currency?: string | null;
+  payment_proof_url?: string | null;
+  /** Doctor payment URL when payment is required (patient list). */
+  payment_link?: string | null;
+  /** ISO country the patient consulted from (their IP at request time). */
+  patient_country?: string | null;
+  /** USD per credit for that country when the request was made (admin-set). */
+  point_price_usd?: number | null;
 }
 
 export interface PointsSummary {
@@ -91,9 +102,62 @@ export async function startConsultation(
   description: string,
   token: string,
 ): Promise<{ consultation: Consultation; points: PointsSummary }> {
+  // The API resolves the country from the request IP; this header is only its
+  // fallback for hosts where the client IP never reaches us (plain Cloud Run).
+  const geo = await detectCountryFromIp().catch(() => null);
   return authJson(`/consultations/start`, token, {
     method: "POST",
+    headers: geo ? { "x-client-geo-country": geo } : undefined,
     body: JSON.stringify({ doctor_id: doctorId, description }),
+  });
+}
+
+/** Doctor answers a pending request; `requirePayment` asks the patient to pay first. */
+export async function acceptConsultation(
+  consultationId: string,
+  token: string,
+  requirePayment = false,
+): Promise<{ consultation: Consultation }> {
+  const geo = await detectCountryFromIp().catch(() => null);
+  return authJson(`/consultations/${consultationId}/accept`, token, {
+    method: "POST",
+    headers: geo ? { "x-client-geo-country": geo } : undefined,
+    body: JSON.stringify({ require_payment: requirePayment }),
+  });
+}
+
+/** Patient attaches the receipt for a consultation the doctor priced. */
+export async function submitConsultationPaymentProof(
+  consultationId: string,
+  proofUrl: string,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/payment-proof`, token, {
+    method: "POST",
+    body: JSON.stringify({ proof_url: proofUrl }),
+  });
+}
+
+/** Doctor approves or rejects that receipt. */
+export async function reviewConsultationPayment(
+  consultationId: string,
+  approve: boolean,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/payment-review`, token, {
+    method: "POST",
+    body: JSON.stringify({ approve }),
+  });
+}
+
+export async function rejectConsultation(
+  consultationId: string,
+  token: string,
+  reason?: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/reject`, token, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
   });
 }
 
@@ -137,6 +201,18 @@ export async function endConsultation(
   });
 }
 
+/** Either side answers a cancellation request. */
+export async function reviewConsultationCancel(
+  consultationId: string,
+  approve: boolean,
+  token: string,
+): Promise<{ consultation: Consultation }> {
+  return authJson(`/consultations/${consultationId}/cancel-review`, token, {
+    method: "POST",
+    body: JSON.stringify({ approve }),
+  });
+}
+
 export async function cancelConsultation(
   consultationId: string,
   payload: { reason_type: ConsultationCancelReasonType; reason?: string },
@@ -145,5 +221,15 @@ export async function cancelConsultation(
   return authJson(`/consultations/${consultationId}/cancel`, token, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function removeConsultation(
+  consultationId: string,
+  token: string,
+): Promise<{ ok: boolean; consultation_id: string; deleted_message_ids: string[] }> {
+  return authJson(`/consultations/${consultationId}/remove`, token, {
+    method: "POST",
+    body: JSON.stringify({}),
   });
 }

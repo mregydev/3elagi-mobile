@@ -1,5 +1,7 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, Stethoscope } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,17 +15,21 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  KeyboardController,
   KeyboardStickyView,
   useKeyboardState,
 } from "react-native-keyboard-controller";
 import { ChatReactionOverlay, type ReactionAnchor } from "@/components/ChatReactionOverlay";
 import { Avatar } from "@/components/Avatar";
+import { CallDoctorButton } from "@/components/call/CallDoctorButton";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
 import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { ArchivedMessagesToggle } from "@/components/chat/ArchivedMessagesToggle";
+import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
+import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
@@ -34,6 +40,7 @@ import { FullscreenImageViewer } from "@/components/FullscreenImageViewer";
 import { FullscreenVideoViewer } from "@/components/FullscreenVideoViewer";
 import { MedicalRecordPicker } from "@/components/MedicalRecordPicker";
 import { usePresenceStore } from "@/domains/presence/store";
+import { fetchAccountProfile } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import {
@@ -54,29 +61,54 @@ import {
   type DoctorPatientAccessStatus,
 } from "@/domains/chat/access";
 import type { ChatMessage, MedicalLinkMeta, SendMessageInput } from "@/domains/chat/types";
-import { mapMessageRow } from "@/domains/chat/api";
+import {
+  chatListItemKey,
+  injectChatDateSeparators,
+  type ChatListItem,
+} from "@/domains/chat/dateSeparators";
+import {
+  mapMessageRow,
+  markChatMessageRead,
+  markChatMessageUnread,
+} from "@/domains/chat/api";
 import { sendAppointmentAction } from "@/domains/appointments/api";
+import { isAppointmentStartInFuture } from "@/domains/appointments/roomWindow";
+import {
+  acceptConsultation,
+  rejectConsultation,
+  reviewConsultationCancel,
+  reviewConsultationPayment,
+  submitConsultationPaymentProof,
+} from "@/domains/consultations/api";
+import { pickPaymentReceipt } from "@/utils/pickPaymentReceipt";
 import { onChatAccessUpdated } from "@/domains/presence/socket";
 import type { MedicalRecord } from "@/domains/medical/types";
-import { createDiagnosis, fetchAllMedicalHistory } from "@/domains/medical/api";
+import { createDiagnosis, fetchAllMedicalHistory, uploadFile } from "@/domains/medical/api";
 import { openAsk3elagiAi } from "@/domains/ai/widget-store";
+import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
+import { TourAnchor } from "@/components/onboarding/TourAnchor";
+import { fetchTestPatientChatStatus, type TestPatientChatStatus } from "@/domains/doctor/testPatientChatApi";
+import { registerTourAnchorHandler } from "@/domains/onboarding/tourAnchorActions";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
-import { useColors } from "@/hooks/useColors";
+import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
-import { leaveChatToHistory } from "@/utils/chatNavigation";
-import { scrollChatToLatest } from "@/utils/chatListScroll";
-import { chatFlexRow, chatLayoutDirection } from "@/utils/rtl";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import {
+  buildChatLatestMessageToken,
+  isChatStuckToLatest,
+  scrollChatToLatest,
+  shouldForceChatScrollOnNewMessage,
+} from "@/utils/chatListScroll";
+import { chatFlexRow, chatLayoutDirection, flexRow } from "@/utils/rtl";
+import { webConfirm } from "@/utils/webConfirm";
+import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
-
-type ChatListItem =
-  | { kind: "message"; message: ChatMessage }
-  | { kind: "archive_toggle"; count: number };
 
 function canReactToMessage(message: ChatMessage): boolean {
   return !message.pending && !message.failed && !message.id.startsWith("pending-");
@@ -89,12 +121,40 @@ interface ChatScreenProps {
 
 export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const colors = useColors();
-  const { isRTL, t } = useI18n();
+  const accentGradient = useAccentGradient();
+  const { isRTL, t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
+  const keyboardHeight = useKeyboardState((s) => s.height);
+  const [composerFocused, setComposerFocused] = useState(false);
   const role = useAuthStore((s) => s.role);
-  const { id: rawPeerId, consultationId: rawConsultationId } =
-    useLocalSearchParams<{ id: string; consultationId?: string }>();
+
+  // Opening from a push notification can inherit a stale keyboard height — only
+  // reserve list padding once the composer is actually focused.
+  const layoutKeyboardVisible =
+    Platform.OS !== "web" && composerFocused && keyboardVisible;
+  const layoutKeyboardHeight = layoutKeyboardVisible ? keyboardHeight : 0;
+
+  // Reset keyboard lift whenever this thread gains focus (e.g. notification tap).
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === "web") return;
+      setComposerFocused(false);
+      if (KeyboardController.isVisible()) {
+        void KeyboardController.dismiss().catch(() => undefined);
+      }
+    }, []),
+  );
+  const {
+    id: rawPeerId,
+    consultationId: rawConsultationId,
+    from: rawFrom,
+  } = useLocalSearchParams<{
+    id: string;
+    consultationId?: string;
+    from?: string;
+  }>();
+  const openedFrom = Array.isArray(rawFrom) ? rawFrom[0] : rawFrom;
   const id = Array.isArray(rawPeerId) ? rawPeerId[0] : rawPeerId;
   const consultationId = Array.isArray(rawConsultationId)
     ? rawConsultationId[0]
@@ -114,9 +174,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const addPendingMessage = useChatStore((s) => s.addPendingMessage);
   const failPendingMessage = useChatStore((s) => s.failPendingMessage);
   const deleteMessage = useChatStore((s) => s.deleteMessage);
+  const removeAppointmentMessages = useChatStore((s) => s.removeAppointmentMessages);
   const editMessage = useChatStore((s) => s.editMessage);
   const editMedicalMessage = useChatStore((s) => s.editMedicalMessage);
   const updateMessageEmotions = useChatStore((s) => s.updateMessageEmotions);
+  const patchMessage = useChatStore((s) => s.patchMessage);
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const doctorId = useAuthStore((s) => s.doctorId);
@@ -147,20 +209,30 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const [accessLoading, setAccessLoading] = useState(false);
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
   const [appointmentActionBusy, setAppointmentActionBusy] = useState(false);
+  /** Appointment being moved, and the doctor's own entity id for slot lookups. */
+  const [rescheduleAppointmentId, setRescheduleAppointmentId] = useState<
+    string | null
+  >(null);
+  const [selfDoctorEntityId, setSelfDoctorEntityId] = useState<string | null>(null);
+  const [testPatientStatus, setTestPatientStatus] = useState<TestPatientChatStatus | null>(null);
   const listRef = useRef<FlatList<ChatListItem>>(null);
   const chatBodyRef = useRef<View>(null);
   const sendingRef = useRef(false);
   const messageAnchorsRef = useRef<Map<string, View>>(new Map());
   const stickToBottomRef = useRef(true);
   const lastMessageTokenRef = useRef("");
-  const onlineUsers = usePresenceStore((s) => s.users);
+  // Only this peer's presence matters here. Subscribing to the whole users map
+  // re-rendered the entire chat every time *any* user in the app logged in/out.
+  const peerOnline = usePresenceStore((s) => !!s.users[id ?? ""]);
 
   const peerCacheTick = useChatStore((s) => s.peerCacheTick);
+  // `messages` is deliberately not a dep — resolvePeer never reads it, and it
+  // rebuilt `peer` (a fresh object) on every single incoming message.
   const peer = useMemo(() => {
     if (!id) return undefined;
     const resolved = resolvePeer(id);
     return resolved ? applyLivePresence(resolved) : undefined;
-  }, [id, resolvePeer, conversations, contactsReady, onlineUsers, messages, peerCacheTick]);
+  }, [id, resolvePeer, conversations, contactsReady, peerOnline, peerCacheTick]);
 
   useEffect(() => {
     if (!id || !accessToken || peer?.photoUrl) return;
@@ -169,13 +241,44 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
   const isDoctor = role?.toLowerCase() === "doctor";
   const isPatient = role?.toLowerCase() === "patient";
+  const isAdmin = role?.toLowerCase() === "admin";
+  const isDemoPatientChat = isDoctor && !!testPatientStatus?.is_test_patient;
   const canOpenPatientRecord =
     isDoctor &&
     peer?.role === "patient" &&
-    canDoctorViewPatientRecords(accessStatus);
+    (isDemoPatientChat || canDoctorViewPatientRecords(accessStatus));
+
+  const openPatientRecord = useCallback(() => {
+    if (!id || !isDoctor || peer?.role !== "patient") return;
+    if (!isDemoPatientChat && !canDoctorViewPatientRecords(accessStatus)) {
+      Alert.alert(
+        isRTL ? "لا يوجد صلاحية" : "No access",
+        isRTL
+          ? "المريض لم يمنحك صلاحية عرض السجل الطبي بعد."
+          : "The patient has not granted permission to view medical records yet.",
+      );
+      return;
+    }
+    router.push({
+      pathname: "/patients/[userId]",
+      params: { userId: id, name: peer?.name ?? "" },
+    });
+  }, [id, isDoctor, peer?.role, peer?.name, accessStatus, isDemoPatientChat, isRTL, router]);
+
+  useEffect(() => {
+    if (!canOpenPatientRecord) return;
+    return registerTourAnchorHandler("chat-view-records", openPatientRecord);
+  }, [canOpenPatientRecord, openPatientRecord]);
+
   const isDoctorPatientChat =
     (isDoctor && peer?.role === "patient") || (isPatient && peer?.role === "doctor");
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
+  // Patients can ring a doctor who has immediate calls switched on.
+  const canCallDoctor =
+    IMMEDIATE_VIDEO_CALL_ENABLED &&
+    isPatient &&
+    peer?.role === "doctor" &&
+    !!peer?.immediateCallEnabled;
   const latestConsultationAction = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i];
@@ -186,18 +289,27 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return null;
   }, [messages]);
   const [consultationOpen, setConsultationOpen] = useState(false);
+  // Start / end consultation live in the plus menu, published by ConsultationBar.
+  const [consultationMenuActions, setConsultationMenuActions] = useState<ChatAction[]>([]);
   const [activeConsultationId, setActiveConsultationId] = useState<string | undefined>();
+
+  // Stable identity: ConsultationBar re-runs its sync effect on every callback change.
+  const handleConsultationActiveChange = useCallback(
+    (c: { id: string } | null) => setActiveConsultationId(c?.id),
+    [],
+  );
   /** Previous consultations' messages — collapsed by default under a toggle. */
   const [archiveExpanded, setArchiveExpanded] = useState(false);
-  // Doctor↔patient can only message while a consultation is open.
-  const needsConsultation = isDoctorPatientChat && !consultationOpen;
-  const canUseDiagnosisTemplates = canOpenPatientRecord && consultationOpen;
+  // Doctor↔patient can only message while a consultation is open — except AI demo patient.
+  const needsConsultation = isDoctorPatientChat && !consultationOpen && !isDemoPatientChat;
+  const canUseDiagnosisTemplates =
+    canOpenPatientRecord && (consultationOpen || isDemoPatientChat);
   const chatBlocked = !!accessStatus?.is_blocked;
   const patientUserIdForLinks =
     isDoctor && peer?.role === "patient" ? peer.id : undefined;
   const canOpenSharedMedicalLinks =
     isDoctor && peer?.role === "patient"
-      ? !!accessStatus?.records_allowed && !accessStatus?.is_blocked
+      ? (isDemoPatientChat || !!accessStatus?.records_allowed) && !accessStatus?.is_blocked
       : isDoctorDoctorChat
         ? false
         : true;
@@ -211,7 +323,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     let cancelled = false;
     void (async () => {
       try {
-        await ensureContacts(accessToken);
+        await ensureContacts(accessToken, role);
         await ensurePeer(id, accessToken);
       } finally {
         if (!cancelled) setContactsReady(true);
@@ -220,7 +332,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, id, ensureContacts, ensurePeer]);
+  }, [accessToken, id, role, ensureContacts, ensurePeer]);
 
   useEffect(() => {
     if (!id) return;
@@ -275,12 +387,54 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, [id, accessToken, isDoctorPatientChat]);
 
   useEffect(() => {
+    if (!id || !accessToken || !isDoctor || !isDoctorPatientChat) {
+      setTestPatientStatus(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchTestPatientChatStatus(accessToken, id)
+      .then((status) => {
+        if (cancelled) return;
+        setTestPatientStatus(status);
+        if (status.is_test_patient) {
+          void fetchDoctorPatientAccess(accessToken, id)
+            .then((access) => {
+              if (!cancelled) setAccessStatus(access);
+            })
+            .catch(() => undefined);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTestPatientStatus(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, accessToken, isDoctor, isDoctorPatientChat, messages.length]);
+
+  useEffect(() => {
+    if (!id || !accessToken || !isDoctor || !isDemoPatientChat) return;
+    void fetchAllMedicalHistory(id, accessToken, role ?? undefined).then((rows) =>
+      setRecordsFromApi(rows, id),
+    );
+  }, [id, accessToken, isDoctor, isDemoPatientChat, role, setRecordsFromApi]);
+
+  useEffect(() => {
     if (!id) return;
     onChatAccessUpdated((payload) => {
       if (payload.peer_id === id) setAccessStatus(payload.status);
     });
     return () => onChatAccessUpdated(null);
   }, [id]);
+
+  // Consultation start grants record access on the server — refresh in case the
+  // socket event was missed while the app was backgrounded.
+  useEffect(() => {
+    if (!id || !accessToken || !isDoctorPatientChat || !consultationOpen) return;
+    void fetchDoctorPatientAccess(accessToken, id)
+      .then(setAccessStatus)
+      .catch(() => undefined);
+  }, [id, accessToken, isDoctorPatientChat, consultationOpen, activeConsultationId]);
 
   const chatMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -307,24 +461,23 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     activeConsultationId,
   ]);
 
+  const dateLabels = useMemo(
+    () => ({ today: t.common.today, yesterday: t.common.yesterday }),
+    [t.common.today, t.common.yesterday],
+  );
+
   const listData = useMemo((): ChatListItem[] => {
     if (!archiveSplit) {
-      return chatMessages.map((message) => ({ kind: "message", message }));
+      return injectChatDateSeparators(chatMessages, locale, dateLabels);
     }
-    const currentRev = [...archiveSplit.current]
-      .reverse()
-      .map((message) => ({ kind: "message" as const, message }));
-    const toggle: ChatListItem = {
-      kind: "archive_toggle",
-      count: archiveSplit.archived.length,
-    };
-    if (!archiveExpanded) return [...currentRev, toggle];
-    const archivedRev = [...archiveSplit.archived]
-      .reverse()
-      .map((message) => ({ kind: "message" as const, message }));
-    // Inverted list: newest at index 0 → archive header ends up at the visual top.
-    return [...currentRev, ...archivedRev, toggle];
-  }, [archiveSplit, archiveExpanded, chatMessages]);
+    const currentRev = [...archiveSplit.current].reverse();
+    if (!archiveExpanded) {
+      return injectChatDateSeparators(currentRev, locale, dateLabels);
+    }
+    const archivedRev = [...archiveSplit.archived].reverse();
+    // Inverted list: archived block sits above current messages; toggle is ListFooter (visual top).
+    return injectChatDateSeparators([...currentRev, ...archivedRev], locale, dateLabels);
+  }, [archiveSplit, archiveExpanded, chatMessages, locale, dateLabels]);
 
   useEffect(() => {
     setArchiveExpanded(false);
@@ -341,21 +494,60 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     return map;
   }, [messages]);
   const appointmentStatuses = useMemo(() => {
-    const map = new Map<string, { status: string; meetingLink?: string | null }>();
+    const map = new Map<
+      string,
+      { status: string; meetingLink?: string | null; pendingBy?: string | null }
+    >();
     for (const message of messages) {
       if (message.type !== "appointment_action" || !message.appointmentAction) continue;
-      map.set(message.appointmentAction.appointment_id, {
-        status: message.appointmentAction.status ?? "pending",
-        meetingLink: message.appointmentAction.meeting_link,
+      const meta = message.appointmentAction;
+      map.set(meta.appointment_id, {
+        status: meta.status ?? "pending",
+        meetingLink: meta.meeting_link,
+        pendingBy: meta.pending_by ?? null,
       });
     }
     return map;
   }, [messages]);
+  /** Unanswered reschedule/cancel request per appointment → message id. */
+  const openAppointmentChangeRequests = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const message of messages) {
+      const meta = message.appointmentAction;
+      if (!meta) continue;
+      const apptId = meta.appointment_id;
+      if (meta.action === "reschedule_request" || meta.action === "cancel_request") {
+        map.set(apptId, message.id);
+      }
+      if (
+        meta.action === "reschedule_accepted" ||
+        meta.action === "reschedule_declined" ||
+        meta.action === "cancel_approved" ||
+        meta.action === "cancel_declined"
+      ) {
+        map.delete(apptId);
+      }
+    }
+    return map;
+  }, [messages]);
+  // A request stops being answerable once any later action lands on it.
+  const answeredConsultations = useMemo(() => {
+    const set = new Set<string>();
+    for (const message of messages) {
+      const meta = message.consultationAction;
+      if (!meta || meta.action === "start") continue;
+      set.add(meta.consultation_id);
+    }
+    return set;
+  }, [messages]);
+
   const listInverted = listData.length > 0;
 
   const scrollToLatest = useCallback(
     (animated = false) => {
-      scrollChatToLatest(listRef, listInverted, animated);
+      scrollChatToLatest(listRef, listInverted, animated, {
+        shouldContinue: () => stickToBottomRef.current,
+      });
     },
     [listInverted],
   );
@@ -372,10 +564,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
     if (messagesLoading) return;
 
-    const token =
-      messages.length === 0
-        ? "empty"
-        : `${messages[messages.length - 1]?.id}:${messages.length}`;
+    const token = buildChatLatestMessageToken(messages);
 
     if (token === lastMessageTokenRef.current) return;
 
@@ -384,10 +573,29 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
     if (messages.length === 0) return;
 
-    stickToBottomRef.current = true;
     const isInitialBatch = prevToken === "" || prevToken === "empty";
+    const newest = messages[messages.length - 1];
+    const isOwnMessage = newest?.senderId === "me";
+
+    if (shouldForceChatScrollOnNewMessage(isInitialBatch, newest)) {
+      stickToBottomRef.current = true;
+      scrollToLatest(true);
+      return;
+    }
+
+    if (isInitialBatch || isOwnMessage) {
+      stickToBottomRef.current = true;
+    }
     scrollToLatest(!isInitialBatch);
   }, [id, messages, messagesLoading, scrollToLatest]);
+
+  // Opening the keyboard means the user is about to type — put them on the
+  // newest message, whatever they had scrolled to.
+  useEffect(() => {
+    if (!layoutKeyboardVisible || Platform.OS === "web") return;
+    stickToBottomRef.current = true;
+    scrollToLatest(false);
+  }, [layoutKeyboardVisible, scrollToLatest]);
 
   // Deep-link from the doctor's consultation list: scroll to and highlight it.
   useEffect(() => {
@@ -420,23 +628,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   if (!isSignedIn(profile, accessToken)) {
     return <Redirect href="/welcome" />;
   }
-
-  const openPatientRecord = () => {
-    if (!id || !isDoctor || peer?.role !== "patient") return;
-    if (!canDoctorViewPatientRecords(accessStatus)) {
-      Alert.alert(
-        isRTL ? "لا يوجد صلاحية" : "No access",
-        isRTL
-          ? "المريض لم يمنحك صلاحية عرض السجل الطبي بعد."
-          : "The patient has not granted permission to view medical records yet.",
-      );
-      return;
-    }
-    router.push({
-      pathname: "/patients/[userId]",
-      params: { userId: id, name: peer?.name ?? "" },
-    });
-  };
 
   const openDoctorProfile = () => {
     if (!isPatient || peer?.role !== "doctor" || !id) return;
@@ -482,21 +673,63 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }, []);
 
   const openMessageActions = (item: ChatMessage) => {
-    if (!id || !accessToken || !profile?.id || item.senderId !== "me") return;
+    if (!id || !accessToken || !profile?.id) return;
+    if (item.pending || item.failed || item.id.startsWith("pending-")) return;
 
     showChatMessageActions({
       message: item,
       isRTL,
-      onEditText: () => setEditingMessage(item),
-      onChangeRecord: () => void openMedicalPickerForReplace(item),
-      onDelete: () => {
-        void deleteMessage(id, item.id, accessToken, profile.id, role).catch(() => {
-          Alert.alert(
-            isRTL ? "تعذر الحذف" : "Could not delete",
-            isRTL ? "حاول مرة أخرى." : "Please try again.",
-          );
-        });
-      },
+      onEditText:
+        item.senderId === "me" ? () => setEditingMessage(item) : undefined,
+      onChangeRecord:
+        item.senderId === "me"
+          ? () => void openMedicalPickerForReplace(item)
+          : undefined,
+      onDelete:
+        item.senderId === "me"
+          ? () => {
+              void deleteMessage(id, item.id, accessToken, profile.id, role).catch(
+                () => {
+                  Alert.alert(
+                    isRTL ? "تعذر الحذف" : "Could not delete",
+                    isRTL ? "حاول مرة أخرى." : "Please try again.",
+                  );
+                },
+              );
+            }
+          : undefined,
+      onToggleRead:
+        item.senderId !== "me"
+          ? () => {
+              void (async () => {
+                try {
+                  const next = item.readAt
+                    ? await markChatMessageUnread(
+                        accessToken,
+                        item.id,
+                        id,
+                        profile.id,
+                      )
+                    : await markChatMessageRead(
+                        accessToken,
+                        item.id,
+                        id,
+                        profile.id,
+                      );
+                  patchMessage(item.id, { readAt: next.readAt ?? null });
+                } catch (e) {
+                  Alert.alert(
+                    isRTL ? "تعذر التحديث" : "Could not update",
+                    e instanceof Error
+                      ? e.message
+                      : isRTL
+                        ? "حاول مرة أخرى."
+                        : "Please try again.",
+                  );
+                }
+              })();
+            }
+          : undefined,
     });
   };
 
@@ -546,8 +779,15 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
 
     sendingRef.current = true;
     setSending(true);
+    // Sending always lands you on your own message. Pinned here rather than
+    // left to the message effect alone: clearing a multi-line composer resizes
+    // the footer mid-scroll, and that transient can clear the stick flag and
+    // cancel the pending retry.
+    stickToBottomRef.current = true;
     try {
       await sendMessage(id, input, accessToken, profile!.id, role, replaceTempId);
+      stickToBottomRef.current = true;
+      scrollToLatest(false);
     } catch (e) {
       if (replaceTempId) failPendingMessage(id, replaceTempId);
       if ((e as Error).message !== "SEND_ABORTED") {
@@ -647,7 +887,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     if (!id || !canUseDiagnosisTemplates) return;
     router.push({
       pathname: "/medical/prescription/add",
-      params: { patientUserId: id },
+      // Saving or cancelling returns here, not to the records list.
+      params: { patientUserId: id, returnTo: `/chat/${id}` },
     });
   };
 
@@ -675,6 +916,47 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         : true;
 
     if (!confirmBlock) return;
+
+    if (action === "revoke_records") {
+      const title = isRTL ? "إلغاء صلاحية السجل" : "Revoke record access";
+      const message = isRTL
+        ? "لن يتمكن الطبيب من عرض أو تعديل سجلك الطبي بعد الإلغاء."
+        : "The doctor will no longer be able to view or edit your medical records.";
+      const confirmed =
+        Platform.OS === "web"
+          ? webConfirm(title, message)
+          : await new Promise<boolean>((resolve) => {
+              Alert.alert(title, message, [
+                { text: isRTL ? "إلغاء" : "Cancel", style: "cancel", onPress: () => resolve(false) },
+                {
+                  text: isRTL ? "إلغاء الصلاحية" : "Revoke",
+                  style: "destructive",
+                  onPress: () => resolve(true),
+                },
+              ]);
+            });
+      if (!confirmed) return;
+    }
+
+    if (action === "grant_records") {
+      const title = isRTL ? "منح صلاحية السجل" : "Grant record access";
+      const message = isRTL
+        ? "سيتمكن الطبيب من عرض وتعديل سجلك الطبي."
+        : "The doctor will be able to view and edit your medical records.";
+      const confirmed =
+        Platform.OS === "web"
+          ? webConfirm(title, message)
+          : await new Promise<boolean>((resolve) => {
+              Alert.alert(title, message, [
+                { text: isRTL ? "إلغاء" : "Cancel", style: "cancel", onPress: () => resolve(false) },
+                {
+                  text: isRTL ? "منح" : "Grant",
+                  onPress: () => resolve(true),
+                },
+              ]);
+            });
+      if (!confirmed) return;
+    }
 
     setSending(true);
     try {
@@ -745,6 +1027,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         };
       });
     } catch (e) {
+      if (isAppointmentNotFoundError(e)) {
+        removeAppointmentMessages(id, appointmentId);
+      }
       Alert.alert(
         isRTL ? "خطأ" : "Error",
         e instanceof Error ? e.message : isRTL ? "تعذر تحديث الموعد" : "Could not update appointment",
@@ -752,6 +1037,267 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     } finally {
       setAppointmentActionBusy(false);
     }
+  };
+
+  const [consultationActionBusy, setConsultationActionBusy] = useState(false);
+
+  /** Doctor answers a pending consultation request from the thread. */
+  /**
+   * Land on the newest message. Consultation actions are taken from a bubble
+   * further up the thread, which clears the stick-to-bottom flag, so the
+   * resulting message would otherwise arrive off-screen.
+   */
+  const jumpToLatest = useCallback(() => {
+    stickToBottomRef.current = true;
+    scrollToLatest(true);
+  }, [scrollToLatest]);
+
+  const handleConsultationAction = async (
+    consultationId: string,
+    action: "accept" | "accept_paid" | "reject",
+  ) => {
+    if (!accessToken || consultationActionBusy) return;
+    setConsultationActionBusy(true);
+    try {
+      if (action === "accept" || action === "accept_paid") {
+        await acceptConsultation(
+          consultationId,
+          accessToken,
+          action === "accept_paid",
+        );
+      } else {
+        await rejectConsultation(consultationId, accessToken);
+      }
+      // The API posts the answer into the thread; the socket brings it back.
+      jumpToLatest();
+    } catch (e) {
+      Alert.alert(
+        isRTL ? "تعذر الرد" : "Could not answer",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "حاول مرة أخرى."
+            : "Please try again.",
+      );
+    } finally {
+      setConsultationActionBusy(false);
+    }
+  };
+
+  /**
+   * Money changes hands outside the app: the patient uploads the receipt, the
+   * doctor approves it, and only then does the visit or chat open.
+   */
+  const handlePaymentReply = async (
+    target: { kind: "appointment" | "consultation"; id: string },
+    reply: "submit" | "approve" | "reject",
+  ) => {
+    if (!accessToken || !id || !profile?.id) return;
+    const busy =
+      target.kind === "consultation" ? consultationActionBusy : appointmentActionBusy;
+    if (busy) return;
+    const setBusy =
+      target.kind === "consultation"
+        ? setConsultationActionBusy
+        : setAppointmentActionBusy;
+
+    if (reply === "submit") {
+      const asset = await pickPaymentReceipt();
+      if (!asset) return;
+      setBusy(true);
+      try {
+        const uploaded = await uploadFile(
+          asset.uri,
+          asset.mimeType ?? "image/jpeg",
+          asset.name || `receipt-${Date.now()}`,
+          accessToken,
+          asset.file,
+        );
+        const proofUrl = uploaded.url;
+
+        if (target.kind === "consultation") {
+          await submitConsultationPaymentProof(target.id, proofUrl, accessToken);
+        } else {
+          const row = await sendAppointmentAction(accessToken, id, {
+            appointment_id: target.id,
+            action: "payment_submitted",
+            date: "",
+            time: "",
+            payment_proof_url: proofUrl,
+          });
+          const msg = mapMessageRow(row, id, profile.id);
+          useChatStore.setState((s) => {
+            const thread = s.messages[id] ?? [];
+            if (thread.some((m) => m.id === msg.id)) return s;
+            return { messages: { ...s.messages, [id]: [...thread, msg] } };
+          });
+        }
+        jumpToLatest();
+      } catch (e) {
+        if (target.kind === "appointment" && isAppointmentNotFoundError(e)) {
+          removeAppointmentMessages(id, target.id);
+        }
+        Alert.alert(
+          isRTL ? "خطأ" : "Error",
+          e instanceof Error
+            ? e.message
+            : isRTL
+              ? "تعذر تحديث الدفع"
+              : "Could not update the payment",
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (target.kind === "consultation") {
+        await reviewConsultationPayment(target.id, reply === "approve", accessToken);
+      } else {
+        const row = await sendAppointmentAction(accessToken, id, {
+          appointment_id: target.id,
+          action: reply === "approve" ? "payment_approved" : "payment_rejected",
+          date: "",
+          time: "",
+        });
+        const msg = mapMessageRow(row, id, profile.id);
+        useChatStore.setState((s) => {
+          const thread = s.messages[id] ?? [];
+          if (thread.some((m) => m.id === msg.id)) return s;
+          return { messages: { ...s.messages, [id]: [...thread, msg] } };
+        });
+      }
+      jumpToLatest();
+    } catch (e) {
+      if (target.kind === "appointment" && isAppointmentNotFoundError(e)) {
+        removeAppointmentMessages(id, target.id);
+      }
+      Alert.alert(
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تعذر تحديث الدفع"
+            : "Could not update the payment",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Answering a proposed new slot or a cancellation request. Nothing has
+   * changed server-side until this call lands.
+   */
+  const handleChangeReply = async (
+    target: {
+      kind: "appointment" | "consultation";
+      id: string;
+      change: "reschedule" | "cancel";
+    },
+    reply: "accept" | "decline",
+  ) => {
+    if (!accessToken || !id || !profile?.id) return;
+    const busy =
+      target.kind === "consultation" ? consultationActionBusy : appointmentActionBusy;
+    if (busy) return;
+    const setBusy =
+      target.kind === "consultation"
+        ? setConsultationActionBusy
+        : setAppointmentActionBusy;
+
+    setBusy(true);
+    try {
+      if (target.kind === "consultation") {
+        await reviewConsultationCancel(target.id, reply === "accept", accessToken);
+      } else {
+        const action =
+          target.change === "reschedule"
+            ? reply === "accept"
+              ? "reschedule_accepted"
+              : "reschedule_declined"
+            : reply === "accept"
+              ? "cancel_approved"
+              : "cancel_declined";
+        const row = await sendAppointmentAction(accessToken, id, {
+          appointment_id: target.id,
+          action,
+          date: "",
+          time: "",
+        });
+        const msg = mapMessageRow(row, id, profile.id);
+        useChatStore.setState((s) => {
+          const thread = s.messages[id] ?? [];
+          if (thread.some((m) => m.id === msg.id)) return s;
+          return { messages: { ...s.messages, [id]: [...thread, msg] } };
+        });
+      }
+      jumpToLatest();
+    } catch (e) {
+      if (target.kind === "appointment" && isAppointmentNotFoundError(e)) {
+        removeAppointmentMessages(id, target.id);
+      }
+      Alert.alert(
+        isRTL ? "خطأ" : "Error",
+        e instanceof Error
+          ? e.message
+          : isRTL
+            ? "تعذر تحديث الطلب"
+            : "Could not answer the request",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Either side can propose a new slot; the other confirms it. */
+  const openReschedule = useCallback(
+    async (appointmentId: string) => {
+      const latestMsgId = latestAppointmentMessageIds.get(appointmentId);
+      const latestMeta = messages.find((m) => m.id === latestMsgId)?.appointmentAction;
+      if (!isAppointmentStartInFuture(latestMeta?.date ?? "", latestMeta?.time ?? null)) {
+        Alert.alert(
+          isRTL ? "غير متاح" : "Not available",
+          isRTL
+            ? "لا يمكن تغيير الموعد بعد بدء الاجتماع"
+            : "The meeting time cannot be changed after it has started",
+        );
+        return;
+      }
+      setRescheduleAppointmentId(appointmentId);
+      // The picker reads the doctor's schedule; a doctor needs their own id.
+      if (isDoctor && !selfDoctorEntityId && accessToken && role) {
+        try {
+          const account = await fetchAccountProfile(accessToken, role);
+          setSelfDoctorEntityId(account.doctorEntityId ?? null);
+        } catch {
+          // Falls back to no slots; the dialog shows its own error.
+        }
+      }
+    },
+    [isDoctor, selfDoctorEntityId, accessToken, role, isRTL, latestAppointmentMessageIds, messages],
+  );
+
+  const submitReschedule = async (date: string, time: string) => {
+    if (!accessToken || !id || !profile?.id || !rescheduleAppointmentId) return;
+    const row = await sendAppointmentAction(accessToken, id, {
+      appointment_id: rescheduleAppointmentId,
+      action: "reschedule_request",
+      date: "",
+      time: "",
+      proposed_date: date,
+      proposed_time: time,
+    });
+    const msg = mapMessageRow(row, id, profile.id);
+    useChatStore.setState((s) => {
+      const thread = s.messages[id] ?? [];
+      if (thread.some((m) => m.id === msg.id)) return s;
+      return { messages: { ...s.messages, [id]: [...thread, msg] } };
+    });
+    setRescheduleAppointmentId(null);
+    jumpToLatest();
   };
 
   const handleIntakeExamAssigned = async (
@@ -877,6 +1423,8 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }
 
   const rowDir = chatFlexRow();
+  // Header follows app locale (Arabic → back on the right); chat body stays LTR.
+  const headerDir = flexRow(isRTL);
   const canOpenDoctorProfile =
     ((isPatient || isDoctorDoctorChat) &&
       peer?.role === "doctor" &&
@@ -892,12 +1440,120 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   // Drop home-indicator padding while keyboard is open — sticky view sits on the keyboard.
   const composerBottomInset = desktopLayout
     ? 12
-    : keyboardVisible
+    : layoutKeyboardVisible
       ? 0
       : Math.max(insets.bottom, 0);
   const listPadding = desktopLayout
     ? { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, gap: 8 }
-    : { padding: 14, gap: 6, paddingBottom: 12 };
+    : {
+        padding: 14,
+        gap: 6,
+        paddingBottom: 12,
+        // Inverted list: paddingTop is the visual gap *below* the newest
+        // message. The composer is translated over the list by
+        // KeyboardStickyView rather than shrinking it, so with the keyboard up
+        // the list has to reserve that height itself — otherwise the message
+        // just sent sits underneath the input and the keys.
+        paddingTop: layoutKeyboardHeight + 14,
+      };
+
+  // With no consultation open the composer is disabled anyway, so "start" is
+  // promoted to a centered button in its place rather than hidden in the menu.
+  const startConsultationAction = needsConsultation
+    ? consultationMenuActions.find((a) => a.key === "consult-start")
+    : undefined;
+
+  const bookAppointmentAction: ChatAction | undefined =
+    isPatient && isDoctorPatientChat && peer?.doctorEntityId
+      ? {
+          key: "book",
+          label: isRTL ? "حجز موعد" : "Book appointment",
+          Icon: Calendar,
+          onPress: () => setBookAppointmentOpen(true),
+        }
+      : undefined;
+
+  // The plus button is hidden while the CTAs show, so booking rides along with
+  // "Start consultation" instead of being unreachable in the menu.
+  const disabledActions = [startConsultationAction, bookAppointmentAction].filter(
+    (a): a is ChatAction => !!a,
+  );
+
+  // Quick actions — collapsed under the plus button context window beside the input.
+  // Start/end consultation is published into this menu by ConsultationBar.
+  const chatActions: ChatAction[] = chatBlocked
+    ? []
+    : [
+        ...consultationMenuActions.filter((a) => a.key !== startConsultationAction?.key),
+        ...(isDoctor && canUseDiagnosisTemplates
+          ? [
+              {
+                key: "diagnosis",
+                label: isRTL ? "تشخيص جديد" : "Add diagnosis",
+                Icon: Stethoscope,
+                onPress: openDiagnosisModal,
+              },
+              {
+                key: "prescription",
+                label: isRTL ? "روشتة جديدة" : "Add prescription",
+                Icon: Pill,
+                onPress: openPrescriptionScreen,
+              },
+              {
+                key: "lab",
+                label: t.records.requestLab,
+                Icon: Beaker,
+                onPress: () => setDocumentRequestType("lab"),
+              },
+              {
+                key: "xray",
+                label: t.records.requestXray,
+                Icon: ScanLine,
+                onPress: () => setDocumentRequestType("xray"),
+              },
+              {
+                key: "intake",
+                label: isRTL ? "فحص متابعة" : "Follow-up exam",
+                Icon: ClipboardList,
+                onPress: () => setIntakeExamModalOpen(true),
+              },
+            ]
+          : []),
+        ...(isPatient && isDoctorPatientChat
+          ? [
+              ...(bookAppointmentAction ? [bookAppointmentAction] : []),
+              ...(accessLoading
+                ? []
+                : accessStatus?.records_allowed
+                  ? [
+                      {
+                        key: "revoke",
+                        label: isRTL ? "إلغاء صلاحية السجل" : "Revoke record access",
+                        Icon: ShieldOff,
+                        color: colors.mutedForeground,
+                        disabled: sending,
+                        onPress: () => void handleAccessAction("revoke_records"),
+                      },
+                    ]
+                  : [
+                      {
+                        key: "grant",
+                        label: isRTL ? "منح صلاحية السجل" : "Grant record access",
+                        Icon: ShieldCheck,
+                        disabled: sending,
+                        onPress: () => void handleAccessAction("grant_records"),
+                      },
+                    ]),
+            ]
+          : []),
+        {
+          key: "ask-ai",
+          label: t.records.ask3elagiAi,
+          Icon: Bot,
+          color: "#e11d48",
+          onPress: () => openAsk3elagiAi(undefined, isDoctor ? id : undefined),
+        },
+      ];
 
   const chatUi = (
     <>
@@ -909,23 +1565,38 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             paddingTop: headerPaddingTop,
             backgroundColor: desktopLayout ? colors.background : colors.card,
             borderBottomColor: colors.border,
-            flexDirection: rowDir,
+            flexDirection: headerDir,
           },
         ]}
       >
-        <Pressable onPress={leaveChatToHistory} style={styles.backBtn}>
-          <ArrowLeft size={22} color={colors.foreground} />
-        </Pressable>
+        <AppBackButton
+          color={colors.foreground}
+          style={styles.backBtn}
+          fallback={
+            isAdmin
+              ? "/admin/chats"
+              : openedFrom === "doctors"
+                ? "/(tabs)"
+                : "/(tabs)/history"
+          }
+          accessibilityLabel={isRTL ? "رجوع" : "Back"}
+        />
 
         <Pressable
           onPress={onPeerHeaderPress}
           disabled={!onPeerHeaderPress}
-          style={[styles.peerInfo, { flexDirection: rowDir }]}
+          style={[styles.peerInfo, { flexDirection: headerDir }]}
         >
           <Avatar
             uri={peer.photoUrl}
             seed={peer.id}
-            role={peer.role === "doctor" ? "doctor" : "patient"}
+            role={
+              peer.role === "doctor"
+                ? "doctor"
+                : peer.role === "patient"
+                  ? "patient"
+                  : undefined
+            }
             size={30}
             presence={peer.presence}
           />
@@ -936,7 +1607,10 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               isRTL={isRTL}
               nameStyle={[
                 styles.peerName,
-                { color: colors.foreground, textAlign: "left" },
+                {
+                  color: colors.foreground,
+                  textAlign: isRTL ? "right" : "left",
+                },
               ]}
             />
             <Text
@@ -946,7 +1620,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   color: peerTyping
                     ? colors.primary
                     : presenceTextColor(peer.presence, colors),
-                  textAlign: "left",
+                  textAlign: isRTL ? "right" : "left",
                 },
               ]}
             >
@@ -965,31 +1639,45 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           </View>
         </Pressable>
 
+        {canCallDoctor && peer ? (
+          <CallDoctorButton
+            doctorUserId={peer.id}
+            price={peer.videoConsultationPrice}
+            offline={!peerOnline}
+          />
+        ) : null}
+
         {canOpenPatientRecord ? (
-          <Pressable
+          <TourAnchor
+            id="chat-view-records"
+            testID="chat-view-records"
+            pressable
             onPress={openPatientRecord}
             accessibilityRole="button"
-            accessibilityLabel={isRTL ? "عرض السجل" : "View Record"}
+            accessibilityLabel={isRTL ? "عرض السجل الطبي" : "View medical records"}
+            hitSlop={8}
             style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
               styles.viewRecordBtn,
-              {
-                borderColor: colors.primary,
-                backgroundColor:
-                  pressed || hovered ? `${colors.primary}14` : colors.card,
-              },
+              Platform.OS === "web"
+                ? ({
+                    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.14)",
+                  } as object)
+                : null,
+              { opacity: pressed || hovered ? 0.92 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
             ]}
-            hitSlop={8}
           >
-            <View style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}>
-              <FileText size={16} color={colors.primary} />
-              <Text
-                style={[styles.viewRecordBtnText, { color: colors.primary }]}
-                numberOfLines={1}
-              >
-                {isRTL ? "عرض السجل" : "View Record"}
+            <LinearGradient
+              colors={accentGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}
+            >
+              <FileText size={17} color="#fff" strokeWidth={2.25} />
+              <Text style={styles.viewRecordBtnText} numberOfLines={1}>
+                {isRTL ? "السجل الطبي" : "Medical records"}
               </Text>
-            </View>
-          </Pressable>
+            </LinearGradient>
+          </TourAnchor>
         ) : null}
       </View>
 
@@ -997,27 +1685,79 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         <ChatAccessBanner isRTL={isRTL} isDoctor={isDoctor} access={accessStatus} />
       ) : null}
 
+      {isDoctor && testPatientStatus?.is_test_patient ? (
+        <View
+          style={[
+            styles.testPatientBanner,
+            {
+              backgroundColor: colors.muted,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.testPatientBannerText, { color: colors.foreground }]}>
+            {isRTL
+              ? `مريض 3elagi التجريبي (ذكاء اصطناعي) — ${testPatientStatus.questions_asked}/${testPatientStatus.max_questions} أسئلة. المحادثة مفتوحة — اطلب تحاليل أو أشعة من القائمة +.`
+              : `3elagi AI demo patient — ${testPatientStatus.questions_asked}/${testPatientStatus.max_questions} questions. Chat is open — request labs or X-rays from the + menu.`}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={[styles.chatBody, desktopLayout && styles.chatBodyDesktop]}>
       <View ref={chatBodyRef} style={styles.chatBodyInner} collapsable={false}>
-      {messagesLoading ? (
+      {/* Only blank the thread on a cold load — a refresh must not unmount the
+          list, that flashed a spinner over messages we already had. */}
+      {messagesLoading && messages.length === 0 ? (
         <View style={styles.loadingMessages}>
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
+        <>
+        {archiveSplit ? (
+          <ArchivedMessagesToggle
+            count={archiveSplit.archived.length}
+            expanded={archiveExpanded}
+            isRTL={isRTL}
+            onToggle={() => setArchiveExpanded((v) => !v)}
+            label={t.consultations.archivedMessages}
+            countLabel={t.consultations.archivedCount}
+          />
+        ) : null}
+        {/* Web deliberately has no resize re-scroll: writing scrollTop while the
+            browser is settling is what made the thread flicker. Native has no
+            such fight, and needs the nudge — a bubble that grows after layout
+            (image, long text) would otherwise leave the newest message
+            off-screen. See onContentSizeChange below. */}
         <FlatList
           ref={listRef}
           data={listData}
           inverted={listInverted}
-          keyExtractor={(row) =>
-            row.kind === "archive_toggle"
-              ? `archive-toggle-${row.count}`
-              : row.message.id
-          }
+          keyExtractor={chatListItemKey}
           extraData={`${reactionTarget?.id ?? ""}:${messages.length}:${archiveExpanded}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          onScrollBeginDrag={closeReactionPicker}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={() => {
+            stickToBottomRef.current = false;
+            closeReactionPicker();
+          }}
+          onScroll={(event) => {
+            stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
+          }}
+          onMomentumScrollEnd={(event) => {
+            stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
+          }}
+          onScrollEndDrag={(event) => {
+            stickToBottomRef.current = isChatStuckToLatest(event, listInverted);
+          }}
+          onContentSizeChange={
+            Platform.OS === "web"
+              ? undefined
+              : () => {
+                  if (stickToBottomRef.current) scrollToLatest(false);
+                }
+          }
           onScrollToIndexFailed={(info) => {
             setTimeout(() => {
               try {
@@ -1031,12 +1771,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               }
             }, 300);
           }}
-          onContentSizeChange={() => {
-            if (stickToBottomRef.current) scrollToLatest(false);
-          }}
-          onLayout={() => {
-            if (stickToBottomRef.current && messages.length > 0) scrollToLatest(false);
-          }}
+          maintainVisibleContentPosition={
+            listInverted
+              ? { minIndexForVisible: 0 }
+              : undefined
+          }
           contentContainerStyle={
             messages.length === 0
               ? [styles.emptyListContent, desktopLayout && styles.emptyListContentDesktop]
@@ -1056,54 +1795,99 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
             </View>
           }
           renderItem={({ item: row, index }) => {
-            if (row.kind === "archive_toggle") {
-              return (
-                <ArchivedMessagesToggle
-                  count={row.count}
-                  expanded={archiveExpanded}
-                  isRTL={isRTL}
-                  onToggle={() => setArchiveExpanded((v) => !v)}
-                  label={t.consultations.archivedMessages}
-                  countLabel={t.consultations.archivedCount}
-                />
-              );
+            if (row.kind === "date") {
+              return <ChatDateSeparator label={row.label} />;
             }
-
             const item = row.message;
-            if (item.type === "access_action" || item.type === "appointment_action") {
-              const apptId = item.appointmentAction?.appointment_id;
-              const showAppointmentControls = apptId
-                ? latestAppointmentMessageIds.get(apptId) === item.id
-                : false;
-              return (
+            const mine = item.senderId === "me";
+            const apptId = item.appointmentAction?.appointment_id;
+            const showAppointmentControls = apptId
+              ? latestAppointmentMessageIds.get(apptId) === item.id
+              : false;
+            const showPendingChangePanel = apptId
+              ? openAppointmentChangeRequests.get(apptId) === item.id
+              : false;
+
+            const senderAvatar = mine ? (
+              <Avatar
+                uri={profile?.avatarUrl}
+                seed={profile?.id ?? "me"}
+                role={role === "doctor" ? "doctor" : "patient"}
+                size={22}
+              />
+            ) : (
+              <Avatar
+                uri={peer.photoUrl}
+                seed={peer.id}
+                role={peer.role === "doctor" ? "doctor" : "patient"}
+                size={22}
+              />
+            );
+
+            const isWideCardMessage =
+              item.type === "medical_link" ||
+              item.type === "consultation_action" ||
+              item.type === "appointment_action";
+
+            const bubble = (
+              <View
+                ref={(node) => {
+                  if (node) messageAnchorsRef.current.set(item.id, node);
+                  else messageAnchorsRef.current.delete(item.id);
+                }}
+                collapsable={false}
+                style={[
+                  styles.messageColumn,
+                  mine ? styles.messageColumnMine : styles.messageColumnTheirs,
+                  !desktopLayout && isWideCardMessage && styles.messageColumnWide,
+                ]}
+              >
                 <ChatMessageBubble
                   item={item}
-                  mine={item.senderId === "me"}
+                  mine={mine}
                   isRTL={isRTL}
                   rowDir={rowDir}
                   patientUserId={patientUserIdForLinks}
+                  conversationPeerId={id}
                   canOpenMedicalLink={canOpenSharedMedicalLinks}
+                  onImagePress={setFullscreenImage}
+                  onVideoPress={setFullscreenVideo}
+                  selfUserId={profile?.id}
+                  onLongPress={
+                    canReactToMessage(item) ? () => showReactionPicker(item) : undefined
+                  }
                   isDoctor={isDoctor}
                   appointmentStatus={apptId ? appointmentStatuses.get(apptId) : undefined}
                   showAppointmentControls={showAppointmentControls}
+                  showPendingChangePanel={showPendingChangePanel}
                   onAppointmentAction={(appointmentId, action) =>
                     void handleAppointmentAction(appointmentId, action)
                   }
                   appointmentActionBusy={appointmentActionBusy}
+                  onConsultationAction={
+                    item.consultationAction &&
+                    !answeredConsultations.has(item.consultationAction.consultation_id)
+                      ? (id, action) => void handleConsultationAction(id, action)
+                      : undefined
+                  }
+                  consultationActionBusy={consultationActionBusy}
+                  onPaymentReply={(target, reply) => void handlePaymentReply(target, reply)}
+                  onChangeReply={handleChangeReply}
+                  onRescheduleRequest={(appointmentId) =>
+                    void openReschedule(appointmentId)
+                  }
+                  onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
+                  highlighted={
+                    editingMessage?.id === item.id ||
+                    replacingMedicalMessage?.id === item.id ||
+                    reactionTarget?.id === item.id ||
+                    (!!highlightConsultationId &&
+                      item.consultationAction?.consultation_id ===
+                        highlightConsultationId)
+                  }
                 />
-              );
-            }
-
-            const mine = item.senderId === "me";
-            let prev: ChatMessage | undefined;
-            for (let i = index + 1; i < listData.length; i += 1) {
-              const neighbor = listData[i];
-              if (neighbor?.kind === "message") {
-                prev = neighbor.message;
-                break;
-              }
-            }
-            const showAvatar = !mine && (!prev || prev.senderId !== item.senderId);
+              </View>
+            );
 
             return (
               <View
@@ -1115,58 +1899,22 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                   },
                 ]}
               >
-                {!mine ? (
-                  <View style={{ width: 22 }}>
-                    {showAvatar ? (
-                      <Avatar
-                        uri={peer.photoUrl}
-                        seed={peer.id}
-                        role={peer.role === "doctor" ? "doctor" : "patient"}
-                        size={22}
-                      />
-                    ) : null}
-                  </View>
-                ) : null}
-
-                <View
-                  ref={(node) => {
-                    if (node) messageAnchorsRef.current.set(item.id, node);
-                    else messageAnchorsRef.current.delete(item.id);
-                  }}
-                  collapsable={false}
-                  style={[
-                    styles.messageColumn,
-                    mine ? styles.messageColumnMine : styles.messageColumnTheirs,
-                  ]}
-                >
-                  <ChatMessageBubble
-                    item={item}
-                    mine={mine}
-                    isRTL={isRTL}
-                    rowDir={rowDir}
-                    patientUserId={patientUserIdForLinks}
-                    canOpenMedicalLink={canOpenSharedMedicalLinks}
-                    onImagePress={setFullscreenImage}
-                    onVideoPress={setFullscreenVideo}
-                    selfUserId={profile?.id}
-                    onLongPress={
-                      canReactToMessage(item) ? () => showReactionPicker(item) : undefined
-                    }
-                    onEmotionToggle={(emotion) => void handleToggleEmotion(item, emotion)}
-                    highlighted={
-                      editingMessage?.id === item.id ||
-                      replacingMedicalMessage?.id === item.id ||
-                      reactionTarget?.id === item.id ||
-                      (!!highlightConsultationId &&
-                        item.consultationAction?.consultation_id ===
-                          highlightConsultationId)
-                    }
-                  />
-                </View>
+                {mine ? (
+                  <>
+                    {bubble}
+                    {senderAvatar}
+                  </>
+                ) : (
+                  <>
+                    {senderAvatar}
+                    {bubble}
+                  </>
+                )}
               </View>
             );
           }}
         />
+        </>
       )}
 
       {reactionTarget && reactionAnchor ? (
@@ -1176,234 +1924,20 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           selfUserId={profile?.id}
           onSelect={(emotion) => void handleToggleEmotion(reactionTarget, emotion)}
           onClose={closeReactionPicker}
-          onMore={
-            reactionTarget.senderId === "me"
-              ? () => {
-                  const target = reactionTarget;
-                  closeReactionPicker();
-                  openMessageActions(target);
-                }
-              : undefined
-          }
+          onMore={() => {
+            const target = reactionTarget;
+            closeReactionPicker();
+            openMessageActions(target);
+          }}
         />
       ) : null}
       </View>
 
       <View style={[styles.chatFooter, desktopLayout && styles.chatFooterDesktop]}>
-      {isDoctorPatientChat && !chatBlocked ? (
-        <ConsultationBar
-          peerId={id}
-          isPatient={isPatient}
-          isDoctor={isDoctor}
-          enabled={isDoctorPatientChat}
-          token={accessToken}
-          isRTL={isRTL}
-          colors={colors}
-          selfId={profile!.id}
-          selfRole={role ?? "patient"}
-          latestAction={latestConsultationAction}
-          onOpenChange={setConsultationOpen}
-          onActiveChange={(c) => setActiveConsultationId(c?.id)}
-        />
-      ) : null}
-      {/* Doctor clinical actions during an open consultation */}
-      {isDoctor && canUseDiagnosisTemplates && !chatBlocked ? (
-        <View
-          style={[
-            styles.bookPillBar,
-            {
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-              flexDirection: chatFlexRow(),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={openDiagnosisModal}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إضافة تشخيص" : "Add diagnosis"}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Stethoscope size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "تشخيص جديد" : "Add diagnosis"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={openPrescriptionScreen}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "إضافة روشتة" : "Add prescription"}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Pill size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "روشتة جديدة" : "Add prescription"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setDocumentRequestType("lab")}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.requestLab}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Beaker size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {t.records.requestLab}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setDocumentRequestType("xray")}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.requestXray}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <ScanLine size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {t.records.requestXray}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setIntakeExamModalOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "فحص متابعة" : "Follow-up exam"}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <ClipboardList size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "فحص متابعة" : "Follow-up exam"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => openAsk3elagiAi(undefined, id)}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
-                borderColor: "#e11d48",
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Bot size={15} color="#e11d48" />
-            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
-              {t.records.ask3elagiAi}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {/* Quick-action pill row — Book appointment stays available to patients at
-          all times, even without a consultation. */}
-      {isPatient && peer?.doctorEntityId && !chatBlocked ? (
-        <View style={[styles.bookPillBar, { backgroundColor: colors.card, borderTopColor: colors.border, flexDirection: chatFlexRow() }]}>
-          <Pressable
-            onPress={() => setBookAppointmentOpen(true)}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? `${colors.primary}22` : `${colors.primary}12`,
-                borderColor: colors.primary,
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Calendar size={15} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>
-              {isRTL ? "حجز موعد" : "Book appointment"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => openAsk3elagiAi()}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
-                borderColor: "#e11d48",
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Bot size={15} color="#e11d48" />
-            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
-              {t.records.ask3elagiAi}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {/* Ask AI when clinical / book rows are hidden (e.g. doctor before consultation). */}
-      {!chatBlocked &&
-      !(isDoctor && canUseDiagnosisTemplates) &&
-      !(isPatient && peer?.doctorEntityId) ? (
-        <View
-          style={[
-            styles.bookPillBar,
-            {
-              backgroundColor: colors.card,
-              borderTopColor: colors.border,
-              flexDirection: chatFlexRow(),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={() => openAsk3elagiAi(undefined, isDoctor ? id : undefined)}
-            accessibilityRole="button"
-            accessibilityLabel={t.records.ask3elagiAi}
-            style={({ pressed }) => [
-              styles.bookPill,
-              {
-                backgroundColor: pressed ? "rgba(225,29,72,0.22)" : "rgba(225,29,72,0.12)",
-                borderColor: "#e11d48",
-                flexDirection: chatFlexRow(),
-              },
-            ]}
-          >
-            <Bot size={15} color="#e11d48" />
-            <Text style={{ color: "#e11d48", fontWeight: "700", fontSize: 13 }}>
-              {t.records.ask3elagiAi}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-
+      {/* Both native platforms. KeyboardProvider runs edge-to-edge
+          (statusBarTranslucent/navigationBarTranslucent), so the window does not
+          resize for the keyboard on Android either — this view is the only thing
+          lifting the composer, and without it the input hides behind the keys. */}
       <KeyboardStickyView
         enabled={Platform.OS !== "web"}
         offset={{ closed: 0, opened: 0 }}
@@ -1416,14 +1950,41 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         peerId={id}
         sending={sending}
         bottomInset={composerBottomInset}
+        onComposerFocus={() => setComposerFocused(true)}
+        onComposerBlur={() => setComposerFocused(false)}
         onSend={handleSend}
         onAddPending={(msg) => addPendingMessage(id, msg)}
         onFailPending={(tempId) => failPendingMessage(id, tempId)}
         onPickMedical={() => void openMedicalPicker()}
+        actions={chatActions}
+        inlineAction={
+          isDoctorPatientChat && !chatBlocked ? (
+            <ConsultationBar
+              compact
+              menuOnly
+              onMenuActionsChange={setConsultationMenuActions}
+              peerId={id}
+              isPatient={isPatient}
+              isDoctor={isDoctor}
+              enabled={isDoctorPatientChat && !isDemoPatientChat}
+              token={accessToken}
+              isRTL={isRTL}
+              colors={colors}
+              selfId={profile!.id}
+              selfRole={role ?? "patient"}
+              latestAction={latestConsultationAction}
+              onOpenChange={setConsultationOpen}
+              onActiveChange={handleConsultationActiveChange}
+              onThreadUpdated={jumpToLatest}
+              removeConsultationId={consultationId ?? undefined}
+            />
+          ) : null
+        }
         editingMessage={editingMessage}
         onCancelEdit={() => setEditingMessage(null)}
         onEdit={handleEditMessage}
         disabled={chatBlocked || needsConsultation}
+        disabledActions={chatBlocked ? undefined : disabledActions}
         disabledHint={
           needsConsultation && !chatBlocked
             ? isPatient
@@ -1542,6 +2103,23 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         onSelect={(record, note) => void handleMedicalPickerSelect(record, note)}
       />
 
+      {id && accessToken && profile?.id && rescheduleAppointmentId ? (
+        <BookAppointmentDialog
+          visible
+          mode="reschedule"
+          isRTL={isRTL}
+          token={accessToken}
+          selfId={profile.id}
+          doctorUserId={isPatient ? id : profile.id}
+          doctorEntityId={
+            (isPatient ? peer?.doctorEntityId : selfDoctorEntityId) ?? ""
+          }
+          onSubmitSlot={submitReschedule}
+          onClose={() => setRescheduleAppointmentId(null)}
+          onBooked={() => undefined}
+        />
+      ) : null}
+
       {isPatient && id && accessToken && profile?.id && peer?.doctorEntityId ? (
         <BookAppointmentDialog
           visible={bookAppointmentOpen}
@@ -1601,25 +2179,9 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   chatBodyDesktop: { backgroundColor: "transparent" },
-  chatFooter: { flexShrink: 0 },
-  bookPillBar: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 10,
-    paddingBottom: 6,
-    paddingHorizontal: 14,
-    gap: 8,
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-  bookPill: {
-    alignSelf: "flex-start",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
+  // marginTop pins the composer to the bottom of the column even if the message
+  // list above it has not laid out yet (empty / still loading conversation).
+  chatFooter: { flexShrink: 0, marginTop: "auto" },
   messageColumn: {
     flexShrink: 1,
     maxWidth: "82%",
@@ -1629,6 +2191,10 @@ const styles = StyleSheet.create({
   },
   messageColumnTheirs: {
     alignItems: "flex-start",
+  },
+  messageColumnWide: {
+    maxWidth: "90%",
+    width: "90%",
   },
   messageList: { flex: 1 },
   loadingMessages: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -1654,24 +2220,35 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   peerInfo: { flex: 1, alignItems: "center", gap: 10, minWidth: 0 },
   viewRecordBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
+    borderRadius: 999,
+    overflow: "hidden",
     flexShrink: 0,
-    maxWidth: "42%",
   },
   viewRecordBtnInner: {
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   viewRecordBtnText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     flexShrink: 0,
+    color: "#fff",
+    letterSpacing: 0.2,
   },
   peerName: { fontSize: 16, fontWeight: "700" },
   presence: { fontSize: 12, marginTop: 1 },
+  testPatientBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  testPatientBannerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+  },
   bubbleRow: {
     alignItems: "flex-end",
     gap: 6,

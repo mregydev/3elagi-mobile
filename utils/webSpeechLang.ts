@@ -8,13 +8,17 @@ export const WEB_SPEECH_LANG: Record<Locale, string> = {
   es: "es-ES",
 };
 
+/**
+ * Web Speech API needs one language tag (used for AI voice-mode continuous listen).
+ * Dictation / STT paths use backend auto-detect among ar | en | de | es instead.
+ */
 export function resolveWebSpeechLang(locale: Locale): string {
   return WEB_SPEECH_LANG[locale];
 }
 
 /** Pick a supported locale when the browser reports a preferred language list. */
 export function pickSpeechLocaleFromBrowser(): Locale {
-  if (typeof navigator === "undefined") return "en";
+  if (typeof navigator === "undefined") return "ar";
   const langs = navigator.languages?.length
     ? navigator.languages
     : [navigator.language];
@@ -25,7 +29,7 @@ export function pickSpeechLocaleFromBrowser(): Locale {
     if (lower.startsWith("es")) return "es";
     if (lower.startsWith("en")) return "en";
   }
-  return "en";
+  return "ar";
 }
 
 export function speechLocaleLabel(locale: Locale, uiLocale: Locale): string {

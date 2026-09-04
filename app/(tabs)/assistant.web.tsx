@@ -1,5 +1,4 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { Redirect } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import { AssistantMobileView } from "@/components/assistant/AssistantMobileView";
 import { AssistantWebView } from "@/components/assistant/AssistantWebView";
@@ -9,18 +8,14 @@ import {
   setAssistantScreenActive,
 } from "@/domains/ai/push-suppression";
 import { useAuthStore } from "@/domains/auth/store";
-import { isSignedIn } from "@/domains/auth/session";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useAssistantDeepLinkId } from "@/hooks/useAssistantDeepLinkId";
 import { useMobileWebTabBarHeight } from "@/hooks/useMobileWebTabBarHeight";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function AssistantScreenWeb() {
-  const profile = useAuthStore((s) => s.profile);
-  const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
   const conversationId = useAssistantDeepLinkId();
-  const signedIn = isSignedIn(profile, accessToken);
   const { isDesktop } = useWebLayout();
   const bottomTabInset = useMobileWebTabBarHeight();
 
@@ -48,7 +43,6 @@ export default function AssistantScreenWeb() {
   }, [assistant.activeId]);
 
   if (!hydrated) return null;
-  if (!signedIn) return <Redirect href="/welcome" />;
 
   const viewProps = {
     conversations: assistant.conversations,
@@ -79,8 +73,6 @@ export default function AssistantScreenWeb() {
       void assistant.toggleMessageEmotion(messageId, emotion),
     medicalImageBusy: assistant.medicalImageBusy,
     onSubmitMedicalImage: (input) => void assistant.submitMedicalImage(input),
-    onMedicalRecordCreated: (record, previewUri) =>
-      assistant.appendMedicalRecordCreated(record, previewUri),
   };
 
   if (!isDesktop) {

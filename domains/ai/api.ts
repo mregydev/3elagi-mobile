@@ -1,4 +1,8 @@
 import { API_BASE } from "@/constants/api";
+import {
+  isAuthHttpStatus,
+  logoutOnAuthFailure,
+} from "@/domains/auth/sessionFailure";
 import type {
   AiChatResponse,
   AiConversation,
@@ -47,6 +51,9 @@ async function authFetch(
 export async function fetchAiHistory(token: string): Promise<AiConversation[]> {
   const res = await authFetch("/ai/history", token);
   if (!res.ok) {
+    if (isAuthHttpStatus(res.status)) {
+      logoutOnAuthFailure();
+    }
     throw new Error(await parseError(res));
   }
   return (await res.json()) as AiConversation[];

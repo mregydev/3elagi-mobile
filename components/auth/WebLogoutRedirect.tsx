@@ -2,20 +2,15 @@ import { usePathname, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { AUTH_EVENTS } from "@/domains/auth/events";
-import { getPostLogoutRoute, navigateToWelcome } from "@/domains/auth/navigation";
+import { isPublicWebPath, navigateToWelcome } from "@/domains/auth/navigation";
 import { isSignedIn } from "@/domains/auth/session";
 import { useAuthStore } from "@/domains/auth/store";
 import { on } from "@/utils/eventBus";
 
-function isWelcomePath(pathname: string): boolean {
-  return pathname === getPostLogoutRoute() || pathname.startsWith("/welcome/");
-}
-
-/** After logout on web, always navigate to the welcome landing page. */
+/** After logout on web, leave protected screens; keep welcome + auth routes. */
 export function WebLogoutRedirect() {
   const router = useRouter();
   const pathname = usePathname();
-  const welcomeRoute = getPostLogoutRoute();
   const hydrated = useAuthStore((s) => s.hydrated);
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -30,9 +25,12 @@ export function WebLogoutRedirect() {
   }, [router]);
 
   useEffect(() => {
-    if (Platform.OS !== "web" || !hydrated || signedIn || isWelcomePath(pathname)) return;
+    // Guests on /auth/* (forgot/reset password, login) must not be bounced to welcome.
+    if (Platform.OS !== "web" || !hydrated || signedIn || isPublicWebPath(pathname)) {
+      return;
+    }
     navigateToWelcome(router);
-  }, [hydrated, signedIn, pathname, router, welcomeRoute]);
+  }, [hydrated, signedIn, pathname, router]);
 
   return null;
 }

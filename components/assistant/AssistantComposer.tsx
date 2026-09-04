@@ -1,10 +1,11 @@
-import { FileText, Mic, Paperclip, Send, X } from "lucide-react-native";
+import { FileText, Mic, Paperclip, Plus, ScanLine, Send, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   Easing,
   Image,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,8 +17,11 @@ import {
   MOBILE_WEB_COMPOSER_FOOTER_GAP,
   mobileWebComposerStyles,
 } from "@/constants/mobileWebComposer";
+import { UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
+import { useFieldDictation } from "@/hooks/useFieldDictation";
 import { handleEnterToSendMessage } from "@/utils/enterToSendMessage";
+import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
   disabled?: boolean;
@@ -26,16 +30,12 @@ interface Props {
   bottomInset?: number;
   compact?: boolean;
   onSend: (text: string) => void;
-  /** Toggles speech-to-text into the input field. */
-  onMicPress?: () => void;
-  isDictating?: boolean;
-  micLoading?: boolean;
-  dictatedText?: string | null;
-  onDictatedTextConsumed?: () => void;
   isRTL?: boolean;
   /** General AI attachment (image or PDF) sent to the model with the caption. */
   aiAttachment?: { previewUri?: string; name: string; isPdf: boolean } | null;
   onAttachAiFile?: () => void;
+  /** Native only: attach via the document scanner. */
+  onScanAiFile?: () => void;
   aiAttachLoading?: boolean;
   onRemoveAiAttachment?: () => void;
 }
@@ -46,32 +46,26 @@ export function AssistantComposer({
   bottomInset = 0,
   compact = false,
   onSend,
-  onMicPress,
-  isDictating = false,
-  micLoading = false,
-  dictatedText,
-  onDictatedTextConsumed,
   isRTL = false,
   aiAttachment = null,
   onAttachAiFile,
+  onScanAiFile,
   aiAttachLoading = false,
   onRemoveAiAttachment,
-}: Props) {  const colors = useColors();
+}: Props) {
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const colors = useColors();
+  const { t, isRTL: localeRTL } = useI18n();
   const [text, setText] = useState("");
+  const dictation = useFieldDictation({ value: text, onChangeText: setText });
+  const isDictating = dictation.listening;
+  const micLoading = dictation.busy;
   const recordPulse = useRef(new Animated.Value(1)).current;
+  const rowRTL = isRTL || localeRTL;
   const isMobileWeb = Platform.OS === "web" && compact;
   const bottomPadding = isMobileWeb
     ? MOBILE_WEB_COMPOSER_FOOTER_GAP + bottomInset
-    : 8 + Math.max(bottomInset, 0);
-
-  useEffect(() => {
-    if (!dictatedText) return;
-    setText((prev) => {
-      const trimmed = prev.trim();
-      return trimmed ? `${trimmed} ${dictatedText}` : dictatedText;
-    });
-    onDictatedTextConsumed?.();
-  }, [dictatedText, onDictatedTextConsumed]);
+    : Math.max(bottomInset, 0) || 4;
 
   const submit = () => {
     const value = text.trim();
@@ -129,13 +123,21 @@ export function AssistantComposer({
   const iconBtnMobile = isMobileWeb ? styles.iconMobileWeb : null;
   const glyphSize = 15;
 
-  const micButton = onMicPress ? (
+  const micButton = (
     <Animated.View style={{ opacity: isDictating ? recordPulse : 1 }}>
       <Pressable
-        onPress={onMicPress}
+        onPress={dictation.toggle}
         disabled={micBtnDisabled}
         accessibilityRole="button"
-        accessibilityLabel={isDictating ? "Stop dictation" : "Dictate message"}
+        accessibilityLabel={
+          isDictating
+            ? rowRTL
+              ? "إيقاف الميكروفون"
+              : "Stop mic"
+            : rowRTL
+              ? "الميكروفون"
+              : "Mic"
+        }
         {...micWebProps}
         style={[
           iconBtnStyle,
@@ -145,7 +147,7 @@ export function AssistantComposer({
               ? "#ef4444"
               : micLoading
                 ? colors.primary
-                : colors.muted,
+                : colors.background,
             opacity: micBtnDisabled ? 0.45 : 1,
           },
         ]}
@@ -160,7 +162,7 @@ export function AssistantComposer({
         )}
       </Pressable>
     </Animated.View>
-  ) : null;
+  );
 
   const aiAttachButton = onAttachAiFile ? (
     <Pressable
@@ -172,7 +174,7 @@ export function AssistantComposer({
         iconBtnStyle,
         iconBtnMobile,
         {
-          backgroundColor: colors.muted,
+          backgroundColor: colors.background,
           opacity: disabled || sending || aiAttachLoading ? 0.45 : 1,
         },
       ]}
@@ -185,10 +187,59 @@ export function AssistantComposer({
     </Pressable>
   ) : null;
 
+  const scanButton = onScanAiFile ? (
+    <Pressable
+      onPress={onScanAiFile}
+      disabled={disabled || sending || aiAttachLoading}
+      accessibilityRole="button"
+      accessibilityLabel="Scan document"
+      style={[
+        iconBtnStyle,
+        iconBtnMobile,
+        {
+          backgroundColor: colors.background,
+          opacity: disabled || sending || aiAttachLoading ? 0.45 : 1,
+        },
+      ]}
+    >
+      <ScanLine color={colors.primary} size={glyphSize} />
+    </Pressable>
+  ) : null;
+
+  const sheetActions = [
+    onScanAiFile
+      ? {
+          key: "camera",
+          label: t.records.composerCamera,
+          icon: <ScanLine color={colors.primary} size={20} />,
+          onPress: onScanAiFile,
+        }
+      : null,
+    onAttachAiFile
+      ? {
+          key: "attach",
+          label: t.records.composerAttach,
+          icon: <Paperclip color={colors.primary} size={20} />,
+          onPress: onAttachAiFile,
+        }
+      : null,
+  ].filter((action): action is NonNullable<typeof action> => !!action);
+  const extraActions = sheetActions;
+
+  const plusButton = extraActions.length ? (
+    <Pressable
+      onPress={() => setActionsOpen((open) => !open)}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: actionsOpen }}
+      style={[iconBtnStyle, iconBtnMobile, { borderColor: colors.border }]}
+    >
+      <Plus color={colors.primary} size={glyphSize} />
+    </Pressable>
+  ) : null;
+
   const trailingActions = (
     <View style={styles.actionsRow}>
-      {aiAttachButton}
-      {micButton}      <Pressable
+      <Pressable
         onPress={submit}
         disabled={sendDisabled}
         style={[
@@ -211,7 +262,7 @@ export function AssistantComposer({
 
   const aiAttachmentPreview =
     aiAttachment && onRemoveAiAttachment ? (
-      <View style={[styles.aiPreview, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+      <View style={[styles.aiPreview, { borderColor: colors.border, backgroundColor: colors.background }]}>
         {aiAttachment.isPdf || !aiAttachment.previewUri ? (
           <FileText color={colors.primary} size={20} />
         ) : (
@@ -240,6 +291,8 @@ export function AssistantComposer({
       >
         {aiAttachmentPreview}
         <View style={[mobileWebComposerStyles.row, { alignItems: "center" }]}>
+          {aiAttachButton}
+          {micButton}
           <AppTextInput
             value={text}
             onChangeText={setText}
@@ -259,6 +312,13 @@ export function AssistantComposer({
           />
           {trailingActions}
         </View>
+        {isDictating ? (
+          <Text style={[styles.listeningHint, { color: colors.mutedForeground }]}>
+            {rowRTL
+              ? "جاري الاستماع… تكلم ثم اضغط الميكروفون للإيقاف"
+              : "Listening… speak, then tap mic to stop"}
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -276,6 +336,9 @@ export function AssistantComposer({
     >
       {aiAttachmentPreview}
       <View style={styles.composerRow}>
+        {plusButton}
+        {compact ? aiAttachButton : null}
+        {micButton}
         <AppTextInput
           value={text}
         onChangeText={setText}
@@ -296,18 +359,63 @@ export function AssistantComposer({
       />
       {trailingActions}
       </View>
+      {isDictating ? (
+        <Text style={[styles.listeningHint, { color: colors.mutedForeground }]}>
+          {rowRTL
+            ? "جاري الاستماع… تكلم ثم اضغط الميكروفون للإيقاف"
+            : "Listening… speak, then tap mic to stop"}
+        </Text>
+      ) : null}
+      <Modal
+        visible={actionsOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setActionsOpen(false)}
+      >
+        <Pressable style={styles.sheetBackdrop} onPress={() => setActionsOpen(false)}>
+          <Pressable
+            style={[styles.sheet, { backgroundColor: colors.card }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.sheetGrip, { backgroundColor: colors.border }]} />
+            {sheetActions.map((action) => (
+              <Pressable
+                key={action.key}
+                onPress={() => {
+                  setActionsOpen(false);
+                  action.onPress();
+                }}
+                style={({ pressed }) => [
+                  styles.sheetRow,
+                  {
+                    flexDirection: isRTL ? "row-reverse" : "row",
+                    backgroundColor: pressed ? colors.muted : "transparent",
+                  },
+                ]}
+              >
+                <View style={[styles.sheetIcon, { backgroundColor: `${colors.primary}14` }]}>
+                  {action.icon}
+                </View>
+                <Text style={[styles.sheetLabel, { color: colors.foreground }]}>
+                  {action.label}
+                </Text>
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: UI.space.md,
+    paddingTop: UI.space.sm + 4,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8,
+    gap: UI.space.sm,
   },
   wrapCompact: {
-    paddingHorizontal: 12,
+    paddingHorizontal: UI.space.sm + 4,
     paddingTop: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 6,
@@ -332,6 +440,46 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
   },
+  sheetBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  sheetGrip: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 10,
+  },
+  sheetRow: {
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  sheetIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetLabel: { fontSize: 15, fontWeight: "600" },
+  listeningHint: {
+    fontSize: 12,
+    textAlign: "center",
+    paddingHorizontal: 4,
+  },
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -344,7 +492,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     maxHeight: 120,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
+    borderRadius: UI.radius.inner,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
@@ -354,7 +502,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     maxHeight: 100,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
+    borderRadius: UI.radius.inner,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 15,

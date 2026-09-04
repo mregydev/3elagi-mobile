@@ -11,11 +11,19 @@ import {
 import { useAuthStore } from "@/domains/auth/store";
 import {
   DEFAULT_PATIENT_COUNTRY,
-  isPatientCountryCode,
+  normalizeMarketCountry,
+  normalizePatientCountry,
   type PatientCountryCode,
 } from "@/constants/patientCountries";
 import { uploadFile } from "@/domains/medical/api";
+import { feeText, feeValue } from "@/domains/doctor/fees";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
+import {
+  ensureDoctorOnboarding,
+  fetchDoctorMeTourState,
+} from "@/domains/onboarding/doctorTourApi";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
+import { useChatStore } from "@/domains/chat/store";
 
 interface Options {
   accessToken: string;
@@ -32,6 +40,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  // Doctors sell in a market (EG/JO); patients just live somewhere.
   const [country, setCountry] = useState<PatientCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [birthDate, setBirthDate] = useState("");
   const [professionalTitle, setProfessionalTitle] = useState("");
@@ -40,10 +49,17 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [certifications, setCertifications] = useState<DoctorCertification[]>([]);
   const [certUploading, setCertUploading] = useState(false);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
-  const [specialityId, setSpecialityId] = useState("");
+  // First id is the primary speciality — the one browse and chat headers show.
+  const [specialityIds, setSpecialityIds] = useState<string[]>([]);
+  const specialityId = specialityIds[0] ?? "";
+  const toggleSpeciality = (id: string) =>
+    setSpecialityIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    );
   const [consultationPrice, setConsultationPrice] = useState(1);
   const [videoConsultationPrice, setVideoConsultationPrice] = useState(1);
   const [videoConsultationMinutes, setVideoConsultationMinutes] = useState(30);
+  const [immediateCallEnabled, setImmediateCallEnabled] = useState(false);
   const [digitalSignatureUrl, setDigitalSignatureUrl] = useState<string | null>(null);
   const [digitalSignatureLocalUri, setDigitalSignatureLocalUri] = useState<string | null>(
     null,
@@ -53,6 +69,13 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [iban, setIban] = useState("");
   const [accountHolderFullName, setAccountHolderFullName] = useState("");
   const [nationalId, setNationalId] = useState("");
+  // Cash fees are free text so the doctor can clear the field while typing.
+  const [textPriceLocal, setTextPriceLocal] = useState("");
+  const [textPriceUsd, setTextPriceUsd] = useState("");
+  const [videoPriceLocal, setVideoPriceLocal] = useState("");
+  const [videoPriceUsd, setVideoPriceUsd] = useState("");
+  const [paymentLink, setPaymentLink] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
   const [photoDirty, setPhotoDirty] = useState(false);
@@ -65,25 +88,38 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setName(data.name);
       setPhone(data.phone);
       setCountry(
-        data.country && isPatientCountryCode(data.country)
-          ? data.country
-          : DEFAULT_PATIENT_COUNTRY,
+        isDoctor
+          ? normalizeMarketCountry(data.country)
+          : normalizePatientCountry(data.country),
       );
       setBirthDate(data.birthDate ?? "");
       setProfessionalTitle(data.professionalTitle ?? "");
       setInfo(data.info ?? "");
       setLocation(data.location ?? "");
       setCertifications(data.certifications ?? []);
-      setSpecialityId(data.specialityId ?? "");
+      setSpecialityIds(
+        data.specialityIds?.length
+          ? data.specialityIds
+          : data.specialityId
+            ? [data.specialityId]
+            : [],
+      );
       setConsultationPrice(data.consultationPrice ?? 1);
       setVideoConsultationPrice(data.videoConsultationPrice ?? 1);
       setVideoConsultationMinutes(data.videoConsultationMinutes ?? 30);
+      setImmediateCallEnabled(!!data.immediateCallEnabled);
       setDigitalSignatureUrl(data.digitalSignatureUrl ?? null);
       setDigitalSignatureLocalUri(null);
       setDigitalSignatureDirty(false);
       setIban(data.iban ?? "");
       setAccountHolderFullName(data.accountHolderFullName ?? "");
       setNationalId(data.nationalId ?? "");
+      setTextPriceLocal(feeText(data.textPriceLocal));
+      setTextPriceUsd(feeText(data.textPriceUsd));
+      setVideoPriceLocal(feeText(data.videoPriceLocal));
+      setVideoPriceUsd(feeText(data.videoPriceUsd));
+      setPaymentLink(data.paymentLink ?? "");
+      setTags(Array.isArray(data.tags) ? data.tags : []);
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
@@ -92,7 +128,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, role, isRTL]);
+  }, [accessToken, role, isRTL, isDoctor]);
 
   useEffect(() => {
     void load();
@@ -198,7 +234,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       showErrorToast(isRTL ? "الاسم مطلوب" : "Name required");
       return false;
     }
-    if (isDoctor && !specialityId) {
+    if (isDoctor && !specialityIds.length) {
       showErrorToast(
         isRTL ? "التخصص مطلوب" : "Speciality required",
         isRTL ? "اختر تخصصك الطبي." : "Please select your medical speciality.",
@@ -206,6 +242,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       return false;
     }
     setSaving(true);
+    const previousPrimarySpecialityId =
+      account?.specialityIds?.[0] ?? account?.specialityId ?? "";
     try {
       let nextPhotoUrl = photoUrl ?? null;
       if (photoDirty && photoUri) {
@@ -228,9 +266,11 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         location: isDoctor ? location : undefined,
         certifications: isDoctor ? certifications : undefined,
         specialityId: isDoctor ? specialityId : undefined,
+        specialityIds: isDoctor ? specialityIds : undefined,
         consultationPrice: isDoctor ? consultationPrice : undefined,
         videoConsultationPrice: isDoctor ? videoConsultationPrice : undefined,
         videoConsultationMinutes: isDoctor ? videoConsultationMinutes : undefined,
+        immediateCallEnabled: isDoctor ? immediateCallEnabled : undefined,
         digitalSignatureUrl: isDoctor
           ? digitalSignatureDirty
             ? digitalSignatureUrl
@@ -239,6 +279,12 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         iban: isDoctor ? iban : undefined,
         accountHolderFullName: isDoctor ? accountHolderFullName : undefined,
         nationalId: isDoctor ? nationalId : undefined,
+        textPriceLocal: isDoctor ? feeValue(textPriceLocal) : undefined,
+        textPriceUsd: isDoctor ? feeValue(textPriceUsd) : undefined,
+        videoPriceLocal: isDoctor ? feeValue(videoPriceLocal) : undefined,
+        videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
+        paymentLink: isDoctor ? paymentLink.trim() : undefined,
+        tags: isDoctor ? tags : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
 
@@ -246,14 +292,74 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setPhotoUrl(updated.avatarUrl);
       setPhotoUri(null);
       setPhotoDirty(false);
+
+      const refreshed = await fetchAccountProfile(accessToken, role);
+      setAccount(refreshed);
+      setSpecialityIds(
+        refreshed.specialityIds?.length
+          ? refreshed.specialityIds
+          : refreshed.specialityId
+            ? [refreshed.specialityId]
+            : [],
+      );
+
+      if (isDoctor) {
+        const approvedPrimaryId =
+          refreshed.specialityIds?.[0] ?? refreshed.specialityId ?? "";
+        const spec = specialities.find((s) => s.id === approvedPrimaryId);
+        useAuthStore.setState({
+          specialityId: approvedPrimaryId || null,
+          specialty: spec?.nameEn ?? useAuthStore.getState().specialty,
+        });
+
+        const submittedPrimaryChange =
+          !!refreshed.pendingSpecialityChange &&
+          specialityId !== previousPrimarySpecialityId;
+
+        if (submittedPrimaryChange) {
+          showSuccessToast(
+            isRTL ? "طُلب تغيير التخصص" : "Speciality change requested",
+            isRTL
+              ? "تم إرسال طلب تغيير التخصص الأساسي للمراجعة من الإدارة."
+              : "Your primary speciality change was sent to admin for approval.",
+          );
+        } else if (
+          approvedPrimaryId &&
+          approvedPrimaryId !== previousPrimarySpecialityId
+        ) {
+          const tourState = await fetchDoctorMeTourState(accessToken);
+          const testPatientId =
+            tourState?.onboarding_test_patient_user_id ??
+            (await ensureDoctorOnboarding(accessToken));
+          if (testPatientId) {
+            useProductTourStore.getState().setTestPatientUserId(testPatientId);
+          }
+          const profileId = useAuthStore.getState().profile?.id;
+          if (profileId) {
+            await useChatStore
+              .getState()
+              .loadConversations(accessToken, profileId, role);
+          }
+          showSuccessToast(
+            isRTL ? "تم الحفظ" : "Saved",
+            isRTL ? "تم تحديث ملفك." : "Profile updated.",
+          );
+        } else {
+          showSuccessToast(
+            isRTL ? "تم الحفظ" : "Saved",
+            isRTL ? "تم تحديث ملفك." : "Profile updated.",
+          );
+        }
+      } else {
+        showSuccessToast(
+          isRTL ? "تم الحفظ" : "Saved",
+          isRTL ? "تم تحديث ملفك." : "Profile updated.",
+        );
+      }
       if (isDoctor && digitalSignatureDirty) {
         setDigitalSignatureDirty(false);
         setDigitalSignatureLocalUri(null);
       }
-      showSuccessToast(
-        isRTL ? "تم الحفظ" : "Saved",
-        isRTL ? "تم تحديث ملفك." : "Profile updated.",
-      );
       return true;
     } catch (e) {
       showErrorToast(isRTL ? "فشل الحفظ" : "Save failed", (e as Error).message);
@@ -288,13 +394,16 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setCertificationDescription,
     specialities,
     specialityId,
-    setSpecialityId,
+    specialityIds,
+    toggleSpeciality,
     consultationPrice,
     setConsultationPrice,
     videoConsultationPrice,
     setVideoConsultationPrice,
     videoConsultationMinutes,
     setVideoConsultationMinutes,
+    immediateCallEnabled,
+    setImmediateCallEnabled,
     digitalSignatureUrl,
     digitalSignaturePreview: digitalSignatureLocalUri ?? digitalSignatureUrl,
     signatureUploading,
@@ -306,9 +415,22 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setAccountHolderFullName,
     nationalId,
     setNationalId,
+    textPriceLocal,
+    setTextPriceLocal,
+    textPriceUsd,
+    setTextPriceUsd,
+    videoPriceLocal,
+    setVideoPriceLocal,
+    videoPriceUsd,
+    setVideoPriceUsd,
+    paymentLink,
+    setPaymentLink,
+    tags,
+    setTags,
     isDoctor,
     displayPhoto: photoUri ?? photoUrl,
     pickPhoto,
     save,
+    pendingSpecialityChange: account?.pendingSpecialityChange ?? null,
   };
 }

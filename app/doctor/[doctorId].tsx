@@ -1,77 +1,40 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, ArrowRight, Coins, MessageCircle, Star } from "lucide-react-native";
+import { AppBackButton } from "@/components/nav/AppBackButton";
+import { DoctorProfileBody } from "@/components/doctor/DoctorProfileBody";
+import { DoctorProfileConsultCta } from "@/components/doctor/DoctorProfileConsultCta";
+import { DoctorProfileHeader } from "@/components/doctor/DoctorProfileHeader";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { AppTextInput } from "@/components/AppTextInput";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar } from "@/components/Avatar";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
 import { chatRepository } from "@/domains/chat/repository";
+import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
+import { specialityLabel } from "@/domains/home/specialityLabel";
 import {
   fetchDoctorReviewStatus,
   fetchDoctorReviews,
   fetchPublicDoctor,
   submitDoctorReview,
-  type DoctorReviewItem,
   type DoctorReviewStatus,
   type PublicDoctorProfile,
 } from "@/domains/doctor/api";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
-
-function StarPicker({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <View style={{ flexDirection: "row", gap: 8, justifyContent: "center" }}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => onChange(n)} hitSlop={6}>
-          <Star size={28} color="#f59e0b" fill={n <= value ? "#f59e0b" : "transparent"} />
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-function ReviewRow({ item, isRTL }: { item: DoctorReviewItem; isRTL: boolean }) {
-  const colors = useColors();
-  return (
-    <View style={[styles.reviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={{ flexDirection: isRTL ? "row-reverse" : "row", justifyContent: "space-between" }}>
-        <Text style={{ color: colors.foreground, fontWeight: "700" }}>{item.patientName}</Text>
-        <View style={{ flexDirection: "row", gap: 2 }}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <Star key={n} size={12} color="#f59e0b" fill={n <= item.rating ? "#f59e0b" : "transparent"} />
-          ))}
-        </View>
-      </View>
-      {item.comment ? (
-        <Text style={{ color: colors.mutedForeground, marginTop: 6, textAlign: isRTL ? "right" : "left" }}>
-          {item.comment}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
 
 export default function DoctorProfileScreen() {
   const colors = useColors();
-  const { isRTL, t } = useI18n();
+  const { isRTL, locale } = useI18n();
+  const { isMobile } = useWebLayout();
   const insets = useSafeAreaInsets();
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
@@ -80,7 +43,7 @@ export default function DoctorProfileScreen() {
   const { doctorId, userId } = useLocalSearchParams<{ doctorId: string; userId?: string }>();
 
   const [doctor, setDoctor] = useState<PublicDoctorProfile | null>(null);
-  const [reviews, setReviews] = useState<DoctorReviewItem[]>([]);
+  const [reviews, setReviews] = useState<Awaited<ReturnType<typeof fetchDoctorReviews>>["items"]>([]);
   const [ratingAvg, setRatingAvg] = useState(0);
   const [ratingTotal, setRatingTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -124,6 +87,10 @@ export default function DoctorProfileScreen() {
 
   const openChat = () => {
     const chatUserId = userId ?? doctor?.userId;
+    if (!isSignedIn(profile, accessToken)) {
+      promptAuthForConsultation(chatUserId ? `/chat/${chatUserId}` : null);
+      return;
+    }
     if (!chatUserId || !doctor) return;
     chatRepository.cacheUsers([
       {
@@ -137,6 +104,9 @@ export default function DoctorProfileScreen() {
         ratingTotal: doctor.ratingTotal,
         consultationPrice: doctor.consultationPrice,
         doctorEntityId: doctor.id,
+        country: chatRepository.getUser(chatUserId)?.country,
+        immediateCallEnabled: chatRepository.getUser(chatUserId)?.immediateCallEnabled,
+        onCall: chatRepository.getUser(chatUserId)?.onCall,
       },
     ]);
     router.push(`/chat/${chatUserId}`);
@@ -160,11 +130,6 @@ export default function DoctorProfileScreen() {
     }
   };
 
-  if (!isSignedIn(profile, accessToken)) {
-    router.replace("/welcome");
-    return null;
-  }
-
   if (loading || !doctor) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -173,131 +138,63 @@ export default function DoctorProfileScreen() {
     );
   }
 
-  const specialtyLabel = isRTL ? doctor.specialtyAr ?? doctor.specialty : doctor.specialty;
+  const specialtyLabelText = specialityLabel(
+    {
+      nameEn: doctor.specialty ?? doctor.professionalTitle ?? "",
+      nameAr: doctor.specialtyAr,
+    },
+    locale,
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border, flexDirection: dir }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          {isRTL ? <ArrowRight size={22} color={colors.primary} /> : <ArrowLeft size={22} color={colors.primary} />}
-        </Pressable>
+        <AppBackButton
+          color={colors.primary}
+          hitSlop={12}
+          fallback="/(tabs)"
+          accessibilityLabel={isRTL ? "رجوع" : "Back"}
+        />
         <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
           {doctor.name}
         </Text>
       </View>
 
-      <KeyboardSafeScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Avatar uri={doctor.photoUrl} seed={doctor.userId} role="doctor" size={88} />
-          <Text style={[styles.name, { color: colors.foreground }]}>{doctor.name}</Text>
-          {specialtyLabel ? (
-            <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>{specialtyLabel}</Text>
-          ) : null}
-          <View style={[styles.statsRow, { flexDirection: dir }]}>
-            <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Star size={16} color="#f59e0b" fill="#f59e0b" />
-              <Text style={{ color: colors.foreground, fontWeight: "800" }}>
-                {ratingAvg > 0 ? ratingAvg.toFixed(1) : isRTL ? "جديد" : "New"}
-              </Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                {ratingTotal} {isRTL ? "تقييم" : "reviews"}
-              </Text>
-            </View>
-            <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Coins size={16} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: "800" }}>{doctor.consultationPrice}</Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                {t.doctor.egpPerConsultation}
-              </Text>
-            </View>
-          </View>
-          {doctor.description ? (
-            <Text style={{ color: colors.foreground, lineHeight: 22, textAlign: isRTL ? "right" : "left", marginTop: 8 }}>
-              {doctor.description}
-            </Text>
-          ) : null}
-        </View>
-
-        <Pressable
-          onPress={openChat}
-          style={({ pressed }) => [
-            styles.chatBtn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1, flexDirection: dir },
-          ]}
-        >
-          <MessageCircle size={20} color="#fff" />
-          <Text style={styles.chatBtnText}>{isRTL ? "مراسلة الطبيب" : "Message doctor"}</Text>
-        </Pressable>
-
-        {isPatient && reviewStatus?.canReview ? (
-          <View style={[styles.reviewForm, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              {reviewStatus.hasExistingReview
-                ? isRTL
-                  ? "تعديل تقييمك"
-                  : "Edit your review"
-                : isRTL
-                  ? "أضف تقييمك"
-                  : "Add your review"}
-            </Text>
-            <StarPicker value={reviewRating} onChange={setReviewRating} />
-            <AppTextInput
-              value={reviewComment}
-              onChangeText={setReviewComment}
-              placeholder={isRTL ? "تعليق اختياري…" : "Optional comment…"}
-              placeholderTextColor={colors.mutedForeground}
-              multiline
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.muted,
-                  color: colors.foreground,
-                  textAlign: isRTL ? "right" : "left",
-                },
-              ]}
+      <KeyboardSafeScrollView
+        contentContainerStyle={[
+          styles.content,
+          isMobile && styles.contentMobile,
+          { paddingBottom: insets.bottom + (isMobile ? 20 : 24) },
+        ]}
+      >
+        <DoctorProfileHeader
+          doctor={doctor}
+          userId={userId}
+          specialtyLabel={specialtyLabelText}
+          ratingAvg={ratingAvg}
+          ratingTotal={ratingTotal}
+          action={
+            <DoctorProfileConsultCta
+              signedIn={isSignedIn(profile, accessToken)}
+              onPress={openChat}
             />
-            <Pressable
-              onPress={() => void submitReview()}
-              disabled={submitting}
-              style={[styles.submitBtn, { backgroundColor: colors.primary, opacity: submitting ? 0.7 : 1 }]}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: "#fff", fontWeight: "800" }}>
-                  {reviewStatus.hasExistingReview
-                    ? isRTL
-                      ? "تحديث التقييم"
-                      : "Update review"
-                    : isRTL
-                      ? "إرسال التقييم"
-                      : "Submit review"}
-                </Text>
-              )}
-            </Pressable>
-          </View>
-        ) : null}
+          }
+        />
 
-        {isPatient && reviewStatus && !reviewStatus.canReview ? (
-          <View style={[styles.reviewHint, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Text style={{ color: colors.mutedForeground, textAlign: "center", lineHeight: 20 }}>
-              {isRTL
-                ? "يمكنك تقييم الطبيب بعد أن يضيف تشخيصًا لك."
-                : "You can review this doctor after they add a diagnosis for you."}
-            </Text>
-          </View>
-        ) : null}
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 8 }]}>
-          {isRTL ? "التقييمات" : "Reviews"}
-        </Text>
-        {reviews.length === 0 ? (
-          <Text style={{ color: colors.mutedForeground, textAlign: "center", paddingVertical: 20 }}>
-            {isRTL ? "لا توجد تقييمات بعد" : "No reviews yet"}
-          </Text>
-        ) : (
-          reviews.map((r) => <ReviewRow key={r.id} item={r} isRTL={isRTL} />)
-        )}
+        <DoctorProfileBody
+          doctor={doctor}
+          specialtyLabel={specialtyLabelText}
+          reviews={reviews}
+          reviewTotal={ratingTotal}
+          reviewStatus={reviewStatus}
+          isPatient={isPatient}
+          reviewRating={reviewRating}
+          onReviewRatingChange={setReviewRating}
+          reviewComment={reviewComment}
+          onReviewCommentChange={setReviewComment}
+          submitting={submitting}
+          onSubmitReview={() => void submitReview()}
+        />
       </KeyboardSafeScrollView>
     </View>
   );
@@ -312,56 +209,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
-  hero: { alignItems: "center", gap: 8 },
-  name: { fontSize: 22, fontWeight: "800", marginTop: 8 },
-  statsRow: { gap: 12, marginTop: 12, width: "100%" },
-  stat: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: "center",
-    gap: 4,
-  },
-  chatBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-  },
-  chatBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
-  reviewForm: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-  },
-  reviewHint: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-  },
-  sectionTitle: { fontSize: 17, fontWeight: "800" },
-  input: {
-    minHeight: 80,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-  },
-  submitBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
-    minHeight: 46,
-  },
-  reviewCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
+  headerTitle: { fontSize: 17, fontWeight: "800", flexShrink: 1 },
+  content: { padding: 14, gap: 14 },
+  contentMobile: { padding: 12, gap: 12 },
 });

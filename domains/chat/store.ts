@@ -12,6 +12,10 @@ import {
   sendChatMessage,
   type MessageRow,
 } from "./api";
+import {
+  dropOrphanedAppointmentMessages,
+  withoutAppointmentMessages,
+} from "./appointmentMessages";
 import { canUseChat } from "./access";
 import { applyLivePresence } from "./presence";
 import { applyPresenceToConversations } from "./presenceConversations";
@@ -19,6 +23,7 @@ import { emit, on } from "@/utils/eventBus";
 import { CHAT_EVENTS, type ChatMessageReceivedPayload } from "./events";
 import { chatMessagePreview, chatNotificationTitle } from "@/utils/chatNotifications";
 import { AUTH_EVENTS } from "@/domains/auth/events";
+import { dismissChatNotifications } from "@/domains/push/dismiss";
 import { chatRepository } from "./repository";
 import type { MessageEmotionItem } from "@/domains/emotions";
 import type {
@@ -45,7 +50,7 @@ interface ChatState {
     selfRole: string | null,
   ) => Promise<void>;
   syncPresence: () => void;
-  ensureContacts: (token: string) => Promise<void>;
+  ensureContacts: (token: string, selfRole?: string | null) => Promise<void>;
   ensurePeer: (peerId: string, token: string) => Promise<ChatUser | undefined>;
   resolvePeer: (peerId: string) => ChatUser | undefined;
   loadMessages: (
@@ -53,6 +58,7 @@ interface ChatState {
     token: string | null,
     selfId: string | null,
   ) => Promise<void>;
+  removeAppointmentMessages: (peerId: string, appointmentId: string) => void;
   sendMessage: (
     peerId: string,
     input: SendMessageInput | string,
@@ -77,6 +83,16 @@ interface ChatState {
     payload: { message_id: string; peer_id: string },
     token: string | null,
     selfId: string | null,
+  ) => void;
+  handleConsultationRemoved: (
+    payload: {
+      consultation_id: string;
+      peer_id: string;
+      message_ids?: string[];
+    },
+    token: string | null,
+    selfId: string | null,
+    selfRole: string | null,
   ) => void;
   removeMessage: (peerId: string, messageId: string) => void;
   deleteMessage: (
@@ -117,6 +133,9 @@ interface ChatState {
   failPendingMessage: (peerId: string, tempId: string) => void;
   getPeer: (conversationId: string) => ChatUser | undefined;
   updateMessageEmotions: (messageId: string, emotions: MessageEmotionItem[]) => void;
+  patchMessage: (messageId: string, patch: Partial<ChatMessage>) => void;
+  /** Peer read the thread: stamp every message we sent them as read. */
+  markThreadReadByPeer: (peerId: string, readAt: string) => void;
   clear: () => void;
 }
 
@@ -198,6 +217,7 @@ function mergeMessagesById(
 function mapPeerRole(role?: string | null): ChatUser["role"] {
   if (role === "doctor") return "doctor";
   if (role === "patient") return "patient";
+  if (role === "admin" || role === "support") return "support";
   return undefined;
 }
 
@@ -414,7 +434,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  ensureContacts: async (token) => {
+  ensureContacts: async (token, selfRole) => {
+    // Admin picks peers from /admin/chats; the contacts endpoint is doctor/patient only.
+    if (selfRole?.toLowerCase() === "admin") return;
     const users = await fetchChatContacts(token);
     chatRepository.cacheUsers(users);
   },
@@ -479,10 +501,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const msgs = await fetchMessagesWithPeer(token, peerId, selfId);
       set((s) => {
         const live = s.messages[peerId] ?? [];
+        const cleanedLive = dropOrphanedAppointmentMessages(live, msgs);
         return {
           messages: {
             ...s.messages,
-            [peerId]: mergeMessagesById(live, msgs),
+            [peerId]: mergeMessagesById(cleanedLive, msgs),
           },
           messagesLoading: { ...s.messagesLoading, [peerId]: false },
         };
@@ -493,6 +516,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messagesLoading: { ...s.messagesLoading, [peerId]: false },
       }));
     }
+  },
+
+  removeAppointmentMessages: (peerId, appointmentId) => {
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [peerId]: withoutAppointmentMessages(
+          s.messages[peerId] ?? [],
+          appointmentId,
+        ),
+      },
+    }));
   },
 
   sendMessage: async (peerId, input, token, selfId, selfRole, replaceTempId) => {
@@ -538,12 +573,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // ignore
       }
     }
+    // Handled: the user is looking at the thread, so drop its tray entries.
+    void dismissChatNotifications(peerId);
     const idx = baseConversations.findIndex((c) => c.id === peerId);
     if (idx >= 0) {
       baseConversations[idx] = { ...baseConversations[idx], unreadCount: 0 };
     }
+    const now = new Date().toISOString();
     set((s) => ({
       conversations: applyPresenceToConversations(baseConversations),
+      messages: {
+        ...s.messages,
+        [peerId]: (s.messages[peerId] || []).map((m) =>
+          m.senderId !== "me" && !m.readAt ? { ...m, readAt: now } : m,
+        ),
+      },
     }));
   },
 
@@ -587,6 +631,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
     get().removeMessage(peerId, payload.message_id);
     if (token) {
       void get().loadConversations(token, selfId, null);
+    }
+  },
+
+  handleConsultationRemoved: (payload, token, selfId, selfRole) => {
+    if (!selfId) return;
+    const peerId = payload.peer_id;
+    const consultationId = payload.consultation_id;
+    const idSet = new Set(payload.message_ids ?? []);
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [peerId]: (s.messages[peerId] || []).filter((m) => {
+          if (idSet.size > 0 && idSet.has(m.id)) return false;
+          if (m.consultationAction?.consultation_id === consultationId) {
+            return false;
+          }
+          return true;
+        }),
+      },
+    }));
+    if (token) {
+      void get().loadConversations(token, selfId, selfRole);
     }
   },
 
@@ -765,6 +831,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
+    if (msg.type === "document_request" && msg.documentRequest) {
+      emit(CHAT_EVENTS.DOCUMENT_REQUEST_RECEIVED, {
+        peerId,
+        requestId: msg.documentRequest.request_id,
+        requestType: msg.documentRequest.request_type,
+        title: msg.documentRequest.title,
+        doctorName: peer?.name ?? peerNameHint ?? "",
+      });
+    }
+
     if (isViewing) {
       appendMessage();
       if (token) void get().markRead(peerId, token);
@@ -820,6 +896,54 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return { messages: nextMessages };
     });
   },
+
+  patchMessage: (messageId, patch) => {
+    set((state) => {
+      const nextMessages: Record<string, ChatMessage[]> = {};
+      let peerForUnread: string | null = null;
+      let unreadDelta = 0;
+      for (const [peerId, rows] of Object.entries(state.messages)) {
+        nextMessages[peerId] = rows.map((message) => {
+          if (message.id !== messageId) return message;
+          const next = { ...message, ...patch };
+          if (
+            message.senderId !== "me" &&
+            "readAt" in patch &&
+            Boolean(message.readAt) !== Boolean(next.readAt)
+          ) {
+            peerForUnread = peerId;
+            unreadDelta = next.readAt ? -1 : 1;
+          }
+          return next;
+        });
+      }
+      const conversations =
+        peerForUnread && unreadDelta !== 0
+          ? state.conversations.map((c) =>
+              c.id === peerForUnread
+                ? {
+                    ...c,
+                    unreadCount: Math.max(0, (c.unreadCount ?? 0) + unreadDelta),
+                  }
+                : c,
+            )
+          : state.conversations;
+      return { messages: nextMessages, conversations };
+    });
+  },
+
+  markThreadReadByPeer: (peerId, readAt) =>
+    set((s) => {
+      const thread = s.messages[peerId];
+      if (!thread?.length) return s;
+      let changed = false;
+      const next = thread.map((m) => {
+        if (m.senderId !== "me" || m.readAt) return m;
+        changed = true;
+        return { ...m, readAt };
+      });
+      return changed ? { messages: { ...s.messages, [peerId]: next } } : s;
+    }),
 
   clear: () => {
     baseConversations = [];
