@@ -56,7 +56,7 @@ export function createEmptySection(type: MarketingSectionType): MarketingEmailSe
         type,
         html: "Ready to join?",
         buttonLabel: "Register your interest",
-        buttonUrl: "https://development.3elagi.net/register-with-us",
+        buttonUrl: "https://www.3elagi.net/register-with-us",
       };
     case "custom":
       return { id, type, html: "<div>Custom HTML block</div>" };

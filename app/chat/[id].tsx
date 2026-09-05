@@ -29,6 +29,7 @@ import { BookAppointmentDialog } from "@/components/BookAppointmentDialog";
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { ArchivedMessagesToggle } from "@/components/chat/ArchivedMessagesToggle";
 import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
+import { TestPatientThinkingIndicator } from "@/components/chat/TestPatientThinkingIndicator";
 import type { ChatAction } from "@/components/chat/ChatActionsMenu";
 import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
@@ -215,6 +216,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   >(null);
   const [selfDoctorEntityId, setSelfDoctorEntityId] = useState<string | null>(null);
   const [testPatientStatus, setTestPatientStatus] = useState<TestPatientChatStatus | null>(null);
+  const [testPatientThinking, setTestPatientThinking] = useState(false);
   const listRef = useRef<FlatList<ChatListItem>>(null);
   const chatBodyRef = useRef<View>(null);
   const sendingRef = useRef(false);
@@ -337,9 +339,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   useEffect(() => {
     if (!id) return;
     setActiveChatPeerId(id);
+    setTestPatientThinking(false);
     return () => {
       setActiveChatPeerId(null);
       setPeerTyping(id, false);
+      setTestPatientThinking(false);
     };
   }, [id, setActiveChatPeerId, setPeerTyping]);
 
@@ -411,6 +415,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
       cancelled = true;
     };
   }, [id, accessToken, isDoctor, isDoctorPatientChat, messages.length]);
+
+  useEffect(() => {
+    if (!testPatientThinking || messages.length === 0) return;
+    const latest = messages[messages.length - 1];
+    if (latest.senderId !== "me" && !latest.pending && !latest.failed) {
+      setTestPatientThinking(false);
+    }
+  }, [messages, testPatientThinking]);
 
   useEffect(() => {
     if (!id || !accessToken || !isDoctor || !isDemoPatientChat) return;
@@ -786,6 +798,14 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     stickToBottomRef.current = true;
     try {
       await sendMessage(id, input, accessToken, profile!.id, role, replaceTempId);
+      if (
+        isDemoPatientChat &&
+        (typeof input === "string" ||
+          input.type === "text" ||
+          (input.type === undefined && !!input.content?.trim()))
+      ) {
+        setTestPatientThinking(true);
+      }
       stickToBottomRef.current = true;
       scrollToLatest(false);
     } catch (e) {
@@ -1617,20 +1637,24 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
               style={[
                 styles.presence,
                 {
-                  color: peerTyping
+                  color: testPatientThinking || peerTyping
                     ? colors.primary
                     : presenceTextColor(peer.presence, colors),
                   textAlign: isRTL ? "right" : "left",
                 },
               ]}
             >
-              {peerTyping
+              {testPatientThinking
                 ? isRTL
-                  ? "يكتب…"
-                  : "typing…"
-                : formatPresenceLabel(peer, isRTL)}
-              {!peerTyping && peer.specialty ? ` · ${peer.specialty}` : ""}
-              {!peerTyping && canOpenDoctorProfile
+                  ? "المريض يفكر…"
+                  : "Patient is thinking…"
+                : peerTyping
+                  ? isRTL
+                    ? "يكتب…"
+                    : "typing…"
+                  : formatPresenceLabel(peer, isRTL)}
+              {!testPatientThinking && !peerTyping && peer.specialty ? ` · ${peer.specialty}` : ""}
+              {!testPatientThinking && !peerTyping && canOpenDoctorProfile
                 ? isRTL
                   ? " · اضغط لعرض الملف"
                   : " · tap for profile"
@@ -1733,7 +1757,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
           data={listData}
           inverted={listInverted}
           keyExtractor={chatListItemKey}
-          extraData={`${reactionTarget?.id ?? ""}:${messages.length}:${archiveExpanded}`}
+          extraData={`${reactionTarget?.id ?? ""}:${messages.length}:${archiveExpanded}:${testPatientThinking}`}
           style={[styles.messageList, desktopLayout && { backgroundColor: colors.muted }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -1793,6 +1817,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
                 {isRTL ? "أرسل رسالتك الأولى" : "Send your first message"}
               </Text>
             </View>
+          }
+          ListHeaderComponent={
+            isDemoPatientChat && testPatientThinking ? (
+              <TestPatientThinkingIndicator isRTL={isRTL} rowDir={rowDir} />
+            ) : null
           }
           renderItem={({ item: row, index }) => {
             if (row.kind === "date") {
