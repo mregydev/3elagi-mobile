@@ -1,4 +1,8 @@
 /** Mirrors 3eyadahub-api/src/mail/marketing-email-sections.ts */
+export const REGISTER_URL = "https://www.3elagi.net/register-with-us";
+export const ANDROID_APP_URL =
+  "https://play.google.com/apps/internaltest/4700519020943782529";
+
 export const MARKETING_SECTION_TYPES = [
   "heading",
   "paragraph",

@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { CircleHelp, Star, X } from "lucide-react-native";
 import React from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { AndroidIcon } from "@/components/icons/AndroidIcon";
 import { useMobileAppDownloadStore } from "@/domains/mobileApp/downloadStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -104,6 +105,7 @@ export function AppHelpMoreMenu({ visible, onClose, onNavigate }: Props) {
                   },
                 ]}
               >
+                <AndroidIcon size={18} color={colors.mutedForeground} />
                 <Text style={[styles.menuLabel, { color: colors.foreground, textAlign }]}>
                   {t.mobileApp.linkLabel}
                 </Text>

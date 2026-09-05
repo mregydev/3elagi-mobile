@@ -12,19 +12,21 @@ import {
   type ViewStyle,
 } from "react-native";
 import {
-  currentTourStep,
   currentTourSteps,
   isTourRouteActive,
   tourRouteForStep,
   useProductTourStore,
   type TourStep,
 } from "@/domains/onboarding/productTourStore";
+import { currentLocalizedTourStep } from "@/domains/onboarding/productTourCopy";
 import { invokeTourAnchorHandler } from "@/domains/onboarding/tourAnchorActions";
 import {
   measureAnchorOnWeb,
   useTourAnchorStore,
 } from "@/domains/onboarding/tourAnchorStore";
 import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+import { alignText } from "@/utils/rtl";
 
 interface Props {
   onCompleteMain?: () => void;
@@ -351,6 +353,9 @@ function ContextualTourPopover({
   onPrimary,
   onSkip,
   colors,
+  skipLabel,
+  progressLabel,
+  textAlign,
 }: {
   step: TourStep;
   stepIndex: number;
@@ -359,6 +364,9 @@ function ContextualTourPopover({
   onPrimary: () => void;
   onSkip: () => void;
   colors: ReturnType<typeof useColors>;
+  skipLabel: string;
+  progressLabel: string;
+  textAlign: "left" | "right" | "center";
 }) {
   const { opacity, translateY } = useTourEnterAnim(step.id);
   const positioned = Platform.OS === "web" ? styles.absFixed : styles.abs;
@@ -393,11 +401,11 @@ function ContextualTourPopover({
         ]}
         pointerEvents="auto"
       >
-        <Text style={[styles.contextTitle, { color: colors.foreground }]}>
+        <Text style={[styles.contextTitle, { color: colors.foreground, textAlign }]}>
           {step.title ?? step.message}
         </Text>
         {step.description ? (
-          <Text style={[styles.contextDescription, { color: colors.mutedForeground }]}>
+          <Text style={[styles.contextDescription, { color: colors.mutedForeground, textAlign }]}>
             {step.description}
           </Text>
         ) : null}
@@ -422,14 +430,14 @@ function ContextualTourPopover({
         <View style={styles.contextFooter}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Skip tour"
+            accessibilityLabel={skipLabel}
             onPress={onSkip}
             style={styles.skipBtn}
           >
-            <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip tour</Text>
+            <Text style={[styles.skipText, { color: colors.mutedForeground }]}>{skipLabel}</Text>
           </Pressable>
           <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
-            {stepIndex + 1} of {totalSteps}
+            {progressLabel}
           </Text>
         </View>
       </View>
@@ -446,6 +454,10 @@ function BottomTourBar({
   onPrimary,
   onSkip,
   colors,
+  skipLabel,
+  nextLabel,
+  progressLabel,
+  textAlign,
 }: {
   step: TourStep;
   stepIndex: number;
@@ -455,6 +467,10 @@ function BottomTourBar({
   onPrimary: () => void;
   onSkip: () => void;
   colors: ReturnType<typeof useColors>;
+  skipLabel: string;
+  nextLabel: string;
+  progressLabel: string;
+  textAlign: "left" | "right" | "center";
 }) {
   const { opacity, translateY } = useTourEnterAnim(step.id);
   const positioned = Platform.OS === "web" ? styles.absFixed : styles.abs;
@@ -481,11 +497,16 @@ function BottomTourBar({
         ]}
         pointerEvents="auto"
       >
-        <Text style={[styles.bottomMessage, { color: colors.foreground }]}>
+        <Text style={[styles.bottomMessage, { color: colors.foreground, textAlign }]}>
           {step.title ?? step.message}
         </Text>
         {step.description ? (
-          <Text style={[styles.contextDescription, { color: colors.mutedForeground, textAlign: "center" }]}>
+          <Text
+            style={[
+              styles.contextDescription,
+              { color: colors.mutedForeground, textAlign },
+            ]}
+          >
             {step.description}
           </Text>
         ) : null}
@@ -502,18 +523,19 @@ function BottomTourBar({
           </Pressable>
         ) : null}
         <View style={styles.contextFooter}>
-          <Pressable onPress={onSkip} style={styles.skipBtn}>
-            <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip tour</Text>
+          <Pressable onPress={onSkip} style={styles.skipBtn} accessibilityLabel={skipLabel}>
+            <Text style={[styles.skipText, { color: colors.mutedForeground }]}>{skipLabel}</Text>
           </Pressable>
           <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
-            {stepIndex + 1} of {totalSteps}
+            {progressLabel}
           </Text>
           {!step.waitForTap && !step.primaryCta ? (
             <Pressable
               onPress={onPrimary}
               style={[styles.bottomNextBtn, { backgroundColor: colors.primary }]}
+              accessibilityLabel={nextLabel}
             >
-              <Text style={{ color: colors.primaryForeground, fontWeight: "700" }}>Next</Text>
+              <Text style={{ color: colors.primaryForeground, fontWeight: "700" }}>{nextLabel}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -525,6 +547,8 @@ function BottomTourBar({
 /** Spotlight-style tooltip tour for new doctors. */
 export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }: Props) {
   const colors = useColors();
+  const { t, isRTL } = useI18n();
+  const textAlign = alignText(isRTL);
   const pathname = usePathname();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const active = useProductTourStore((s) => s.active);
@@ -536,8 +560,9 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
   const testPatientUserId = useProductTourStore((s) => s.testPatientUserId);
   const [, setMeasureTick] = useState(0);
 
-  const step = currentTourStep(phase, stepIndex);
+  const step = currentLocalizedTourStep(phase, stepIndex, t.productTour);
   const totalSteps = currentTourSteps(phase).length;
+  const progressLabel = t.productTour.progress(stepIndex + 1, totalSteps);
   const anchorRect = useTourAnchorStore((s) =>
     step ? s.rects[step.anchor] : undefined,
   );
@@ -625,6 +650,9 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
           onPrimary={handlePrimaryCta}
           onSkip={handleSkip}
           colors={colors}
+          skipLabel={t.productTour.skip}
+          progressLabel={progressLabel}
+          textAlign={textAlign}
         />
       ) : (
         <BottomTourBar
@@ -636,6 +664,10 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
           onPrimary={isContextual ? handlePrimaryCta : onPrimary}
           onSkip={handleSkip}
           colors={colors}
+          skipLabel={t.productTour.skip}
+          nextLabel={t.productTour.next}
+          progressLabel={progressLabel}
+          textAlign={textAlign}
         />
       )}
     </TourOverlayFrame>

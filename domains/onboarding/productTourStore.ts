@@ -35,6 +35,12 @@ export interface TourStep {
   waitForTap?: boolean;
 }
 
+/** Structural tour step — copy comes from translations via productTourCopy. */
+export type TourStepDef = Omit<
+  TourStep,
+  "message" | "title" | "description" | "primaryCta"
+>;
+
 interface ProductTourState {
   phase: DoctorTourPhase;
   stepIndex: number;
@@ -53,75 +59,62 @@ interface ProductTourState {
   advanceOnAnchorTap: (anchor: TourAnchor) => void;
 }
 
-export const MAIN_DOCTOR_TOUR: TourStep[] = [
+export const MAIN_DOCTOR_TOUR: TourStepDef[] = [
   {
     id: "open-history",
     anchor: "nav-history",
-    message: "Click on Chat history",
     route: "/(tabs)",
     waitForTap: true,
   },
   {
     id: "open-test-chat",
     anchor: "chat-test-row",
-    message: "Click on your test patient",
     route: "/(tabs)/history",
     waitForTap: true,
   },
   {
     id: "view-records",
     anchor: "chat-view-records",
-    message: "View the patient's medical record",
-    title: "View the patient's medical record",
-    description:
-      "Access medical history, files, and attachments before starting the consultation.",
-    primaryCta: "View Record",
     placement: "contextual",
     waitForTap: true,
   },
   {
     id: "skeleton-toggle",
     anchor: "records-skeleton-toggle",
-    message: "Click on Skeleton view",
     waitForTap: true,
   },
   {
     id: "skeleton-body",
     anchor: "records-skeleton-body",
-    message: "Click a body part, then pick an organ",
     waitForTap: true,
   },
 ];
 
-export const PROFILE_DOCTOR_TOUR: TourStep[] = [
+export const PROFILE_DOCTOR_TOUR: TourStepDef[] = [
   {
     id: "local-price",
     anchor: "profile-local-price",
-    message: "Set your local consultation price",
     route: "/(tabs)/profile",
   },
   {
     id: "outside-price",
     anchor: "profile-outside-price",
-    message: "Set your price for patients abroad",
     route: "/(tabs)/profile",
   },
   {
     id: "calendar",
     anchor: "profile-calendar",
-    message: "Choose your available days and times",
     route: "/(tabs)/profile",
   },
   {
     id: "save",
     anchor: "profile-save",
-    message: "Click Save when you're done",
     waitForTap: true,
   },
 ];
 
 export function tourRouteForStep(
-  step: TourStep | null,
+  step: TourStepDef | null,
   testPatientUserId: string | null,
 ): string | undefined {
   if (!step) return undefined;
@@ -237,21 +230,29 @@ export const useProductTourStore = create<ProductTourState>((set, get) => ({
   advanceOnAnchorTap: (anchor) => {
     const { active, phase, stepIndex } = get();
     if (!active) return;
-    const step = currentTourStep(phase, stepIndex);
+    const step = currentTourStepDef(phase, stepIndex);
     if (step?.waitForTap && step.anchor === anchor) {
       get().next();
     }
   },
 }));
 
-export function currentTourStep(phase: DoctorTourPhase, index: number): TourStep | null {
-  if (!phase) return null;
-  const steps = phase === "profile" ? PROFILE_DOCTOR_TOUR : MAIN_DOCTOR_TOUR;
-  return steps[index] ?? null;
-}
-
-export function currentTourSteps(phase: DoctorTourPhase): TourStep[] {
+export function tourStepsForPhase(phase: DoctorTourPhase): TourStepDef[] {
   if (phase === "profile") return PROFILE_DOCTOR_TOUR;
   if (phase === "main") return MAIN_DOCTOR_TOUR;
   return [];
+}
+
+export function currentTourStepDef(phase: DoctorTourPhase, index: number): TourStepDef | null {
+  const steps = tourStepsForPhase(phase);
+  return steps[index] ?? null;
+}
+
+/** @deprecated Use currentTourStepDef for anchor checks, or currentLocalizedTourStep for UI copy. */
+export function currentTourStep(phase: DoctorTourPhase, index: number): TourStepDef | null {
+  return currentTourStepDef(phase, index);
+}
+
+export function currentTourSteps(phase: DoctorTourPhase): TourStepDef[] {
+  return tourStepsForPhase(phase);
 }

@@ -1,9 +1,9 @@
 export const ANDROID_APP_PACKAGE = "com.threelagi.mobile";
 
-/** Google Drive page for the latest Android APK build. */
+/** Google Play internal testing — Android app download. */
 export const ANDROID_APP_URL =
   process.env.EXPO_PUBLIC_ANDROID_APP_URL ??
-  "https://drive.google.com/file/d/1S5Eu8AWMWydfHR1vWPTpzZ_9Y6CqDw59/view";
+  "https://play.google.com/apps/internaltest/4700519020943782529";
 
 /** Supabase public storage — Android install prompt screenshot. */
 export const ANDROID_INSTALL_PROMPT_URL =

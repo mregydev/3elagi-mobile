@@ -1,5 +1,5 @@
 import { Download, Smartphone, X } from "lucide-react-native";
-import React, { createElement, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -8,10 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import {
-  ANDROID_INSTALL_PROMPT_SIZE,
-  ANDROID_INSTALL_PROMPT_URL,
-} from "@/constants/mobileApp";
 import { UI } from "@/constants/uiTokens";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -28,29 +24,6 @@ type Props = {
 const MODAL_RADIUS = 20;
 const INNER_RADIUS = 16;
 const CONTROL_RADIUS = 14;
-
-function InstallPromptImage({ alt }: { alt: string }) {
-  const { width } = ANDROID_INSTALL_PROMPT_SIZE;
-
-  if (Platform.OS === "web") {
-    return createElement("img", {
-      src: ANDROID_INSTALL_PROMPT_URL,
-      alt,
-      loading: "lazy",
-      decoding: "async",
-      style: {
-        objectFit: "contain",
-        display: "block",
-        width: "100%",
-        maxWidth: width,
-        height: "auto",
-        borderRadius: INNER_RADIUS,
-      },
-    });
-  }
-
-  return null;
-}
 
 export function MobileAppDownloadModal({ visible, onClose }: Props) {
   const colors = useColors();
@@ -192,24 +165,11 @@ export function MobileAppDownloadModal({ visible, onClose }: Props) {
             ]}
           >
             <Text style={[styles.installTitle, { color: colors.foreground, textAlign }]}>
-              {downloadStarted ? t.mobileApp.installTitle : t.mobileApp.installPreviewTitle}
+              {downloadStarted ? t.mobileApp.playStoreInviteTitle : t.mobileApp.playStoreInvitePreviewTitle}
             </Text>
             <Text style={[styles.installHint, { color: colors.mutedForeground, textAlign }]}>
-              {t.mobileApp.installHint}
+              {t.mobileApp.playStoreInviteHint}
             </Text>
-            <View
-              style={[
-                styles.installImageWrap,
-                {
-                  borderColor: colors.border,
-                  ...(Platform.OS === "web"
-                    ? ({ boxShadow: "0 8px 22px rgba(15, 23, 42, 0.1)" } as object)
-                    : UI.shadowMd),
-                },
-              ]}
-            >
-              <InstallPromptImage alt={t.mobileApp.installImageAlt} />
-            </View>
           </View>
         </View>
       </ScrollView>
@@ -347,15 +307,5 @@ const styles = StyleSheet.create({
   installHint: {
     fontSize: 13,
     lineHeight: 19,
-  },
-  installImageWrap: {
-    alignSelf: "center",
-    width: "100%",
-    maxWidth: ANDROID_INSTALL_PROMPT_SIZE.width,
-    borderRadius: INNER_RADIUS,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-    backgroundColor: "#ffffff",
-    padding: 10,
   },
 });
