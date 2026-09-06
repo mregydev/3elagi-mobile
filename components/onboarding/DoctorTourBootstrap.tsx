@@ -30,7 +30,6 @@ export function DoctorTourBootstrap() {
   const loadConversations = useChatStore((s) => s.loadConversations);
 
   const startMainTour = useProductTourStore((s) => s.startMainTour);
-  const startProfileTour = useProductTourStore((s) => s.startProfileTour);
   const setTestPatientUserId = useProductTourStore((s) => s.setTestPatientUserId);
   const exitReason = useProductTourStore((s) => s.exitReason);
   const completedPhase = useProductTourStore((s) => s.completedPhase);
@@ -38,11 +37,9 @@ export function DoctorTourBootstrap() {
   const setDoctorApprovalStatus = useAuthStore((s) => s.setDoctorApprovalStatus);
   /** Avoid re-launching the same tour on every route change in one session. */
   const mainTourStartedRef = useRef(false);
-  const profileTourStartedRef = useRef(false);
 
   useEffect(() => {
     mainTourStartedRef.current = false;
-    profileTourStartedRef.current = false;
   }, [profile?.id]);
 
   const refreshChats = useCallback(async () => {
@@ -76,19 +73,10 @@ export function DoctorTourBootstrap() {
 
     const tourActive = useProductTourStore.getState().active;
     const productDone = Boolean(state.product_tour_completed_at);
-    const profileDone = Boolean(state.profile_tour_completed_at);
 
-    if (!productDone) {
-      if (!tourActive && !mainTourStartedRef.current) {
-        startMainTour();
-        mainTourStartedRef.current = true;
-      }
-      return;
-    }
-
-    if (!profileDone && !tourActive && !profileTourStartedRef.current) {
-      startProfileTour();
-      profileTourStartedRef.current = true;
+    if (!productDone && !tourActive && !mainTourStartedRef.current) {
+      startMainTour();
+      mainTourStartedRef.current = true;
     }
   }, [
     hydrated,
@@ -99,7 +87,6 @@ export function DoctorTourBootstrap() {
     setDoctorApprovalStatus,
     setTestPatientUserId,
     startMainTour,
-    startProfileTour,
     refreshChats,
   ]);
 
@@ -108,29 +95,16 @@ export function DoctorTourBootstrap() {
   }, [bootstrap, pathname, doctorApprovalStatus, accessToken, profile?.id]);
 
   useEffect(() => {
-    if (exitReason !== "complete" || !completedPhase) return;
+    if (exitReason !== "complete" || completedPhase !== "main") return;
 
     const finish = async () => {
-      if (completedPhase === "main") {
-        await markDoctorTourComplete(accessToken, "product");
-        const state = await fetchDoctorMeTourState(accessToken);
-        if (state && !state.profile_tour_completed_at) {
-          if (!useProductTourStore.getState().active) startProfileTour();
-        }
-      } else if (completedPhase === "profile") {
-        await markDoctorTourComplete(accessToken, "profile");
-      }
+      await markDoctorTourComplete(accessToken, "product");
+      await markDoctorTourComplete(accessToken, "profile");
       clearExit();
     };
 
     void finish().catch(() => clearExit());
-  }, [
-    exitReason,
-    completedPhase,
-    accessToken,
-    startProfileTour,
-    clearExit,
-  ]);
+  }, [exitReason, completedPhase, accessToken, clearExit]);
 
   if (role?.toLowerCase() !== "doctor" || !hydrated) return null;
 
@@ -138,15 +112,12 @@ export function DoctorTourBootstrap() {
     <ProductTourOverlay
       onSkip={() => {
         void markDoctorTourComplete(accessToken, "product");
+        void markDoctorTourComplete(accessToken, "profile");
       }}
       onCompleteMain={async () => {
         await markDoctorTourComplete(accessToken, "product");
-        const state = await fetchDoctorMeTourState(accessToken);
-        if (state && !state.profile_tour_completed_at) {
-          if (!useProductTourStore.getState().active) startProfileTour();
-        }
+        await markDoctorTourComplete(accessToken, "profile");
       }}
-      onCompleteProfile={() => void markDoctorTourComplete(accessToken, "profile")}
     />
   );
 }

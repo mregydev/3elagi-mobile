@@ -30,7 +30,6 @@ import { alignText } from "@/utils/rtl";
 
 interface Props {
   onCompleteMain?: () => void;
-  onCompleteProfile?: () => void;
   onSkip?: () => void;
 }
 
@@ -545,7 +544,7 @@ function BottomTourBar({
 }
 
 /** Spotlight-style tooltip tour for new doctors. */
-export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }: Props) {
+export function ProductTourOverlay({ onCompleteMain, onSkip }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
   const textAlign = alignText(isRTL);
@@ -605,14 +604,12 @@ export function ProductTourOverlay({ onCompleteMain, onCompleteProfile, onSkip }
   if (!active || !step) return null;
 
   const finish = () => {
-    if (phase === "profile") onCompleteProfile?.();
-    else onCompleteMain?.();
+    onCompleteMain?.();
     skip();
   };
 
   const handleSkip = () => {
-    if (phase === "profile") onCompleteProfile?.();
-    else onSkip?.();
+    onSkip?.();
     skip();
   };
 

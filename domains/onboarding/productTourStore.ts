@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type DoctorTourPhase = "main" | "profile" | null;
+export type DoctorTourPhase = "main" | null;
 
 export type TourAnchor =
   | "nav-history"
@@ -10,11 +10,7 @@ export type TourAnchor =
   | "records-skeleton-body"
   | "records-record-row"
   | "records-back"
-  | "records-reset"
-  | "profile-local-price"
-  | "profile-outside-price"
-  | "profile-calendar"
-  | "profile-save";
+  | "records-reset";
 
 export interface TourStep {
   id: string;
@@ -51,7 +47,6 @@ interface ProductTourState {
   completedPhase: DoctorTourPhase;
   setTestPatientUserId: (id: string | null) => void;
   startMainTour: () => void;
-  startProfileTour: () => void;
   next: () => void;
   skip: () => void;
   clearExit: () => void;
@@ -86,29 +81,6 @@ export const MAIN_DOCTOR_TOUR: TourStepDef[] = [
   {
     id: "skeleton-body",
     anchor: "records-skeleton-body",
-    waitForTap: true,
-  },
-];
-
-export const PROFILE_DOCTOR_TOUR: TourStepDef[] = [
-  {
-    id: "local-price",
-    anchor: "profile-local-price",
-    route: "/(tabs)/profile",
-  },
-  {
-    id: "outside-price",
-    anchor: "profile-outside-price",
-    route: "/(tabs)/profile",
-  },
-  {
-    id: "calendar",
-    anchor: "profile-calendar",
-    route: "/(tabs)/profile",
-  },
-  {
-    id: "save",
-    anchor: "profile-save",
     waitForTap: true,
   },
 ];
@@ -153,14 +125,12 @@ export function isTourRouteActive(pathname: string | null, route: string): boole
       (path.includes("(tabs)") &&
         !tourPathHas(path, "history") &&
         !tourPathHas(path, "records") &&
-        !tourPathHas(path, "profile") &&
         !tourPathHas(path, "patients") &&
         !tourPathHas(path, "chat"))
     );
   }
 
   if (target === "/(tabs)/history") return tourPathHas(path, "history");
-  if (target === "/(tabs)/profile") return tourPathHas(path, "profile");
 
   const chatMatch = target.match(/^\/chat\/([^/]+)$/);
   if (chatMatch) return new RegExp(`^/chat/${chatMatch[1]}$`).test(path);
@@ -187,17 +157,9 @@ export const useProductTourStore = create<ProductTourState>((set, get) => ({
       exitReason: null,
       completedPhase: null,
     }),
-  startProfileTour: () =>
-    set({
-      phase: "profile",
-      stepIndex: 0,
-      active: true,
-      exitReason: null,
-      completedPhase: null,
-    }),
   next: () => {
     const { phase, stepIndex } = get();
-    const steps = phase === "profile" ? PROFILE_DOCTOR_TOUR : MAIN_DOCTOR_TOUR;
+    const steps = MAIN_DOCTOR_TOUR;
     if (stepIndex + 1 >= steps.length) {
       set({
         active: false,
@@ -238,7 +200,6 @@ export const useProductTourStore = create<ProductTourState>((set, get) => ({
 }));
 
 export function tourStepsForPhase(phase: DoctorTourPhase): TourStepDef[] {
-  if (phase === "profile") return PROFILE_DOCTOR_TOUR;
   if (phase === "main") return MAIN_DOCTOR_TOUR;
   return [];
 }
