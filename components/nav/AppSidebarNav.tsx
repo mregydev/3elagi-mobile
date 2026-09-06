@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Href, usePathname, useRouter } from "expo-router";
+import { Href, usePathname, useRouter, useSegments } from "expo-router";
 import {
   ChevronDown,
   ChevronLeft,
@@ -24,6 +24,11 @@ import {
   UIManager,
   View,
 } from "react-native";
+import { Ask3elagiAiSidebarButton } from "@/components/assistant/Ask3elagiAiSidebarButton";
+import {
+  ask3elagiAiTriggerInSidebar,
+  shouldHideAsk3elagiAiOnRoute,
+} from "@/components/assistant/ask3elagiAiTrigger";
 import { Logo3elagi } from "@/components/Logo3elagi";
 import { AppHelpMoreMenu } from "@/components/nav/AppHelpMoreMenu";
 import { AppSettingsModal } from "@/components/nav/AppSettingsModal";
@@ -45,6 +50,7 @@ import { useNotificationsStore } from "@/domains/notifications/store";
 import { useChatStore } from "@/domains/chat/store";
 import { useAccentGradient, useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+import { useWebLayout } from "@/hooks/useWebLayout";
 import { emit } from "@/utils/eventBus";
 import { alignText, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
@@ -76,6 +82,9 @@ export function AppSidebarNav({
   const { t, isRTL, locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments();
+  const { isTablet } = useWebLayout();
+  const hydrated = useAuthStore((s) => s.hydrated);
   const role = useAuthStore((s) => s.role);
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -86,6 +95,14 @@ export function AppSidebarNav({
     s.conversations.reduce((total, c) => total + (c.unreadCount ?? 0), 0),
   );
   const aiEnabled = useAiEnabled();
+  const roleOk =
+    role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
+  const canUseAskAi =
+    hydrated &&
+    (!signedIn || roleOk) &&
+    aiEnabled &&
+    !shouldHideAsk3elagiAiOnRoute(pathname, segments as string[]) &&
+    ask3elagiAiTriggerInSidebar(isTablet);
   const tourActive = useProductTourStore((s) => s.active);
   const tourPhase = useProductTourStore((s) => s.phase);
   const tourStepIndex = useProductTourStore((s) => s.stepIndex);
@@ -360,14 +377,15 @@ export function AppSidebarNav({
   );
 
   return (
-    <ScrollView
-      ref={scrollRef}
-      style={styles.root}
-      contentContainerStyle={[styles.content, collapsed && styles.contentRail]}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      bounces={false}
-    >
+    <View style={styles.root}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, collapsed && styles.contentRail]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
       {showBrand || onToggleCollapse ? (
         <View
           style={[
@@ -478,8 +496,14 @@ export function AppSidebarNav({
           );
         })}
       </View>
+      </ScrollView>
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          collapsed ? styles.footerRail : styles.footerExpanded,
+        ]}
+      >
         {collapsed ? (
           <>
             {renderSettingsButton(true)}
@@ -493,6 +517,10 @@ export function AppSidebarNav({
             {renderContactButton()}
           </View>
         )}
+
+        {canUseAskAi ? (
+          <Ask3elagiAiSidebarButton collapsed={collapsed} navFontSize={navFontSize} />
+        ) : null}
 
         {signedIn ? (
           <Pressable
@@ -610,7 +638,7 @@ export function AppSidebarNav({
         onClose={() => setHelpMoreOpen(false)}
         onNavigate={onNavigate}
       />
-    </ScrollView>
+    </View>
   );
 }
 
@@ -619,11 +647,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
-  content: {
+  scroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 14,
     paddingTop: 12,
-    paddingBottom: 28,
+    paddingBottom: 12,
     gap: 10,
   },
   contentRail: {
@@ -710,8 +742,17 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: 8,
-    marginTop: "auto",
-    paddingTop: 16,
+    flexShrink: 0,
+    paddingBottom: 16,
+  },
+  footerExpanded: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+  },
+  footerRail: {
+    paddingHorizontal: 6,
+    paddingTop: 8,
+    alignItems: "center",
   },
   prefPanel: {
     gap: 2,

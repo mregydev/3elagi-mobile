@@ -49,9 +49,6 @@ import {
   setAiWidgetOpen,
 } from "@/domains/ai/push-suppression";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
-import {
-  isDemoEmbedPath,
-} from "@/domains/auth/demoSession";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { getApiLang } from "@/domains/i18n/store";
@@ -68,6 +65,11 @@ import { WEB_FAB_INSET } from "@/constants/webLayout";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
 import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
+import {
+  ask3elagiAiTriggerInSidebar,
+  patientUserIdFromPath,
+  shouldHideAsk3elagiAiOnRoute,
+} from "@/components/assistant/ask3elagiAiTrigger";
 import { viewportPortal } from "@/utils/viewportPortal";
 
 function makeLocalId(prefix: string) {
@@ -112,8 +114,9 @@ function profileSaveBarFabOffset(
   pathname: string | null,
   segments: string[],
   isDesktop: boolean,
+  sidebarTrigger: boolean,
 ): number {
-  if (!isProfileRoute(pathname, segments)) return 0;
+  if (sidebarTrigger || !isProfileRoute(pathname, segments)) return 0;
   const saveHeight = profileSaveChromeHeight({ withLogout: !isDesktop });
   const fabSize = 56;
   return saveHeight + fabSize + ASK_3ELAGI_AI_FAB_CHROME_GAP;
@@ -135,28 +138,6 @@ const ASK_3ELAGI_AI_FAB_ON_RED = "#ffffff";
 const ASK_3ELAGI_AI_FAB_ON_RED_MUTED = "rgba(255, 255, 255, 0.82)";
 const ASK_3ELAGI_AI_FAB_RED_SHADOW =
   "0 10px 28px rgba(225, 29, 72, 0.45), 0 4px 12px rgba(15, 23, 42, 0.18)";
-
-function shouldHideOnRoute(pathname: string | null, segments: string[]): boolean {
-  const root = segments[0];
-  if (!root || root === "welcome" || root === "auth") return true;
-  if (root === "admin") return true;
-  if (root === "video-call") return true;
-  if (root === "doctor-pending") return true;
-  // Outer dual-panel demo shell only — iframe apps (patient / doctor) keep Ask AI.
-  if (pathname === "/demo") return true;
-  if (pathname && isDemoEmbedPath(pathname)) return true;
-  if (pathname?.includes("/assistant") || segments.includes("assistant")) {
-    return true;
-  }
-  return false;
-}
-
-/** Doctor patient profile route → scope AI to that patient. */
-function patientUserIdFromPath(pathname: string | null): string | null {
-  if (!pathname) return null;
-  const match = pathname.match(/\/patients\/([0-9a-fA-F-]{36})(?:\/|$)/);
-  return match?.[1] ?? null;
-}
 
 function Ask3elagiAiPanel() {
   const colors = useColors();
@@ -827,9 +808,10 @@ function Ask3elagiAiPanel() {
 export function Ask3elagiAiWidget() {
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isTablet } = useWebLayout();
   const pathname = usePathname();
   const segments = useSegments();
+  const sidebarTrigger = ask3elagiAiTriggerInSidebar(isTablet);
   const hydrated = useAuthStore((s) => s.hydrated);
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -844,9 +826,10 @@ export function Ask3elagiAiWidget() {
     role?.toLowerCase() === "patient" || role?.toLowerCase() === "doctor";
   /** Guests + patient/doctor accounts; hide for admin / unsupported roles when signed in. */
   const canUseWidget = (!signedIn || roleOk) && aiEnabled;
-  const hidden = shouldHideOnRoute(pathname, segments as string[]);
+  const hidden = shouldHideAsk3elagiAiOnRoute(pathname, segments as string[]);
   // Circle icon-only on native + mobile web; labeled pill on desktop web.
-  const iconOnlyFab = Platform.OS !== "web" || !isDesktop;
+  const iconOnlyFab =
+    !sidebarTrigger && (Platform.OS !== "web" || !isDesktop);
 
   useEffect(() => {
     if (!canUseWidget || hidden) closeWidget();
@@ -881,6 +864,7 @@ export function Ask3elagiAiWidget() {
     pathname,
     segments as string[],
     isDesktop,
+    sidebarTrigger,
   );
   const hideFab = hideFabOnChatRoute(pathname, segments as string[]);
   const medicalFormLift = medicalFormSaveBarFabOffset(pathname);
@@ -905,7 +889,7 @@ export function Ask3elagiAiWidget() {
     <View style={styles.host} pointerEvents="box-none">
       {open ? <Ask3elagiAiPanel /> : null}
 
-      {!open && !hideFab ? (
+      {!open && !hideFab && !sidebarTrigger ? (
         <Pressable
           onPress={() => openWidget(undefined, patientUserIdFromPath(pathname))}
           style={[

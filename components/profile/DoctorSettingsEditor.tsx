@@ -46,6 +46,7 @@ import type { useProfileEditor } from "@/hooks/useProfileEditor";
 import { useI18n } from "@/hooks/useI18n";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useProductTourStore } from "@/domains/onboarding/productTourStore";
+import { useAuthStore } from "@/domains/auth/store";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { useColors } from "@/hooks/useColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -101,10 +102,11 @@ export function DoctorSettingsEditor({
 }: Props) {
   const colors = useColors();
   const { t, isRTL, locale } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isTablet } = useWebLayout();
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const insets = useSafeAreaInsets();
   const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
+  const doctorApprovalStatus = useAuthStore((s) => s.doctorApprovalStatus);
   const [activeTab, setActiveTab] = useState<DoctorSettingsTabId>("personal");
 
   const {
@@ -174,7 +176,10 @@ export function DoctorSettingsEditor({
   const spanFull = profileGridSpanFull(desktopSplit);
   const saveChromeHeight = profileSaveChromeHeight({ withLogout: showLogout });
   const dockPadBottom = profileSaveDockBottomPad(insets.bottom);
-  const isVerified = Boolean(digitalSignaturePreview && specialityIds.length > 0);
+  const fabClearance = Platform.OS === "web" && isTablet ? 0 : 88;
+  const isVerified =
+    doctorApprovalStatus === "approved" ||
+    Boolean(digitalSignaturePreview && specialityIds.length > 0);
 
   const handleSave = () => {
     advanceOnAnchorTap("profile-save");
@@ -607,7 +612,7 @@ export function DoctorSettingsEditor({
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: saveChromeHeight + dockPadBottom + 88 },
+          { paddingBottom: saveChromeHeight + dockPadBottom + fabClearance },
         ]}
         keyboardShouldPersistTaps="handled"
       >

@@ -1,4 +1,4 @@
-import { Stethoscope } from "lucide-react-native";
+import { Stethoscope, UserRound } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
@@ -234,7 +234,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       ) : null}
 
       <View style={styles.fields}>
-        <FieldBlock label={t.registerWithUs.photoLabel} error={fieldErrors.photo}>
+        <FieldBlock label={t.registerWithUs.photoLabel} error={fieldErrors.photo} centered>
           <Pressable onPress={pickPhoto} disabled={sending} style={styles.photoWrap}>
             {photoPreview ? (
               <Image source={{ uri: photoPreview }} style={styles.photoPreview} />
@@ -244,13 +244,11 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
                   styles.photoPlaceholder,
                   {
                     borderColor: fieldErrors.photo ? colors.destructive : colors.border,
-                    backgroundColor: colors.card,
+                    backgroundColor: colors.muted,
                   },
                 ]}
               >
-                <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign }}>
-                  {t.registerWithUs.photoHint}
-                </Text>
+                <UserRound size={36} color={colors.mutedForeground} />
               </View>
             )}
           </Pressable>
@@ -388,21 +386,27 @@ function FieldBlock({
   label,
   error,
   children,
+  centered = false,
 }: {
   label: string;
   error?: string;
   children: React.ReactNode;
+  centered?: boolean;
 }) {
   const colors = useColors();
   const { isRTL } = useI18n();
-  const textAlign = alignText(isRTL);
+  const textAlign = centered ? "center" : alignText(isRTL);
 
   return (
-    <View style={styles.fieldBlock}>
-      <Text style={[styles.label, { color: colors.foreground, textAlign }]}>{label}</Text>
+    <View style={[styles.fieldBlock, centered && styles.fieldBlockCentered]}>
+      <Text style={[styles.label, { color: colors.foreground, textAlign, width: centered ? "100%" : undefined }]}>
+        {label}
+      </Text>
       {children}
       {error ? (
-        <Text style={[styles.fieldError, { color: colors.destructive }]}>{error}</Text>
+        <Text style={[styles.fieldError, { color: colors.destructive, textAlign, width: centered ? "100%" : undefined }]}>
+          {error}
+        </Text>
       ) : null}
     </View>
   );
@@ -461,7 +465,8 @@ const styles = StyleSheet.create({
   },
   successNote: { fontSize: 14, fontWeight: "700" },
   fields: { gap: UI.space.md },
-  photoWrap: { alignSelf: "flex-start" },
+  fieldBlockCentered: { alignItems: "center" },
+  photoWrap: { alignSelf: "center" },
   photoPreview: {
     width: 96,
     height: 96,
@@ -475,7 +480,6 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
   },
   fieldBlock: { gap: 8 },
   label: { fontSize: 13, fontWeight: "700" },
