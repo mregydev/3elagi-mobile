@@ -1,4 +1,11 @@
+import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
+
+export type DoctorRegistrationPhoto = {
+  uri: string;
+  mimeType: string;
+  fileName: string;
+};
 
 export async function submitDoctorRegistration(input: {
   doctorName: string;
@@ -7,25 +14,43 @@ export async function submitDoctorRegistration(input: {
   country: string;
   specialityId: string;
   clinicLocation?: string;
+  photo: DoctorRegistrationPhoto;
 }): Promise<void> {
-  const res = await fetch(`${API_BASE}/doctor-registration-requests`, {
+  const form = new FormData();
+  form.append("doctor_name", input.doctorName.trim());
+  form.append("email", input.email.trim());
+  form.append("phone", input.phone.trim());
+  form.append("country", input.country.trim().toUpperCase());
+  form.append("speciality_id", input.specialityId);
+  if (input.clinicLocation?.trim()) {
+    form.append("clinic_location", input.clinicLocation.trim());
+  }
+
+  if (Platform.OS === "web") {
+    const res = await fetch(input.photo.uri);
+    const blob = await res.blob();
+    form.append("photo", blob, input.photo.fileName);
+  } else {
+    form.append(
+      "photo",
+      {
+        uri: input.photo.uri,
+        name: input.photo.fileName,
+        type: input.photo.mimeType,
+      } as unknown as Blob,
+    );
+  }
+
+  const response = await fetch(`${API_BASE}/doctor-registration-requests`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      doctor_name: input.doctorName.trim(),
-      email: input.email.trim(),
-      phone: input.phone.trim(),
-      country: input.country.trim().toUpperCase(),
-      speciality_id: input.specialityId,
-      clinic_location: input.clinicLocation?.trim() || undefined,
-    }),
+    body: form,
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
     throw new Error(
       (Array.isArray(data?.message) ? data.message.join(", ") : data?.message) ??
         data?.error ??
-        `Request failed (${res.status})`,
+        `Request failed (${response.status})`,
     );
   }
 }

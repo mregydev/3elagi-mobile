@@ -2,6 +2,7 @@ import { Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -148,6 +149,18 @@ export default function AdminDoctorRegistrationsWeb() {
                       <ActivityIndicator color={colors.primary} />
                     ) : (
                       <View style={{ gap: 8 }}>
+                        {row.photo_url ? (
+                          <>
+                            <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                              Profile photo
+                            </Text>
+                            <Image
+                              source={{ uri: row.photo_url }}
+                              style={styles.photo}
+                              resizeMode="cover"
+                            />
+                          </>
+                        ) : null}
                         <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
                           Speciality
                         </Text>
@@ -232,4 +245,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   message: { fontSize: 14, lineHeight: 20 },
+  photo: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
 });

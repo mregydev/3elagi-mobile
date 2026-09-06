@@ -1,7 +1,11 @@
 import { Stethoscope } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -17,7 +21,7 @@ import {
   DEFAULT_PATIENT_COUNTRY,
   type DoctorSignupCountryCode,
 } from "@/constants/patientCountries";
-import { submitDoctorRegistration } from "@/domains/doctorRegistration/api";
+import { submitDoctorRegistration, type DoctorRegistrationPhoto } from "@/domains/doctorRegistration/api";
 import { hasFieldErrors } from "@/domains/auth/validation";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
 import { useColors } from "@/hooks/useColors";
@@ -33,6 +37,7 @@ type FieldErrors = {
   phone?: string;
   country?: string;
   specialityId?: string;
+  photo?: string;
 };
 
 type Props = {
@@ -53,6 +58,8 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
   const [country, setCountry] = useState<DoctorSignupCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const [clinicLocation, setClinicLocation] = useState("");
   const [specialityId, setSpecialityId] = useState("");
+  const [photo, setPhoto] = useState<DoctorRegistrationPhoto | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [sending, setSending] = useState(false);
@@ -64,6 +71,81 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       .catch(() => setSpecialities([]));
   }, []);
 
+  const pickPhoto = () => {
+    if (Platform.OS === "web") {
+      void (async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.85,
+        });
+        if (!result.canceled && result.assets[0]) {
+          const asset = result.assets[0];
+          setPhotoPreview(asset.uri);
+          setPhoto({
+            uri: asset.uri,
+            mimeType: asset.mimeType ?? "image/jpeg",
+            fileName: asset.fileName ?? `doctor-photo-${Date.now()}.jpg`,
+          });
+          if (fieldErrors.photo) {
+            setFieldErrors((prev) => ({ ...prev, photo: undefined }));
+          }
+        }
+      })();
+      return;
+    }
+
+    Alert.alert(t.registerWithUs.photoLabel, t.auth.chooseFileType, [
+      {
+        text: t.auth.camera,
+        onPress: async () => {
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            setPhotoPreview(asset.uri);
+            setPhoto({
+              uri: asset.uri,
+              mimeType: asset.mimeType ?? "image/jpeg",
+              fileName: asset.fileName ?? `doctor-photo-${Date.now()}.jpg`,
+            });
+            if (fieldErrors.photo) {
+              setFieldErrors((prev) => ({ ...prev, photo: undefined }));
+            }
+          }
+        },
+      },
+      {
+        text: t.auth.gallery,
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            setPhotoPreview(asset.uri);
+            setPhoto({
+              uri: asset.uri,
+              mimeType: asset.mimeType ?? "image/jpeg",
+              fileName: asset.fileName ?? `doctor-photo-${Date.now()}.jpg`,
+            });
+            if (fieldErrors.photo) {
+              setFieldErrors((prev) => ({ ...prev, photo: undefined }));
+            }
+          }
+        },
+      },
+      { text: t.common.cancel, style: "cancel" },
+    ]);
+  };
+
   const validate = (): FieldErrors => {
     const errors: FieldErrors = {};
     if (!doctorName.trim()) errors.doctorName = t.auth.fieldRequired;
@@ -73,6 +155,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
     if (!phone.trim()) errors.phone = t.auth.fieldRequired;
     if (!country) errors.country = t.auth.doctorMarketRequired;
     if (!specialityId) errors.specialityId = t.auth.specialityRequiredMsg;
+    if (!photo) errors.photo = t.registerWithUs.photoRequired;
     return errors;
   };
 
@@ -90,6 +173,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
         country,
         specialityId,
         clinicLocation: clinicLocation.trim() || undefined,
+        photo: photo!,
       });
       setSent(true);
       showSuccessToast(t.registerWithUs.sent);
@@ -99,6 +183,8 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       setCountry(DEFAULT_PATIENT_COUNTRY);
       setClinicLocation("");
       setSpecialityId("");
+      setPhoto(null);
+      setPhotoPreview(null);
     } catch (e) {
       showErrorToast(t.registerWithUs.sendFailed, (e as Error).message);
     } finally {
@@ -148,6 +234,28 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       ) : null}
 
       <View style={styles.fields}>
+        <FieldBlock label={t.registerWithUs.photoLabel} error={fieldErrors.photo}>
+          <Pressable onPress={pickPhoto} disabled={sending} style={styles.photoWrap}>
+            {photoPreview ? (
+              <Image source={{ uri: photoPreview }} style={styles.photoPreview} />
+            ) : (
+              <View
+                style={[
+                  styles.photoPlaceholder,
+                  {
+                    borderColor: fieldErrors.photo ? colors.destructive : colors.border,
+                    backgroundColor: colors.card,
+                  },
+                ]}
+              >
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign }}>
+                  {t.registerWithUs.photoHint}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </FieldBlock>
+
         <FieldBlock label={t.registerWithUs.nameLabel} error={fieldErrors.doctorName}>
           <AppTextInput
             value={doctorName}
@@ -353,6 +461,22 @@ const styles = StyleSheet.create({
   },
   successNote: { fontSize: 14, fontWeight: "700" },
   fields: { gap: UI.space.md },
+  photoWrap: { alignSelf: "flex-start" },
+  photoPreview: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  photoPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
   fieldBlock: { gap: 8 },
   label: { fontSize: 13, fontWeight: "700" },
   input: {

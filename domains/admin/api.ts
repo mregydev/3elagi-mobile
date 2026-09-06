@@ -383,6 +383,7 @@ export interface AdminDoctorRegistrationRow {
   phone: string;
   country: string;
   clinic_location: string | null;
+  photo_url: string | null;
   speciality_id: string;
   speciality_name_en: string;
   speciality_name_ar: string;
