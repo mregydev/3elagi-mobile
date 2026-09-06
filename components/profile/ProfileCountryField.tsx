@@ -1,37 +1,42 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { CountryFlagToggle } from "@/components/country/CountryFlagToggle";
-import type { MarketCountryCode } from "@/constants/patientCountries";
-import { useColors } from "@/hooks/useColors";
+import { CountrySelectField } from "@/components/auth/CountrySelectField";
+import { PROFILE_SETTINGS } from "@/constants/profileSettingsDesign";
+import {
+  MARKET_COUNTRY_CODES,
+  type MarketCountryCode,
+} from "@/constants/patientCountries";
 import { useI18n } from "@/hooks/useI18n";
 
 type Props = {
   value: MarketCountryCode;
   onChange: (code: MarketCountryCode) => void;
   disabled?: boolean;
+  isRTL?: boolean;
 };
 
-/** Egypt / Jordan flags for the mobile profile Preferences section. */
-export function ProfileCountryField({ value, onChange, disabled }: Props) {
-  const colors = useColors();
-  const { isRTL, t } = useI18n();
+/** Compact country dropdown for doctor market selection (EG / JO). */
+export function ProfileCountryField({ value, onChange, disabled, isRTL }: Props) {
+  const { t, isRTL: rtlFromHook } = useI18n();
+  const rtl = isRTL ?? rtlFromHook;
 
   return (
     <View style={styles.wrap}>
       <Text
         style={[
           styles.label,
-          { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+          { color: PROFILE_SETTINGS.text.section, textAlign: rtl ? "right" : "left" },
         ]}
       >
         {t.tabs.country}
       </Text>
-      <CountryFlagToggle
+      <CountrySelectField
+        label=""
         value={value}
-        onChange={onChange}
-        persist={false}
+        codes={MARKET_COUNTRY_CODES}
+        onChange={(code) => onChange(code as MarketCountryCode)}
+        isRTL={rtl}
         disabled={disabled}
-        showNames
       />
     </View>
   );
@@ -39,10 +44,10 @@ export function ProfileCountryField({ value, onChange, disabled }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 10,
+    gap: 6,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
   },
 });

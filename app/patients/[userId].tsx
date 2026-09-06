@@ -1,6 +1,6 @@
+import { AppBackButton } from "@/components/nav/AppBackButton";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +13,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DoctorPatientAccessDenied } from "@/components/DoctorPatientAccessDenied";
 import { MedicalHistoryList } from "@/components/MedicalHistoryList";
+import {
+  DoctorPatientRecordsHeader,
+} from "@/components/records/DoctorPatientRecordsHeader";
+import type { ClinicalActionKey } from "@/components/records/DoctorClinicalActionBar";
 import type { RecordsViewMode } from "@/components/records/RecordsViewModeToggle";
+import { EHR } from "@/constants/ehrDesign";
 import { useAuthStore } from "@/domains/auth/store";
 import {
   canDoctorViewPatientRecords,
@@ -29,7 +34,6 @@ import {
 } from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
-import { WEB_CONTENT_PADDING } from "@/constants/webLayout";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { navigateBack } from "@/utils/appNavigation";
 import { readRouteParam } from "@/utils/routeParams";
@@ -57,12 +61,15 @@ export default function PatientRecordScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [recordsViewMode, setRecordsViewMode] = useState<RecordsViewMode>("table");
-  /** Non-scrolling host so split dashboard / skeleton get a real flex height (web + native). */
+  const [clinicalBar, setClinicalBar] = useState<{
+    consultationOpen: boolean;
+    onAction: (key: ClinicalActionKey) => void;
+  } | null>(null);
+
   const fixedBodyHost =
     recordsViewMode === "skeleton" || (isDesktop && recordsViewMode === "table");
 
   const isDoctor = role?.toLowerCase() === "doctor";
-  const dir = isRTL ? "row-reverse" : "row";
   const patientName = name || (isRTL ? "المريض" : "Patient");
   const hasAccess = canDoctorViewPatientRecords(accessStatus);
 
@@ -127,9 +134,14 @@ export default function PatientRecordScreen() {
     }
   };
 
+  const handleBack = () => {
+    advanceOnAnchorTap("records-back");
+    navigateBack(router, "/(tabs)/history");
+  };
+
   if (!isDoctor) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
+      <View style={[styles.center, { backgroundColor: EHR.bg.app }]}>
         <Text style={{ color: colors.mutedForeground }}>
           {isRTL ? "للأطباء فقط" : "For doctors only"}
         </Text>
@@ -147,6 +159,8 @@ export default function PatientRecordScreen() {
       showIntake
       viewMode={recordsViewMode}
       onViewModeChange={setRecordsViewMode}
+      hideTopChrome={isDesktop}
+      onClinicalBarState={setClinicalBar}
       onRecordsChanged={() => {
         void loadScreen().catch(() => setRecords([]));
       }}
@@ -154,39 +168,44 @@ export default function PatientRecordScreen() {
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + 8,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.card,
-            flexDirection: dir,
-          },
-        ]}
-      >
-        <AppBackButton
-          testID="records-back"
-          color={colors.primary}
-          style={styles.backBtn}
-          hitSlop={12}
-          fallback="/(tabs)/history"
-          accessibilityLabel={isRTL ? "رجوع" : "Back"}
-          onPress={() => {
-            advanceOnAnchorTap("records-back");
-            navigateBack(router, "/(tabs)/history");
-          }}
+    <View style={[styles.root, { backgroundColor: EHR.bg.app }]}>
+      {isDesktop ? (
+        <DoctorPatientRecordsHeader
+          patientName={patientName}
+          viewMode={recordsViewMode}
+          onViewModeChange={setRecordsViewMode}
+          consultationOpen={clinicalBar?.consultationOpen ?? false}
+          onClinicalAction={(key) => clinicalBar?.onAction(key)}
+          onBack={handleBack}
+          paddingTop={insets.top + EHR.headerPadding.vertical}
         />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
+      ) : (
+        <View
+          style={[
+            styles.mobileHeader,
+            {
+              paddingTop: insets.top + 8,
+              borderBottomColor: EHR.border,
+              flexDirection: isRTL ? "row-reverse" : "row",
+            },
+          ]}
+        >
+          <AppBackButton
+            testID="records-back"
+            color={EHR.text.primary}
+            hitSlop={12}
+            fallback="/(tabs)/history"
+            accessibilityLabel={isRTL ? "رجوع" : "Back"}
+            onPress={handleBack}
+          />
+          <Text style={[styles.mobileTitle, { color: EHR.text.primary }]} numberOfLines={1}>
             {isRTL ? `سجل ${patientName}` : `${patientName}'s record`}
           </Text>
         </View>
-      </View>
+      )}
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+        <ActivityIndicator style={{ marginTop: 40 }} color={EHR.brand} />
       ) : loadError ? (
         <View style={styles.center}>
           <Text style={{ color: "#ef4444", textAlign: "center", paddingHorizontal: 24 }}>
@@ -196,10 +215,7 @@ export default function PatientRecordScreen() {
       ) : !hasAccess ? (
         <DoctorPatientAccessDenied isRTL={isRTL} />
       ) : fixedBodyHost ? (
-        // Non-scrolling host so the split dashboard / skeleton toggle stays pressable.
-        <View style={styles.body}>
-          {historyList}
-        </View>
+        <View style={styles.workspace}>{historyList}</View>
       ) : (
         <ScrollView
           style={styles.body}
@@ -208,7 +224,7 @@ export default function PatientRecordScreen() {
           showsVerticalScrollIndicator
           keyboardShouldPersistTaps="handled"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={EHR.brand} />
           }
         >
           {historyList}
@@ -222,18 +238,23 @@ export default function PatientRecordScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
   body: { flex: 1, minHeight: 0 },
-  // Do not use flexGrow:1 — it pins content to the viewport and kills scrolling on web.
+  workspace: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: EHR.headerPadding.horizontal,
+    paddingTop: 0,
+    paddingBottom: EHR.workspaceGap,
+  },
   bodyContent: { paddingBottom: 96 },
   bottomSpacer: { height: 48, width: "100%" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  header: {
+  mobileHeader: {
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: WEB_CONTENT_PADDING,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexShrink: 0,
+    borderBottomWidth: 1,
+    backgroundColor: EHR.bg.card,
   },
-  backBtn: { padding: 4 },
-  title: { fontSize: 18, fontWeight: "800" },
+  mobileTitle: { fontSize: 18, fontWeight: "800", flex: 1 },
 });

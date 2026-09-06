@@ -33,6 +33,8 @@ interface Props {
   token: string;
   /** Render inside a parent card (no outer border/background). */
   embedded?: boolean;
+  /** Weekly planner styling with weekday quick-select presets. */
+  variant?: "calendar" | "weekly";
 }
 
 /** 30-minute time options for the from/to dropdowns. */
@@ -114,7 +116,12 @@ function TimeSelect({
   );
 }
 
-export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Props) {
+export function DoctorAvailabilityEditor({
+  isRTL,
+  token,
+  embedded = false,
+  variant = "calendar",
+}: Props) {
   const colors = useColors();
   const { width: screenWidth } = useWindowDimensions();
   const isMobileLayout =
@@ -209,6 +216,34 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
     });
   };
 
+  /** Weekday: 1=Mon … 5=Fri (JS getDay: 0=Sun). */
+  const selectWeekdays = (weekdays: number[]) => {
+    const matching = monthDays.filter((d) => {
+      const dow = new Date(`${d}T12:00:00`).getDay();
+      return weekdays.includes(dow);
+    });
+    setSelected((prev) => {
+      const next = new Set(prev);
+      matching.forEach((d) => next.add(d));
+      return next;
+    });
+  };
+
+  const weekdayPresets = [
+    {
+      key: "mon-fri",
+      labelEn: "Mon–Fri",
+      labelAr: "الإثنين–الجمعة",
+      days: [1, 2, 3, 4, 5],
+    },
+    {
+      key: "weekend",
+      labelEn: "Sat–Sun",
+      labelAr: "السبت–الأحد",
+      days: [0, 6],
+    },
+  ];
+
   const persist = async () => {
     if (selected.size === 0) {
       Alert.alert(
@@ -260,14 +295,36 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
 
   const body = (
     <>
-      <Text style={[styles.title, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
-        {isRTL ? "أوقات التوفر" : "Availability"}
-      </Text>
+      {!embedded ? (
+        <Text style={[styles.title, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
+          {isRTL ? "أوقات التوفر" : "Availability"}
+        </Text>
+      ) : null}
       <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
-        {isRTL
-          ? "اختر أيامًا من التقويم (يمكن اختيار عدة أيام أو شهور)، ثم حدّد وقت البداية والنهاية."
-          : "Pick days on the calendar (across any months/years), then set a from/to time."}
+        {variant === "weekly"
+          ? isRTL
+            ? "اختر أيامًا من التقويم أو استخدم اختصارات أيام الأسبوع، ثم حدّد وقت البداية والنهاية."
+            : "Pick days on the calendar or use weekday shortcuts, then set from/to times."
+          : isRTL
+            ? "اختر أيامًا من التقويم (يمكن اختيار عدة أيام أو شهور)، ثم حدّد وقت البداية والنهاية."
+            : "Pick days on the calendar (across any months/years), then set a from/to time."}
       </Text>
+
+      {variant === "weekly" ? (
+        <View style={[styles.weekdayRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          {weekdayPresets.map((preset) => (
+            <Pressable
+              key={preset.key}
+              onPress={() => selectWeekdays(preset.days)}
+              style={[styles.weekdayChip, { borderColor: colors.border, backgroundColor: colors.muted }]}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 13 }}>
+                {isRTL ? preset.labelAr : preset.labelEn}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       <Pressable
         onPress={toggleWholeMonth}
@@ -364,12 +421,27 @@ export function DoctorAvailabilityEditor({ isRTL, token, embedded = false }: Pro
       <Pressable
         onPress={() => void persist()}
         disabled={saving}
-        style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }]}
+        style={[
+          embedded ? styles.saveBtnEmbedded : styles.saveBtn,
+          embedded ? { alignSelf: isRTL ? "flex-start" : "flex-end" } : null,
+          {
+            backgroundColor: embedded ? "transparent" : colors.primary,
+            borderColor: embedded ? colors.border : colors.primary,
+            opacity: saving ? 0.6 : 1,
+          },
+        ]}
       >
         {saving ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={embedded ? colors.primary : "#fff"} />
         ) : (
-          <Text style={styles.saveText}>{isRTL ? "حفظ كأيام متاحة" : "Save availability"}</Text>
+          <Text
+            style={[
+              styles.saveText,
+              embedded ? { color: colors.primary } : { color: "#fff" },
+            ]}
+          >
+            {isRTL ? "حفظ الجدول" : "Save schedule"}
+          </Text>
         )}
       </Pressable>
     </>
@@ -430,6 +502,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
+  weekdayRow: {
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  weekdayChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   legendRow: { gap: 16, marginTop: 2 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
@@ -462,6 +544,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 16,
     paddingHorizontal: 24,
+  },
+  saveBtnEmbedded: {
+    minHeight: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
   },
   saveText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   backdrop: {

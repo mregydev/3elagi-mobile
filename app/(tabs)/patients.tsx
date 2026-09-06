@@ -21,6 +21,9 @@ import {
   fetchMyConsultations,
   type DoctorConsultation,
 } from "@/domains/consultations/api";
+import { fetchDemoPatient, type DemoPatientInfo } from "@/domains/doctor/testPatientChatApi";
+import { ensureDoctorOnboarding } from "@/domains/onboarding/doctorTourApi";
+import { useProductTourStore } from "@/domains/onboarding/productTourStore";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -33,7 +36,31 @@ type ConsultationPatientRow = {
   last_at: string;
   open_count: number;
   total_count: number;
+  is_demo?: boolean;
 };
+
+function mergeDemoPatientRow(
+  rows: ConsultationPatientRow[],
+  demo: DemoPatientInfo | null,
+): ConsultationPatientRow[] {
+  const demoId = demo?.patient_user_id;
+  if (!demoId) return rows;
+
+  const rest = rows.filter((row) => row.patient_id !== demoId);
+  const existing = rows.find((row) => row.patient_id === demoId);
+  const demoRow: ConsultationPatientRow = existing
+    ? { ...existing, is_demo: true }
+    : {
+        patient_id: demoId,
+        patient_name: demo.display_name ?? "Demo Patient",
+        last_at: new Date().toISOString(),
+        open_count: 0,
+        total_count: 0,
+        is_demo: true,
+      };
+
+  return [demoRow, ...rest];
+}
 
 function dedupeConsultationPatients(
   items: DoctorConsultation[],
@@ -79,17 +106,31 @@ export default function PatientsTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [filters, setFilters] = useState<PatientSearchFilters>(EMPTY_PATIENT_FILTERS);
 
+  const setTestPatientUserId = useProductTourStore((s) => s.setTestPatientUserId);
+
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      const list = await fetchMyConsultations(accessToken);
-      setRows(dedupeConsultationPatients(list));
+      const demoId = await ensureDoctorOnboarding(accessToken).catch(() => null);
+      const [list, demo] = await Promise.all([
+        fetchMyConsultations(accessToken),
+        fetchDemoPatient(accessToken).catch(() => null),
+      ]);
+      const resolvedDemo: DemoPatientInfo | null =
+        demo ??
+        (demoId
+          ? { patient_user_id: demoId, chat_open: true, display_name: "Demo Patient" }
+          : null);
+      if (resolvedDemo?.patient_user_id) {
+        setTestPatientUserId(resolvedDemo.patient_user_id);
+      }
+      setRows(mergeDemoPatientRow(dedupeConsultationPatients(list), resolvedDemo));
     } catch (e) {
       showErrorToast(t.common.error, (e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [accessToken, t.common.error]);
+  }, [accessToken, setTestPatientUserId, t.common.error]);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,9 +250,13 @@ export default function PatientsTab() {
                 <View style={[styles.metaRow, { flexDirection: dir }]}>
                   <MessageSquare size={12} color={colors.mutedForeground} />
                   <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                    {item.open_count > 0
-                      ? t.patients.openConsultations(item.open_count)
-                      : t.patients.consultationCount(item.total_count)}
+                    {item.is_demo
+                      ? isRTL
+                        ? "مريض تجريبي (ذكاء اصطناعي)"
+                        : "AI demo patient"
+                      : item.open_count > 0
+                        ? t.patients.openConsultations(item.open_count)
+                        : t.patients.consultationCount(item.total_count)}
                   </Text>
                 </View>
                 <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>

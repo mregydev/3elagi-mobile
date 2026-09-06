@@ -15,9 +15,32 @@ import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { canUseChat } from "@/domains/chat/access";
 import { useChatStore } from "@/domains/chat/store";
+import { ensureDoctorOnboarding } from "@/domains/onboarding/doctorTourApi";
 import { useProductTourStore, currentTourStep } from "@/domains/onboarding/productTourStore";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
+
+import type { Conversation } from "@/domains/chat/types";
+
+const DEMO_PATIENT_LABEL = "demo patient";
+
+/** Doctors should only ever see one specialty demo patient in chat history. */
+function dedupeDemoPatientConversations(
+  rows: Conversation[],
+  allowedDemoUserId: string | null,
+): Conversation[] {
+  let keptDemo = false;
+  return rows.filter((row) => {
+    const isDemo =
+      row.user.name.trim().toLowerCase() === DEMO_PATIENT_LABEL ||
+      row.user.name.trim().toLowerCase().includes(DEMO_PATIENT_LABEL);
+    if (!isDemo) return true;
+    if (allowedDemoUserId && row.user.id !== allowedDemoUserId) return false;
+    if (keptDemo) return false;
+    keptDemo = true;
+    return true;
+  });
+}
 
 export default function HistoryTab() {
   const colors = useColors();
@@ -29,17 +52,23 @@ export default function HistoryTab() {
   const loading = useChatStore((s) => s.loading);
   const error = useChatStore((s) => s.error);
   const loadConversations = useChatStore((s) => s.loadConversations);
+  const setTestPatientUserId = useProductTourStore((s) => s.setTestPatientUserId);
   const tourHighlightUserId = useProductTourStore((s) => s.testPatientUserId);
   const tourActive = useProductTourStore((s) => s.active);
   const tourPhase = useProductTourStore((s) => s.phase);
   const tourStepIndex = useProductTourStore((s) => s.stepIndex);
   const tourStep = currentTourStep(tourPhase, tourStepIndex);
   const [query, setQuery] = useState("");
+  const isDoctor = role?.toLowerCase() === "doctor";
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (!accessToken || !profile?.id || !canUseChat(role)) return;
-    void loadConversations(accessToken, profile.id, role);
-  }, [accessToken, profile?.id, role, loadConversations]);
+    if (role?.toLowerCase() === "doctor") {
+      const demoId = await ensureDoctorOnboarding(accessToken).catch(() => null);
+      if (demoId) setTestPatientUserId(demoId);
+    }
+    await loadConversations(accessToken, profile.id, role);
+  }, [accessToken, profile?.id, role, loadConversations, setTestPatientUserId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,6 +81,9 @@ export default function HistoryTab() {
     let list = q
       ? conversations.filter((c) => c.user.name.toLowerCase().includes(q))
       : conversations;
+    if (isDoctor) {
+      list = dedupeDemoPatientConversations(list, tourHighlightUserId);
+    }
     if (
       tourHighlightUserId &&
       tourActive &&
@@ -64,10 +96,9 @@ export default function HistoryTab() {
       });
     }
     return list;
-  }, [conversations, query, tourHighlightUserId, tourActive, tourStep?.anchor]);
+  }, [conversations, query, tourHighlightUserId, tourActive, tourStep?.anchor, isDoctor]);
 
   const dir = isRTL ? "row-reverse" : "row";
-  const isDoctor = role?.toLowerCase() === "doctor";
   const emptyLabel = isDoctor
     ? isRTL
       ? "لا توجد محادثات بعد"

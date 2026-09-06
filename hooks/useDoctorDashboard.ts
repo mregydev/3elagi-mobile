@@ -4,6 +4,7 @@ import {
   fetchAccountProfile,
   type AccountProfile,
 } from "@/domains/auth/profile-api";
+import { resolveAccessToken } from "@/domains/auth/session";
 import { fetchMyConsultations, type DoctorConsultation } from "@/domains/consultations/api";
 import { fetchUnreadNotificationCount } from "@/domains/notifications/api";
 import { countUpcomingVideoCalls } from "@/domains/appointments/upcomingVideoCalls";
@@ -34,14 +35,15 @@ export function useDoctorDashboard(accessToken: string | null, role: string | nu
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    if (!accessToken || role?.toLowerCase() !== "doctor") return;
+    const token = resolveAccessToken(accessToken);
+    if (!token || role?.toLowerCase() !== "doctor") return;
     try {
       const [appointments, consultationList, profile, unreadNotifications] =
         await Promise.all([
-          fetchMyAppointments(accessToken),
-          fetchMyConsultations(accessToken),
-          fetchAccountProfile(accessToken, role),
-          fetchUnreadNotificationCount(accessToken).catch(() => 0),
+          fetchMyAppointments(token),
+          fetchMyConsultations(token).catch(() => [] as DoctorConsultation[]),
+          fetchAccountProfile(token, role),
+          fetchUnreadNotificationCount(token).catch(() => 0),
         ]);
 
       const appointmentsToday = appointments.filter(

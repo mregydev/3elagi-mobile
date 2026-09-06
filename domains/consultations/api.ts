@@ -1,5 +1,10 @@
 import { API_BASE } from "@/constants/api";
 import type { ConsultationCancelReasonType } from "@/domains/chat/types";
+import { withAuthRequestInit } from "@/domains/auth/http";
+import {
+  isAuthHttpStatus,
+  logoutOnAuthFailure,
+} from "@/domains/auth/sessionFailure";
 import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
 export interface Consultation {
@@ -53,16 +58,20 @@ async function authJson<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  const res = await fetch(
+    `${API_BASE}${path}`,
+    withAuthRequestInit(token, {
+      ...init,
+      headers: {
+        ...init?.headers,
+      },
+    }),
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (isAuthHttpStatus(res.status)) {
+      logoutOnAuthFailure();
+    }
     throw new Error(
       (Array.isArray((data as { message?: string[] })?.message)
         ? ((data as { message: string[] }).message).join(", ")

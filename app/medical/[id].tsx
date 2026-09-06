@@ -74,10 +74,28 @@ import { isMedicalImageAttachment, isMedicalPdfAttachment } from "@/components/m
 import { useMedicalStore } from "@/domains/medical/store";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import {
+  linkedDiagnosesForRecord,
+  recordShowsLinkedDiagnoses,
+} from "@/domains/medical/linkedDiagnoses";
+import {
   canAddDiagnosisSymptom,
   canDeleteMedicalRecord,
   canEditDiagnosis,
 } from "@/domains/medical/permissions";
+
+function openLinkedMedicalRecord(
+  recordId: string,
+  opts: { isDoctorView: boolean; patientUserId?: string },
+) {
+  if (opts.isDoctorView && opts.patientUserId) {
+    router.push({
+      pathname: "/medical/[id]",
+      params: { id: recordId, doctorView: "1", patientUserId: opts.patientUserId },
+    });
+    return;
+  }
+  router.push(`/medical/${recordId}`);
+}
 import { useColors } from "@/hooks/useColors";
 import type { LinkedConsultationSummary } from "@/domains/medical/types";
 import { useApiLang } from "@/hooks/useApiLang";
@@ -553,6 +571,7 @@ export default function MedicalRecordDetail() {
   const isDiagnosis = record.category === "diagnosis";
   const isPrescription = record.category === "prescription";
   const isLabOrXray = record.category === "lab" || record.category === "xray";
+  const linkedDiagnoses = linkedDiagnosesForRecord(record);
   const isDocImage = isMedicalImageAttachment(record.fileUrl, record.fileName);
   const isDocPdf = isMedicalPdfAttachment(record.fileUrl, record.fileName);
   const canEditLabDetails = isLabOrXray && !isDoctorView && !!accessToken;
@@ -1235,7 +1254,7 @@ export default function MedicalRecordDetail() {
           </View>
         )}
 
-        {isLabOrXray && record.linkedDiagnoses && record.linkedDiagnoses.length > 0 ? (
+        {recordShowsLinkedDiagnoses(record.category) && linkedDiagnoses.length > 0 ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.cardHeader, { flexDirection: dir }]}>
               <View style={[styles.cardIconWrap, { backgroundColor: "#ef444418" }]}>
@@ -1245,23 +1264,9 @@ export default function MedicalRecordDetail() {
                 {isRTL ? "تشخيصات مرتبطة" : "Linked diagnoses"}
               </Text>
             </View>
-            {record.linkedDiagnoses.map((diag) => (
-              <Pressable
+            {linkedDiagnoses.map((diag) => (
+              <View
                 key={diag.id}
-                onPress={() => {
-                  if (isDoctorView && patientUserId) {
-                    router.push({
-                      pathname: "/medical/[id]",
-                      params: {
-                        id: diag.id,
-                        doctorView: "1",
-                        patientUserId,
-                      },
-                    });
-                  } else {
-                    router.push(`/medical/${diag.id}`);
-                  }
-                }}
                 style={[
                   styles.linkedDocRow,
                   { borderColor: colors.border, flexDirection: dir },
@@ -1284,7 +1289,18 @@ export default function MedicalRecordDetail() {
                     {diag.title}
                   </Text>
                 </View>
-              </Pressable>
+                <Pressable
+                  onPress={() =>
+                    openLinkedMedicalRecord(diag.id, { isDoctorView, patientUserId })
+                  }
+                  hitSlop={8}
+                  accessibilityRole="link"
+                >
+                  <Text style={[styles.detailsLink, { color: colors.primary }]}>
+                    {isRTL ? "التفاصيل" : "Details"}
+                  </Text>
+                </Pressable>
+              </View>
             ))}
           </View>
         ) : null}
@@ -1303,22 +1319,8 @@ export default function MedicalRecordDetail() {
               const docMeta = CATEGORY_META[doc.category];
               const docIsImage = isMedicalImageAttachment(doc.fileUrl, doc.fileName);
               return (
-                <Pressable
+                <View
                   key={doc.id}
-                  onPress={() => {
-                    if (isDoctorView && patientUserId) {
-                      router.push({
-                        pathname: "/medical/[id]",
-                        params: {
-                          id: doc.id,
-                          doctorView: "1",
-                          patientUserId,
-                        },
-                      });
-                    } else {
-                      router.push(`/medical/${doc.id}`);
-                    }
-                  }}
                   style={[
                     styles.linkedDocRow,
                     { borderColor: colors.border, flexDirection: dir },
@@ -1351,7 +1353,18 @@ export default function MedicalRecordDetail() {
                       {isRTL ? docMeta.labelAr : docMeta.labelEn}
                     </Text>
                   </View>
-                </Pressable>
+                  <Pressable
+                    onPress={() =>
+                      openLinkedMedicalRecord(doc.id, { isDoctorView, patientUserId })
+                    }
+                    hitSlop={8}
+                    accessibilityRole="link"
+                  >
+                    <Text style={[styles.detailsLink, { color: colors.primary }]}>
+                      {isRTL ? "التفاصيل" : "Details"}
+                    </Text>
+                  </Pressable>
+                </View>
               );
             })}
           </View>
@@ -1513,7 +1526,7 @@ export default function MedicalRecordDetail() {
                 <MessageCircle size={18} color={colors.primary} />
               </View>
               <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
-                {isRTL ? "استشارات مرتبطة" : "Linked consultations"}
+                {isRTL ? "فحوصات مرتبطة" : "Linked diagnostics"}
               </Text>
             </View>
             {record.linkedConsultations.map((consultation) => {
@@ -1789,6 +1802,11 @@ const styles = StyleSheet.create({
   linkedThumbPlaceholder: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  detailsLink: {
+    fontSize: 13,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   addSymptomRow: { alignItems: "center", gap: 8, marginTop: 12 },
   addSymptomInput: {

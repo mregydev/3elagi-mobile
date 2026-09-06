@@ -1,11 +1,5 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  User,
-  type LucideIcon,
-} from "lucide-react-native";
-import React, { useMemo } from "react";
+import { ChevronDown, ChevronUp, FileText, Heart, User, type LucideIcon } from "lucide-react-native";
+import React, { useCallback, useMemo } from "react";
 import {
   Pressable,
   ScrollView,
@@ -20,7 +14,10 @@ import {
   isMedicalPdfAttachment,
 } from "@/components/medical/medicalRecordMeta";
 import { MedicalRecordDetailViewer } from "@/components/records/MedicalRecordDetailViewer";
-import { WEB_DASHBOARD_GAP, WEB_DASHBOARD_MIN_HEIGHT } from "@/constants/webLayout";
+import { PatientRecordsQuickSummary } from "@/components/records/PatientRecordsQuickSummary";
+import { PatientVitalSignsPanel } from "@/components/records/PatientVitalSignsPanel";
+import { EHR } from "@/constants/ehrDesign";
+import { WEB_DASHBOARD_MIN_HEIGHT } from "@/constants/webLayout";
 import type { MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
@@ -46,6 +43,8 @@ interface Props {
   onOpenSectionChange: (key: MedicalCategory | null) => void;
   selectedRecord: MedicalRecord | null;
   onSelectRecord: (record: MedicalRecord) => void;
+  vitalsSelected?: boolean;
+  onSelectVitals?: () => void;
   onOpenPdf: (view: MedicalPdfView) => void;
   onZoomImage: (uri: string) => void;
   doctorView?: boolean;
@@ -75,6 +74,8 @@ export function MedicalRecordsDesktopDashboard({
   onOpenSectionChange,
   selectedRecord,
   onSelectRecord,
+  vitalsSelected = false,
+  onSelectVitals,
   onOpenPdf,
   onZoomImage,
   doctorView,
@@ -90,15 +91,10 @@ export function MedicalRecordsDesktopDashboard({
   const textAlign = alignText(isRTL);
   const dateLocale = localeTag(isRTL);
 
-  const totalRecords = useMemo(
-    () => categories.reduce((sum, c) => sum + grouped[c.key].length, 0),
-    [categories, grouped],
-  );
-
   const summaryStats = useMemo(
     () =>
       categories
-        .filter((c) => grouped[c.key].length > 0)
+        .filter((c) => c.key !== "intake")
         .map((c) => ({
           label: isRTL ? c.labelAr : c.labelEn,
           count: grouped[c.key].length,
@@ -106,6 +102,27 @@ export function MedicalRecordsDesktopDashboard({
         })),
     [categories, grouped, isRTL],
   );
+
+  const handleSelectLinkedRecord = useCallback(
+    (linked: MedicalRecord) => {
+      for (const category of categories) {
+        const found = grouped[category.key].find((row) => row.id === linked.id);
+        if (found) {
+          onOpenSectionChange(category.key);
+          onSelectRecord(found);
+          return;
+        }
+      }
+      onOpenSectionChange(linked.category);
+      onSelectRecord(linked);
+    },
+    [categories, grouped, onOpenSectionChange, onSelectRecord],
+  );
+
+  const linkedIntakeForDiagnosis = useMemo(() => {
+    if (!selectedRecord || selectedRecord.category !== "diagnosis") return [];
+    return grouped.intake.filter((row) => row.diagnosisId === selectedRecord.id);
+  }, [selectedRecord, grouped.intake]);
 
   return (
     <View style={[styles.root, { flexDirection: dir }]}>
@@ -134,40 +151,91 @@ export function MedicalRecordsDesktopDashboard({
                   {patientLabel ??
                     (isRTL ? "السجل الطبي" : "Medical record")}
                 </Text>
-                <Text style={[styles.summaryMeta, { color: colors.mutedForeground, textAlign }]}>
-                  {totalRecords}{" "}
-                  {isRTL
-                    ? totalRecords === 1
-                      ? "سجل"
-                      : "سجلات"
-                    : totalRecords === 1
-                      ? "entry"
-                      : "entries"}
+                <Text style={[styles.summaryMeta, { color: EHR.text.secondary, textAlign }]}>
+                  {isRTL ? "ملخص السجل الصحي" : "Health record overview"}
                 </Text>
               </View>
             </View>
-            {summaryStats.length > 0 ? (
-              <View style={[styles.statRow, { flexDirection: dir }]}>
-                {summaryStats.map((stat) => (
-                  <View
-                    key={stat.label}
-                    style={[styles.statChip, { backgroundColor: `${stat.color}12` }]}
+            <View style={[styles.metricsStrip, { flexDirection: dir }]}>
+              {summaryStats.map((stat) => (
+                <View
+                  key={stat.label}
+                  style={[styles.metricCell, { borderColor: EHR.border }]}
+                >
+                  <Text style={[styles.metricCount, { color: EHR.brandDark }]}>{stat.count}</Text>
+                  <Text
+                    style={[styles.metricLabel, { color: EHR.text.secondary }]}
+                    numberOfLines={2}
                   >
-                    <Text style={[styles.statChipCount, { color: stat.color }]}>{stat.count}</Text>
-                    <Text
-                      style={[styles.statChipLabel, { color: colors.mutedForeground }]}
-                      numberOfLines={1}
-                    >
-                      {stat.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+                    {stat.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           {filtersSlot ? <View style={styles.filtersSlot}>{filtersSlot}</View> : null}
           {requestsSlot ? <View style={styles.requestsSlot}>{requestsSlot}</View> : null}
+
+          <View style={styles.sectionWrap}>
+            <Pressable
+              onPress={() => onSelectVitals?.()}
+              style={[
+                styles.sectionHeader,
+                {
+                  flexDirection: dir,
+                  backgroundColor: colors.card,
+                  borderColor: vitalsSelected ? EHR.brand : colors.border,
+                },
+              ]}
+            >
+              <View style={[styles.iconBubble, { backgroundColor: `${EHR.brand}18` }]}>
+                <Heart size={16} color={EHR.brand} />
+              </View>
+              <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign, flex: 1 }]}>
+                {isRTL ? "العلامات الحيوية" : "Vital signs"}
+              </Text>
+              {vitalsSelected ? (
+                <ChevronUp size={16} color={EHR.brand} />
+              ) : (
+                <ChevronDown size={16} color={colors.mutedForeground} />
+              )}
+            </Pressable>
+            {vitalsSelected ? (
+              <View style={styles.sectionBody}>
+                <View
+                  style={[
+                    styles.listRow,
+                    {
+                      flexDirection: dir,
+                      borderColor: EHR.brand,
+                      backgroundColor: EHR.brandSoft,
+                      borderLeftWidth: dir === "row" ? 3 : StyleSheet.hairlineWidth,
+                      borderRightWidth: dir === "row-reverse" ? 3 : StyleSheet.hairlineWidth,
+                    },
+                  ]}
+                >
+                  <View style={[styles.listRowIcon, { backgroundColor: `${EHR.brand}14` }]}>
+                    <Heart size={16} color={EHR.brand} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.listRowTitle, { color: colors.foreground, textAlign }]}>
+                      {isRTL ? "العلامات الحيوية الأخيرة" : "Recent vital signs"}
+                    </Text>
+                    <Text style={[styles.listRowMeta, { color: colors.mutedForeground, textAlign }]}>
+                      {doctorView
+                        ? isRTL
+                          ? "قراءات المريض"
+                          : "Patient-reported readings"
+                        : isRTL
+                          ? "تحديث قراءاتك"
+                          : "Update your readings"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </View>
 
           {categories.map(({ key, labelEn, labelAr, Icon, color }) => {
             const label = isRTL ? labelAr : labelEn;
@@ -323,16 +391,29 @@ export function MedicalRecordsDesktopDashboard({
       <View
         style={[
           styles.rightPane,
-          { backgroundColor: colors.card },
+          { backgroundColor: EHR.bg.app, borderColor: EHR.border },
         ]}
       >
-        <MedicalRecordDetailViewer
-          record={selectedRecord}
-          onOpenPdf={onOpenPdf}
-          onZoomImage={onZoomImage}
-          doctorView={doctorView}
-          patientUserId={patientUserId}
-        />
+        {vitalsSelected ? (
+          <PatientVitalSignsPanel patientUserId={patientUserId} doctorView={doctorView} />
+        ) : selectedRecord ? (
+          <MedicalRecordDetailViewer
+            record={selectedRecord}
+            onOpenPdf={onOpenPdf}
+            onZoomImage={onZoomImage}
+            onSelectLinkedRecord={handleSelectLinkedRecord}
+            linkedIntakeRecords={linkedIntakeForDiagnosis}
+            doctorView={doctorView}
+            patientUserId={patientUserId}
+          />
+        ) : (
+          <PatientRecordsQuickSummary
+            patientLabel={patientLabel}
+            grouped={grouped}
+            patientUserId={patientUserId}
+            doctorView={doctorView}
+          />
+        )}
       </View>
     </View>
   );
@@ -370,8 +451,10 @@ function RecordListRow({
         styles.listRow,
         {
           flexDirection: dir,
-          borderColor: selected ? accent : colors.border,
-          backgroundColor: selected ? `${accent}0c` : colors.card,
+          borderColor: selected ? EHR.brand : colors.border,
+          backgroundColor: selected ? EHR.brandSoft : colors.card,
+          borderLeftWidth: selected && dir === "row" ? 3 : StyleSheet.hairlineWidth,
+          borderRightWidth: selected && dir === "row-reverse" ? 3 : StyleSheet.hairlineWidth,
         },
       ]}
     >
@@ -410,22 +493,25 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
     marginTop: 0,
     marginBottom: 0,
-    gap: WEB_DASHBOARD_GAP,
+    gap: EHR.workspaceGap,
   },
   leftPane: {
-    flex: 4,
-    minWidth: 280,
-    maxWidth: 420,
+    width: EHR.masterPaneWidth,
+    maxWidth: EHR.masterPaneWidth,
+    minWidth: 300,
     minHeight: WEB_DASHBOARD_MIN_HEIGHT,
     alignSelf: "stretch",
+    flexShrink: 0,
   },
   leftScroll: { flex: 1, minHeight: 0, height: "100%" },
-  leftScrollContent: { paddingBottom: 48, gap: WEB_DASHBOARD_GAP },
+  leftScrollContent: { paddingTop: EHR.workspaceGap, paddingBottom: 48, gap: EHR.workspaceGap },
   summaryCard: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: EHR.radius.card,
+    borderWidth: 1,
+    borderColor: EHR.border,
     padding: 16,
     gap: 12,
+    backgroundColor: EHR.bg.card,
   },
   summaryHeader: { alignItems: "center", gap: 12 },
   avatar: {
@@ -435,18 +521,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  summaryName: { fontSize: 17, fontWeight: "800", lineHeight: 22 },
-  summaryMeta: { fontSize: 13, marginTop: 2 },
-  statRow: { flexWrap: "wrap", gap: 8 },
-  statChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    minWidth: 72,
-    gap: 2,
+  summaryName: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
+  summaryMeta: { fontSize: 12, marginTop: 2, fontWeight: "500" },
+  metricsStrip: {
+    gap: 8,
+    flexWrap: "wrap",
   },
-  statChipCount: { fontSize: 15, fontWeight: "800" },
-  statChipLabel: { fontSize: 11, fontWeight: "500" },
+  metricCell: {
+    flex: 1,
+    minWidth: 72,
+    borderWidth: 1,
+    borderRadius: EHR.radius.control,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: EHR.bg.app,
+  },
+  metricCount: { fontSize: 16, fontWeight: "800" },
+  metricLabel: { fontSize: 10, fontWeight: "600", textAlign: "center" },
   filtersSlot: { gap: 12 },
   requestsSlot: { marginBottom: 0 },
   sectionWrap: { gap: 8 },
@@ -510,11 +603,12 @@ const styles = StyleSheet.create({
   thumbTitle: { fontSize: 12, fontWeight: "600", lineHeight: 16 },
   thumbDate: { fontSize: 10 },
   rightPane: {
-    flex: 8,
+    flex: 1,
     minWidth: 0,
     minHeight: WEB_DASHBOARD_MIN_HEIGHT,
     alignSelf: "stretch",
-    borderRadius: 16,
+    borderRadius: EHR.radius.card,
+    borderWidth: 1,
     overflow: "hidden",
   },
 });

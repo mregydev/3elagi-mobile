@@ -53,6 +53,7 @@ interface RawPrescription {
   image_url?: string | null;
   created_at: string;
   diagnosis_id?: string | null;
+  linked_diagnoses?: Array<{ id: string; desc: string }>;
   medications?: RawPrescriptionMedication[];
   ai_insight?: MedicalAiInsight | null;
   body_part?: string | null;
@@ -88,6 +89,7 @@ function mapPrescriptionMedication(raw: RawPrescriptionMedication): Prescription
 function mapPrescription(raw: RawPrescription): MedicalRecord {
   const meds = (raw.medications ?? []).map(mapPrescriptionMedication);
   const imageUrl = raw.image_url ?? undefined;
+  const linkedDiagnoses = mapLinkedDiagnoses(raw.linked_diagnoses);
   return {
     id: raw.id,
     ownerId: raw.patient_user_id,
@@ -105,7 +107,8 @@ function mapPrescription(raw: RawPrescription): MedicalRecord {
     fileName: imageUrl ? "prescription.jpg" : undefined,
     aiInsight: mapAiInsight(raw.ai_insight) ?? null,
     bodyPart: parseBodyPart(raw.body_part),
-    diagnosisId: raw.diagnosis_id ?? null,
+    linkedDiagnoses,
+    diagnosisId: linkedDiagnoses[0]?.id ?? raw.diagnosis_id ?? null,
     linkedConsultations: mapLinkedConsultations(raw.linked_consultations),
   };
 }

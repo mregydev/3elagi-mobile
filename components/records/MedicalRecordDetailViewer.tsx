@@ -1,23 +1,22 @@
 import {
   Activity,
-  Beaker,
   Clock,
   Expand,
-  ExternalLink,
   FileText,
-  MessageCircle,
   Pill,
+  ScanLine,
+  User,
 } from "lucide-react-native";
+import { router } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
-  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type ViewStyle,
 } from "react-native";
 import { IntakeExamTaker } from "@/components/intake/IntakeExamTaker";
 import { MedicalRecordAttachmentImage } from "@/components/medical/MedicalRecordAttachmentImage";
@@ -28,8 +27,12 @@ import {
   MEDICAL_RECORD_CATEGORY_META,
 } from "@/components/medical/medicalRecordMeta";
 import type { MedicalPdfView } from "@/components/medical/MedicalPdfViewer";
-import type { LinkedConsultationSummary, MedicalRecord } from "@/domains/medical/types";
-import { useColors } from "@/hooks/useColors";
+import { EHR } from "@/constants/ehrDesign";
+import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
+import {
+  linkedDiagnosesForRecord,
+  recordShowsLinkedDiagnoses,
+} from "@/domains/medical/linkedDiagnoses";
 import { useI18n } from "@/hooks/useI18n";
 import { useMedicalRecordPreviewDetail } from "@/hooks/useMedicalRecordPreviewDetail";
 import { localeTag } from "@/utils/rtl";
@@ -38,53 +41,305 @@ interface Props {
   record: MedicalRecord | null;
   onOpenPdf?: (view: MedicalPdfView) => void;
   onZoomImage?: (uri: string) => void;
+  /** Master-detail: select a linked record in the right pane instead of routing away. */
+  onSelectLinkedRecord?: (record: MedicalRecord) => void;
+  /** Intake exams linked to this consultation/diagnosis (by diagnosis_id). */
+  linkedIntakeRecords?: MedicalRecord[];
   doctorView?: boolean;
   patientUserId?: string;
 }
 
-function consultationStatusLabel(
-  status: LinkedConsultationSummary["status"],
-  isRTL: boolean,
-): string {
-  switch (status) {
-    case "open":
-      return isRTL ? "مفتوحة" : "Open";
-    case "pending":
-      return isRTL ? "قيد الانتظار" : "Waiting";
-    case "ended":
-      return isRTL ? "منتهية" : "Completed";
-    case "cancelled":
-    case "rejected":
-      return isRTL ? "ملغاة" : "Cancelled";
-    default:
-      return status;
+function openLinkedRecordRoute(
+  doc: MedicalRecord,
+  opts: { doctorView?: boolean; patientUserId?: string },
+) {
+  if (opts.doctorView && opts.patientUserId) {
+    router.push({
+      pathname: "/medical/[id]",
+      params: { id: doc.id, doctorView: "1", patientUserId: opts.patientUserId },
+    });
+    return;
   }
+  router.push(`/medical/${doc.id}`);
 }
 
-function SectionBlock({
+function filterLinkedDocuments(
+  docs: MedicalRecord[] | undefined,
+  category: MedicalCategory,
+): MedicalRecord[] {
+  return (docs ?? []).filter((doc) => doc.category === category);
+}
+
+function LinkedCategorySection({
   title,
-  icon,
-  accent,
-  colors,
-  textAlign,
+  items,
+  emptyLabel,
+  isRTL,
   dir,
-  children,
+  textAlign,
+  onOpenPdf,
+  onZoomImage,
+  onSelectLinkedRecord,
+  doctorView,
+  patientUserId,
 }: {
   title: string;
-  icon: React.ReactNode;
-  accent: string;
-  colors: ReturnType<typeof useColors>;
-  textAlign: "left" | "right";
+  items: MedicalRecord[];
+  emptyLabel: string;
+  isRTL: boolean;
   dir: "row" | "row-reverse";
-  children: React.ReactNode;
+  textAlign: "left" | "right";
+  onOpenPdf?: (view: MedicalPdfView) => void;
+  onZoomImage?: (uri: string) => void;
+  onSelectLinkedRecord?: (record: MedicalRecord) => void;
+  doctorView?: boolean;
+  patientUserId?: string;
 }) {
   return (
-    <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[styles.sectionHeader, { flexDirection: dir }]}>
-        <View style={[styles.sectionIcon, { backgroundColor: `${accent}14` }]}>{icon}</View>
-        <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>{title}</Text>
+    <ClinicalSection title={title} count={items.length || undefined} textAlign={textAlign}>
+      {items.length > 0 ? (
+        <View style={styles.linkedCardsRow}>
+          {items.map((doc) => (
+            <LinkedDiagnosticCard
+              key={doc.id}
+              doc={doc}
+              isRTL={isRTL}
+              dir={dir}
+              textAlign={textAlign}
+              onOpenPdf={onOpenPdf}
+              onZoomImage={onZoomImage}
+              onSelectLinkedRecord={onSelectLinkedRecord}
+              doctorView={doctorView}
+              patientUserId={patientUserId}
+            />
+          ))}
+        </View>
+      ) : (
+        <Text style={[styles.bodyText, { textAlign, color: EHR.text.secondary }]}>
+          {emptyLabel}
+        </Text>
+      )}
+    </ClinicalSection>
+  );
+}
+
+function containsArabic(text: string): boolean {
+  return /[\u0600-\u06FF]/.test(text);
+}
+
+function arabicTextAlign(text: string, base: "left" | "right"): "left" | "right" {
+  return containsArabic(text) ? "right" : base;
+}
+
+function ClinicalSection({
+  title,
+  count,
+  children,
+  textAlign,
+}: {
+  title: string;
+  count?: number;
+  children: React.ReactNode;
+  textAlign: "left" | "right";
+}) {
+  return (
+    <View style={styles.clinicalSection}>
+      <View style={styles.sectionTitleRow}>
+        <Text style={[styles.sectionHeading, { textAlign }]}>{title}</Text>
+        {count != null && count > 0 ? (
+          <View style={styles.countPill}>
+            <Text style={styles.countPillText}>{count}</Text>
+          </View>
+        ) : null}
       </View>
+      <View style={styles.sectionDivider} />
       {children}
+    </View>
+  );
+}
+
+function MetaTag({ label, textAlign }: { label: string; textAlign: "left" | "right" }) {
+  return (
+    <View style={styles.metaTag}>
+      <Text style={[styles.metaTagText, { textAlign }]}>{label}</Text>
+    </View>
+  );
+}
+
+function SymptomList({
+  symptoms,
+  textAlign,
+  dir,
+}: {
+  symptoms: { id: string; desc: string }[];
+  textAlign: "left" | "right";
+  dir: "row" | "row-reverse";
+}) {
+  if (!symptoms.length) {
+    return (
+      <Text style={[styles.bodyText, { textAlign, color: EHR.text.secondary }]}>
+        —
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.symptomList}>
+      {symptoms.map((symptom) => (
+        <View key={symptom.id} style={[styles.symptomRow, { flexDirection: dir }]}>
+          <View style={styles.symptomDot} />
+          <Text
+            style={[
+              styles.bodyText,
+              {
+                textAlign: arabicTextAlign(symptom.desc, textAlign),
+                flex: 1,
+              },
+            ]}
+          >
+            {symptom.desc}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function LinkedDiagnosticCard({
+  doc,
+  isRTL,
+  dir,
+  textAlign,
+  onOpenPdf,
+  onZoomImage,
+  onSelectLinkedRecord,
+  doctorView,
+  patientUserId,
+}: {
+  doc: MedicalRecord;
+  isRTL: boolean;
+  dir: "row" | "row-reverse";
+  textAlign: "left" | "right";
+  onOpenPdf?: (view: MedicalPdfView) => void;
+  onZoomImage?: (uri: string) => void;
+  onSelectLinkedRecord?: (record: MedicalRecord) => void;
+  doctorView?: boolean;
+  patientUserId?: string;
+}) {
+  const docMeta = MEDICAL_RECORD_CATEGORY_META[doc.category];
+  const DocIcon = docMeta.Icon;
+  const docIsImage = isMedicalImageAttachment(doc.fileUrl, doc.fileName);
+  const attachmentUri = doc.fileUrl ?? doc.pdfUrl ?? undefined;
+  const docIsPdf =
+    !docIsImage && isMedicalPdfAttachment(attachmentUri, doc.fileName);
+  const isScan = doc.category === "xray";
+  const categoryLabel = isRTL ? docMeta.labelAr : docMeta.labelEn;
+  const pdfUri = docIsPdf ? attachmentUri : doc.pdfUrl ?? undefined;
+
+  const openRecord = (e?: { stopPropagation?: () => void }) => {
+    e?.stopPropagation?.();
+    if (onSelectLinkedRecord) {
+      onSelectLinkedRecord(doc);
+      return;
+    }
+    openLinkedRecordRoute(doc, { doctorView, patientUserId });
+  };
+
+  const openAttachment = () => {
+    if (docIsImage && doc.fileUrl) {
+      onZoomImage?.(doc.fileUrl);
+      return;
+    }
+    if (pdfUri) {
+      onOpenPdf?.({ uri: pdfUri, fileName: doc.fileName });
+      return;
+    }
+    openRecord();
+  };
+
+  const attachmentLabel =
+    docIsImage || pdfUri
+      ? isScan
+        ? isRTL
+          ? "عرض الأشعة"
+          : "View scan"
+        : docIsPdf || doc.pdfUrl
+          ? isRTL
+            ? "عرض PDF"
+            : "View PDF"
+          : isRTL
+            ? "عرض الصورة"
+            : "View image"
+      : null;
+
+  return (
+    <View style={[styles.linkedMiniCard, { flexDirection: dir }]}>
+      <Pressable
+        onPress={openAttachment}
+        style={({ pressed }) => [pressed && styles.btnPressed]}
+        accessibilityRole="button"
+        accessibilityLabel={attachmentLabel ?? doc.title}
+      >
+        <View style={styles.linkedThumbWrap}>
+          {docIsImage && doc.fileUrl ? (
+            <>
+              <MedicalRecordAttachmentImage uri={doc.fileUrl} style={styles.linkedThumbImage} />
+              <View style={styles.linkedThumbOverlay}>
+                <Expand size={16} color="#fff" />
+              </View>
+            </>
+          ) : (
+            <View style={[styles.linkedThumbPlaceholder, { backgroundColor: `${docMeta.color}18` }]}>
+              {isScan ? (
+                <ScanLine size={22} color={docMeta.color} />
+              ) : (
+                <DocIcon size={22} color={docMeta.color} />
+              )}
+            </View>
+          )}
+        </View>
+      </Pressable>
+
+      <View style={styles.linkedMiniCopy}>
+        <Text style={[styles.linkedMiniTitle, { textAlign }]} numberOfLines={2}>
+          {doc.title}
+        </Text>
+        <Text style={[styles.linkedMiniSubtitle, { textAlign }]}>{categoryLabel}</Text>
+        {doc.notes ? (
+          <Text
+            style={[
+              styles.linkedMiniDesc,
+              {
+                textAlign: arabicTextAlign(doc.notes, textAlign),
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {doc.notes}
+          </Text>
+        ) : null}
+        {doc.value ? (
+          <View style={[styles.paramPillRow, { flexDirection: dir }]}>
+            <View style={styles.paramPill}>
+              <Text style={styles.paramPillText} numberOfLines={1}>
+                {doc.value}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+        <View style={[styles.linkedActionsRow, { flexDirection: dir }]}>
+          {attachmentLabel ? (
+            <Pressable onPress={openAttachment} hitSlop={6}>
+              <Text style={styles.viewFullLink}>{attachmentLabel}</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={() => openRecord()} hitSlop={6}>
+            <Text style={styles.detailsLink}>
+              {isRTL ? "التفاصيل" : "Details"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -93,10 +348,11 @@ export function MedicalRecordDetailViewer({
   record,
   onOpenPdf,
   onZoomImage,
+  onSelectLinkedRecord,
+  linkedIntakeRecords = [],
   doctorView,
   patientUserId,
 }: Props) {
-  const colors = useColors();
   const { isRTL, t } = useI18n();
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
@@ -107,24 +363,7 @@ export function MedicalRecordDetailViewer({
   });
 
   if (!record) {
-    return (
-      <View
-        style={[
-          styles.panel,
-          styles.emptyShell,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
-        <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign }]}>
-          {isRTL ? "اختر سجلاً للعرض" : "Select a record to view"}
-        </Text>
-        <Text style={[styles.emptyBody, { color: colors.mutedForeground, textAlign }]}>
-          {isRTL
-            ? "اختر عنصراً من القائمة على اليسار لعرض التفاصيل والمرفقات."
-            : "Choose an item from the left panel to preview details and attachments."}
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   const active = detail ?? record;
@@ -147,6 +386,27 @@ export function MedicalRecordDetailViewer({
     timeStyle: "short",
   });
 
+  const linkedPrescriptions = filterLinkedDocuments(active.linkedDocuments, "prescription");
+  const linkedXrays = filterLinkedDocuments(active.linkedDocuments, "xray");
+  const linkedIntakes = linkedIntakeRecords;
+  const linkedDiagnoses = linkedDiagnosesForRecord(active);
+
+  const openLinkedDiagnosis = (diag: { id: string; title: string }) => {
+    const linked: MedicalRecord = {
+      id: diag.id,
+      ownerId: active.ownerId,
+      category: "diagnosis",
+      title: diag.title,
+      date: active.date,
+      createdAt: active.createdAt,
+    };
+    if (onSelectLinkedRecord) {
+      onSelectLinkedRecord(linked);
+      return;
+    }
+    openLinkedRecordRoute(linked, { doctorView, patientUserId });
+  };
+
   return (
     <View style={styles.panel}>
       <ScrollView
@@ -154,418 +414,276 @@ export function MedicalRecordDetailViewer({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {loading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-              {isRTL ? "جاري تحميل التفاصيل…" : "Loading details…"}
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={[styles.headerRow, { flexDirection: dir }]}>
-          <View style={[styles.categoryBadge, { backgroundColor: `${meta.color}18` }]}>
-            <Icon size={14} color={meta.color} />
-            <Text style={[styles.categoryBadgeText, { color: meta.color }]}>{categoryLabel}</Text>
-          </View>
-          <Text style={[styles.dateCaption, { color: colors.mutedForeground, textAlign }]}>
-            {formattedDate}
-          </Text>
-        </View>
-
-        <Text style={[styles.title, { color: colors.foreground, textAlign }]}>{active.title}</Text>
-
-        {isDiagnosis && active.doctorName ? (
-          <Text style={[styles.metaLine, { color: colors.mutedForeground, textAlign }]}>
-            {t.records.doctorPrefix(active.doctorName)}
-          </Text>
-        ) : null}
-
-        <View style={[styles.metaGrid, { flexDirection: dir }]}>
-          {active.bodyPart ? (
-            <Text
-              style={[
-                styles.bodyPartChip,
-                { color: colors.primary, backgroundColor: `${colors.primary}14` },
-              ]}
-            >
-              {t.records.bodyParts[active.bodyPart]}
-            </Text>
+        <View
+          style={[
+            styles.documentCard,
+            Platform.OS === "web" ? (EHR.shadow.card as object) : null,
+          ]}
+        >
+          {loading ? (
+            <View style={[styles.loadingRow, { flexDirection: dir }]}>
+              <ActivityIndicator color={EHR.brand} />
+              <Text style={styles.metaCaption}>
+                {isRTL ? "جاري تحميل التفاصيل…" : "Loading details…"}
+              </Text>
+            </View>
           ) : null}
-          <View style={[styles.addedRow, { flexDirection: dir }]}>
-            <Clock size={13} color={colors.mutedForeground} />
-            <Text style={[styles.addedText, { color: colors.mutedForeground, textAlign }]}>
-              {isRTL ? "أُضيف في " : "Added "}
-              {formattedCreated}
-            </Text>
-          </View>
-        </View>
 
-        {isImg && active.fileUrl ? (
-          <View
-            style={[
-              styles.mediaFrame,
-              { backgroundColor: colors.muted, borderColor: colors.border },
-            ]}
-          >
-            <MedicalRecordAttachmentImage
-              uri={active.fileUrl}
-              contentFit="contain"
-              style={styles.mediaImage}
-            />
-            <Pressable
-              onPress={() => onZoomImage?.(active.fileUrl!)}
-              style={[styles.expandBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-              accessibilityRole="button"
-              accessibilityLabel={isRTL ? "تكبير الصورة" : "Expand image"}
-            >
-              <Expand size={16} color={colors.foreground} />
-              <Text style={[styles.expandBtnText, { color: colors.foreground }]}>
-                {isRTL ? "تكبير" : "Expand"}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {active.fileUrl && isPdf ? (
-          <Pressable
-            onPress={() => onOpenPdf?.({ uri: active.fileUrl!, fileName: active.fileName })}
-            style={[
-              styles.pdfCard,
-              { backgroundColor: colors.muted, borderColor: colors.border, flexDirection: dir },
-            ]}
-          >
-            <FileText size={28} color={colors.primary} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[styles.pdfTitle, { color: colors.foreground, textAlign }]}>
-                {active.fileName ?? (isRTL ? "مستند PDF" : "PDF document")}
-              </Text>
-              <Text style={[styles.pdfHint, { color: colors.mutedForeground, textAlign }]}>
-                {isRTL ? "اضغط للعرض" : "Tap to open viewer"}
+          {/* Clinical meta header */}
+          <View style={[styles.metaBanner, { flexDirection: dir }]}>
+            <View style={[styles.categoryBadge, { backgroundColor: `${meta.color}14` }]}>
+              <Icon size={14} color={meta.color} />
+              <Text style={[styles.categoryBadgeText, { color: meta.color }]}>
+                {categoryLabel}
               </Text>
             </View>
-          </Pressable>
-        ) : null}
-
-        {active.pdfUrl && isPrescription ? (
-          <Pressable
-            onPress={() =>
-              onOpenPdf?.({
-                uri: active.pdfUrl!,
-                fileName: isRTL ? "الروشتة.pdf" : "prescription.pdf",
-              })
-            }
-            style={[
-              styles.pdfCard,
-              { backgroundColor: colors.muted, borderColor: colors.border, flexDirection: dir },
-            ]}
-          >
-            <FileText size={28} color={colors.primary} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[styles.pdfTitle, { color: colors.foreground, textAlign }]}>
-                {isRTL ? "روشتة PDF" : "Prescription PDF"}
-              </Text>
-              <Text style={[styles.pdfHint, { color: colors.mutedForeground, textAlign }]}>
-                {isRTL ? "اضغط للعرض" : "Tap to open viewer"}
-              </Text>
-            </View>
-          </Pressable>
-        ) : null}
-
-        {active.fileUrl && !isImg && !isPdf ? (
-          <Pressable
-            onPress={() => Linking.openURL(active.fileUrl!)}
-            style={[
-              styles.pdfCard,
-              { backgroundColor: colors.muted, borderColor: colors.border, flexDirection: dir },
-            ]}
-          >
-            <ExternalLink size={22} color={colors.primary} />
-            <Text style={[styles.pdfTitle, { color: colors.foreground, textAlign, flex: 1 }]}>
-              {active.fileName ?? (isRTL ? "فتح المرفق" : "Open attachment")}
+            <Text style={[styles.dateRight, { textAlign: isRTL ? "left" : "right" }]}>
+              {formattedDate}
             </Text>
-          </Pressable>
-        ) : null}
-
-        {active.value ? (
-          <View style={[styles.notesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign }]}>
-              {isRTL ? "القيمة" : "Value"}
-            </Text>
-            <Text style={[styles.noteBody, { color: colors.foreground, textAlign }]}>{active.value}</Text>
           </View>
-        ) : null}
 
-        {active.notes ? (
-          <View style={[styles.notesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign }]}>
-              {isLabOrXray ? (isRTL ? "الوصف" : "Description") : isRTL ? "ملاحظات" : "Notes"}
-            </Text>
-            <Text style={[styles.noteBody, { color: colors.foreground, textAlign }]}>{active.notes}</Text>
-          </View>
-        ) : null}
+          <Text style={[styles.recordTitle, { textAlign }]}>{active.title}</Text>
 
-        {active.category !== "intake" ? (
-          <MedicalRecordAiInsightSection record={active} />
-        ) : null}
-
-        {active.category === "intake" && active.intakeExam ? (
-          <SectionBlock
-            title={isRTL ? "إجابات المريض" : "Patient answers"}
-            icon={<FileText size={18} color={meta.color} />}
-            accent={meta.color}
-            colors={colors}
-            textAlign={textAlign}
-            dir={dir}
-          >
-            <IntakeExamTaker
-              isRTL={isRTL}
-              questions={active.intakeExam.questions}
-              answers={active.intakeExam.answers}
-              readOnly
-            />
-          </SectionBlock>
-        ) : null}
-
-        {isDiagnosis ? (
-          <SectionBlock
-            title={isRTL ? "الأعراض" : "Symptoms"}
-            icon={<Activity size={18} color={meta.color} />}
-            accent={meta.color}
-            colors={colors}
-            textAlign={textAlign}
-            dir={dir}
-          >
-            {active.symptoms?.length ? (
-              active.symptoms.map((symptom) => (
-                <Text
-                  key={symptom.id}
-                  style={[styles.noteBody, { color: colors.foreground, textAlign }]}
-                >
-                  • {symptom.desc}
-                </Text>
-              ))
-            ) : (
-              <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
-                {isRTL ? "لا توجد أعراض مسجلة" : "No symptoms recorded"}
-              </Text>
-            )}
-          </SectionBlock>
-        ) : null}
-
-        {isDiagnosis ? (
-          <SectionBlock
-            title={isRTL ? "نتائج مرتبطة" : "Linked results"}
-            icon={<Beaker size={18} color="#10b981" />}
-            accent="#10b981"
-            colors={colors}
-            textAlign={textAlign}
-            dir={dir}
-          >
-            {active.linkedDocuments?.length ? (
-              <View style={styles.linkedList}>
-                {active.linkedDocuments.map((doc) => {
-                  const docMeta = MEDICAL_RECORD_CATEGORY_META[doc.category];
-                  const docIsImage = isMedicalImageAttachment(doc.fileUrl, doc.fileName);
-                  return (
-                    <View
-                      key={doc.id}
-                      style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
-                    >
-                      {docIsImage && doc.fileUrl ? (
-                        <MedicalRecordAttachmentImage uri={doc.fileUrl} style={styles.linkedThumb} />
-                      ) : (
-                        <View
-                          style={[
-                            styles.linkedThumb,
-                            styles.linkedThumbPlaceholder,
-                            { backgroundColor: `${docMeta.color}22` },
-                          ]}
-                        >
-                          <docMeta.Icon size={20} color={docMeta.color} />
-                        </View>
-                      )}
-                      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                        <Text
-                          style={{ color: colors.foreground, fontWeight: "700", textAlign }}
-                          numberOfLines={2}
-                        >
-                          {doc.title}
-                        </Text>
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
-                          {isRTL ? docMeta.labelAr : docMeta.labelEn}
-                        </Text>
-                        {doc.notes ? (
-                          <Text
-                            style={{ color: colors.foreground, fontSize: 13, textAlign, marginTop: 4 }}
-                            numberOfLines={4}
-                          >
-                            {doc.notes}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-                  );
-                })}
+          {active.doctorName ? (
+            <View style={[styles.doctorRow, { flexDirection: dir }]}>
+              <View style={styles.doctorAvatar}>
+                <User size={14} color={EHR.brandDark} />
               </View>
-            ) : (
-              <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
-                {isRTL
-                  ? "لا توجد نتائج مختبر أو أشعة أو روشتات مرتبطة"
-                  : "No linked lab results, imaging, or prescriptions"}
+              <Text style={[styles.doctorName, { textAlign }]}>
+                {t.records.doctorPrefix(active.doctorName)}
               </Text>
-            )}
-          </SectionBlock>
-        ) : null}
+            </View>
+          ) : null}
 
-        {isLabOrXray && active.linkedDiagnoses?.length ? (
-          <SectionBlock
-            title={isRTL ? "تشخيصات مرتبطة" : "Linked diagnoses"}
-            icon={<Activity size={18} color="#ef4444" />}
-            accent="#ef4444"
-            colors={colors}
-            textAlign={textAlign}
-            dir={dir}
-          >
-            <View style={styles.linkedList}>
-              {active.linkedDiagnoses.map((diag) => (
-                <View
-                  key={diag.id}
-                  style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
-                >
-                  <View
+          <View style={[styles.metaTagRow, { flexDirection: dir }]}>
+            {active.bodyPart ? (
+              <MetaTag
+                label={`${isRTL ? "الموقع" : "Tag"}: ${t.records.bodyParts[active.bodyPart]}`}
+                textAlign={textAlign}
+              />
+            ) : null}
+            <MetaTag
+              label={`${isRTL ? "أُضيف" : "Added"}: ${formattedCreated}`}
+              textAlign={textAlign}
+            />
+          </View>
+
+          {/* Primary attachment for lab/xray record itself */}
+          {isImg && active.fileUrl ? (
+            <View style={styles.primaryMediaWrap}>
+              <MedicalRecordAttachmentImage
+                uri={active.fileUrl}
+                contentFit="contain"
+                style={styles.primaryMedia}
+              />
+              <Pressable
+                onPress={() => onZoomImage?.(active.fileUrl!)}
+                style={[styles.mediaExpandBtn, { flexDirection: dir }]}
+              >
+                <Expand size={14} color="#fff" />
+                <Text style={styles.mediaExpandText}>
+                  {isRTL ? "تكبير" : "Expand"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {active.value ? (
+            <ClinicalSection
+              title={isRTL ? "القيمة السريرية" : "Clinical value"}
+              textAlign={textAlign}
+            >
+              <View style={[styles.paramPillRow, { flexDirection: dir }]}>
+                <View style={styles.paramPillAccent}>
+                  <Text
                     style={[
-                      styles.linkedThumb,
-                      styles.linkedThumbPlaceholder,
-                      { backgroundColor: "#ef444422" },
+                      styles.paramPillText,
+                      { textAlign: arabicTextAlign(active.value, textAlign) },
                     ]}
                   >
-                    <Activity size={20} color="#ef4444" />
-                  </View>
-                  <Text
-                    style={{ color: colors.foreground, fontWeight: "700", textAlign, flex: 1 }}
-                    numberOfLines={3}
-                  >
-                    {diag.title}
+                    {active.value}
                   </Text>
                 </View>
-              ))}
-            </View>
-          </SectionBlock>
-        ) : null}
+              </View>
+            </ClinicalSection>
+          ) : null}
 
-        {isPrescription ? (
-          <SectionBlock
-            title={isRTL ? "الأدوية" : "Medications"}
-            icon={<Pill size={18} color={meta.color} />}
-            accent={meta.color}
-            colors={colors}
-            textAlign={textAlign}
-            dir={dir}
-          >
-            {active.medications?.length ? (
-              <View style={styles.linkedList}>
+          {active.notes ? (
+            <ClinicalSection
+              title={
+                isLabOrXray
+                  ? isRTL
+                    ? "ملخص النتائج"
+                    : "Results summary"
+                  : isRTL
+                    ? "ملاحظات سريرية"
+                    : "Clinical notes"
+              }
+              textAlign={textAlign}
+            >
+              <Text
+                style={[
+                  styles.bodyText,
+                  { textAlign: arabicTextAlign(active.notes, textAlign) },
+                ]}
+              >
+                {active.notes}
+              </Text>
+            </ClinicalSection>
+          ) : null}
+
+          {isDiagnosis ? (
+            <ClinicalSection
+              title={isRTL ? "الأعراض والنتائج السريرية" : "Clinical symptoms & findings"}
+              textAlign={textAlign}
+            >
+              <SymptomList
+                symptoms={active.symptoms ?? []}
+                textAlign={textAlign}
+                dir={dir}
+              />
+            </ClinicalSection>
+          ) : null}
+
+          {isDiagnosis ? (
+            <>
+              <LinkedCategorySection
+                title={isRTL ? "روشتات مرتبطة" : "Linked prescriptions"}
+                items={linkedPrescriptions}
+                emptyLabel={
+                  isRTL ? "لا توجد روشتات مرتبطة" : "No linked prescriptions"
+                }
+                isRTL={isRTL}
+                dir={dir}
+                textAlign={textAlign}
+                onOpenPdf={onOpenPdf}
+                onZoomImage={onZoomImage}
+                onSelectLinkedRecord={onSelectLinkedRecord}
+                doctorView={doctorView}
+                patientUserId={patientUserId}
+              />
+              <LinkedCategorySection
+                title={isRTL ? "أشعة مرتبطة" : "Linked x-rays"}
+                items={linkedXrays}
+                emptyLabel={isRTL ? "لا توجد أشعة مرتبطة" : "No linked x-rays"}
+                isRTL={isRTL}
+                dir={dir}
+                textAlign={textAlign}
+                onOpenPdf={onOpenPdf}
+                onZoomImage={onZoomImage}
+                onSelectLinkedRecord={onSelectLinkedRecord}
+                doctorView={doctorView}
+                patientUserId={patientUserId}
+              />
+              <LinkedCategorySection
+                title={isRTL ? "فحوصات متابعة مرتبطة" : "Linked intake tests"}
+                items={linkedIntakes}
+                emptyLabel={
+                  isRTL ? "لا توجد فحوصات متابعة مرتبطة" : "No linked intake tests"
+                }
+                isRTL={isRTL}
+                dir={dir}
+                textAlign={textAlign}
+                onOpenPdf={onOpenPdf}
+                onZoomImage={onZoomImage}
+                onSelectLinkedRecord={onSelectLinkedRecord}
+                doctorView={doctorView}
+                patientUserId={patientUserId}
+              />
+            </>
+          ) : null}
+
+          {isPrescription && active.medications?.length ? (
+            <ClinicalSection
+              title={isRTL ? "الأدوية" : "Medications"}
+              count={active.medications.length}
+              textAlign={textAlign}
+            >
+              <View style={styles.medList}>
                 {active.medications.map((med, index) => (
-                  <View
-                    key={med.id ?? `med-${index}`}
-                    style={[styles.medRow, { borderColor: colors.border, backgroundColor: colors.muted }]}
-                  >
-                    <Text style={[styles.medName, { color: colors.foreground, textAlign }]}>
-                      {med.medication_name}
-                    </Text>
-                    {med.dose ? (
-                      <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign }}>
-                        {isRTL ? "الجرعة: " : "Dose: "}
-                        {med.dose}
-                      </Text>
-                    ) : null}
-                    {med.interval ? (
-                      <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign }}>
-                        {isRTL ? "التكرار: " : "Interval: "}
-                        {med.interval}
-                      </Text>
-                    ) : null}
-                    {med.notes ? (
-                      <Text style={{ color: colors.foreground, fontSize: 13, textAlign, marginTop: 4 }}>
-                        {med.notes}
-                      </Text>
-                    ) : null}
+                  <View key={med.id ?? `med-${index}`} style={styles.medPill}>
+                    <Pill size={14} color="#7c3aed" />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[styles.medName, { textAlign }]}>{med.medication_name}</Text>
+                      {med.dose ? (
+                        <Text style={[styles.metaCaption, { textAlign }]}>
+                          {isRTL ? "الجرعة: " : "Dose: "}
+                          {med.dose}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
                 ))}
               </View>
-            ) : (
-              <Text style={{ color: colors.mutedForeground, fontSize: 14, textAlign }}>
-                {isRTL ? "لا توجد أدوية مسجلة" : "No medications recorded"}
-              </Text>
-            )}
-          </SectionBlock>
-        ) : null}
+            </ClinicalSection>
+          ) : null}
 
-        {isPrescription && active.linkedConsultations?.length ? (
-          <SectionBlock
-            title={isRTL ? "استشارات مرتبطة" : "Linked consultations"}
-            icon={<MessageCircle size={18} color={colors.primary} />}
-            accent={colors.primary}
-            colors={colors}
-            textAlign={textAlign}
-            dir={dir}
-          >
-            <View style={styles.linkedList}>
-              {active.linkedConsultations.map((consultation) => {
-                const title = doctorView ? consultation.patientName : consultation.doctorName;
-                return (
-                  <View
-                    key={consultation.id}
-                    style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
+          {active.category === "intake" && active.intakeExam ? (
+            <ClinicalSection
+              title={isRTL ? "إجابات المريض" : "Patient answers"}
+              textAlign={textAlign}
+            >
+              <IntakeExamTaker
+                isRTL={isRTL}
+                questions={active.intakeExam.questions}
+                answers={active.intakeExam.answers}
+                readOnly
+              />
+            </ClinicalSection>
+          ) : null}
+
+          {recordShowsLinkedDiagnoses(active.category) && linkedDiagnoses.length ? (
+            <ClinicalSection
+              title={isRTL ? "تشخيصات مرتبطة" : "Linked diagnoses"}
+              count={linkedDiagnoses.length}
+              textAlign={textAlign}
+            >
+              {linkedDiagnoses.map((diag) => (
+                <View
+                  key={diag.id}
+                  style={[styles.linkedDiagnosisRow, { flexDirection: dir }]}
+                >
+                  <Activity size={16} color="#ef4444" />
+                  <Text style={[styles.bodyText, { textAlign, flex: 1 }]}>{diag.title}</Text>
+                  <Pressable
+                    onPress={() => openLinkedDiagnosis(diag)}
+                    hitSlop={8}
+                    accessibilityRole="link"
+                    accessibilityLabel={isRTL ? "التفاصيل" : "Details"}
                   >
-                    <View
-                      style={[
-                        styles.linkedThumb,
-                        styles.linkedThumbPlaceholder,
-                        { backgroundColor: `${colors.primary}22` },
-                      ]}
-                    >
-                      <MessageCircle size={20} color={colors.primary} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text
-                        style={{ color: colors.foreground, fontWeight: "700", textAlign }}
-                        numberOfLines={2}
-                      >
-                        {title}
-                      </Text>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign }}>
-                        {consultationStatusLabel(consultation.status, isRTL)}
-                        {" · "}
-                        {new Date(consultation.createdAt).toLocaleDateString(dateLocale, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
+                    <Text style={styles.detailsLink}>
+                      {isRTL ? "التفاصيل" : "Details"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+            </ClinicalSection>
+          ) : null}
+
+          {active.category !== "intake" ? (
+            <View style={styles.aiInsightWrap}>
+              <MedicalRecordAiInsightSection record={active} />
             </View>
-          </SectionBlock>
-        ) : null}
+          ) : null}
+
+          {active.fileUrl && isPdf && !isPrescription ? (
+            <Pressable
+              onPress={() =>
+                onOpenPdf?.({ uri: active.fileUrl!, fileName: active.fileName })
+              }
+              style={[styles.pdfOpenRow, { flexDirection: dir }]}
+            >
+              <FileText size={18} color={EHR.brandDark} />
+              <Text style={[styles.viewFullLink, { textAlign }]}>
+                {active.fileName ?? (isRTL ? "فتح PDF" : "Open PDF attachment")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </ScrollView>
     </View>
   );
 }
-
-const mediaFrameBase: ViewStyle = {
-  borderRadius: 16,
-  borderWidth: StyleSheet.hairlineWidth,
-  overflow: "hidden",
-  marginTop: 16,
-  maxHeight: 500,
-  minHeight: 200,
-  alignItems: "center",
-  justifyContent: "center",
-  position: "relative",
-};
 
 const styles = StyleSheet.create({
   panel: {
@@ -573,32 +691,31 @@ const styles = StyleSheet.create({
     width: "100%",
     minHeight: 480,
     alignSelf: "stretch",
+    backgroundColor: EHR.bg.app,
   },
   scroll: { flex: 1, width: "100%" },
-  scrollContent: { padding: 24, paddingBottom: 96, flexGrow: 1, gap: 0 },
+  scrollContent: {
+    padding: EHR.workspaceGap,
+    paddingBottom: 48,
+    flexGrow: 1,
+  },
+  documentCard: {
+    backgroundColor: EHR.bg.card,
+    borderWidth: 1,
+    borderColor: EHR.border,
+    borderRadius: EHR.radius.card,
+    padding: EHR.documentCardPadding,
+    gap: 20,
+  },
   loadingRow: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  emptyShell: {
-    flex: 1,
-    minHeight: 480,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-    gap: 8,
-  },
-  emptyTitle: { fontSize: 18, fontWeight: "700" },
-  emptyBody: { fontSize: 14, lineHeight: 21, maxWidth: 320 },
-  headerRow: {
+  metaBanner: {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 8,
   },
   categoryBadge: {
     flexDirection: "row",
@@ -606,105 +723,254 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 999,
+    borderRadius: EHR.radius.control,
   },
   categoryBadgeText: { fontSize: 12, fontWeight: "700" },
-  dateCaption: { fontSize: 13, flex: 1 },
-  title: { fontSize: 22, fontWeight: "800", lineHeight: 28, marginBottom: 4 },
-  metaLine: { fontSize: 14, marginBottom: 4 },
-  metaGrid: { flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 },
-  bodyPartChip: {
-    fontSize: 12,
+  dateRight: {
+    ...EHR.type.meta,
+    flex: 1,
+  },
+  recordTitle: {
+    ...EHR.type.title,
+    lineHeight: 28,
+  },
+  doctorRow: {
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  doctorAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: EHR.brandSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  doctorName: {
+    ...EHR.type.body,
     fontWeight: "600",
+    color: EHR.text.section,
+  },
+  metaTagRow: {
+    flexWrap: "wrap",
+    gap: 8,
+    alignItems: "center",
+  },
+  metaTag: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: EHR.radius.control,
+    backgroundColor: EHR.bg.app,
+    borderWidth: 1,
+    borderColor: EHR.border,
+  },
+  metaTagText: {
+    ...EHR.type.meta,
+    color: EHR.text.body,
+  },
+  clinicalSection: {
+    gap: 12,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionHeading: {
+    ...EHR.type.section,
+    flex: 1,
+  },
+  countPill: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: EHR.brandSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  countPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: EHR.brandDark,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: EHR.border,
+  },
+  bodyText: {
+    ...EHR.type.body,
+    lineHeight: 22,
+  },
+  metaCaption: {
+    ...EHR.type.meta,
+  },
+  symptomList: { gap: 10 },
+  symptomRow: {
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  symptomDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: EHR.brand,
+    marginTop: 7,
+  },
+  linkedCardsRow: {
+    gap: 16,
+  },
+  linkedMiniCard: {
+    gap: 14,
+    padding: 14,
+    borderRadius: EHR.radius.card,
+    borderWidth: 1,
+    borderColor: EHR.border,
+    backgroundColor: EHR.bg.app,
+    alignItems: "flex-start",
+  },
+  linkedThumbWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: EHR.radius.control,
     overflow: "hidden",
+    position: "relative",
   },
-  addedRow: { alignItems: "center", gap: 6 },
-  addedText: { fontSize: 12 },
-  mediaFrame: mediaFrameBase,
-  mediaImage: {
+  linkedThumbImage: {
     width: "100%",
-    height: 480,
-    maxHeight: 500,
+    height: "100%",
   },
-  expandBtn: {
+  linkedThumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  linkedThumbPlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  linkedMiniCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  linkedActionsRow: {
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 6,
+  },
+  linkedMiniTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: EHR.text.primary,
+  },
+  linkedMiniSubtitle: {
+    ...EHR.type.meta,
+  },
+  linkedMiniDesc: {
+    ...EHR.type.body,
+    marginTop: 2,
+  },
+  paramPillRow: {
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  paramPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: EHR.radius.control,
+    backgroundColor: "#fef3c7",
+    borderWidth: 1,
+    borderColor: "#fde68a",
+  },
+  paramPillAccent: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: EHR.radius.control,
+    backgroundColor: EHR.brandSoft,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+  },
+  paramPillText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: EHR.brandDark,
+  },
+  viewFullLink: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: EHR.brandDark,
+  },
+  detailsLink: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: EHR.brand,
+    textDecorationLine: "underline",
+  },
+  primaryMediaWrap: {
+    borderRadius: EHR.radius.card,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: EHR.border,
+    backgroundColor: EHR.bg.app,
+    minHeight: 200,
+    maxHeight: 360,
+    position: "relative",
+  },
+  primaryMedia: {
+    width: "100%",
+    height: 320,
+  },
+  mediaExpandBtn: {
     position: "absolute",
     bottom: 12,
     right: 12,
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  expandBtnText: { fontSize: 13, fontWeight: "600" },
-  pdfCard: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    gap: 12,
-  },
-  pdfTitle: { fontSize: 15, fontWeight: "600" },
-  pdfHint: { fontSize: 13, marginTop: 2 },
-  notesCard: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 8,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  noteBody: { fontSize: 15, lineHeight: 22 },
-  sectionCard: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 12,
-  },
-  sectionHeader: { alignItems: "center", gap: 10 },
-  sectionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitle: { fontSize: 16, fontWeight: "700", flex: 1 },
-  linkedList: { gap: 10 },
-  linkedRow: {
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  linkedThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  linkedThumbPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  medRow: {
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
     gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: EHR.radius.control,
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
   },
-  medName: { fontSize: 15, fontWeight: "700" },
+  mediaExpandText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  medList: { gap: 8 },
+  medPill: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderRadius: EHR.radius.control,
+    backgroundColor: EHR.bg.app,
+    borderWidth: 1,
+    borderColor: EHR.border,
+  },
+  medName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: EHR.text.primary,
+  },
+  linkedDiagnosisRow: {
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  aiInsightWrap: {
+    marginTop: 4,
+  },
+  pdfOpenRow: {
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  btnPressed: { opacity: 0.88 },
 });

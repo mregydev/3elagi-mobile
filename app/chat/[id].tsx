@@ -1,6 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Beaker, Bot, Calendar, ClipboardList, FileText, Pill, ScanLine, ShieldCheck, ShieldOff, Stethoscope } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -21,7 +20,6 @@ import {
 } from "react-native-keyboard-controller";
 import { ChatReactionOverlay, type ReactionAnchor } from "@/components/ChatReactionOverlay";
 import { Avatar } from "@/components/Avatar";
-import { CallDoctorButton } from "@/components/call/CallDoctorButton";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ConsultationBar } from "@/components/ConsultationBar";
 import { ChatAccessBanner } from "@/components/ChatAccessBanner";
@@ -30,8 +28,8 @@ import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { ArchivedMessagesToggle } from "@/components/chat/ArchivedMessagesToggle";
 import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
 import { TestPatientThinkingIndicator } from "@/components/chat/TestPatientThinkingIndicator";
+import { ChatHeader, chatHeaderSubtitle } from "@/components/chat/ChatHeader";
 import type { ChatAction } from "@/components/chat/ChatActionsMenu";
-import { NameWithCountryFlag } from "@/components/NameWithCountryFlag";
 import { DiagnosisChatModal } from "@/components/DiagnosisChatModal";
 import { DoctorMedicalRequestDialog } from "@/components/medical/DoctorMedicalRequestDialog";
 import { AssignIntakeExamDialog } from "@/components/intake/AssignIntakeExamDialog";
@@ -44,11 +42,7 @@ import { usePresenceStore } from "@/domains/presence/store";
 import { fetchAccountProfile } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
-import {
-  applyLivePresence,
-  formatPresenceLabel,
-  presenceTextColor,
-} from "@/domains/chat/presence";
+import { applyLivePresence } from "@/domains/chat/presence";
 import { useChatStore } from "@/domains/chat/store";
 import {
   connectConversationSocket,
@@ -88,17 +82,15 @@ import { createDiagnosis, fetchAllMedicalHistory, uploadFile } from "@/domains/m
 import { openAsk3elagiAi } from "@/domains/ai/widget-store";
 import { isAppointmentNotFoundError } from "@/domains/chat/appointmentMessages";
 import { mapInstance } from "@/domains/intake-exams/api";
-import { TourAnchor } from "@/components/onboarding/TourAnchor";
 import { fetchTestPatientChatStatus, type TestPatientChatStatus } from "@/domains/doctor/testPatientChatApi";
 import { registerTourAnchorHandler } from "@/domains/onboarding/tourAnchorActions";
 import { useMedicalStore } from "@/domains/medical/store";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
-import { useAccentGradient, useColors } from "@/hooks/useColors";
+import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { setMessageEmotion } from "@/domains/emotions/api";
 import { mapEmotionRows, type MessageEmotionType } from "@/domains/emotions/types";
 import { showChatMessageActions } from "@/utils/chatMessageActions";
-import { AppBackButton } from "@/components/nav/AppBackButton";
 import {
   buildChatLatestMessageToken,
   isChatStuckToLatest,
@@ -107,7 +99,6 @@ import {
 } from "@/utils/chatListScroll";
 import { chatFlexRow, chatLayoutDirection, flexRow } from "@/utils/rtl";
 import { webConfirm } from "@/utils/webConfirm";
-import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
@@ -122,7 +113,6 @@ interface ChatScreenProps {
 
 export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const colors = useColors();
-  const accentGradient = useAccentGradient();
   const { isRTL, t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
@@ -275,12 +265,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   const isDoctorPatientChat =
     (isDoctor && peer?.role === "patient") || (isPatient && peer?.role === "doctor");
   const isDoctorDoctorChat = isDoctor && peer?.role === "doctor";
-  // Patients can ring a doctor who has immediate calls switched on.
-  const canCallDoctor =
-    IMMEDIATE_VIDEO_CALL_ENABLED &&
-    isPatient &&
-    peer?.role === "doctor" &&
-    !!peer?.immediateCallEnabled;
   const latestConsultationAction = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i];
@@ -1443,8 +1427,6 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
   }
 
   const rowDir = chatFlexRow();
-  // Header follows app locale (Arabic → back on the right); chat body stays LTR.
-  const headerDir = flexRow(isRTL);
   const canOpenDoctorProfile =
     ((isPatient || isDoctorDoctorChat) &&
       peer?.role === "doctor" &&
@@ -1575,135 +1557,39 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
         },
       ];
 
+  const headerSubtitle = chatHeaderSubtitle({
+    peer,
+    isRTL,
+    consultationOpen,
+    testPatientThinking,
+    peerTyping,
+  });
+
   const chatUi = (
     <>
-      <View
-        style={[
-          styles.header,
-          desktopLayout && styles.headerDesktop,
-          {
-            paddingTop: headerPaddingTop,
-            backgroundColor: desktopLayout ? colors.background : colors.card,
-            borderBottomColor: colors.border,
-            flexDirection: headerDir,
-          },
-        ]}
-      >
-        <AppBackButton
-          color={colors.foreground}
-          style={styles.backBtn}
-          fallback={
-            isAdmin
-              ? "/admin/chats"
-              : openedFrom === "doctors"
-                ? "/(tabs)"
-                : "/(tabs)/history"
-          }
-          accessibilityLabel={isRTL ? "رجوع" : "Back"}
-        />
-
-        <Pressable
-          onPress={onPeerHeaderPress}
-          disabled={!onPeerHeaderPress}
-          style={[styles.peerInfo, { flexDirection: headerDir }]}
-        >
-          <Avatar
-            uri={peer.photoUrl}
-            seed={peer.id}
-            role={
-              peer.role === "doctor"
-                ? "doctor"
-                : peer.role === "patient"
-                  ? "patient"
-                  : undefined
-            }
-            size={30}
-            presence={peer.presence}
-          />
-          <View style={{ flex: 1 }}>
-            <NameWithCountryFlag
-              name={peer.name}
-              country={peer.role === "patient" ? peer.country : undefined}
-              isRTL={isRTL}
-              nameStyle={[
-                styles.peerName,
-                {
-                  color: colors.foreground,
-                  textAlign: isRTL ? "right" : "left",
-                },
-              ]}
-            />
-            <Text
-              style={[
-                styles.presence,
-                {
-                  color: testPatientThinking || peerTyping
-                    ? colors.primary
-                    : presenceTextColor(peer.presence, colors),
-                  textAlign: isRTL ? "right" : "left",
-                },
-              ]}
-            >
-              {testPatientThinking
-                ? isRTL
-                  ? "المريض يفكر…"
-                  : "Patient is thinking…"
-                : peerTyping
-                  ? isRTL
-                    ? "يكتب…"
-                    : "typing…"
-                  : formatPresenceLabel(peer, isRTL)}
-              {!testPatientThinking && !peerTyping && peer.specialty ? ` · ${peer.specialty}` : ""}
-              {!testPatientThinking && !peerTyping && canOpenDoctorProfile
-                ? isRTL
-                  ? " · اضغط لعرض الملف"
-                  : " · tap for profile"
-                : ""}
-            </Text>
-          </View>
-        </Pressable>
-
-        {canCallDoctor && peer ? (
-          <CallDoctorButton
-            doctorUserId={peer.id}
-            price={peer.videoConsultationPrice}
-            offline={!peerOnline}
-          />
-        ) : null}
-
-        {canOpenPatientRecord ? (
-          <TourAnchor
-            id="chat-view-records"
-            testID="chat-view-records"
-            pressable
-            onPress={openPatientRecord}
-            accessibilityRole="button"
-            accessibilityLabel={isRTL ? "عرض السجل الطبي" : "View medical records"}
-            hitSlop={8}
-            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-              styles.viewRecordBtn,
-              Platform.OS === "web"
-                ? ({
-                    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.14)",
-                  } as object)
-                : null,
-              { opacity: pressed || hovered ? 0.92 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
-            ]}
-          >
-            <LinearGradient
-              colors={accentGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.viewRecordBtnInner, { flexDirection: rowDir }]}
-            >
-              <FileText size={17} color="#fff" strokeWidth={2.25} />
-              <Text style={styles.viewRecordBtnText} numberOfLines={1}>
-                {isRTL ? "السجل الطبي" : "Medical records"}
-              </Text>
-            </LinearGradient>
-          </TourAnchor>
-        ) : null}
-      </View>
+      <ChatHeader
+        peer={peer}
+        isRTL={isRTL}
+        desktopLayout={desktopLayout}
+        paddingTop={headerPaddingTop}
+        backFallback={
+          isAdmin
+            ? "/admin/chats"
+            : openedFrom === "doctors"
+              ? "/(tabs)"
+              : "/(tabs)/history"
+        }
+        onBackAccessibilityLabel={isRTL ? "رجوع" : "Back"}
+        subtitle={
+          !testPatientThinking && !peerTyping && peer.specialty && !headerSubtitle.accent
+            ? `${headerSubtitle.text} · ${peer.specialty}`
+            : headerSubtitle.text
+        }
+        subtitleAccent={headerSubtitle.accent}
+        onPeerPress={onPeerHeaderPress}
+        canOpenPatientRecord={canOpenPatientRecord}
+        onOpenPatientRecord={openPatientRecord}
+      />
 
       {isDoctorPatientChat && !accessLoading ? (
         <ChatAccessBanner isRTL={isRTL} isDoctor={isDoctor} access={accessStatus} />
@@ -2230,44 +2116,10 @@ const styles = StyleSheet.create({
   emptyListContent: { flexGrow: 1, justifyContent: "center", padding: 24 },
   emptyListContentDesktop: { paddingHorizontal: 32 },
   emptyChat: { alignItems: "center", justifyContent: "center", paddingVertical: 40 },
-  header: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    overflow: "visible",
-  },
-  headerDesktop: {
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-  },
   chatFooterDesktop: {
     backgroundColor: "transparent",
     borderTopWidth: 0,
   },
-  backBtn: { padding: 4 },
-  peerInfo: { flex: 1, alignItems: "center", gap: 10, minWidth: 0 },
-  viewRecordBtn: {
-    borderRadius: 999,
-    overflow: "hidden",
-    flexShrink: 0,
-  },
-  viewRecordBtnInner: {
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  viewRecordBtnText: {
-    fontSize: 13,
-    fontWeight: "800",
-    flexShrink: 0,
-    color: "#fff",
-    letterSpacing: 0.2,
-  },
-  peerName: { fontSize: 16, fontWeight: "700" },
-  presence: { fontSize: 12, marginTop: 1 },
   testPatientBanner: {
     paddingHorizontal: 16,
     paddingVertical: 10,

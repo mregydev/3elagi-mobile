@@ -1,6 +1,7 @@
 import { Redirect } from "expo-router";
 import React from "react";
-import { ProfileEditor } from "@/components/profile/ProfileEditor";
+import { StyleSheet, View } from "react-native";
+import { ProfileEditorWebView } from "@/components/profile/ProfileEditorWebView";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
 import { useColors } from "@/hooks/useColors";
@@ -18,11 +19,17 @@ export default function ProfileTabWeb() {
   }
 
   return (
-    <ProfileEditor
-      accessToken={accessToken!}
-      role={role ?? "patient"}
-      isRTL={isRTL}
-      colors={colors}
-    />
+    <View style={styles.root}>
+      <ProfileEditorWebView
+        accessToken={accessToken!}
+        role={role ?? "patient"}
+        isRTL={isRTL}
+        colors={colors}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, minHeight: 0, width: "100%" },
+});

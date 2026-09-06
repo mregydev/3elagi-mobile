@@ -35,6 +35,10 @@ function mapInstance(raw: IntakeExamInstance): MedicalRecord {
       : raw.status === "in_progress"
         ? "In progress"
         : "Pending";
+  const linkedDiagnoses = (raw.linked_diagnoses ?? []).map((item) => ({
+    id: item.id,
+    title: item.desc,
+  }));
   return {
     id: raw.id,
     ownerId: raw.patient_user_id,
@@ -45,6 +49,8 @@ function mapInstance(raw: IntakeExamInstance): MedicalRecord {
     createdAt: raw.created_at,
     doctorName: raw.doctor_name,
     doctorId: raw.doctor_id,
+    linkedDiagnoses,
+    diagnosisId: linkedDiagnoses[0]?.id ?? raw.diagnosis_id ?? null,
     intakeExam: {
       instanceId: raw.id,
       assignmentId: raw.assignment_id,

@@ -51,6 +51,8 @@ export interface IntakeExamInstance {
   recurrence_type: IntakeExamRecurrence;
   recurrence_interval: number;
   created_at: string;
+  diagnosis_id?: string | null;
+  linked_diagnoses?: Array<{ id: string; desc: string }>;
 }
 
 export interface IntakeExamDetail {

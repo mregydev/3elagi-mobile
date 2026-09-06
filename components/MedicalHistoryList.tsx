@@ -7,11 +7,12 @@ import {
   ChevronUp,
   ClipboardList,
   FileText,
+  Heart,
   Pill,
   ScanLine,
   Stethoscope,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -43,6 +44,10 @@ import {
   type RecordsViewMode,
 } from "@/components/records/RecordsViewModeToggle";
 import {
+  DoctorClinicalActionBar,
+  type ClinicalActionKey,
+} from "@/components/records/DoctorClinicalActionBar";
+import {
   SHOW_INTAKE_RECORDS,
   withoutIntakeRecords,
 } from "@/components/records/medicalRecordCategories";
@@ -64,6 +69,7 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { WEB_CONTENT_PADDING } from "@/constants/webLayout";
+import { EHR } from "@/constants/ehrDesign";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
 
 const CATEGORIES: {
@@ -97,6 +103,13 @@ export interface MedicalHistoryListProps {
   viewMode?: RecordsViewMode;
   /** Fired when Skeleton / Tabular mode changes (e.g. parent disables page scroll). */
   onViewModeChange?: (mode: RecordsViewMode) => void;
+  /** Hide embedded view toggle + clinical pills (desktop header owns them). */
+  hideTopChrome?: boolean;
+  /** Exposes consultation + clinical handlers for the page header action bar. */
+  onClinicalBarState?: (state: {
+    consultationOpen: boolean;
+    onAction: (key: ClinicalActionKey) => void;
+  }) => void;
 }
 
 export function MedicalHistoryList({
@@ -109,6 +122,8 @@ export function MedicalHistoryList({
   onRecordsChanged,
   viewMode: viewModeProp,
   onViewModeChange,
+  hideTopChrome = false,
+  onClinicalBarState,
 }: MedicalHistoryListProps) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
@@ -139,6 +154,7 @@ export function MedicalHistoryList({
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const [intakeExamModalOpen, setIntakeExamModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
+  const [vitalsSelected, setVitalsSelected] = useState(false);
   const advanceOnAnchorTap = useProductTourStore((s) => s.advanceOnAnchorTap);
 
   // Doctors add via clinical pills during an open consult — hide generic add chrome.
@@ -240,6 +256,36 @@ export function MedicalHistoryList({
     });
   };
 
+  const handleClinicalAction = useCallback(
+    (key: ClinicalActionKey) => {
+      if (!consultationOpen) return;
+      switch (key) {
+        case "lab":
+          setRequestDialog("lab");
+          break;
+        case "xray":
+          setRequestDialog("xray");
+          break;
+        case "prescription":
+          openPrescriptionScreen();
+          break;
+        case "diagnosis":
+          setDiagnosisModalOpen(true);
+          break;
+        case "intake":
+          setIntakeExamModalOpen(true);
+          break;
+        default:
+          break;
+      }
+    },
+    [consultationOpen, patientUserId],
+  );
+
+  useEffect(() => {
+    onClinicalBarState?.({ consultationOpen, onAction: handleClinicalAction });
+  }, [consultationOpen, handleClinicalAction, onClinicalBarState]);
+
   const handleDiagnosisSubmit = async (payload: DiagnosisSubmitPayload) => {
     if (!accessToken || !doctorId || !consultationOpen) return;
     setSavingDiagnosis(true);
@@ -283,8 +329,30 @@ export function MedicalHistoryList({
 
   const effectiveViewMode: RecordsViewMode = viewMode;
 
+  const handleSelectVitals = useCallback(() => {
+    setVitalsSelected((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedRecord(null);
+        setOpenSection(null);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectRecord = useCallback((record: MedicalRecord) => {
+    setVitalsSelected(false);
+    setSelectedRecord(record);
+  }, []);
+
+  const handleOpenSectionChange = useCallback((key: MedicalCategory | null) => {
+    setVitalsSelected(false);
+    setOpenSection(key);
+  }, []);
+
   React.useEffect(() => {
     if (!isDesktop || effectiveViewMode !== "table") return;
+    if (vitalsSelected) return;
     if (!openSection) {
       setSelectedRecord(null);
       return;
@@ -298,7 +366,7 @@ export function MedicalHistoryList({
     setSelectedRecord((prev) =>
       prev && items.some((item) => item.id === prev.id) ? prev : items[0],
     );
-  }, [isDesktop, effectiveViewMode, openSection, filteredGrouped, grouped]);
+  }, [isDesktop, effectiveViewMode, vitalsSelected, openSection, filteredGrouped, grouped]);
 
   const openBodyPart = (part: BodyPart) => {
     router.push(
@@ -306,7 +374,94 @@ export function MedicalHistoryList({
     );
   };
 
-  const recordsPanel = visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
+  const openVitals = () => {
+    if (doctorView) {
+      router.push({
+        pathname: "/medical/vitals",
+        params: { doctorView: "1", patientUserId },
+      });
+    } else {
+      router.push("/medical/vitals");
+    }
+  };
+
+  const vitalsSection = (
+    <View
+      style={[styles.categoryBlock, effectiveViewMode === "skeleton" && styles.categoryBlockSplit]}
+    >
+      <View
+        style={[
+          styles.categoryCard,
+          {
+            flexDirection: dir,
+            backgroundColor: colors.card,
+            borderColor: vitalsSelected ? EHR.brand : colors.border,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={() => {
+            if (isDesktop && effectiveViewMode === "table") {
+              handleSelectVitals();
+            } else {
+              openVitals();
+            }
+          }}
+          style={[styles.categoryTogglePart, { flexDirection: dir }]}
+        >
+          <View style={[styles.iconBubble, { backgroundColor: `${EHR.brand}22` }]}>
+            <Heart size={16} color={EHR.brand} />
+          </View>
+          <Text style={[styles.categoryLabel, { color: colors.foreground, textAlign }]}>
+            {isRTL ? "العلامات الحيوية" : "Vital signs"}
+          </Text>
+          {isDesktop && effectiveViewMode === "table" ? (
+            vitalsSelected ? (
+              <ChevronUp size={16} color={EHR.brand} />
+            ) : (
+              <ChevronDown size={16} color={colors.mutedForeground} />
+            )
+          ) : (
+            <ChevronDown
+              size={16}
+              color={colors.mutedForeground}
+              style={{ transform: [{ rotate: isRTL ? "90deg" : "-90deg" }] }}
+            />
+          )}
+        </Pressable>
+      </View>
+      {isDesktop && effectiveViewMode === "table" && vitalsSelected ? (
+        <View
+          style={[
+            styles.vitalsRow,
+            {
+              flexDirection: dir,
+              borderColor: EHR.brand,
+              backgroundColor: EHR.brandSoft,
+            },
+          ]}
+        >
+          <Text style={[styles.recordTitle, { color: colors.foreground, textAlign }]}>
+            {isRTL ? "العلامات الحيوية الأخيرة" : "Recent vital signs"}
+          </Text>
+          <Text style={[styles.recordValue, { color: colors.mutedForeground, textAlign }]}>
+            {doctorView
+              ? isRTL
+                ? "قراءات المريض"
+                : "Patient-reported readings"
+              : isRTL
+                ? "تحديث قراءاتك"
+                : "Update your readings"}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const recordsPanel = (
+    <>
+      {vitalsSection}
+      {visibleCategories.map(({ key, labelEn, labelAr, Icon, color }) => {
     const label = isRTL ? labelAr : labelEn;
     const isOpen = openSection === key;
     const isSearchable = SEARCHABLE_CATEGORIES.includes(key);
@@ -330,7 +485,7 @@ export function MedicalHistoryList({
           ]}
         >
           <Pressable
-            onPress={() => setOpenSection((prev) => (prev === key ? null : key))}
+            onPress={() => handleOpenSectionChange(isOpen ? null : key)}
             style={[styles.categoryTogglePart, { flexDirection: dir }]}
           >
             <View style={[styles.iconBubble, { backgroundColor: color + "22" }]}>
@@ -538,7 +693,9 @@ export function MedicalHistoryList({
         )}
       </View>
     );
-  });
+      })}
+    </>
+  );
 
   const splitHeight = bodyFigureViewportHeight(screenHeight, screenWidth);
   /** Doctor skeleton host is non-scrolling — fill leftover space so pending banners don't clip the figure. */
@@ -568,72 +725,19 @@ export function MedicalHistoryList({
           : null,
       ]}
     >
-      <View style={styles.viewToggleWrap}>
-        <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
-      </View>
+      {!hideTopChrome ? (
+        <View style={styles.viewToggleWrap}>
+          <RecordsViewModeToggle mode={viewMode} onChange={setViewMode} />
+        </View>
+      ) : null}
 
-      {doctorView && accessToken && consultationOpen ? (
-        <View style={[styles.requestPills, { flexDirection: dir }]}>
-          <Pressable
-            onPress={() => setRequestDialog("lab")}
-            style={[
-              styles.requestPill,
-              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
-            ]}
-          >
-            <Beaker size={14} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
-              {t.records.requestLab}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setRequestDialog("xray")}
-            style={[
-              styles.requestPill,
-              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
-            ]}
-          >
-            <ScanLine size={14} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
-              {t.records.requestXray}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={openPrescriptionScreen}
-            style={[
-              styles.requestPill,
-              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
-            ]}
-          >
-            <Pill size={14} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
-              {isRTL ? "روشتة جديدة" : "Add prescription"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setDiagnosisModalOpen(true)}
-            style={[
-              styles.requestPill,
-              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
-            ]}
-          >
-            <Stethoscope size={14} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
-              {isRTL ? "تشخيص جديد" : "Add diagnosis"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setIntakeExamModalOpen(true)}
-            style={[
-              styles.requestPill,
-              { borderColor: colors.primary, backgroundColor: `${colors.primary}12` },
-            ]}
-          >
-            <ClipboardList size={14} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 12 }}>
-              {isRTL ? "فحص متابعة" : "Follow-up exam"}
-            </Text>
-          </Pressable>
+      {!hideTopChrome && doctorView && accessToken && consultationOpen ? (
+        <View style={styles.clinicalBarWrap}>
+          <DoctorClinicalActionBar onAction={handleClinicalAction} />
+        </View>
+      ) : !hideTopChrome && doctorView && accessToken ? (
+        <View style={[styles.clinicalBarWrap, { opacity: 0.6 }]}>
+          <DoctorClinicalActionBar disabled onAction={handleClinicalAction} />
         </View>
       ) : null}
 
@@ -704,9 +808,11 @@ export function MedicalHistoryList({
           searchableCategories={SEARCHABLE_CATEGORIES}
           isFiltering={isFiltering}
           openSection={openSection}
-          onOpenSectionChange={setOpenSection}
+          onOpenSectionChange={handleOpenSectionChange}
           selectedRecord={selectedRecord}
-          onSelectRecord={setSelectedRecord}
+          onSelectRecord={handleSelectRecord}
+          vitalsSelected={vitalsSelected}
+          onSelectVitals={handleSelectVitals}
           onOpenPdf={setPdfView}
           onZoomImage={setViewingFileUrl}
           doctorView={doctorView}
@@ -846,22 +952,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     flexShrink: 0,
   },
-  requestPills: {
+  clinicalBarWrap: {
     paddingHorizontal: WEB_CONTENT_PADDING,
     paddingTop: 8,
-    gap: 8,
+    paddingBottom: 4,
     flexShrink: 0,
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-  requestPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1.5,
   },
   splitRow: {
     marginTop: 8,
@@ -903,6 +998,14 @@ const styles = StyleSheet.create({
   },
   categoryBlock: { paddingHorizontal: 16, paddingTop: 10 },
   categoryBlockSplit: { paddingHorizontal: 8, paddingTop: 6 },
+  vitalsRow: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
   categoryCard: {
     alignItems: "center",
     borderRadius: 14,

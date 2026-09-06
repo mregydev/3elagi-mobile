@@ -333,19 +333,21 @@ export function CountrySelectField({
 
   return (
     <View style={styles.wrap}>
-      <Text
-        style={[
-          styles.label,
-          { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
-        ]}
-      >
-        {label}
-      </Text>
+      {label ? (
+        <Text
+          style={[
+            styles.label,
+            { color: colors.foreground, textAlign: isRTL ? "right" : "left" },
+          ]}
+        >
+          {label}
+        </Text>
+      ) : null}
 
       <View ref={triggerRef} collapsable={false}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={label}
+          accessibilityLabel={label || "Country"}
           disabled={disabled}
           onPress={openMenu}
           style={({

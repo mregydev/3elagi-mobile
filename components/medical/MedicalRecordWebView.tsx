@@ -46,6 +46,10 @@ import { useMobileWebTabBarHeight } from "@/hooks/useMobileWebTabBarHeight";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { localeTag } from "@/utils/rtl";
 import type { LinkedConsultationSummary } from "@/domains/medical/types";
+import {
+  linkedDiagnosesForRecord,
+  recordShowsLinkedDiagnoses,
+} from "@/domains/medical/linkedDiagnoses";
 
 function consultationStatusLabel(
   status: LinkedConsultationSummary["status"],
@@ -400,10 +404,9 @@ export function MedicalRecordWebView() {
               const docMeta = MEDICAL_RECORD_CATEGORY_META[doc.category];
               const docIsImage = isMedicalImageAttachment(doc.fileUrl, doc.fileName);
               return (
-                <Pressable
+                <View
                   key={doc.id}
                   testID="medical-record-linked-row"
-                  onPress={() => openLinkedDoc(doc.id)}
                   style={[
                     styles.linkedRow,
                     { borderColor: colors.border, flexDirection: dir },
@@ -436,7 +439,16 @@ export function MedicalRecordWebView() {
                       {isRTL ? docMeta.labelAr : docMeta.labelEn}
                     </Text>
                   </View>
-                </Pressable>
+                  <Pressable
+                    onPress={() => openLinkedDoc(doc.id)}
+                    hitSlop={8}
+                    accessibilityRole="link"
+                  >
+                    <Text style={[styles.detailsLink, { color: colors.primary }]}>
+                      {isRTL ? "التفاصيل" : "Details"}
+                    </Text>
+                  </Pressable>
+                </View>
               );
             })}
           </View>
@@ -466,8 +478,9 @@ export function MedicalRecordWebView() {
   };
 
   const renderLinkedDiagnoses = () => {
-    if (!isLabOrXray) return null;
-    if (!record.linkedDiagnoses?.length) return null;
+    if (!record || !recordShowsLinkedDiagnoses(record.category)) return null;
+    const diagnoses = linkedDiagnosesForRecord(record);
+    if (!diagnoses.length) return null;
 
     return (
       <SectionCard
@@ -480,11 +493,10 @@ export function MedicalRecordWebView() {
         dir={dir}
       >
         <View style={styles.linkedList}>
-          {record.linkedDiagnoses.map((diag) => (
-            <Pressable
+          {diagnoses.map((diag) => (
+            <View
               key={diag.id}
               testID="medical-record-linked-diagnosis-row"
-              onPress={() => openLinkedDoc(diag.id)}
               style={[styles.linkedRow, { borderColor: colors.border, flexDirection: dir }]}
             >
               <View
@@ -504,7 +516,16 @@ export function MedicalRecordWebView() {
                   {diag.title}
                 </Text>
               </View>
-            </Pressable>
+              <Pressable
+                onPress={() => openLinkedDoc(diag.id)}
+                hitSlop={8}
+                accessibilityRole="link"
+              >
+                <Text style={[styles.detailsLink, { color: colors.primary }]}>
+                  {isRTL ? "التفاصيل" : "Details"}
+                </Text>
+              </Pressable>
+            </View>
           ))}
         </View>
       </SectionCard>
@@ -588,7 +609,7 @@ export function MedicalRecordWebView() {
     return (
       <SectionCard
         testID="medical-record-linked-consultations"
-        title={isRTL ? "استشارات مرتبطة" : "Linked consultations"}
+        title={isRTL ? "فحوصات مرتبطة" : "Linked diagnostics"}
         icon={<MessageCircle size={18} color={colors.primary} />}
         accent={colors.primary}
         colors={colors}
@@ -1374,6 +1395,11 @@ const styles = StyleSheet.create({
   },
   linkedThumb: { width: 52, height: 52, borderRadius: 10 },
   linkedThumbPlaceholder: { alignItems: "center", justifyContent: "center" },
+  detailsLink: {
+    fontSize: 13,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
 
   symptomList: { gap: 6 },
   symptomLine: { fontSize: 15, lineHeight: 22 },

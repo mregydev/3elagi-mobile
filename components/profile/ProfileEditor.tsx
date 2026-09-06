@@ -39,6 +39,7 @@ import {
   profileSaveChromeHeight,
   profileSaveDockBottomPad,
 } from "@/components/profile/profileSaveChrome";
+import { DoctorSettingsEditor } from "@/components/profile/DoctorSettingsEditor";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
@@ -147,11 +148,36 @@ export function ProfileEditor({
     Platform.OS === "web" ? insets.bottom : 0,
   );
 
+  const handleLogout = () => {
+    Alert.alert(
+      isRTL ? "تسجيل الخروج" : "Log out",
+      isRTL ? "هل أنت متأكد؟" : "Are you sure?",
+      [
+        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+        {
+          text: isRTL ? "خروج" : "Log out",
+          style: "destructive",
+          onPress: () => {
+            logout();
+            router.replace("/welcome");
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader />
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
+      ) : isDoctor ? (
+        <DoctorSettingsEditor
+          accessToken={accessToken}
+          editor={editor}
+          showLogout={showLogout}
+          onLogout={handleLogout}
+        />
       ) : (
         <>
         <KeyboardSafeScrollView

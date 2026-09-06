@@ -137,7 +137,7 @@ export function ScheduleMonthGrid({
         <View style={[styles.navRow, { flexDirection: dir }]}>
           <MonthNavButton onPress={onPrevMonth} icon={PrevIcon} colors={colors} />
           <Text style={[styles.monthTitle, { color: colors.foreground, writingDirection: isRTL ? "rtl" : "ltr" }]}>
-            {monthLabel(month, isRTL)} {year.toLocaleString(dateLocale)}
+            {monthLabel(month, isRTL)} {year}
           </Text>
           <MonthNavButton onPress={onNextMonth} icon={NextIcon} colors={colors} />
         </View>
@@ -199,7 +199,7 @@ export function ScheduleMonthGrid({
           ]}
           numberOfLines={1}
         >
-          {monthLabel(month, isRTL)} {year.toLocaleString(dateLocale)}
+          {monthLabel(month, isRTL)} {year}
         </Text>
         <MonthNavButton onPress={onNextMonth} icon={NextIcon} colors={colors} />
       </View>

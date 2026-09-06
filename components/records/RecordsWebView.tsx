@@ -107,6 +107,7 @@ export function RecordsWebView() {
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
   const [openSection, setOpenSection] = useState<MedicalCategory | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
+  const [vitalsSelected, setVitalsSelected] = useState(false);
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
   const [pdfView, setPdfView] = useState<MedicalPdfView | null>(null);
 
@@ -161,8 +162,30 @@ export function RecordsWebView() {
     }
   }, [categoryFilter]);
 
+  const handleSelectVitals = React.useCallback(() => {
+    setVitalsSelected((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedRecord(null);
+        setOpenSection(null);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectRecord = React.useCallback((record: MedicalRecord) => {
+    setVitalsSelected(false);
+    setSelectedRecord(record);
+  }, []);
+
+  const handleOpenSectionChange = React.useCallback((key: MedicalCategory | null) => {
+    setVitalsSelected(false);
+    setOpenSection(key);
+  }, []);
+
   React.useEffect(() => {
     if (!isDesktop || isSkeleton) return;
+    if (vitalsSelected) return;
     if (!openSection) {
       setSelectedRecord(null);
       return;
@@ -175,7 +198,7 @@ export function RecordsWebView() {
     setSelectedRecord((prev) =>
       prev && items.some((item) => item.id === prev.id) ? prev : items[0],
     );
-  }, [isDesktop, isSkeleton, openSection, grouped]);
+  }, [isDesktop, isSkeleton, vitalsSelected, openSection, grouped]);
 
   const openRecord = (item: MedicalRecord) => {
     router.push(`/medical/${item.id}`);
@@ -451,9 +474,12 @@ export function RecordsWebView() {
       searchableCategories={SEARCHABLE_CATEGORIES}
       isFiltering={filtering}
       openSection={openSection}
-      onOpenSectionChange={setOpenSection}
+      onOpenSectionChange={handleOpenSectionChange}
       selectedRecord={selectedRecord}
-      onSelectRecord={setSelectedRecord}
+      onSelectRecord={handleSelectRecord}
+      vitalsSelected={vitalsSelected}
+      onSelectVitals={handleSelectVitals}
+      patientUserId={profile?.id}
       onOpenPdf={setPdfView}
       onZoomImage={setViewingFileUrl}
       filtersSlot={webFiltersPanel}

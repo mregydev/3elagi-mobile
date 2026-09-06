@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react-native";
+import { MoreVertical, Plus, X } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
   Modal,
@@ -31,13 +31,21 @@ interface Props {
   disabled?: boolean;
   /** Composer button sizing (mobile web uses a smaller icon button). */
   buttonStyle?: object;
+  /** Header toolbar uses a bordered square with ⋮ instead of the composer +. */
+  trigger?: "plus" | "more";
 }
 
 const MENU_MAX_WIDTH = 320;
 const MENU_GAP = 8;
 
 /** Composer plus button — opens an anchored context window with chat action pills. */
-export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props) {
+export function ChatActionsMenu({
+  isRTL,
+  actions,
+  disabled,
+  buttonStyle,
+  trigger = "plus",
+}: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -111,6 +119,20 @@ export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props
     };
   }
 
+  const TriggerIcon = trigger === "more" ? MoreVertical : Plus;
+  const triggerBaseStyle =
+    trigger === "more"
+      ? {
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          borderWidth: 1,
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
+          backgroundColor: colors.card,
+        }
+      : styles.button;
+
   return (
     <>
       <View ref={buttonRef} collapsable={false}>
@@ -121,15 +143,17 @@ export function ChatActionsMenu({ isRTL, actions, disabled, buttonStyle }: Props
           accessibilityLabel={isRTL ? "إجراءات المحادثة" : "Chat actions"}
           hitSlop={6}
           style={[
-            buttonStyle ?? styles.button,
-            {
-              backgroundColor: colors.muted,
-              borderColor: colors.border,
-              opacity: disabled ? 0.45 : 1,
-            },
+            buttonStyle ?? triggerBaseStyle,
+            trigger === "more"
+              ? { borderColor: "#E2E8F0" }
+              : {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                },
+            { opacity: disabled ? 0.45 : 1 },
           ]}
         >
-          <Plus size={20} color={colors.foreground} />
+          <TriggerIcon size={trigger === "more" ? 18 : 20} color={colors.foreground} />
         </Pressable>
       </View>
 

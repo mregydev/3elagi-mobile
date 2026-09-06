@@ -114,10 +114,9 @@ function profileSaveBarFabOffset(
   isDesktop: boolean,
 ): number {
   if (!isProfileRoute(pathname, segments)) return 0;
-  return (
-    profileSaveChromeHeight({ withLogout: !isDesktop }) +
-    ASK_3ELAGI_AI_FAB_CHROME_GAP
-  );
+  const saveHeight = profileSaveChromeHeight({ withLogout: !isDesktop });
+  const fabSize = 56;
+  return saveHeight + fabSize + ASK_3ELAGI_AI_FAB_CHROME_GAP;
 }
 
 /** Chat screens dock a composer (mic + input) — floating FAB is hidden;

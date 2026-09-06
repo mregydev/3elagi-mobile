@@ -33,6 +33,7 @@ import { PendingSpecialityChangeBanner } from "@/components/profile/PendingSpeci
 import { DoctorTagsInput } from "@/components/profile/DoctorTagsInput";
 import { profileSaveChromeHeight, profileSaveDockBottomPad } from "@/components/profile/profileSaveChrome";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { DoctorSettingsEditor } from "@/components/profile/DoctorSettingsEditor";
 import { navigateToWelcome } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
@@ -99,6 +100,8 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
   const { t, locale } = useI18n();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
+  const authRole = useAuthStore((s) => s.role);
+  const doctorId = useAuthStore((s) => s.doctorId);
   const { isDesktop } = useWebLayout();
   const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
   const insets = useSafeAreaInsets();
@@ -239,6 +242,23 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
       <View style={[styles.page, { backgroundColor: colors.background }]}>
         <ActivityIndicator style={{ marginTop: 80 }} color={colors.primary} />
       </View>
+    );
+  }
+
+  const isDoctorUser =
+    isDoctor ||
+    role.toLowerCase() === "doctor" ||
+    authRole?.toLowerCase() === "doctor" ||
+    Boolean(doctorId);
+
+  if (isDoctorUser) {
+    return (
+      <DoctorSettingsEditor
+        accessToken={accessToken}
+        editor={editor}
+        showLogout={showLogout}
+        onLogout={handleLogout}
+      />
     );
   }
 
