@@ -40,6 +40,10 @@ import { fetchAllMedicalHistory } from "@/domains/medical/api";
 import { useMedicalStore } from "@/domains/medical/store";
 import { usePointsStore } from "@/domains/points/store";
 import { useColors } from "@/hooks/useColors";
+import { ErrorBoundary } from "@/components/AppErrorBoundary";
+import { GlobalClientErrorHandler } from "@/components/GlobalClientErrorHandler";
+
+export { ErrorBoundary };
 
 function MedicalDataLoader() {
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -105,10 +109,15 @@ export default function RootLayout() {
   const handleSplashDone = useCallback(() => setShowSplash(false), []);
 
   if (showSplash) {
-    return <AppSplash onDone={handleSplashDone} />;
+    return (
+      <GlobalClientErrorHandler>
+        <AppSplash onDone={handleSplashDone} />
+      </GlobalClientErrorHandler>
+    );
   }
 
   return (
+    <GlobalClientErrorHandler>
     <SafeAreaProvider>
       <KeyboardProvider>
         <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -187,6 +196,7 @@ export default function RootLayout() {
         </View>
       </KeyboardProvider>
     </SafeAreaProvider>
+    </GlobalClientErrorHandler>
   );
 }
 

@@ -13,7 +13,7 @@
     "android:setup": "bash scripts/setup-android.sh",
     "ios": "expo run:ios",
     "web": "bash scripts/expo-web.sh",
-    "build:web": "expo export --platform web --output-dir dist",
+    "build:web": "expo export --platform web --output-dir dist --source-maps",
     "vercel-build": "npm run build:web",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

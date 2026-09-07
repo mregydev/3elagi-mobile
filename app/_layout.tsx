@@ -39,6 +39,10 @@ import { useMedicalStore } from "@/domains/medical/store";
 import { usePointsStore } from "@/domains/points/store";
 import { useRemindersStore } from "@/domains/reminders/store";
 import { useColors } from "@/hooks/useColors";
+import { ErrorBoundary } from "@/components/AppErrorBoundary";
+import { GlobalClientErrorHandler } from "@/components/GlobalClientErrorHandler";
+
+export { ErrorBoundary };
 
 function MedicalDataLoader() {
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -173,7 +177,7 @@ export default function RootLayout() {
   const handleSplashDone = useCallback(() => setShowSplash(false), []);
 
   return (
-    <>
+    <GlobalClientErrorHandler>
       <ClarityBootstrap />
       <PushNotificationsBootstrap />
       <WebChatNotificationsBootstrap />
@@ -192,6 +196,6 @@ export default function RootLayout() {
       <IncomingVideoCallOverlay />
       <HardwareBackHandler />
       {showSplash ? <AppSplash onDone={handleSplashDone} /> : <AppRoot />}
-    </>
+    </GlobalClientErrorHandler>
   );
 }
