@@ -1526,7 +1526,7 @@ export default function MedicalRecordDetail() {
                 <MessageCircle size={18} color={colors.primary} />
               </View>
               <Text style={[styles.cardLabel, { color: colors.mutedForeground, textAlign }]}>
-                {isRTL ? "فحوصات مرتبطة" : "Linked diagnostics"}
+                {isRTL ? "استشارات مرتبطة" : "Linked consultations"}
               </Text>
             </View>
             {record.linkedConsultations.map((consultation) => {

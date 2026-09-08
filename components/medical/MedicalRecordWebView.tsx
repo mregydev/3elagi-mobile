@@ -609,7 +609,7 @@ export function MedicalRecordWebView() {
     return (
       <SectionCard
         testID="medical-record-linked-consultations"
-        title={isRTL ? "فحوصات مرتبطة" : "Linked diagnostics"}
+        title={isRTL ? "استشارات مرتبطة" : "Linked consultations"}
         icon={<MessageCircle size={18} color={colors.primary} />}
         accent={colors.primary}
         colors={colors}
