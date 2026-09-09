@@ -11,9 +11,9 @@ import {
   type PointMarket,
   type PointPricing,
 } from "@/domains/points/api";
+import { resolvePatientGeoCountry } from "@/domains/patient/geo";
 import {
   marketCurrencyCode,
-  patientGeoCountry,
   pricePerPoint,
 } from "@/constants/patientCountries";
 import { useColors } from "@/hooks/useColors";
@@ -33,12 +33,14 @@ export default function PricingTab() {
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
   const [pricing, setPricing] = useState<PointPricing | null>(null);
-  const ipCountry = patientGeoCountry();
+  const [ipCountry, setIpCountry] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const geo = patientGeoCountry();
+      const geo = await resolvePatientGeoCountry();
+      if (cancelled) return;
+      setIpCountry(geo);
       const next = await fetchPointPricing(geo);
       if (cancelled) return;
       if (next) setPricing(next);
@@ -46,7 +48,7 @@ export default function PricingTab() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profile?.country]);
 
   // Until the lookup answers (or if it fails) fall back to the profile market,
   // so the page never renders an empty table.

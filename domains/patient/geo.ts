@@ -1,0 +1,17 @@
+import { useAuthStore } from "@/domains/auth/store";
+import { detectCountryFromIp } from "@/domains/points/detectCountry";
+
+/** Signed-in patient's declared residence country, if any. */
+export function patientProfileCountry(): string | null {
+  const { role, profile } = useAuthStore.getState();
+  if (role?.toLowerCase() !== "patient") return null;
+  const code = profile?.country?.trim().toUpperCase();
+  return code || null;
+}
+
+/** Patient residence from profile; falls back to IP when unset or not a patient. */
+export async function resolvePatientGeoCountry(): Promise<string | null> {
+  const profile = patientProfileCountry();
+  if (profile) return profile;
+  return detectCountryFromIp().catch(() => null);
+}

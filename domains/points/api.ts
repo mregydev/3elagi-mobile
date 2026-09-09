@@ -1,11 +1,11 @@
 import { API_BASE } from "@/constants/api";
-import { patientGeoCountry } from "@/constants/patientCountries";
+import { resolvePatientGeoCountry } from "@/domains/patient/geo";
 
 const CLIENT_GEO_HEADER = "X-Client-Geo-Country";
 
 async function pricingRequestInit(clientGeo?: string | null): Promise<RequestInit> {
-  const geo = clientGeo ?? patientGeoCountry();
-  return { headers: { [CLIENT_GEO_HEADER]: geo } };
+  const geo = clientGeo ?? (await resolvePatientGeoCountry());
+  return geo ? { headers: { [CLIENT_GEO_HEADER]: geo } } : {};
 }
 
 /** Matches API signup default (`DEFAULT_MESSAGE_POINTS`). */
@@ -46,11 +46,12 @@ export async function createVisaCheckout(
   token: string,
   amount: number,
 ): Promise<{ checkout_url: string }> {
+  const geo = await resolvePatientGeoCountry();
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
-    "X-Client-Geo-Country": patientGeoCountry(),
   };
+  if (geo) headers["X-Client-Geo-Country"] = geo;
 
   const res = await fetch(`${API_BASE}/payments/credits/checkout/visa`, {
     method: "POST",
