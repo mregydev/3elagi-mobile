@@ -6,7 +6,7 @@ export type DoctorTagSuggestion = {
   label: string;
   labelEn: string;
   specialityId: string | null;
-  source: "speciality" | "common";
+  source: "subspecialty" | "common";
 };
 
 export type ResolvedDoctorTagLabel = {
@@ -19,7 +19,7 @@ type RawDoctorTagSuggestion = {
   label: string;
   label_en: string;
   speciality_id: string | null;
-  source: "speciality" | "common";
+  source: "subspecialty" | "common";
 };
 
 type RawResolvedDoctorTagLabel = {
@@ -28,15 +28,15 @@ type RawResolvedDoctorTagLabel = {
 };
 
 export async function fetchDoctorTagSuggestions(params: {
-  specialityIds: string[];
+  primarySpecialityId?: string;
   locale: Locale;
   q?: string;
   limit?: number;
 }): Promise<DoctorTagSuggestion[]> {
   const search = new URLSearchParams();
   search.set("locale", params.locale);
-  if (params.specialityIds.length) {
-    search.set("speciality_ids", params.specialityIds.join(","));
+  if (params.primarySpecialityId) {
+    search.set("speciality_ids", params.primarySpecialityId);
   }
   if (params.q?.trim()) {
     search.set("q", params.q.trim());
@@ -61,7 +61,7 @@ export async function fetchDoctorTagSuggestions(params: {
     label: row.label,
     labelEn: row.label_en,
     specialityId: row.speciality_id,
-    source: row.source,
+    source: row.source === "speciality" ? "subspecialty" : row.source,
   }));
 }
 

@@ -547,7 +547,7 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                         <DoctorTagsInput
                           tags={tags}
                           onChange={setTags}
-                          specialityIds={specialityIds}
+                          primarySpecialityId={specialityIds[0] ?? ""}
                           isRTL={isRTL}
                           colors={colors}
                           disabled={saving}

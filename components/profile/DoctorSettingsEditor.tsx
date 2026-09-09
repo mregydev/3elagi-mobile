@@ -319,7 +319,7 @@ export function DoctorSettingsEditor({
             <DoctorTagsInput
               tags={tags}
               onChange={setTags}
-              specialityIds={specialityIds}
+              primarySpecialityId={specialityIds[0] ?? ""}
               isRTL={isRTL}
               colors={colors}
               disabled={saving}

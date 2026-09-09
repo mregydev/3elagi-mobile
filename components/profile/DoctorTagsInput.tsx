@@ -20,7 +20,7 @@ import { alignText, flexRow } from "@/utils/rtl";
 type Props = {
   tags: string[];
   onChange: (tags: string[]) => void;
-  specialityIds: string[];
+  primarySpecialityId: string;
   isRTL: boolean;
   colors: ReturnType<typeof useColors>;
   disabled?: boolean;
@@ -29,7 +29,7 @@ type Props = {
 export function DoctorTagsInput({
   tags,
   onChange,
-  specialityIds,
+  primarySpecialityId,
   isRTL,
   colors,
   disabled = false,
@@ -49,7 +49,7 @@ export function DoctorTagsInput({
     const timer = setTimeout(() => {
       setLoadingSuggestions(true);
       void fetchDoctorTagSuggestions({
-        specialityIds,
+        primarySpecialityId,
         locale,
         q: query,
         limit: 8,
@@ -73,7 +73,7 @@ export function DoctorTagsInput({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, disabled, query, specialityIds, tags, locale]);
+  }, [open, disabled, query, primarySpecialityId, tags, locale]);
 
   const createTag = useMemo(() => canCreateDoctorTag(query, tags), [query, tags]);
   const atLimit = tags.length >= MAX_DOCTOR_TAGS;
@@ -201,9 +201,9 @@ export function DoctorTagsInput({
                 >
                   {item.label}
                 </Text>
-                {item.source === "speciality" ? (
+                {item.source === "subspecialty" ? (
                   <Text style={[styles.badge, { color: colors.mutedForeground }]}>
-                    {t.settings.doctorTagsSpecialityBadge}
+                    {t.settings.doctorTagsSubspecialtyBadge}
                   </Text>
                 ) : null}
               </Pressable>

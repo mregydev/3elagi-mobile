@@ -82,11 +82,11 @@ const en = {
     deleteAccountFailed: "Could not delete account",
     doctorTags: "Profile tags",
     doctorTagsHint:
-      "Add skills, focus areas, or languages patients should know about. Suggestions match your specialities.",
+      "Add subspecialties, skills, or languages. Suggestions match your main speciality; you can also add custom tags.",
     doctorTagsPlaceholder: "Search or add a tag…",
     doctorTagsCreate: (tag: string) => `Add "${tag}"`,
     doctorTagsEmpty: "No matching tags",
-    doctorTagsSpecialityBadge: "Speciality",
+    doctorTagsSubspecialtyBadge: "Subspecialty",
     doctorTagsLimit: (max: number) => `Maximum ${max} tags reached`,
   },
   prescription: {
@@ -1104,11 +1104,11 @@ const ar: typeof en = {
     deleteAccountFailed: "تعذر حذف الحساب",
     doctorTags: "وسوم الملف",
     doctorTagsHint:
-      "أضف مهارات أو مجالات اهتمام أو لغات يجب أن يعرفها المرضى. الاقتراحات مرتبطة بتخصصاتك.",
+      "أضف تخصصات فرعية أو مهارات أو لغات. الاقتراحات مرتبطة بتخصصك الرئيسي، ويمكنك إضافة وسوم مخصصة.",
     doctorTagsPlaceholder: "ابحث أو أضف وسمًا…",
     doctorTagsCreate: (tag: string) => `إضافة "${tag}"`,
     doctorTagsEmpty: "لا توجد وسوم مطابقة",
-    doctorTagsSpecialityBadge: "تخصص",
+    doctorTagsSubspecialtyBadge: "تخصص فرعي",
     doctorTagsLimit: (max: number) => `تم الوصول إلى الحد الأقصى (${max} وسوم)`,
   },
   prescription: {
@@ -2111,11 +2111,11 @@ const de: typeof en = {
     deleteAccountFailed: "Konto konnte nicht gelöscht werden",
     doctorTags: "Profil-Tags",
     doctorTagsHint:
-      "Fügen Sie Fähigkeiten, Schwerpunkte oder Sprachen hinzu. Vorschläge passen zu Ihren Fachgebieten.",
+      "Fügen Sie Subspezialitäten, Fähigkeiten oder Sprachen hinzu. Vorschläge passen zu Ihrem Hauptfachgebiet; eigene Tags sind möglich.",
     doctorTagsPlaceholder: "Tag suchen oder hinzufügen…",
     doctorTagsCreate: (tag: string) => `"${tag}" hinzufügen`,
     doctorTagsEmpty: "Keine passenden Tags",
-    doctorTagsSpecialityBadge: "Fachgebiet",
+    doctorTagsSubspecialtyBadge: "Subspezialität",
     doctorTagsLimit: (max: number) => `Maximal ${max} Tags erreicht`,
   },
   prescription: {
@@ -3125,11 +3125,11 @@ const es: typeof en = {
     deleteAccountFailed: "No se pudo eliminar la cuenta",
     doctorTags: "Etiquetas del perfil",
     doctorTagsHint:
-      "Añade habilidades, áreas de enfoque o idiomas. Las sugerencias coinciden con tus especialidades.",
+      "Añade subespecialidades, habilidades o idiomas. Las sugerencias coinciden con tu especialidad principal; también puedes añadir etiquetas personalizadas.",
     doctorTagsPlaceholder: "Buscar o añadir etiqueta…",
     doctorTagsCreate: (tag: string) => `Añadir "${tag}"`,
     doctorTagsEmpty: "No hay etiquetas coincidentes",
-    doctorTagsSpecialityBadge: "Especialidad",
+    doctorTagsSubspecialtyBadge: "Subespecialidad",
     doctorTagsLimit: (max: number) => `Máximo de ${max} etiquetas alcanzado`,
   },
   prescription: {
