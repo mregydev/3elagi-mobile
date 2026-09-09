@@ -399,9 +399,22 @@ const en = {
   },
   documentation: {
     title: "Documentation",
+    subtitle: "Short guides for patients and doctors — how consultations, payment, and video visits work on 3elagi.",
+    heroBadge: "Help center",
     generalIntroduction: "General introduction",
+    textConsultationPayment: "Text consultation & payment",
+    videoConsultation: "Video consultation",
+    payOnDoctorBankNote:
+      "When your doctor asks for payment, transfer the fee to the doctor's bank account shown in the chat — not to 3elagi.",
     playbackFailed: "This video couldn't be played here. Open it on YouTube instead.",
     openOnYouTube: "Watch on YouTube",
+  },
+  payment: {
+    doctorBankTitle: "Doctor bank account",
+    accountHolder: "Account holder",
+    iban: "IBAN / account number",
+    nationalId: "National ID",
+    bankHint: "Transfer the amount above to this account, then attach your receipt.",
   },
   landing: {
     getStarted: "Get started",
@@ -1425,9 +1438,22 @@ const ar: typeof en = {
   },
   documentation: {
     title: "التوثيق",
+    subtitle: "أدلة قصيرة للمرضى والأطباء — كيف تعمل الاستشارات والدفع ومكالمات الفيديو على 3elagi.",
+    heroBadge: "مركز المساعدة",
     generalIntroduction: "مقدمة عامة",
+    textConsultationPayment: "استشارة نصية والدفع",
+    videoConsultation: "استشارة فيديو",
+    payOnDoctorBankNote:
+      "عندما يطلب الطبيب الدفع، حوّل المبلغ إلى الحساب البنكي للطبيب الظاهر في المحادثة — وليس إلى 3elagi.",
     playbackFailed: "تعذّر تشغيل الفيديو هنا. افتحه على YouTube بدلاً من ذلك.",
     openOnYouTube: "مشاهدة على YouTube",
+  },
+  payment: {
+    doctorBankTitle: "الحساب البنكي للطبيب",
+    accountHolder: "اسم صاحب الحساب",
+    iban: "رقم الحساب / IBAN",
+    nationalId: "الرقم القومي",
+    bankHint: "حوّل المبلغ أعلاه إلى هذا الحساب، ثم أرفق إيصال الدفع.",
   },
   landing: {
     getStarted: "ابدأ الآن",
@@ -2441,9 +2467,22 @@ const de: typeof en = {
   },
   documentation: {
     title: "Dokumentation",
+    subtitle: "Kurze Anleitungen für Patienten und Ärzte — Beratung, Zahlung und Video auf 3elagi.",
+    heroBadge: "Hilfe-Center",
     generalIntroduction: "Allgemeine Einführung",
+    textConsultationPayment: "Textberatung & Zahlung",
+    videoConsultation: "Videoberatung",
+    payOnDoctorBankNote:
+      "Wenn Ihr Arzt eine Zahlung verlangt, überweisen Sie an das Bankkonto des Arztes im Chat — nicht an 3elagi.",
     playbackFailed: "Das Video konnte hier nicht abgespielt werden. Öffnen Sie es stattdessen auf YouTube.",
     openOnYouTube: "Auf YouTube ansehen",
+  },
+  payment: {
+    doctorBankTitle: "Bankkonto des Arztes",
+    accountHolder: "Kontoinhaber",
+    iban: "IBAN / Kontonummer",
+    nationalId: "Personalausweis-Nr.",
+    bankHint: "Überweisen Sie den Betrag auf dieses Konto und laden Sie dann den Beleg hoch.",
   },
   landing: {
     getStarted: "Loslegen",
@@ -3462,9 +3501,22 @@ const es: typeof en = {
   },
   documentation: {
     title: "Documentación",
+    subtitle: "Guías breves para pacientes y médicos — consultas, pago y videollamadas en 3elagi.",
+    heroBadge: "Centro de ayuda",
     generalIntroduction: "Introducción general",
+    textConsultationPayment: "Consulta por chat y pago",
+    videoConsultation: "Consulta por video",
+    payOnDoctorBankNote:
+      "Cuando el médico pida el pago, transfiere a la cuenta bancaria del médico en el chat — no a 3elagi.",
     playbackFailed: "No se pudo reproducir el video aquí. Ábralo en YouTube.",
     openOnYouTube: "Ver en YouTube",
+  },
+  payment: {
+    doctorBankTitle: "Cuenta bancaria del médico",
+    accountHolder: "Titular de la cuenta",
+    iban: "IBAN / número de cuenta",
+    nationalId: "Documento de identidad",
+    bankHint: "Transfiere el importe a esta cuenta y luego adjunta el comprobante.",
   },
   landing: {
     getStarted: "Empezar",

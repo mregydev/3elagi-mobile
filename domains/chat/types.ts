@@ -108,6 +108,10 @@ export interface PaymentActionMeta {
   /** The doctor's own payment link. */
   payment_link?: string | null;
   payment_proof_url?: string | null;
+  /** Doctor bank details — shown when the patient must pay. */
+  doctor_iban?: string | null;
+  doctor_account_holder?: string | null;
+  doctor_national_id?: string | null;
 }
 
 export interface AppointmentActionMeta

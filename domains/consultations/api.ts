@@ -5,6 +5,7 @@ import {
   isAuthHttpStatus,
   logoutOnAuthFailure,
 } from "@/domains/auth/sessionFailure";
+import { resolvePatientGeoCountry } from "@/domains/patient/geo";
 import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
 export interface Consultation {
@@ -134,10 +135,10 @@ export async function startConsultation(
   description: string,
   token: string,
 ): Promise<{ consultation: Consultation; points: PointsSummary }> {
-  // Temporary: always bill/start as KSA until patient geo is finalized elsewhere.
+  const geo = await resolvePatientGeoCountry();
   return authJson(`/consultations/start`, token, {
     method: "POST",
-    headers: { "x-client-geo-country": "SA" },
+    headers: geo ? { "x-client-geo-country": geo } : undefined,
     body: JSON.stringify({ doctor_id: doctorId, description }),
   });
 }

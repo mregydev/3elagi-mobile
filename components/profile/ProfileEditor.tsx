@@ -403,6 +403,41 @@ export function ProfileEditor({
 
             {isDoctor ? (
               <SectionCard
+                title={isRTL ? "البيانات البنكية" : "Bank account & payout"}
+                colors={colors}
+                textAlign={textAlign}
+              >
+                <Field
+                  label={isRTL ? "الاسم الكامل لصاحب الحساب" : "Account holder full name"}
+                  value={accountHolderFullName}
+                  onChangeText={setAccountHolderFullName}
+                  placeholder={isRTL ? "كما هو مسجل في البنك" : "As registered at the bank"}
+                  colors={colors}
+                  isRTL={isRTL}
+                />
+                <Field
+                  label={isRTL ? "رقم الحساب / IBAN" : "IBAN"}
+                  value={iban}
+                  onChangeText={setIban}
+                  placeholder="EGxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  autoCapitalize="characters"
+                  colors={colors}
+                  isRTL={isRTL}
+                />
+                <Field
+                  label={isRTL ? "الرقم القومي" : "National ID"}
+                  value={nationalId}
+                  onChangeText={setNationalId}
+                  placeholder={isRTL ? "14 رقمًا" : "14-digit national ID"}
+                  keyboardType="number-pad"
+                  colors={colors}
+                  isRTL={isRTL}
+                />
+              </SectionCard>
+            ) : null}
+
+            {isDoctor ? (
+              <SectionCard
                 title={t.settings.digitalSignature}
                 colors={colors}
                 textAlign={textAlign}

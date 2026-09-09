@@ -554,6 +554,42 @@ export function ProfileEditorWebView({ accessToken, role, isRTL, colors }: Props
                 <View style={rowStyle}>
                 <View style={[...cardBase, halfStyle]}>
                   <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
+                    {isRTL ? "البيانات البنكية" : "Bank account & payout"}
+                  </Text>
+                  <View style={fields2}>
+                    <ProfileField
+                      label={isRTL ? "الاسم الكامل لصاحب الحساب" : "Account holder full name"}
+                      value={accountHolderFullName}
+                      onChangeText={setAccountHolderFullName}
+                      placeholder={isRTL ? "كما هو مسجل في البنك" : "As registered at the bank"}
+                      colors={colors}
+                      isRTL={isRTL}
+                    />
+                    <ProfileField
+                      label={isRTL ? "رقم الحساب / IBAN" : "IBAN"}
+                      value={iban}
+                      onChangeText={setIban}
+                      placeholder="EGxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      autoCapitalize="characters"
+                      colors={colors}
+                      isRTL={isRTL}
+                    />
+                    <View style={spanFull}>
+                      <ProfileField
+                        label={isRTL ? "الرقم القومي" : "National ID"}
+                        value={nationalId}
+                        onChangeText={setNationalId}
+                        placeholder={isRTL ? "14 رقمًا" : "14-digit national ID"}
+                        keyboardType="number-pad"
+                        colors={colors}
+                        isRTL={isRTL}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <View style={[...cardBase, halfStyle]}>
+                  <Text style={[styles.cardTitle, { color: colors.foreground, textAlign }]}>
                     {isRTL ? "الشهادات والتوقيع" : "Credentials"}
                   </Text>
                   <View

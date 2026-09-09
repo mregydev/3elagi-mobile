@@ -5,6 +5,73 @@ import type { PaymentActionMeta } from "@/domains/chat/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
+function DoctorBankDetails({
+  meta,
+  textAlign,
+}: {
+  meta: PaymentActionMeta;
+  textAlign: "left" | "right" | "center";
+}) {
+  const colors = useColors();
+  const { t } = useI18n();
+  const holder = meta.doctor_account_holder?.trim();
+  const iban = meta.doctor_iban?.trim();
+  const nationalId = meta.doctor_national_id?.trim();
+  if (!holder && !iban && !nationalId) return null;
+
+  return (
+    <View
+      style={[
+        styles.bankCard,
+        { backgroundColor: colors.muted, borderColor: colors.border },
+      ]}
+    >
+      <Text style={[styles.bankTitle, { color: colors.foreground, textAlign }]}>
+        {t.payment.doctorBankTitle}
+      </Text>
+      {holder ? (
+        <BankRow label={t.payment.accountHolder} value={holder} textAlign={textAlign} />
+      ) : null}
+      {iban ? <BankRow label={t.payment.iban} value={iban} textAlign={textAlign} mono /> : null}
+      {nationalId ? (
+        <BankRow label={t.payment.nationalId} value={nationalId} textAlign={textAlign} mono />
+      ) : null}
+      <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+        {t.payment.bankHint}
+      </Text>
+    </View>
+  );
+}
+
+function BankRow({
+  label,
+  value,
+  textAlign,
+  mono,
+}: {
+  label: string;
+  value: string;
+  textAlign: "left" | "right" | "center";
+  mono?: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <View style={styles.bankRow}>
+      <Text style={[styles.bankLabel, { color: colors.mutedForeground, textAlign }]}>{label}</Text>
+      <Text
+        style={[
+          styles.bankValue,
+          mono && styles.bankMono,
+          { color: colors.foreground, textAlign },
+        ]}
+        selectable
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 export type PaymentReply = "submit" | "approve" | "reject";
 
 type Props = {
@@ -65,6 +132,10 @@ export function PaymentActionPanel({ meta, isDoctor, busy, inactive, onReply }: 
       </Text>
       {amount ? (
         <Text style={[styles.amount, { color: colors.primary, textAlign }]}>{amount}</Text>
+      ) : null}
+
+      {!inactive && status === "awaiting_payment" && !isDoctor ? (
+        <DoctorBankDetails meta={meta} textAlign={textAlign} />
       ) : null}
 
       {/* The doctor's own payment URL, shown in full so the patient can read,
@@ -217,6 +288,18 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   hint: { fontSize: 12, lineHeight: 16 },
+  bankCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginTop: 2,
+  },
+  bankTitle: { fontSize: 13, fontWeight: "800" },
+  bankRow: { gap: 2 },
+  bankLabel: { fontSize: 11, fontWeight: "600" },
+  bankValue: { fontSize: 13, fontWeight: "700", lineHeight: 18 },
+  bankMono: { fontFamily: "monospace" },
   amount: { fontSize: 15, fontWeight: "800" },
   actions: { gap: 8, flexWrap: "wrap", marginTop: 2 },
   btn: {
