@@ -1,6 +1,6 @@
 import { ChevronDown, Search, X } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import type { Speciality } from "@/domains/home/api";
 import { specialityLabel } from "@/domains/home/specialityLabel";
@@ -28,6 +28,7 @@ export function SpecialityMultiSelect({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
 
@@ -52,6 +53,20 @@ export function SpecialityMultiSelect({
       )
       .slice(0, MAX_RESULTS);
   }, [specialities, selectedIds, query, locale]);
+
+  const cancelScheduledClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelScheduledClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
+  }, [cancelScheduledClose]);
+
+  useEffect(() => cancelScheduledClose, [cancelScheduledClose]);
 
   return (
     <View style={styles.wrap}>
@@ -93,9 +108,14 @@ export function SpecialityMultiSelect({
           value={query}
           onChangeText={(value) => {
             setQuery(value);
+            cancelScheduledClose();
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            cancelScheduledClose();
+            setOpen(true);
+          }}
+          onBlur={scheduleClose}
           placeholder={isRTL ? "ابحث عن تخصص…" : "Search specialities…"}
           placeholderTextColor={colors.mutedForeground}
           style={[styles.input, { color: colors.foreground, textAlign }]}
@@ -109,6 +129,11 @@ export function SpecialityMultiSelect({
             styles.list,
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
+          {...(Platform.OS === "web"
+            ? {
+                onMouseDown: (event: { preventDefault: () => void }) => event.preventDefault(),
+              }
+            : {})}
         >
           {matches.length ? (
             matches.map((spec) => (

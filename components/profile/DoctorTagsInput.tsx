@@ -1,6 +1,6 @@
 import { Plus, Search, X } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import {
   canCreateDoctorTag,
@@ -39,6 +39,7 @@ export function DoctorTagsInput({
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<DoctorTagSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
   const tagItems = useDoctorTagLabels(tags, locale);
@@ -74,6 +75,20 @@ export function DoctorTagsInput({
       clearTimeout(timer);
     };
   }, [open, disabled, query, primarySpecialityId, tags, locale]);
+
+  const cancelScheduledClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelScheduledClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
+  }, [cancelScheduledClose]);
+
+  useEffect(() => cancelScheduledClose, [cancelScheduledClose]);
 
   const createTag = useMemo(() => canCreateDoctorTag(query, tags), [query, tags]);
   const atLimit = tags.length >= MAX_DOCTOR_TAGS;
@@ -150,9 +165,14 @@ export function DoctorTagsInput({
           editable={!disabled && !atLimit}
           onChangeText={(value) => {
             setQuery(value);
+            cancelScheduledClose();
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            cancelScheduledClose();
+            setOpen(true);
+          }}
+          onBlur={scheduleClose}
           onSubmitEditing={submitQuery}
           returnKeyType="done"
           placeholder={
@@ -169,6 +189,12 @@ export function DoctorTagsInput({
             styles.list,
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
+          {...(Platform.OS === "web"
+            ? {
+                // Keep input focused while picking a suggestion on web.
+                onMouseDown: (event: { preventDefault: () => void }) => event.preventDefault(),
+              }
+            : {})}
         >
           {createTag ? (
             <Pressable
