@@ -56,25 +56,28 @@ export function HomeHeroWithTvVideo({ children }: Props) {
 const styles = StyleSheet.create({
   shellDesktop: {
     marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-    alignItems: "center",
-    gap: 48,
+    marginTop: 12,
+    marginBottom: 4,
+    alignItems: "flex-start",
+    gap: 16,
   },
   copyDesktop: {
     flex: 5,
     minWidth: 300,
     minHeight: 0,
+    alignSelf: "flex-start",
   },
   visualDesktop: {
-    flex: 7,
-    minWidth: 380,
+    flex: 6,
+    minWidth: 360,
+    alignSelf: "flex-start",
   },
   shellMobile: {
+    marginTop: 8,
     gap: 4,
   },
   nativeTvInline: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 2,
+    marginBottom: 4,
   },
 });

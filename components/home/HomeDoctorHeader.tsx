@@ -1,371 +1,532 @@
-import { router } from "expo-router";
-import {
-  CalendarClock,
-  ChevronRight,
-  ClipboardList,
-  Radio,
-} from "lucide-react-native";
 import React from "react";
+
 import {
+
   Platform,
-  Pressable,
+
   StyleSheet,
-  Switch,
+
   Text,
-  useWindowDimensions,
+
   View,
+
 } from "react-native";
+
+import { DoctorQuickActions } from "@/components/home/DoctorQuickActions";
+import { HomeDoctorSummary } from "@/components/home/HomeDoctorSummary";
+import type { DoctorDashboardMetrics } from "@/hooks/useDoctorDashboard";
+
+import {
+
+  DASHBOARD_INDIGO,
+
+  DASHBOARD_INDIGO_LIGHT,
+
+} from "@/constants/dashboardTheme";
+
 import { surfaceCard, UI } from "@/constants/uiTokens";
+
 import { useAuthStore } from "@/domains/auth/store";
-import { useColors } from "@/hooks/useColors";
+
 import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
+
+import { useColors } from "@/hooks/useColors";
+
 import { useI18n } from "@/hooks/useI18n";
+
 import { useWebLayout } from "@/hooks/useWebLayout";
+
 import { alignText, flexRow } from "@/utils/rtl";
 
-type QuickAction = {
-  key: string;
-  label: string;
-  hint: string;
-  icon: React.ReactNode;
-  onPress?: () => void;
-  primary?: boolean;
-  badge?: string;
-  toggle?: boolean;
-};
+
 
 function greetingKey(): "morning" | "afternoon" | "evening" {
+
   const h = new Date().getHours();
+
   if (h < 12) return "morning";
+
   if (h < 17) return "afternoon";
+
   return "evening";
+
 }
+
+
 
 interface Props {
+
   immediateCallEnabled: boolean;
+
   togglingAvailability?: boolean;
+
   onToggleAvailability: (next: boolean) => void;
-  /** Desktop hero row with TV video — stack actions in the narrow copy column. */
+
+  /** Desktop hero row with TV video — greeting + quick actions in the copy column. */
+
   besideMedia?: boolean;
+
   /** Native mobile: TV banner inserted between greeting and quick actions. */
+
   mediaAfterGreeting?: React.ReactNode;
+
+  metrics?: DoctorDashboardMetrics;
+
 }
+
+
 
 export function HomeDoctorHeader({
+
   immediateCallEnabled,
+
   togglingAvailability = false,
+
   onToggleAvailability,
+
   besideMedia = false,
+
   mediaAfterGreeting,
+
+  metrics,
+
 }: Props) {
+
   const colors = useColors();
+
   const { t, isRTL } = useI18n();
+
   const { isMobile, isDesktop } = useWebLayout();
-  const stackActions = Platform.OS !== "web" || isMobile || (besideMedia && isDesktop);
+
+  const compactHero = besideMedia && isDesktop;
+
   const dir = flexRow(isRTL);
+
   const textAlign = alignText(isRTL);
-  const { width } = useWindowDimensions();
-  const compact = width < 380;
+
   const profile = useAuthStore((s) => s.profile);
+
   const displayName = profile?.name?.trim().split(/\s+/)[0] ?? "";
+
   const period = greetingKey();
+
   const greeting = displayName
+
     ? t.doctorDashboard.greetingNamed(period, displayName)
+
     : t.doctorDashboard.greeting(period);
 
-  const actions: QuickAction[] = [
-    {
-      key: "schedule",
-      label: t.doctorDashboard.viewSchedule,
-      hint: t.doctorDashboard.viewScheduleHint,
-      icon: <CalendarClock size={18} color={colors.primary} />,
-      onPress: () => router.push("/(tabs)/appointments"),
-    },
-    {
-      key: "records",
-      label: t.doctorDashboard.patientRecords,
-      hint: t.doctorDashboard.patientRecordsHint,
-      icon: <ClipboardList size={18} color={colors.primary} />,
-      onPress: () => router.push("/(tabs)/patients"),
-    },
-    ...(IMMEDIATE_VIDEO_CALL_ENABLED
-      ? [
-          {
-            key: "availability",
-            label: t.doctorDashboard.availability,
-            hint: immediateCallEnabled
-              ? t.doctorDashboard.availabilityOn
-              : t.doctorDashboard.availabilityOff,
-            icon: (
-              <Radio
-                size={18}
-                color={immediateCallEnabled ? colors.success : colors.mutedForeground}
-              />
-            ),
-            toggle: true,
-          } satisfies QuickAction,
-        ]
-      : []),
-  ];
 
-  return (
-    <View style={[styles.wrap, besideMedia && isDesktop && styles.wrapBesideMedia]}>
-      <View
+
+  const greetingBlock = (
+
+    <>
+
+      <Text
+
         style={[
-          styles.banner,
-          surfaceCard(colors.card, colors.border),
-          { backgroundColor: colors.accent },
+
+          compactHero ? styles.greetingCompact : styles.greeting,
+
+          { color: colors.foreground, textAlign },
+
         ]}
+
       >
-        <Text style={[styles.greeting, { color: colors.foreground, textAlign }]}>
-          {greeting}
-        </Text>
-        <Text style={[styles.bannerTag, { color: colors.accentForeground, textAlign }]}>
-          {t.doctorDashboard.welcomeBanner}
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
-          {t.doctorDashboard.subtitle}
-        </Text>
-        {IMMEDIATE_VIDEO_CALL_ENABLED ? (
-          <View style={[styles.statusPill, { backgroundColor: colors.card, flexDirection: dir }]}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: immediateCallEnabled ? colors.success : colors.mutedForeground },
-              ]}
-            />
-            <Text style={[styles.statusText, { color: colors.foreground, textAlign }]}>
-              {immediateCallEnabled
-                ? t.doctorDashboard.availabilityOn
-                : t.doctorDashboard.availabilityOff}
-            </Text>
-          </View>
-        ) : null}
-      </View>
 
-      {mediaAfterGreeting}
+        {greeting}
 
-      <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
-        {t.doctorDashboard.quickActions}
       </Text>
 
-      <View
-        style={[
-          styles.actionsRow,
-          stackActions
-            ? styles.actionsStack
-            : isDesktop
-              ? styles.actionsGridDesktop
-              : { flexDirection: dir },
-        ]}
-      >
-        {actions.map((action) => {
-          const cardStyle = [
-            styles.actionCard,
-            stackActions ? styles.actionCardStacked : styles.actionCardInline,
-            action.primary
-              ? { backgroundColor: colors.primary }
-              : surfaceCard(colors.card, colors.border),
-            { flexDirection: dir },
-            // Not `as const`: RN's StyleProp rejects readonly tuples.
-          ];
+      {compactHero ? (
 
-          const inner = (
-            <>
-              <View
-                style={[
-                  styles.actionIcon,
-                  {
-                    backgroundColor: action.primary
-                      ? "rgba(255,255,255,0.18)"
-                      : `${colors.primary}14`,
-                  },
-                ]}
-              >
-                {action.icon}
-              </View>
-              <View style={styles.actionCopy}>
-                {action.badge && action.primary ? (
-                  <Text
-                    style={[styles.actionBadge, { color: colors.primaryForeground, textAlign }]}
-                    numberOfLines={1}
-                  >
-                    {action.badge}
-                  </Text>
-                ) : null}
-                <Text
-                  style={[
-                    styles.actionLabel,
-                    {
-                      color: action.primary ? colors.primaryForeground : colors.foreground,
-                      textAlign,
-                    },
-                  ]}
-                  numberOfLines={stackActions ? 1 : compact ? 1 : 2}
-                >
-                  {action.label}
-                </Text>
-                {!action.primary && (stackActions || !compact) ? (
-                  <Text
-                    style={[styles.actionHint, { color: colors.mutedForeground, textAlign }]}
-                    numberOfLines={1}
-                  >
-                    {action.hint}
-                  </Text>
-                ) : null}
-              </View>
-              {action.toggle ? (
-                <Switch
-                  value={immediateCallEnabled}
-                  onValueChange={onToggleAvailability}
-                  disabled={togglingAvailability}
-                  trackColor={{ false: colors.border, true: `${colors.primary}88` }}
-                  thumbColor={immediateCallEnabled ? colors.primary : colors.card}
-                />
-              ) : !action.primary ? (
-                <ChevronRight
-                  size={16}
-                  color={colors.mutedForeground}
-                  style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
-                />
-              ) : null}
-            </>
-          );
+        <Text style={[styles.subtextCompact, { color: DASHBOARD_INDIGO, textAlign }]}>
 
-          if (action.toggle) {
-            return (
-              <View key={action.key} style={cardStyle}>
-                {inner}
-              </View>
-            );
-          }
+          {t.doctorDashboard.welcomeBanner}
 
-          return (
-            <Pressable
-              key={action.key}
-              onPress={action.onPress}
-              accessibilityRole="button"
-              accessibilityLabel={`${action.label}. ${action.hint}`}
-              style={({ pressed }) => [
-                ...cardStyle,
-                { opacity: pressed ? 0.92 : 1 },
-              ]}
-            >
-              {inner}
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
+        </Text>
+
+      ) : (
+
+        <>
+
+          <Text style={[styles.bannerTag, { color: colors.accentForeground, textAlign }]}>
+
+            {t.doctorDashboard.welcomeBanner}
+
+          </Text>
+
+          <Text style={[styles.subtitle, { color: colors.mutedForeground, textAlign }]}>
+
+            {t.doctorDashboard.subtitle}
+
+          </Text>
+
+        </>
+
+      )}
+
+      {IMMEDIATE_VIDEO_CALL_ENABLED ? (
+
+        <View
+
+          style={[
+
+            styles.statusPill,
+
+            compactHero && styles.statusPillCompact,
+
+            { backgroundColor: colors.card, flexDirection: dir },
+
+          ]}
+
+        >
+
+          <View
+
+            style={[
+
+              styles.statusDot,
+
+              { backgroundColor: immediateCallEnabled ? colors.success : colors.mutedForeground },
+
+            ]}
+
+          />
+
+          <Text style={[styles.statusText, { color: colors.foreground, textAlign }]}>
+
+            {immediateCallEnabled
+
+              ? t.doctorDashboard.availabilityOn
+
+              : t.doctorDashboard.availabilityOff}
+
+          </Text>
+
+        </View>
+
+      ) : null}
+
+    </>
+
   );
+
+
+
+  const quickActions = (
+
+    <DoctorQuickActions
+
+      immediateCallEnabled={immediateCallEnabled}
+
+      togglingAvailability={togglingAvailability}
+
+      onToggleAvailability={onToggleAvailability}
+
+      compact={compactHero || Platform.OS !== "web" || isMobile}
+
+      flush={compactHero}
+
+    />
+
+  );
+
+
+
+  return (
+
+    <View style={[styles.wrap, besideMedia && isDesktop && styles.wrapBesideMedia]}>
+
+      {compactHero ? (
+
+        <>
+
+          <View
+
+            style={[
+
+              styles.heroPanel,
+
+              surfaceCard(colors.card, colors.border),
+
+              Platform.select({
+
+                web: { boxShadow: "0 1px 3px rgba(79,70,229,0.08)" },
+
+                default: {},
+
+              }),
+
+            ]}
+
+          >
+
+            <View
+
+              style={[
+
+                styles.bannerCompact,
+
+                {
+
+                  backgroundColor: DASHBOARD_INDIGO_LIGHT,
+
+                  borderLeftWidth: !isRTL ? 3 : 0,
+
+                  borderRightWidth: isRTL ? 3 : 0,
+
+                  borderLeftColor: DASHBOARD_INDIGO,
+
+                  borderRightColor: DASHBOARD_INDIGO,
+
+                },
+
+              ]}
+
+            >
+
+              {greetingBlock}
+
+            </View>
+
+            <View style={[styles.actionsInset, { borderTopColor: `${DASHBOARD_INDIGO}22` }]}>
+
+              {quickActions}
+
+            </View>
+
+          </View>
+
+          {metrics ? <HomeDoctorSummary metrics={metrics} variant="inHero" /> : null}
+
+        </>
+
+      ) : (
+
+        <>
+
+          <View
+
+            style={[
+
+              styles.banner,
+
+              styles.bannerDefault,
+
+              surfaceCard(colors.card, colors.border),
+
+              { backgroundColor: colors.accent },
+
+            ]}
+
+          >
+
+            {greetingBlock}
+
+          </View>
+
+          {mediaAfterGreeting}
+
+          <Text style={[styles.sectionLabel, { color: colors.foreground, textAlign }]}>
+
+            {t.doctorDashboard.quickActions}
+
+          </Text>
+
+          {quickActions}
+
+          {metrics ? <HomeDoctorSummary metrics={metrics} variant="inHero" /> : null}
+
+        </>
+
+      )}
+
+    </View>
+
+  );
+
 }
 
+
+
 const styles = StyleSheet.create({
+
   wrap: {
+
     paddingHorizontal: UI.space.md,
-    paddingTop: UI.space.sm,
-    paddingBottom: UI.space.xs,
-    gap: UI.space.md,
-  },
-  wrapBesideMedia: {
-    paddingHorizontal: 0,
+
     paddingTop: UI.space.xs,
-    justifyContent: "center",
-    flex: 1,
-  },
-  banner: {
-    padding: UI.space.md,
-    gap: 6,
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: -0.35,
-    lineHeight: 30,
-  },
-  bannerTag: {
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: 520,
-    marginTop: 2,
-  },
-  statusPill: {
-    alignSelf: "flex-start",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: UI.radius.chip,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  sectionLabel: {
-    ...UI.type.section,
-    fontSize: 15,
-  },
-  actionsRow: {
+
+    paddingBottom: UI.space.xs,
+
     gap: UI.space.sm,
+
   },
-  actionsStack: {
-    flexDirection: "column",
+
+  wrapBesideMedia: {
+
+    paddingHorizontal: 0,
+
+    paddingTop: 0,
+
+    paddingBottom: 0,
+
   },
-  actionsGridDesktop: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  actionCard: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+
+  heroPanel: {
+
+    overflow: "hidden",
+
     borderRadius: UI.radius.card,
+
   },
-  actionCardStacked: {
-    width: "100%",
-  },
-  actionCardInline: {
-    flex: 1,
-    minWidth: 140,
-  },
-  actionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: UI.radius.icon,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  actionCopy: {
-    flex: 1,
-    minWidth: 0,
+
+  banner: {
+
     gap: 2,
+
   },
-  actionBadge: {
-    fontSize: 11,
-    fontWeight: "600",
-    lineHeight: 14,
-    opacity: 0.92,
+
+  bannerDefault: {
+
+    padding: UI.space.md,
+
   },
-  actionLabel: {
-    fontSize: 14,
+
+  bannerCompact: {
+
+    paddingHorizontal: 12,
+
+    paddingTop: 8,
+
+    paddingBottom: 4,
+
+    gap: 1,
+
+  },
+
+  actionsInset: {
+
+    paddingHorizontal: 8,
+
+    paddingTop: 4,
+
+    paddingBottom: 5,
+
+    borderTopWidth: 1,
+
+  },
+
+  greeting: {
+
+    fontSize: 24,
+
     fontWeight: "700",
+
+    letterSpacing: -0.35,
+
+    lineHeight: 30,
+
+  },
+
+  greetingCompact: {
+
+    fontSize: 20,
+
+    fontWeight: "700",
+
+    letterSpacing: -0.3,
+
+    lineHeight: 24,
+
+  },
+
+  subtextCompact: {
+
+    fontSize: 13,
+
+    fontWeight: "500",
+
+    lineHeight: 15,
+
+    opacity: 0.88,
+
+  },
+
+  bannerTag: {
+
+    fontSize: 13,
+
+    fontWeight: "600",
+
     lineHeight: 18,
+
   },
-  actionHint: {
-    fontSize: 12,
-    lineHeight: 16,
+
+  subtitle: {
+
+    fontSize: 14,
+
+    lineHeight: 20,
+
+    maxWidth: 520,
+
+    marginTop: 2,
+
   },
+
+  statusPill: {
+
+    alignSelf: "flex-start",
+
+    alignItems: "center",
+
+    gap: 6,
+
+    marginTop: 6,
+
+    paddingHorizontal: 10,
+
+    paddingVertical: 5,
+
+    borderRadius: UI.radius.chip,
+
+  },
+
+  statusPillCompact: {
+
+    marginTop: 6,
+
+  },
+
+  statusDot: {
+
+    width: 7,
+
+    height: 7,
+
+    borderRadius: 4,
+
+  },
+
+  statusText: {
+
+    fontSize: 11,
+
+    fontWeight: "600",
+
+  },
+
+  sectionLabel: {
+
+    fontSize: 14,
+
+    fontWeight: "700",
+
+    letterSpacing: -0.1,
+
+  },
+
 });
+

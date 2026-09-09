@@ -7,7 +7,14 @@ import { useI18n } from "@/hooks/useI18n";
 
 /** Banner video in a TV set — bezel, screen, stand. Used by the public hero (desktop)
  *  and the mobile hero media section. */
-export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
+export function TvFramedVideo({
+  animate = true,
+  compact = false,
+}: {
+  animate?: boolean;
+  /** Smaller frame for the signed-in doctor dashboard hero. */
+  compact?: boolean;
+}) {
   const { t, isRTL } = useI18n();
   const colors = useColors();
 
@@ -61,6 +68,7 @@ export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
     <Animated.View
       style={[
         styles.set,
+        compact && styles.setCompact,
         {
           transform: [
             { scale: breathe.interpolate({ inputRange: [0, 1], outputRange: [1, 1.015] }) },
@@ -69,7 +77,7 @@ export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
         },
       ]}
     >
-      <View style={[styles.body, UI.shadowXl]}>
+      <View style={[styles.body, compact && styles.bodyCompact, compact ? UI.shadowMd : UI.shadowXl]}>
         <View style={styles.screen}>
           <HomeBannerVideo embedded />
         </View>
@@ -103,8 +111,8 @@ export function TvFramedVideo({ animate = true }: { animate?: boolean }) {
           <Text style={styles.statusText}>{t.landing.doctorOnline}</Text>
         </Animated.View>
       </View>
-      <View style={styles.neck} />
-      <View style={styles.base} />
+      <View style={[styles.neck, compact && styles.neckCompact]} />
+      <View style={[styles.base, compact && styles.baseCompact]} />
     </Animated.View>
   );
 }
@@ -113,6 +121,10 @@ const styles = StyleSheet.create({
   set: {
     width: "100%",
     alignItems: "center",
+  },
+  setCompact: {
+    maxWidth: 268,
+    alignSelf: "flex-end",
   },
   body: {
     width: "100%",
@@ -123,6 +135,11 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     borderWidth: 1,
     borderColor: "#2b3242",
+  },
+  bodyCompact: {
+    borderRadius: 14,
+    padding: 9,
+    paddingBottom: 14,
   },
   screen: {
     flex: 1,
@@ -177,10 +194,17 @@ const styles = StyleSheet.create({
     height: 26,
     backgroundColor: "#1c2230",
   },
+  neckCompact: {
+    height: 16,
+  },
   base: {
     width: "40%",
     height: 12,
     borderRadius: 6,
     backgroundColor: "#12161f",
+  },
+  baseCompact: {
+    height: 8,
+    borderRadius: 4,
   },
 });

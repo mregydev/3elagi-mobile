@@ -9,7 +9,6 @@ import {
 import { DoctorConsultationQueue } from "@/components/home/DoctorConsultationQueue";
 import { HomeDoctorHeader } from "@/components/home/HomeDoctorHeader";
 import { HomeHeroWithTvVideo } from "@/components/home/HomeHeroWithTvVideo";
-import { HomeDoctorSummary } from "@/components/home/HomeDoctorSummary";
 import { BRAND_SCROLL_NATIVE_ID } from "@/components/web/globalWebStyles";
 import { updateAccountProfile } from "@/domains/auth/profile-api";
 import { useAuthStore } from "@/domains/auth/store";
@@ -92,6 +91,12 @@ export function DoctorHomeBrowse() {
     return <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />;
   }
 
+  const availabilityProps = {
+    immediateCallEnabled: !!account?.immediateCallEnabled,
+    togglingAvailability,
+    onToggleAvailability: (next: boolean) => void handleToggleAvailability(next),
+  };
+
   return (
     <ScrollView
       nativeID={BRAND_SCROLL_NATIVE_ID}
@@ -103,14 +108,8 @@ export function DoctorHomeBrowse() {
       }
     >
       <HomeHeroWithTvVideo>
-        <HomeDoctorHeader
-          immediateCallEnabled={!!account?.immediateCallEnabled}
-          togglingAvailability={togglingAvailability}
-          besideMedia
-          onToggleAvailability={(next) => void handleToggleAvailability(next)}
-        />
+        <HomeDoctorHeader besideMedia metrics={metrics} {...availabilityProps} />
       </HomeHeroWithTvVideo>
-      <HomeDoctorSummary metrics={metrics} />
       <DoctorConsultationQueue consultations={consultations} />
     </ScrollView>
   );
@@ -119,7 +118,7 @@ export function DoctorHomeBrowse() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: {
-    paddingBottom: 40,
-    gap: 8,
+    paddingBottom: 24,
+    gap: 4,
   },
 });
