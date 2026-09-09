@@ -19,8 +19,6 @@ type Props = {
   onBackAccessibilityLabel: string;
   subtitle: string;
   subtitleAccent?: boolean;
-  /** Consultation market country (ISO-2); overrides profile residence for patients. */
-  patientCountry?: string | null;
   onPeerPress?: () => void;
   canOpenPatientRecord: boolean;
   onOpenPatientRecord: () => void;
@@ -35,7 +33,6 @@ export function ChatHeader({
   onBackAccessibilityLabel,
   subtitle,
   subtitleAccent = false,
-  patientCountry,
   onPeerPress,
   canOpenPatientRecord,
   onOpenPatientRecord,
@@ -85,11 +82,7 @@ export function ChatHeader({
         <View style={styles.peerCopy}>
           <NameWithCountryFlag
             name={peer.name}
-            country={
-              peer.role === "patient"
-                ? patientCountry?.trim().toUpperCase() || peer.country
-                : undefined
-            }
+            country={peer.role === "patient" ? peer.country : undefined}
             isRTL={isRTL}
             nameStyle={[styles.peerName, { color: EHR.text.primary, textAlign: isRTL ? "right" : "left" }]}
           />

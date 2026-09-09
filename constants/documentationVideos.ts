@@ -1,7 +1,7 @@
 /** YouTube video IDs for the documentation page. */
 export const DOCUMENTATION_GENERAL_INTRODUCTION_YOUTUBE_ID = "Ac95jJ7KyZE";
-export const DOCUMENTATION_TEXT_PAYMENT_YOUTUBE_ID = "Qia2qYpzt4U";
-export const DOCUMENTATION_VIDEO_CONSULTATION_YOUTUBE_ID = "WjOIYr4HR0Q";
+export const DOCUMENTATION_TEXT_PAYMENT_YOUTUBE_ID = "gT66pONjxI8";
+export const DOCUMENTATION_VIDEO_CONSULTATION_YOUTUBE_ID = "_-0zgFM3sDI";
 
 export function youtubeEmbedUrl(videoId: string): string {
   return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;

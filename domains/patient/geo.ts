@@ -15,3 +15,10 @@ export async function resolvePatientGeoCountry(): Promise<string | null> {
   if (profile) return profile;
   return detectCountryFromIp().catch(() => null);
 }
+
+/** Consultation pricing country from the patient's current location (IP), then profile. */
+export async function resolveConsultationGeoCountry(): Promise<string | null> {
+  const fromIp = await detectCountryFromIp().catch(() => null);
+  if (fromIp) return fromIp;
+  return patientProfileCountry();
+}

@@ -1,11 +1,10 @@
 import { API_BASE } from "@/constants/api";
 import type { MessageRow } from "@/domains/chat/api";
 import type { AppointmentActionMeta } from "@/domains/chat/types";
-import { CONSULTATION_PATIENT_COUNTRY } from "@/constants/patientCountries";
-import { resolvePatientGeoCountry } from "@/domains/patient/geo";
+import { resolveConsultationGeoCountry } from "@/domains/patient/geo";
 
-async function clientGeoHeaders(): Promise<Record<string, string> | undefined> {
-  const geo = await resolvePatientGeoCountry();
+async function consultationGeoHeaders(): Promise<Record<string, string> | undefined> {
+  const geo = await resolveConsultationGeoCountry();
   return geo ? { "x-client-geo-country": geo } : undefined;
 }
 
@@ -87,12 +86,13 @@ export async function bookChatAppointment(
   time: string,
   extra?: { reason?: string; patientInsight?: string },
 ): Promise<ChatBookResult> {
+  const geoHeaders = await consultationGeoHeaders();
   const res = await fetch(`${API_BASE}/appointments/chat-book`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "x-client-geo-country": CONSULTATION_PATIENT_COUNTRY,
+      ...geoHeaders,
     },
     body: JSON.stringify({
       doctor_user_id: doctorUserId,
@@ -116,7 +116,7 @@ export async function sendAppointmentAction(
   recipientId: string,
   meta: AppointmentActionMeta,
 ): Promise<MessageRow> {
-  const geoHeaders = await clientGeoHeaders();
+  const geoHeaders = await consultationGeoHeaders();
   const res = await fetch(`${API_BASE}/messages`, {
     method: "POST",
     headers: {
