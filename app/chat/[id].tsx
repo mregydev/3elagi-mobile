@@ -85,6 +85,7 @@ import { mapInstance } from "@/domains/intake-exams/api";
 import { fetchTestPatientChatStatus, type TestPatientChatStatus } from "@/domains/doctor/testPatientChatApi";
 import { registerTourAnchorHandler } from "@/domains/onboarding/tourAnchorActions";
 import { useMedicalStore } from "@/domains/medical/store";
+import { CONSULTATION_PATIENT_COUNTRY } from "@/constants/patientCountries";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -274,6 +275,11 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     }
     return null;
   }, [messages]);
+  const patientFlagCountry =
+    isDoctor && peer?.role === "patient"
+      ? latestConsultationAction?.patient_country?.trim().toUpperCase() ||
+        CONSULTATION_PATIENT_COUNTRY
+      : undefined;
   const [consultationOpen, setConsultationOpen] = useState(false);
   // Start / end consultation live in the plus menu, published by ConsultationBar.
   const [consultationMenuActions, setConsultationMenuActions] = useState<ChatAction[]>([]);
@@ -1575,6 +1581,7 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     <>
       <ChatHeader
         peer={peer}
+        patientCountry={patientFlagCountry}
         isRTL={isRTL}
         desktopLayout={desktopLayout}
         paddingTop={headerPaddingTop}
