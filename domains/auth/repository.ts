@@ -13,6 +13,7 @@ import type {
   MarketingEmailTheme,
 } from "@/domains/admin/api";
 import type { MarketingEmailSection } from "@/domains/admin/marketingSections";
+import { assertAdminClientAccess } from "@/domains/admin/guard";
 
 export class AuthApiError extends Error {
   code?: string;
@@ -366,6 +367,7 @@ export const authRepository = {
       sections?: MarketingEmailSection[];
     },
   ): Promise<{ welcomeEmailOk?: boolean; welcomeEmailError?: string }> {
+    assertAdminClientAccess();
     const email = input.email.trim().toLowerCase();
     const raw = await authPost<RawAuthResponse & {
       welcome_email?: { ok: boolean; error?: string };

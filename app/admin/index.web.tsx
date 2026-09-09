@@ -16,6 +16,7 @@ import {
   setDoctorApproval,
   type AdminDoctorRow,
 } from "@/domains/admin/api";
+import { isAdminRole } from "@/domains/admin/guard";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
@@ -50,13 +51,14 @@ function confirmAction(message: string): boolean {
 export default function AdminPanelWeb() {
   const colors = useColors();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
 
   const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !isAdminRole(role)) return;
     setLoading(true);
     try {
       const rows = await fetchAdminDoctors(accessToken);
@@ -66,7 +68,7 @@ export default function AdminPanelWeb() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, role]);
 
   useEffect(() => {
     void load();

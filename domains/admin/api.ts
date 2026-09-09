@@ -1,4 +1,5 @@
 import { API_BASE } from "@/constants/api";
+import { assertAdminClientAccess } from "@/domains/admin/guard";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
@@ -36,6 +37,7 @@ async function authJson<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
+  assertAdminClientAccess();
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
@@ -114,6 +116,7 @@ async function uploadRagChunks(
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
+  assertAdminClientAccess();
   const totalChunks = Math.max(1, Math.ceil(file.size / RAG_CHUNK_SIZE));
 
   const initRes = await fetch(`${API_BASE}/uploads/chunk/init`, {
@@ -188,6 +191,7 @@ export async function trainAdminRagDocument(
     onProgress?: (progress: { phase: "uploading" | "processing"; percent: number }) => void;
   },
 ): Promise<AdminRagSourceRow> {
+  assertAdminClientAccess();
   const title = options?.title;
   const onProgress = options?.onProgress;
   const useChunks = file.size > RAG_CHUNK_SIZE;

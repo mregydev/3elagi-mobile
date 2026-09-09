@@ -19,6 +19,7 @@ import {
 import { fetchConversations } from "@/domains/chat/api";
 import { chatRepository } from "@/domains/chat/repository";
 import type { ChatMessage, ChatUser, Conversation } from "@/domains/chat/types";
+import { isAdminRole } from "@/domains/admin/guard";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
@@ -31,6 +32,7 @@ export default function AdminChatsWeb() {
   const colors = useColors();
   const { isRTL } = useI18n();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
   const selfId = useAuthStore((s) => s.profile?.id);
   const [tab, setTab] = useState<Tab>("doctors");
   const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
@@ -44,7 +46,7 @@ export default function AdminChatsWeb() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!accessToken || !selfId) return;
+    if (!accessToken || !selfId || !isAdminRole(role)) return;
     setLoading(true);
     setError(null);
     try {
@@ -76,7 +78,7 @@ export default function AdminChatsWeb() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, selfId]);
+  }, [accessToken, selfId, role]);
 
   useEffect(() => {
     void load();
