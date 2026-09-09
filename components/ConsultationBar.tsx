@@ -802,7 +802,6 @@ export function ConsultationBar({
         noteLabel={label("Closing note (optional)", "ملاحظة ختامية (اختياري)")}
         notePlaceholder={label("Summary for the patient...", "ملخص للمريض...")}
         requireDescription
-        showDiagnosisAiComplete={false}
         onClose={() => {
           if (submitting) return;
           setModal(null);
@@ -997,7 +996,7 @@ function FormModal({
           {children}
           <Pressable
             onPress={() => {
-              void Promise.resolve(onSubmit()).catch(() => undefined);
+              void Promise.resolve(onSubmit());
             }}
             disabled={submitting}
             style={[

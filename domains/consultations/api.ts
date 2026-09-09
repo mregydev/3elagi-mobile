@@ -53,6 +53,10 @@ export interface PatientConsultation extends Consultation {
   closed_at: string | null;
 }
 
+const NETWORK_UNAVAILABLE_MESSAGE =
+  "Could not reach the server. Check your connection and try again.";
+
+/** Avoid throwing from fetch — Expo LogBox treats thrown fetch errors as uncaught crashes. */
 async function consultationFetch(
   path: string,
   token: string,
@@ -68,12 +72,15 @@ async function consultationFetch(
         },
       }),
     );
-  } catch (err) {
-    const raw = err instanceof Error ? err.message : "";
-    if (err instanceof TypeError || raw === "Failed to fetch") {
-      throw new Error("Could not reach the server. Check your connection and try again.");
-    }
-    throw err instanceof Error ? err : new Error("Network request failed");
+  } catch {
+    return new Response(
+      JSON.stringify({ message: NETWORK_UNAVAILABLE_MESSAGE }),
+      {
+        status: 503,
+        statusText: "Network Error",
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
 

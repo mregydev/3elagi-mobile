@@ -12,6 +12,18 @@ function toError(value: unknown): Error {
   return new Error("Unknown client error");
 }
 
+function isBenignNetworkError(value: unknown): boolean {
+  if (!(value instanceof Error)) return false;
+  const msg = value.message.toLowerCase();
+  return (
+    value.name === "TypeError" ||
+    msg === "failed to fetch" ||
+    msg.includes("network request failed") ||
+    msg.includes("could not reach the server") ||
+    msg.includes("load failed")
+  );
+}
+
 /** Catches non-React client errors (event handlers, async work, native global handler). */
 export function GlobalClientErrorHandler({ children }: { children: React.ReactNode }) {
   const [globalError, setGlobalError] = useState<GlobalErrorState | null>(null);
@@ -31,6 +43,10 @@ export function GlobalClientErrorHandler({ children }: { children: React.ReactNo
     const previousHandler = ErrorUtils.getGlobalHandler?.();
 
     ErrorUtils.setGlobalHandler((error: unknown, isFatal?: boolean) => {
+      if (isBenignNetworkError(error)) {
+        previousHandler?.(error, isFatal);
+        return;
+      }
       setGlobalError({
         error: toError(error),
         retry: clearError,

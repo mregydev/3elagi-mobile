@@ -90,7 +90,7 @@ export interface DiagnosisChatFormProps {
   noteLabel?: string;
   notePlaceholder?: string;
   requireDescription?: boolean;
-  /** Diagnosis-level AI autofill (symptoms, records, body part). Off for end consultation. */
+  /** Diagnosis-level AI autofill (symptoms, records, body part). */
   showDiagnosisAiComplete?: boolean;
   onClose: () => void;
   onSubmit: (payload: DiagnosisSubmitPayload) => void;
