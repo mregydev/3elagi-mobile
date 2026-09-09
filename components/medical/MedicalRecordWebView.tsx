@@ -39,6 +39,7 @@ import {
   MEDICAL_RECORD_CATEGORY_META,
 } from "@/components/medical/medicalRecordMeta";
 import { WEB_MAX_WIDTH } from "@/constants/webLayout";
+import { MobileWebMenuHeader } from "@/components/web/MobileWebMenuHeader";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useMedicalRecordDetail } from "@/hooks/useMedicalRecordDetail";
@@ -256,6 +257,7 @@ export function MedicalRecordWebView() {
   if (needsDoctorAccess && !accessChecked) {
     return (
       <View style={[styles.page, { backgroundColor: colors.background }]}>
+        <MobileWebMenuHeader />
         <ActivityIndicator style={{ marginTop: 80 }} color={colors.primary} />
       </View>
     );
@@ -264,6 +266,7 @@ export function MedicalRecordWebView() {
   if (needsDoctorAccess && !hasDoctorAccess) {
     return (
       <View style={[styles.page, { backgroundColor: colors.background }]}>
+        <MobileWebMenuHeader />
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
           <Pressable onPress={goBack} style={[styles.backBtn, { flexDirection: dir }]}>
             {isRTL ? (
@@ -284,6 +287,7 @@ export function MedicalRecordWebView() {
   if (!record && loadState === "loading") {
     return (
       <View style={[styles.page, { backgroundColor: colors.background }]}>
+        <MobileWebMenuHeader />
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
           <Pressable onPress={goBack} style={[styles.backBtn, { flexDirection: dir }]}>
             {isRTL ? (
@@ -309,6 +313,7 @@ export function MedicalRecordWebView() {
   if (!record) {
     return (
       <View style={[styles.page, { backgroundColor: colors.background }]}>
+        <MobileWebMenuHeader />
         <View style={[styles.container, { maxWidth: WEB_MAX_WIDTH.content }]}>
           <Pressable onPress={goBack} style={[styles.backBtn, { flexDirection: dir }]}>
             {isRTL ? (
@@ -1083,6 +1088,7 @@ export function MedicalRecordWebView() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
+      <MobileWebMenuHeader />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[

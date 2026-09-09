@@ -10,6 +10,7 @@ import {
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -56,6 +57,7 @@ import {
 } from "@/domains/medical/search";
 import type { MedicalCategory, MedicalRecord } from "@/domains/medical/types";
 import { useColors } from "@/hooks/useColors";
+import { MobileWebMenuHeader } from "@/components/web/MobileWebMenuHeader";
 import { useMobileWebPageTitlePaddingTop } from "@/hooks/useMobileWebPageTitlePaddingTop";
 import { useI18n } from "@/hooks/useI18n";
 import { useRecordsPage } from "@/hooks/useRecordsPage";
@@ -85,9 +87,11 @@ function formatWebDate(d: Date | null): string {
 export function RecordsWebView() {
   const colors = useColors();
   const { t, isRTL } = useI18n();
-  const { isDesktop } = useWebLayout();
+  const { isDesktop, isMobile } = useWebLayout();
   const insets = useSafeAreaInsets();
-  const mobileTitlePaddingTop = useMobileWebPageTitlePaddingTop();
+  const showMobileMenuHeader = Platform.OS === "web" && isMobile;
+  const mobileTitlePaddingTopRaw = useMobileWebPageTitlePaddingTop();
+  const mobileTitlePaddingTop = showMobileMenuHeader ? 0 : mobileTitlePaddingTopRaw;
   const mobileAddBarOffset = isDesktop
     ? 0
     : recordsBottomChromeHeight({
@@ -489,6 +493,7 @@ export function RecordsWebView() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.background }]}>
+      <MobileWebMenuHeader />
       {isDashboardDesktop ? (
         <>
           <View

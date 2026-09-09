@@ -30,6 +30,7 @@ import type { MedicalRecord } from "@/domains/medical/types";
 import { useAuthStore } from "@/domains/auth/store";
 import { useMedicalStore } from "@/domains/medical/store";
 import { useColors } from "@/hooks/useColors";
+import { MobileWebMenuHeader } from "@/components/web/MobileWebMenuHeader";
 import { useI18n } from "@/hooks/useI18n";
 import { resolveMedicalOwnerUserId } from "@/domains/medical/ownerUserId";
 import { alignText, flexRow, localeTag } from "@/utils/rtl";
@@ -144,6 +145,7 @@ export function BodyPartRecordsView({
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <MobileWebMenuHeader />
       <View style={[styles.header, { flexDirection: dir, borderBottomColor: colors.border }]}>
         <AppBackButton
           color={colors.foreground}
