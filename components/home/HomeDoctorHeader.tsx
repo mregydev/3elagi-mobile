@@ -4,7 +4,6 @@ import {
   ChevronRight,
   ClipboardList,
   Radio,
-  Video,
 } from "lucide-react-native";
 import React from "react";
 import {
@@ -18,7 +17,6 @@ import {
 } from "react-native";
 import { surfaceCard, UI } from "@/constants/uiTokens";
 import { useAuthStore } from "@/domains/auth/store";
-import type { DoctorDashboardMetrics } from "@/hooks/useDoctorDashboard";
 import { useColors } from "@/hooks/useColors";
 import { IMMEDIATE_VIDEO_CALL_ENABLED } from "@/constants/features";
 import { useI18n } from "@/hooks/useI18n";
@@ -44,7 +42,6 @@ function greetingKey(): "morning" | "afternoon" | "evening" {
 }
 
 interface Props {
-  metrics: DoctorDashboardMetrics;
   immediateCallEnabled: boolean;
   togglingAvailability?: boolean;
   onToggleAvailability: (next: boolean) => void;
@@ -55,7 +52,6 @@ interface Props {
 }
 
 export function HomeDoctorHeader({
-  metrics,
   immediateCallEnabled,
   togglingAvailability = false,
   onToggleAvailability,
@@ -77,21 +73,7 @@ export function HomeDoctorHeader({
     ? t.doctorDashboard.greetingNamed(period, displayName)
     : t.doctorDashboard.greeting(period);
 
-  const queueBadge =
-    metrics.openConsultations > 0
-      ? t.doctorDashboard.startVideoQueueBadge(metrics.openConsultations)
-      : undefined;
-
   const actions: QuickAction[] = [
-    {
-      key: "queue",
-      label: t.doctorDashboard.startVideoQueue,
-      hint: t.doctorDashboard.startVideoQueueHint,
-      icon: <Video size={20} color={colors.primaryForeground} />,
-      onPress: () => router.push("/(tabs)/consultations"),
-      primary: true,
-      badge: queueBadge,
-    },
     {
       key: "schedule",
       label: t.doctorDashboard.viewSchedule,

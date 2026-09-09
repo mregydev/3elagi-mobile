@@ -104,7 +104,6 @@ export function DoctorHomeBrowse() {
     >
       <HomeHeroWithTvVideo>
         <HomeDoctorHeader
-          metrics={metrics}
           immediateCallEnabled={!!account?.immediateCallEnabled}
           togglingAvailability={togglingAvailability}
           besideMedia
