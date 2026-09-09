@@ -90,6 +90,8 @@ export interface DiagnosisChatFormProps {
   noteLabel?: string;
   notePlaceholder?: string;
   requireDescription?: boolean;
+  /** Diagnosis-level AI autofill (symptoms, records, body part). Off for end consultation. */
+  showDiagnosisAiComplete?: boolean;
   onClose: () => void;
   onSubmit: (payload: DiagnosisSubmitPayload) => void;
 }
@@ -106,6 +108,7 @@ export function DiagnosisChatForm({
   noteLabel,
   notePlaceholder,
   requireDescription = true,
+  showDiagnosisAiComplete = true,
   onClose,
   onSubmit,
 }: DiagnosisChatFormProps) {
@@ -495,7 +498,7 @@ export function DiagnosisChatForm({
         editable={!saving && !completingAi}
       />
 
-      {aiEnabled ? (
+      {aiEnabled && showDiagnosisAiComplete ? (
         <Pressable
           onPress={() => void completeWithAi()}
           disabled={!description.trim() || completingAi || saving}

@@ -53,20 +53,36 @@ export interface PatientConsultation extends Consultation {
   closed_at: string | null;
 }
 
+async function consultationFetch(
+  path: string,
+  token: string,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(
+      `${API_BASE}${path}`,
+      withAuthRequestInit(token, {
+        ...init,
+        headers: {
+          ...init?.headers,
+        },
+      }),
+    );
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : "";
+    if (err instanceof TypeError || raw === "Failed to fetch") {
+      throw new Error("Could not reach the server. Check your connection and try again.");
+    }
+    throw err instanceof Error ? err : new Error("Network request failed");
+  }
+}
+
 async function authJson<T>(
   path: string,
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(
-    `${API_BASE}${path}`,
-    withAuthRequestInit(token, {
-      ...init,
-      headers: {
-        ...init?.headers,
-      },
-    }),
-  );
+  const res = await consultationFetch(path, token, init);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (isAuthHttpStatus(res.status)) {

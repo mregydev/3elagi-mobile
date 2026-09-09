@@ -26,8 +26,6 @@ import {
   stripDemoEmbedResetFromUrl,
 } from "@/domains/auth/demoSession";
 
-ensureDemoEmbedTokenAuthMode();
-
 interface AuthState {
   profile: PatientProfile | null;
   accessToken: string | null;
@@ -243,6 +241,7 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => (state) => {
         // Demo iframe panels use namespaced storage keys.
         if (state && Platform.OS === "web") {
+          ensureDemoEmbedTokenAuthMode();
           const slot = resolveInitialDemoSlot();
           if (slot) {
             persistDemoSlot(slot);

@@ -37,7 +37,9 @@ export function setWebAuthMode(mode: WebAuthMode): void {
 
 /** Demo iframe panels must use bearer tokens — HttpOnly cookies are shared per origin. */
 export function ensureDemoEmbedTokenAuthMode(): void {
-  if (!isWebPlatform) return;
+  // Platform.OS — not isWebPlatform; this can run while http.ts is still initializing
+  // (store ↔ sessionFailure ↔ http circular import during module load).
+  if (Platform.OS !== "web") return;
   if (resolveInitialDemoSlot()) {
     setWebAuthMode("token");
   }
