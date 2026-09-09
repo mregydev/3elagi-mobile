@@ -55,6 +55,17 @@ describe("doctor fee for the viewing patient", () => {
     });
   });
 
+  it("never quotes local currency outside Egypt or Jordan", () => {
+    expect(resolveDoctorFee(egyptianDoctor, "US", "text")).toEqual({
+      amount: 30,
+      currency: "USD",
+    });
+    expect(resolveDoctorFee(jordanianDoctor, "DE", "video")).toEqual({
+      amount: 60,
+      currency: "USD",
+    });
+  });
+
   it("returns nothing when the doctor has not set that price", () => {
     expect(resolveDoctorFee({ country: "EG", textPriceUsd: 0 }, "US", "text")).toBeNull();
     expect(formatDoctorFee({ country: "EG" }, "EG", "video")).toBeNull();

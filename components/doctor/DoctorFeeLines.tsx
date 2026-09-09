@@ -1,6 +1,7 @@
 import { MessageCircle, Video } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { isMarketCountryCode } from "@/constants/patientCountries";
 import type { DoctorFees } from "@/domains/doctor/fees";
 import { formatDoctorFee } from "@/domains/doctor/fees";
 import { useColors } from "@/hooks/useColors";
@@ -21,7 +22,7 @@ type Props = {
 /**
  * The doctor's chat and video prices as one segmented pill, priced for whoever
  * is looking: local currency for patients in the doctor's country, USD for
- * everyone else. The viewer's country comes from their IP, not their profile.
+ * everyone else. Patients use profile residence; others use IP.
  */
 export function DoctorFeeLines({
   doctor,
@@ -34,9 +35,13 @@ export function DoctorFeeLines({
   const { t } = useI18n();
   const viewerCountry = useViewerCountry();
 
+  const inLocalMarket =
+    !!viewerCountry && isMarketCountryCode(viewerCountry);
+  const legacyFallback = inLocalMarket ? fallback : undefined;
+
   const text = formatDoctorFee(doctor, viewerCountry, "text");
   const video = formatDoctorFee(doctor, viewerCountry, "video");
-  if (!text && !video && !fallback) return null;
+  if (!text && !video && !legacyFallback) return null;
 
   const leading = isRTL ? "flex-end" : "flex-start";
   const trailing = isRTL ? "flex-start" : "flex-end";
@@ -58,7 +63,7 @@ export function DoctorFeeLines({
         <Segment
           Icon={MessageCircle}
           label={t.home.textConsultationShort}
-          value={text ?? fallback ?? ""}
+          value={text ?? legacyFallback ?? ""}
           compact={compact}
           isRTL={isRTL}
         />

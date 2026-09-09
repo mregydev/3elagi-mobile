@@ -1,10 +1,12 @@
+import { isMarketCountryCode } from "@/constants/patientCountries";
+
 /**
  * What a doctor charges the patient looking at them.
  *
- * Mirrors the API's resolveDoctorFee: a patient in the doctor's own country
- * pays the local price (EGP in Egypt, JOD in Jordan); everyone else pays the
- * USD price. An unknown viewer country counts as abroad — never quote the
- * cheaper local rate on a guess.
+ * Mirrors the API's resolveDoctorFee: a patient in Egypt or Jordan who matches
+ * the doctor's home market pays the local price (EGP / JOD). Patients outside
+ * those markets — or anywhere else — pay the USD price. An unknown viewer
+ * country counts as abroad — never quote the cheaper local rate on a guess.
  */
 export type FeeCurrency = "EGP" | "JOD" | "USD";
 export type ConsultationKind = "text" | "video";
@@ -63,7 +65,8 @@ export function resolveDoctorFee(
 ): { amount: number; currency: FeeCurrency } | null {
   const home = doctor.country?.trim().toUpperCase() || "";
   const viewer = viewerCountry?.trim().toUpperCase() || "";
-  const isHome = !!home && viewer === home;
+  const isHome =
+    isMarketCountryCode(viewer) && !!home && viewer === home;
 
   const raw = isHome
     ? kind === "video"

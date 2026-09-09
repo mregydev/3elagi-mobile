@@ -375,12 +375,6 @@ export function ProfileEditor({
                     disabled={saving}
                   />
                 </View>
-                <EgpPriceInput
-                  value={consultationPrice}
-                  onChange={setConsultationPrice}
-                  label={t.auth.consultationPrice}
-                  compact
-                />
               </SectionCard>
             ) : null}
 
@@ -403,41 +397,6 @@ export function ProfileEditor({
                   paymentLink={paymentLink}
                   onPaymentLink={setPaymentLink}
                   disabled={saving}
-                />
-              </SectionCard>
-            ) : null}
-
-            {isDoctor ? (
-              <SectionCard
-                title={isRTL ? "البيانات البنكية" : "Bank details"}
-                colors={colors}
-                textAlign={textAlign}
-              >
-                <Field
-                  label={isRTL ? "الاسم الكامل لصاحب الحساب" : "Account holder full name"}
-                  value={accountHolderFullName}
-                  onChangeText={setAccountHolderFullName}
-                  placeholder={isRTL ? "كما هو مسجل في البنك" : "As registered at the bank"}
-                  colors={colors}
-                  isRTL={isRTL}
-                />
-                <Field
-                  label={isRTL ? "رقم الحساب / IBAN" : "IBAN"}
-                  value={iban}
-                  onChangeText={setIban}
-                  placeholder="EGxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  autoCapitalize="characters"
-                  colors={colors}
-                  isRTL={isRTL}
-                />
-                <Field
-                  label={isRTL ? "الرقم القومي" : "National ID"}
-                  value={nationalId}
-                  onChangeText={setNationalId}
-                  placeholder={isRTL ? "14 رقمًا" : "14-digit national ID"}
-                  keyboardType="number-pad"
-                  colors={colors}
-                  isRTL={isRTL}
                 />
               </SectionCard>
             ) : null}
@@ -623,12 +582,6 @@ export function ProfileEditor({
                     );
                   })}
                 </View>
-                <EgpPriceInput
-                  value={videoConsultationPrice}
-                  onChange={setVideoConsultationPrice}
-                  label={t.auth.videoConsultationPrice}
-                  compact
-                />
 
                 <View style={[styles.immediateCallRow, { flexDirection: dir }]}>
                   <View style={{ flex: 1 }}>
