@@ -9,7 +9,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "linking": {
-      "prefixes": ["threelagi://"]
+      "prefixes": [
+        "threelagi://"
+      ]
     },
     "splash": {
       "image": "./assets/images/splash-logo.png",
@@ -18,11 +20,14 @@
     },
     "ios": {
       "supportsTablet": false,
+      "buildNumber": "2",
       "bundleIdentifier": "com.threelagi.mobile",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["threelagi"]
+            "CFBundleURLSchemes": [
+              "threelagi"
+            ]
           },
           {
             "CFBundleURLSchemes": [
@@ -33,6 +38,7 @@
       }
     },
     "android": {
+      "versionCode": 3,
       "package": "com.threelagi.mobile",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
@@ -45,7 +51,10 @@
               "host": "oauth2redirect"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -56,7 +65,10 @@
               "host": "oauthredirect"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
