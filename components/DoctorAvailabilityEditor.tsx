@@ -23,6 +23,8 @@ import {
 import {
   buildMonthGrid,
   calendarWeekStartsOn,
+  DEFAULT_SCHEDULE_END,
+  DEFAULT_SCHEDULE_START,
   DEFAULT_SLOT_MINUTES,
   isDateInPast,
 } from "@/domains/schedule/calendar";
@@ -48,20 +50,28 @@ const TIME_OPTIONS: string[] = (() => {
   return out;
 })();
 
+function nextHalfHourAfter(time: string): string | null {
+  const idx = TIME_OPTIONS.indexOf(time);
+  return idx >= 0 && idx < TIME_OPTIONS.length - 1 ? TIME_OPTIONS[idx + 1] : null;
+}
+
 function TimeSelect({
   label,
   value,
   onChange,
   isRTL,
   colors,
+  options = TIME_OPTIONS,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   isRTL: boolean;
   colors: ReturnType<typeof useColors>;
+  options?: string[];
 }) {
   const [open, setOpen] = useState(false);
+  const scrollIndex = Math.max(0, options.indexOf(value));
   return (
     <View style={styles.timeCol}>
       <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>{label}</Text>
@@ -80,11 +90,11 @@ function TimeSelect({
           >
             <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{label}</Text>
             <FlatList
-              data={TIME_OPTIONS}
+              data={options}
               keyExtractor={(t) => t}
               style={{ maxHeight: 320 }}
               getItemLayout={(_, i) => ({ length: 44, offset: 44 * i, index: i })}
-              initialScrollIndex={Math.max(0, TIME_OPTIONS.indexOf(value))}
+              initialScrollIndex={scrollIndex}
               renderItem={({ item }) => {
                 const on = item === value;
                 return (
@@ -134,8 +144,8 @@ export function DoctorAvailabilityEditor({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<ScheduleOverrideRow[]>([]);
   const [bookedDates, setBookedDates] = useState<Set<string>>(new Set());
-  const [fromTime, setFromTime] = useState("09:00");
-  const [toTime, setToTime] = useState("17:00");
+  const [fromTime, setFromTime] = useState(DEFAULT_SCHEDULE_START);
+  const [toTime, setToTime] = useState(DEFAULT_SCHEDULE_END);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -163,6 +173,19 @@ export function DoctorAvailabilityEditor({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const toTimeOptions = useMemo(
+    () => TIME_OPTIONS.filter((t) => t > fromTime),
+    [fromTime],
+  );
+
+  const handleFromTimeChange = (next: string) => {
+    setFromTime(next);
+    if (toTime <= next) {
+      const bumped = nextHalfHourAfter(next) ?? DEFAULT_SCHEDULE_END;
+      if (bumped > next) setToTime(bumped);
+    }
+  };
 
   // Dates that already have an open (available) override — shown as a dot.
   const markedDates = useMemo(() => {
@@ -399,8 +422,21 @@ export function DoctorAvailabilityEditor({
       </View>
 
       <View style={[styles.timeRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-        <TimeSelect label={isRTL ? "من" : "From"} value={fromTime} onChange={setFromTime} isRTL={isRTL} colors={colors} />
-        <TimeSelect label={isRTL ? "إلى" : "To"} value={toTime} onChange={setToTime} isRTL={isRTL} colors={colors} />
+        <TimeSelect
+          label={isRTL ? "من" : "From"}
+          value={fromTime}
+          onChange={handleFromTimeChange}
+          isRTL={isRTL}
+          colors={colors}
+        />
+        <TimeSelect
+          label={isRTL ? "إلى" : "To"}
+          value={toTime}
+          onChange={setToTime}
+          isRTL={isRTL}
+          colors={colors}
+          options={toTimeOptions}
+        />
       </View>
 
       <Text

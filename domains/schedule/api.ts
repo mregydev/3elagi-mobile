@@ -1,4 +1,8 @@
 import { API_BASE } from "@/constants/api";
+import {
+  DEFAULT_SCHEDULE_END,
+  DEFAULT_SCHEDULE_START,
+} from "@/domains/schedule/constants";
 
 export interface DoctorScheduleRow {
   id?: string;
@@ -136,10 +140,10 @@ export const DAY_LABELS_AR = ["أحد", "إثن", "ثلث", "أرب", "خمي", 
 export function defaultWeekRows(): DoctorScheduleRow[] {
   return Array.from({ length: 7 }, (_, day_of_week) => ({
     day_of_week,
-    start_time: "09:00",
-    end_time: "17:00",
+    start_time: DEFAULT_SCHEDULE_START,
+    end_time: DEFAULT_SCHEDULE_END,
     slot_minutes: 10,
-    is_active: day_of_week >= 1 && day_of_week <= 5,
+    is_active: true,
   }));
 }
 

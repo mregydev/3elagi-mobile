@@ -1,4 +1,9 @@
 import {
+  DEFAULT_SCHEDULE_END,
+  DEFAULT_SCHEDULE_START,
+  DEFAULT_SLOT_MINUTES,
+} from "./constants";
+import {
   addDays,
   formatDateYmd,
   type ScheduleOverrideRow,
@@ -140,13 +145,15 @@ export function weekdayLabels(isRTL: boolean): string[] {
   return isRTL ? WEEKDAY_LABELS_AR : WEEKDAY_LABELS_EN;
 }
 
+export { DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_START, DEFAULT_SLOT_MINUTES } from "./constants";
+
 export function defaultDayHours(date: string): DayHours {
   const dow = parseYmd(date).getDay();
   return {
     date,
-    is_active: dow >= 1 && dow <= 5,
-    start_time: "09:00",
-    end_time: "17:00",
+    is_active: true,
+    start_time: DEFAULT_SCHEDULE_START,
+    end_time: DEFAULT_SCHEDULE_END,
     slot_minutes: 10,
   };
 }
@@ -185,8 +192,8 @@ export function dayHoursFromOverrides(
     return {
       date,
       is_active: false,
-      start_time: "09:00",
-      end_time: "17:00",
+      start_time: DEFAULT_SCHEDULE_START,
+      end_time: DEFAULT_SCHEDULE_END,
       slot_minutes: 10,
     };
   }
@@ -292,8 +299,6 @@ export const BOOKING_HORIZON_DAYS = 90;
 export const WEEKDAY_LABELS_EN = ["S", "M", "T", "W", "T", "F", "S"];
 /** Saturday → Friday (ar-EG week start). */
 export const WEEKDAY_LABELS_AR = ["س", "ح", "ن", "ث", "ر", "خ", "ج"];
-
-export const DEFAULT_SLOT_MINUTES = 10;
 
 export function generateDefaultSlots(): string[] {
   const slots: string[] = [];
