@@ -35,6 +35,13 @@ export type DoctorSignupCountryCode =
 
 export const DEFAULT_PATIENT_COUNTRY: MarketCountryCode = "EG";
 
+/** Temporary: treat all patients as Saudi for pricing until geo/profile is finalized. */
+export const TEMP_PATIENT_GEO_COUNTRY = "SA" as const;
+
+export function patientGeoCountry(): string {
+  return TEMP_PATIENT_GEO_COUNTRY;
+}
+
 /** @deprecated use MARKET_COUNTRY_CODES — alias for roster filter. */
 export const DOCTOR_FILTER_COUNTRY_CODES = MARKET_COUNTRY_CODES;
 export type DoctorFilterCountryCode = MarketCountryCode;

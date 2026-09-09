@@ -1,11 +1,10 @@
 import { API_BASE } from "@/constants/api";
 import type { MessageRow } from "@/domains/chat/api";
 import type { AppointmentActionMeta } from "@/domains/chat/types";
-import { detectCountryFromIp } from "@/domains/points/detectCountry";
+import { patientGeoCountry } from "@/constants/patientCountries";
 
-async function clientGeoHeaders(): Promise<Record<string, string> | undefined> {
-  const geo = await detectCountryFromIp().catch(() => null);
-  return geo ? { "x-client-geo-country": geo } : undefined;
+function clientGeoHeaders(): Record<string, string> {
+  return { "x-client-geo-country": patientGeoCountry() };
 }
 
 export interface UpcomingAppointment {

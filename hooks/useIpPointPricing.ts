@@ -4,22 +4,19 @@ import {
   type PointCurrency,
   type PointPricing,
 } from "@/domains/points/api";
-import { detectCountryFromIp } from "@/domains/points/detectCountry";
-import { pricePerPoint } from "@/constants/patientCountries";
+import { patientGeoCountry, pricePerPoint } from "@/constants/patientCountries";
 
-/** Live credit price for the caller's IP (never profile country). */
+/** Live credit price for the patient. Temporarily fixed to KSA (international). */
 export function useIpPointPricing() {
   const [pricing, setPricing] = useState<PointPricing | null>(null);
   const [loading, setLoading] = useState(true);
-  const [clientCountry, setClientCountry] = useState<string | null>(null);
+  const clientCountry = patientGeoCountry();
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       setLoading(true);
-      const geo = await detectCountryFromIp();
-      if (cancelled) return;
-      setClientCountry(geo);
+      const geo = patientGeoCountry();
       const next = await fetchPointPricing(geo);
       if (!cancelled) {
         setPricing(next);

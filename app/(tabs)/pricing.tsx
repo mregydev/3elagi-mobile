@@ -5,7 +5,6 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "@/components/AppHeader";
 import { CircledCountryFlag } from "@/components/country/CircledCountryFlag";
 import { useAuthStore } from "@/domains/auth/store";
-import { detectCountryFromIp } from "@/domains/points/detectCountry";
 import {
   fetchPointPricing,
   type MarketPrice,
@@ -14,6 +13,7 @@ import {
 } from "@/domains/points/api";
 import {
   marketCurrencyCode,
+  patientGeoCountry,
   pricePerPoint,
 } from "@/constants/patientCountries";
 import { useColors } from "@/hooks/useColors";
@@ -33,14 +33,12 @@ export default function PricingTab() {
   const dir = flexRow(isRTL);
   const profile = useAuthStore((s) => s.profile);
   const [pricing, setPricing] = useState<PointPricing | null>(null);
-  const [ipCountry, setIpCountry] = useState<string | null>(null);
+  const ipCountry = patientGeoCountry();
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const geo = await detectCountryFromIp();
-      if (cancelled) return;
-      setIpCountry(geo);
+      const geo = patientGeoCountry();
       const next = await fetchPointPricing(geo);
       if (cancelled) return;
       if (next) setPricing(next);
