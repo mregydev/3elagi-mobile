@@ -35,6 +35,9 @@ export type DoctorSignupCountryCode =
 
 export const DEFAULT_PATIENT_COUNTRY: MarketCountryCode = "EG";
 
+/** Text & video consultations always bill and display as KSA for now. */
+export const CONSULTATION_PATIENT_COUNTRY = "SA" as const;
+
 /** @deprecated use MARKET_COUNTRY_CODES — alias for roster filter. */
 export const DOCTOR_FILTER_COUNTRY_CODES = MARKET_COUNTRY_CODES;
 export type DoctorFilterCountryCode = MarketCountryCode;

@@ -5,7 +5,7 @@ import {
   isAuthHttpStatus,
   logoutOnAuthFailure,
 } from "@/domains/auth/sessionFailure";
-import { resolvePatientGeoCountry } from "@/domains/patient/geo";
+import { CONSULTATION_PATIENT_COUNTRY } from "@/constants/patientCountries";
 import { detectCountryFromIp } from "@/domains/points/detectCountry";
 
 export interface Consultation {
@@ -135,10 +135,9 @@ export async function startConsultation(
   description: string,
   token: string,
 ): Promise<{ consultation: Consultation; points: PointsSummary }> {
-  const geo = await resolvePatientGeoCountry();
   return authJson(`/consultations/start`, token, {
     method: "POST",
-    headers: geo ? { "x-client-geo-country": geo } : undefined,
+    headers: { "x-client-geo-country": CONSULTATION_PATIENT_COUNTRY },
     body: JSON.stringify({ doctor_id: doctorId, description }),
   });
 }

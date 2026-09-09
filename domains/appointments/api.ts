@@ -1,6 +1,7 @@
 import { API_BASE } from "@/constants/api";
 import type { MessageRow } from "@/domains/chat/api";
 import type { AppointmentActionMeta } from "@/domains/chat/types";
+import { CONSULTATION_PATIENT_COUNTRY } from "@/constants/patientCountries";
 import { resolvePatientGeoCountry } from "@/domains/patient/geo";
 
 async function clientGeoHeaders(): Promise<Record<string, string> | undefined> {
@@ -82,13 +83,12 @@ export async function bookChatAppointment(
   time: string,
   extra?: { reason?: string; patientInsight?: string },
 ): Promise<ChatBookResult> {
-  const geoHeaders = await clientGeoHeaders();
   const res = await fetch(`${API_BASE}/appointments/chat-book`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      ...geoHeaders,
+      "x-client-geo-country": CONSULTATION_PATIENT_COUNTRY,
     },
     body: JSON.stringify({
       doctor_user_id: doctorUserId,
