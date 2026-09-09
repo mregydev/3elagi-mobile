@@ -49,6 +49,11 @@ export function PublicLandingNav() {
       onPress: () => router.push("/(tabs)/faq"),
     },
     {
+      key: "documentation",
+      label: t.tabs.documentation,
+      onPress: () => router.push("/(tabs)/documentation"),
+    },
+    {
       key: "about",
       label: t.tabs.aboutUs,
       onPress: () => router.push("/(tabs)/about-us"),

@@ -6,6 +6,7 @@ import {
   persistDemoSlot,
   readDemoSlotFromPathname,
 } from "@/domains/auth/demoSession";
+import { ensureDemoEmbedTokenAuthMode } from "@/domains/auth/http";
 import { getPostAuthRoute } from "@/domains/auth/navigation";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -13,7 +14,10 @@ import { useColors } from "@/hooks/useColors";
 
 if (typeof window !== "undefined") {
   const slot = readDemoSlotFromPathname(window.location.pathname);
-  if (slot) persistDemoSlot(slot);
+  if (slot) {
+    persistDemoSlot(slot);
+    ensureDemoEmbedTokenAuthMode();
+  }
 }
 
 /** Isolated demo iframe — sign in / sign up, then enter the normal app. */

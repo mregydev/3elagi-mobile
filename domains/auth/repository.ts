@@ -7,6 +7,7 @@ import {
   usesBearerTokenAuth,
   withAuthRequestInit,
 } from "@/domains/auth/http";
+import { resolveInitialDemoSlot } from "@/domains/auth/demoSession";
 import type { AuthSession, Credentials, DoctorApprovalStatus, PreferredLocale, SignupInput, SignupFile } from "./types";
 import type {
   MarketingEmailLanguage,
@@ -237,6 +238,15 @@ async function applySignupUploads(
 }
 
 async function finalizeSession(session: AuthSession): Promise<AuthSession> {
+  if (resolveInitialDemoSlot()) {
+    setWebAuthMode("token");
+    if (!session.accessToken?.trim()) {
+      throw new Error("Could not establish session. Please try again.");
+    }
+    setWebAccessToken(session.accessToken);
+    return session;
+  }
+
   if (usesBearerTokenAuth()) {
     if (!session.accessToken?.trim()) {
       throw new Error("Could not establish session. Please try again.");

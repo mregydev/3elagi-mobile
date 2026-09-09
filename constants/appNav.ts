@@ -2,6 +2,7 @@ import type { Href } from "expo-router";
 import {
   Activity,
   Bell,
+  BookOpen,
   CalendarClock,
   ClipboardList,
   History,
@@ -74,7 +75,8 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
         !pathHas(path, "notifications") &&
         !pathHas(path, "about-us") &&
         !pathHas(path, "faq") &&
-        !pathHas(path, "for-doctors")),
+        !pathHas(path, "for-doctors") &&
+        !pathHas(path, "documentation")),
   },
   {
     href: "/(tabs)/about-us",
@@ -110,6 +112,13 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     labelKey: "profile",
     Icon: User,
     match: (path) => pathHas(path, "profile"),
+  },
+  {
+    href: "/(tabs)/documentation",
+    labelKey: "documentation",
+    Icon: BookOpen,
+    guestAllowed: true,
+    match: (path) => pathHas(path, "documentation"),
   },
   // Grouped under the "Activity" header at the bottom, in this order.
   {

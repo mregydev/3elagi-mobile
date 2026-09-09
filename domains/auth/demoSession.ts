@@ -5,6 +5,12 @@ import { isDemoSlot } from "@/constants/demo";
 export const DEMO_SLOT_STORAGE_KEY = "3elagi-demo-slot";
 const AUTH_KEY_PREFIX = "3elagi-auth";
 
+/** sessionStorage keys that must not be shared across demo iframe panels. */
+export function demoScopedStorageKey(base: string): string {
+  const slot = readPersistedDemoSlot();
+  return slot ? `${base}-demo-${slot}` : base;
+}
+
 /** Persist key for demo iframe panels — never writes to the main app session key. */
 export function authPersistKeyForDemoSlot(slot: DemoSlot | null): string {
   return slot ? `${AUTH_KEY_PREFIX}-demo-${slot}` : AUTH_KEY_PREFIX;

@@ -443,7 +443,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   ensurePeer: async (peerId, token) => {
     const existing = get().resolvePeer(peerId);
-    if (existing?.photoUrl && existing.name?.trim() && existing.name !== "…") {
+    if (existing?.name?.trim() && existing.name !== "…") {
       return existing;
     }
     try {

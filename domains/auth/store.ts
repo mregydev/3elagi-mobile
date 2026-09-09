@@ -7,6 +7,7 @@ import { emit } from "@/utils/eventBus";
 import { AUTH_EVENTS } from "./events";
 import { applyLocaleAfterAuth } from "@/domains/i18n/store";
 import {
+  ensureDemoEmbedTokenAuthMode,
   ensureWebAccessToken,
   getWebAuthMode,
   logoutAuthSession,
@@ -24,6 +25,8 @@ import {
   resolveInitialDemoSlot,
   stripDemoEmbedResetFromUrl,
 } from "@/domains/auth/demoSession";
+
+ensureDemoEmbedTokenAuthMode();
 
 interface AuthState {
   profile: PatientProfile | null;

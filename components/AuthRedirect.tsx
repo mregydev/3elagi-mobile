@@ -64,7 +64,7 @@ export function AuthRedirect() {
       return;
     }
 
-    if (isSignedInPublicRoot(root)) {
+    if (isSignedInPublicRoot(root, second)) {
       return;
     }
 

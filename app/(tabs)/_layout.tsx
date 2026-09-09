@@ -107,6 +107,12 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="documentation"
+          options={{
+            title: t.tabs.documentation,
+          }}
+        />
+        <Tabs.Screen
           name="pricing"
           options={{
             title: t.tabs.pricing,

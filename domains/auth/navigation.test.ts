@@ -41,6 +41,12 @@ describe("isPublicWebPath", () => {
     expect(isGuestAllowedRoot("points")).toBe(false);
   });
 
+  it("keeps documentation public for guests", () => {
+    expect(isPublicWebPath("/documentation")).toBe(true);
+    expect(isPublicWebPath("/(tabs)/documentation")).toBe(true);
+    expect(isGuestAllowedRoot("(tabs)", "documentation")).toBe(true);
+  });
+
   it("keeps marketing routes reachable while signed in", () => {
     for (const root of ["contact", "register-with-us", "rate-us", "demo"] as const) {
       expect(isSignedInPublicRoot(root), root).toBe(true);

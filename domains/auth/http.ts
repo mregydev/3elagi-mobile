@@ -1,5 +1,9 @@
 import { Platform } from "react-native";
 import { API_BASE } from "@/constants/api";
+import {
+  demoScopedStorageKey,
+  resolveInitialDemoSlot,
+} from "@/domains/auth/demoSession";
 import { logoutOnAuthFailure, isAuthHttpStatus } from "@/domains/auth/sessionFailure";
 
 export const isWebPlatform = Platform.OS === "web";
@@ -15,7 +19,8 @@ let webAccessToken: string | null = null;
 export function getWebAuthMode(): WebAuthMode {
   if (!isWebPlatform) return "cookie";
   try {
-    return sessionStorage.getItem(WEB_AUTH_MODE_KEY) === "token" ? "token" : "cookie";
+    const key = demoScopedStorageKey(WEB_AUTH_MODE_KEY);
+    return sessionStorage.getItem(key) === "token" ? "token" : "cookie";
   } catch {
     return "token";
   }
@@ -24,9 +29,17 @@ export function getWebAuthMode(): WebAuthMode {
 export function setWebAuthMode(mode: WebAuthMode): void {
   if (!isWebPlatform) return;
   try {
-    sessionStorage.setItem(WEB_AUTH_MODE_KEY, mode);
+    sessionStorage.setItem(demoScopedStorageKey(WEB_AUTH_MODE_KEY), mode);
   } catch {
     // sessionStorage may be unavailable
+  }
+}
+
+/** Demo iframe panels must use bearer tokens — HttpOnly cookies are shared per origin. */
+export function ensureDemoEmbedTokenAuthMode(): void {
+  if (!isWebPlatform) return;
+  if (resolveInitialDemoSlot()) {
+    setWebAuthMode("token");
   }
 }
 
@@ -86,14 +99,15 @@ function tryAcquireRefreshLock(): boolean {
   if (typeof sessionStorage === "undefined") return true;
   const now = Date.now();
   try {
-    const raw = sessionStorage.getItem(REFRESH_LOCK_KEY);
+    const lockKey = demoScopedStorageKey(REFRESH_LOCK_KEY);
+    const raw = sessionStorage.getItem(lockKey);
     if (raw) {
       const started = Number(raw);
       if (Number.isFinite(started) && now - started < REFRESH_LOCK_MS) {
         return false;
       }
     }
-    sessionStorage.setItem(REFRESH_LOCK_KEY, String(now));
+    sessionStorage.setItem(lockKey, String(now));
     return true;
   } catch {
     return true;
@@ -102,7 +116,7 @@ function tryAcquireRefreshLock(): boolean {
 
 function releaseRefreshLock(): void {
   try {
-    sessionStorage?.removeItem(REFRESH_LOCK_KEY);
+    sessionStorage?.removeItem(demoScopedStorageKey(REFRESH_LOCK_KEY));
   } catch {
     // ignore private mode / storage errors
   }
@@ -113,7 +127,7 @@ async function waitForPeerRefresh(): Promise<void> {
   const deadline = Date.now() + REFRESH_LOCK_MS;
   while (Date.now() < deadline) {
     try {
-      const raw = sessionStorage.getItem(REFRESH_LOCK_KEY);
+      const raw = sessionStorage.getItem(demoScopedStorageKey(REFRESH_LOCK_KEY));
       if (!raw) return;
       const started = Number(raw);
       if (!Number.isFinite(started) || Date.now() - started >= REFRESH_LOCK_MS) {
@@ -261,5 +275,7 @@ export async function logoutAuthSession(refreshToken?: string | null) {
       : JSON.stringify({ refresh_token: refreshToken ?? undefined }),
   })).catch(() => undefined);
   setWebAccessToken(null);
-  setWebAuthMode("cookie");
+  if (!resolveInitialDemoSlot()) {
+    setWebAuthMode("cookie");
+  }
 }

@@ -7,6 +7,7 @@ export const GUEST_ALLOWED_TABS = new Set([
   "assistant",
   "faq",
   "for-doctors",
+  "documentation",
 ]);
 
 /** Root segments guests may open (browse + auth + marketing). */
@@ -21,6 +22,7 @@ export function isGuestAllowedRoot(
     root === "contact" ||
     root === "register-with-us" ||
     root === "rate-us" ||
+    root === "documentation" ||
     root === "demo" ||
     // Doctor directory: browsing is public, starting a consultation still prompts.
     root === "doctors"
@@ -39,11 +41,18 @@ export function isGuestAllowedRoot(
 }
 
 /** Marketing / support pages that stay reachable after sign-in (email links, sidebar). */
-export function isSignedInPublicRoot(root: string | undefined): boolean {
+export function isSignedInPublicRoot(
+  root: string | undefined,
+  tabSegment?: string,
+): boolean {
+  if (root === "(tabs)" && tabSegment && GUEST_ALLOWED_TABS.has(tabSegment)) {
+    return tabSegment !== "index";
+  }
   return (
     root === "contact" ||
     root === "register-with-us" ||
     root === "rate-us" ||
+    root === "documentation" ||
     root === "demo"
   );
 }

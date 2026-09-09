@@ -304,21 +304,25 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     (isPatient || (isDoctor && !!accessStatus?.records_allowed));
   const medicalRecordPatientUserId = isDoctor ? id : profile?.id;
 
-  useEffect(() => {
-    if (!accessToken || !id) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        await ensureContacts(accessToken, role);
-        await ensurePeer(id, accessToken);
-      } finally {
-        if (!cancelled) setContactsReady(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (!accessToken || !id) return;
+      const peerId = id;
+      const cachedPeer = resolvePeer(peerId);
+      const hasCachedPeer =
+        !!cachedPeer?.name?.trim() && cachedPeer.name !== "…";
+      if (!hasCachedPeer) {
+        setContactsReady(false);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, id, role, ensureContacts, ensurePeer]);
+      void (async () => {
+        await Promise.allSettled([
+          ensureContacts(accessToken, role),
+          ensurePeer(peerId, accessToken),
+        ]);
+        setContactsReady(true);
+      })();
+    }, [accessToken, id, role, ensureContacts, ensurePeer, resolvePeer]),
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -1408,7 +1412,9 @@ export default function ChatScreen({ desktopLayout = false }: ChatScreenProps) {
     );
   };
 
-  if (!contactsReady) {
+  const peerKnown =
+    !!peer?.name?.trim() && peer.name !== "…";
+  if (!contactsReady && !peerKnown) {
     return wrapDesktop(
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} />

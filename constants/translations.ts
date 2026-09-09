@@ -393,8 +393,15 @@ const en = {
     notifications: "Notifications",
     faq: "FAQ",
     forDoctors: "For doctors",
+    documentation: "Documentation",
     more: "More",
     helpAndMore: "Help & more",
+  },
+  documentation: {
+    title: "Documentation",
+    generalIntroduction: "General introduction",
+    playbackFailed: "This video couldn't be played here. Open it on YouTube instead.",
+    openOnYouTube: "Watch on YouTube",
   },
   landing: {
     getStarted: "Get started",
@@ -1412,8 +1419,15 @@ const ar: typeof en = {
     notifications: "الإشعارات",
     faq: "الأسئلة الشائعة",
     forDoctors: "للأطباء",
+    documentation: "التوثيق",
     more: "المزيد",
     helpAndMore: "المساعدة والمزيد",
+  },
+  documentation: {
+    title: "التوثيق",
+    generalIntroduction: "مقدمة عامة",
+    playbackFailed: "تعذّر تشغيل الفيديو هنا. افتحه على YouTube بدلاً من ذلك.",
+    openOnYouTube: "مشاهدة على YouTube",
   },
   landing: {
     getStarted: "ابدأ الآن",
@@ -2421,8 +2435,15 @@ const de: typeof en = {
     notifications: "Benachrichtigungen",
     faq: "FAQ",
     forDoctors: "Für Ärzte",
+    documentation: "Dokumentation",
     more: "Mehr",
     helpAndMore: "Hilfe & mehr",
+  },
+  documentation: {
+    title: "Dokumentation",
+    generalIntroduction: "Allgemeine Einführung",
+    playbackFailed: "Das Video konnte hier nicht abgespielt werden. Öffnen Sie es stattdessen auf YouTube.",
+    openOnYouTube: "Auf YouTube ansehen",
   },
   landing: {
     getStarted: "Loslegen",
@@ -3435,8 +3456,15 @@ const es: typeof en = {
     notifications: "Notificaciones",
     faq: "Preguntas frecuentes",
     forDoctors: "Para médicos",
+    documentation: "Documentación",
     more: "Más",
     helpAndMore: "Ayuda y más",
+  },
+  documentation: {
+    title: "Documentación",
+    generalIntroduction: "Introducción general",
+    playbackFailed: "No se pudo reproducir el video aquí. Ábralo en YouTube.",
+    openOnYouTube: "Ver en YouTube",
   },
   landing: {
     getStarted: "Empezar",
