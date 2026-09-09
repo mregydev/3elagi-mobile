@@ -80,6 +80,7 @@ interface RawDoctor {
   video_price_local?: string | number | null;
   video_price_usd?: string | number | null;
   payment_link?: string | null;
+  patient_payment_method?: "bank" | "wallet" | null;
   tags?: string[] | null;
   pending_speciality_change?: PendingSpecialityChange | null;
 }
@@ -133,8 +134,9 @@ export interface AccountProfile {
   textPriceUsd?: number | null;
   videoPriceLocal?: number | null;
   videoPriceUsd?: number | null;
-  /** Where patients pay the doctor. */
+  /** Wallet URL when patientPaymentMethod is wallet. */
   paymentLink?: string;
+  patientPaymentMethod?: "bank" | "wallet";
   tags?: string[];
   photoUrl?: string;
   role: string;
@@ -198,6 +200,8 @@ export async function fetchAccountProfile(
       videoPriceLocal: toFee(doctor.video_price_local),
       videoPriceUsd: toFee(doctor.video_price_usd),
       paymentLink: doctor.payment_link ?? undefined,
+      patientPaymentMethod:
+        doctor.patient_payment_method === "wallet" ? "wallet" : "bank",
       tags: Array.isArray(doctor.tags) ? doctor.tags : [],
       photoUrl: pickPhoto(user, doctor),
       role: user.role,
@@ -245,6 +249,7 @@ export async function updateAccountProfile(
     videoPriceLocal?: number | null;
     videoPriceUsd?: number | null;
     paymentLink?: string;
+    patientPaymentMethod?: "bank" | "wallet";
     tags?: string[];
     photoUrl?: string | null;
   },
@@ -290,6 +295,7 @@ export async function updateAccountProfile(
         video_price_local: payload.videoPriceLocal,
         video_price_usd: payload.videoPriceUsd,
         payment_link: payload.paymentLink,
+        patient_payment_method: payload.patientPaymentMethod,
         tags: payload.tags,
       }),
     });

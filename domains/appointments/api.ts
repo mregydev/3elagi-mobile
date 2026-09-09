@@ -27,7 +27,11 @@ export interface UpcomingAppointment {
   payment_amount?: number | null;
   payment_currency?: string | null;
   payment_proof_url?: string | null;
+  payment_method?: "bank" | "wallet" | null;
   payment_link?: string | null;
+  doctor_iban?: string | null;
+  doctor_account_holder?: string | null;
+  doctor_national_id?: string | null;
 }
 
 export async function fetchMyAppointments(

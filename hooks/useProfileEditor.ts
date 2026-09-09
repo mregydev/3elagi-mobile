@@ -75,6 +75,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
   const [videoPriceLocal, setVideoPriceLocal] = useState("");
   const [videoPriceUsd, setVideoPriceUsd] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
+  const [patientPaymentMethod, setPatientPaymentMethod] = useState<"bank" | "wallet">("bank");
   const [tags, setTags] = useState<string[]>([]);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
@@ -119,6 +120,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
       setVideoPriceLocal(feeText(data.videoPriceLocal));
       setVideoPriceUsd(feeText(data.videoPriceUsd));
       setPaymentLink(data.paymentLink ?? "");
+      setPatientPaymentMethod(data.patientPaymentMethod ?? "bank");
       setTags(Array.isArray(data.tags) ? data.tags : []);
       setPhotoUrl(data.photoUrl);
       setPhotoUri(null);
@@ -284,6 +286,7 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
         videoPriceLocal: isDoctor ? feeValue(videoPriceLocal) : undefined,
         videoPriceUsd: isDoctor ? feeValue(videoPriceUsd) : undefined,
         paymentLink: isDoctor ? paymentLink.trim() : undefined,
+        patientPaymentMethod: isDoctor ? patientPaymentMethod : undefined,
         tags: isDoctor ? tags : undefined,
         photoUrl: photoDirty ? nextPhotoUrl : undefined,
       });
@@ -425,6 +428,8 @@ export function useProfileEditor({ accessToken, role, isRTL }: Options) {
     setVideoPriceUsd,
     paymentLink,
     setPaymentLink,
+    patientPaymentMethod,
+    setPatientPaymentMethod,
     tags,
     setTags,
     isDoctor,

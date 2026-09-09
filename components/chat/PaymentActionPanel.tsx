@@ -5,6 +5,14 @@ import type { PaymentActionMeta } from "@/domains/chat/types";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 
+function resolvePaymentMethod(meta: PaymentActionMeta): "bank" | "wallet" {
+  if (meta.payment_method === "wallet" || meta.payment_method === "bank") {
+    return meta.payment_method;
+  }
+  if (meta.payment_link?.trim()) return "wallet";
+  return "bank";
+}
+
 function DoctorBankDetails({
   meta,
   textAlign,
@@ -39,6 +47,53 @@ function DoctorBankDetails({
       <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
         {t.payment.bankHint}
       </Text>
+    </View>
+  );
+}
+
+function DoctorWalletDetails({
+  meta,
+  textAlign,
+}: {
+  meta: PaymentActionMeta;
+  textAlign: "left" | "right" | "center";
+}) {
+  const colors = useColors();
+  const { t, isRTL } = useI18n();
+  const link = meta.payment_link?.trim();
+  if (!link) return null;
+
+  return (
+    <View
+      style={[
+        styles.bankCard,
+        { backgroundColor: colors.muted, borderColor: colors.border },
+      ]}
+    >
+      <Text style={[styles.bankTitle, { color: colors.foreground, textAlign }]}>
+        {t.payment.doctorWalletTitle}
+      </Text>
+      <Pressable
+        onPress={() => void Linking.openURL(link).catch(() => undefined)}
+        accessibilityRole="link"
+        accessibilityLabel={link}
+      >
+        <Text
+          style={[styles.link, { color: colors.primary, textAlign }]}
+          numberOfLines={3}
+          selectable
+        >
+          {link}
+        </Text>
+      </Pressable>
+      <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
+        {t.payment.walletHint}
+      </Text>
+      <LinkButton
+        label={isRTL ? "ادفع الآن" : "Pay now"}
+        url={link}
+        color={colors.primary}
+      />
     </View>
   );
 }
@@ -89,12 +144,21 @@ type Props = {
  */
 export function PaymentActionPanel({ meta, isDoctor, busy, inactive, onReply }: Props) {
   const colors = useColors();
-  const { isRTL } = useI18n();
+  const { isRTL, t } = useI18n();
   const status = meta.payment_status ?? "none";
   if (status === "none") return null;
 
   const dir = isRTL ? "row-reverse" : "row";
   const textAlign = isRTL ? "right" : "left";
+  const paymentMethod = resolvePaymentMethod(meta);
+  const walletLink = meta.payment_link?.trim();
+  const hasBankDetails =
+    !!meta.doctor_iban?.trim() ||
+    !!meta.doctor_account_holder?.trim() ||
+    !!meta.doctor_national_id?.trim();
+  const hasPaymentInstructions =
+    paymentMethod === "wallet" ? !!walletLink : hasBankDetails;
+
   const amount =
     typeof meta.payment_amount === "number" && meta.payment_amount > 0
       ? `${meta.payment_amount} ${meta.payment_currency ?? ""}`.trim()
@@ -135,47 +199,26 @@ export function PaymentActionPanel({ meta, isDoctor, busy, inactive, onReply }: 
       ) : null}
 
       {!inactive && status === "awaiting_payment" && !isDoctor ? (
-        <DoctorBankDetails meta={meta} textAlign={textAlign} />
+        paymentMethod === "wallet" ? (
+          <DoctorWalletDetails meta={meta} textAlign={textAlign} />
+        ) : (
+          <DoctorBankDetails meta={meta} textAlign={textAlign} />
+        )
       ) : null}
 
-      {/* The doctor's own payment URL, shown in full so the patient can read,
-          copy or open it — not hidden behind a button. */}
-      {!inactive && status === "awaiting_payment" && meta.payment_link ? (
-        <Pressable
-          onPress={() =>
-            void Linking.openURL(meta.payment_link!).catch(() => undefined)
-          }
-          accessibilityRole="link"
-          accessibilityLabel={meta.payment_link}
-        >
-          <Text
-            style={[styles.link, { color: colors.primary, textAlign }]}
-            numberOfLines={2}
-          >
-            {meta.payment_link}
-          </Text>
-        </Pressable>
-      ) : null}
-      {!inactive && status === "awaiting_payment" && !meta.payment_link ? (
+      {!inactive && status === "awaiting_payment" && !hasPaymentInstructions ? (
         <Text style={[styles.hint, { color: colors.mutedForeground, textAlign }]}>
           {isDoctor
-            ? isRTL
-              ? "أضف رابط الدفع في ملفك ليتمكن المريض من الدفع."
-              : "Add a payment link to your profile so the patient can pay."
-            : isRTL
-              ? "لم يضف الطبيب رابط دفع بعد — اسأله عن طريقة الدفع."
-              : "The doctor has not added a payment link yet — ask them how to pay."}
+            ? paymentMethod === "wallet"
+              ? t.payment.doctorMissingWallet
+              : t.payment.doctorMissingBank
+            : paymentMethod === "wallet"
+              ? t.payment.patientMissingWallet
+              : t.payment.patientMissingBank}
         </Text>
       ) : null}
 
       <View style={[styles.actions, { flexDirection: dir }]}>
-        {!inactive && !isDoctor && status === "awaiting_payment" && meta.payment_link ? (
-          <LinkButton
-            label={isRTL ? "ادفع الآن" : "Pay now"}
-            url={meta.payment_link}
-            color={colors.primary}
-          />
-        ) : null}
         {!inactive && !isDoctor && status === "awaiting_payment" ? (
           <ActionButton
             label={isRTL ? "إرفاق الإيصال" : "Attach receipt"}

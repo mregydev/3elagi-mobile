@@ -23,8 +23,12 @@ export interface Consultation {
   payment_amount?: number | null;
   payment_currency?: string | null;
   payment_proof_url?: string | null;
-  /** Doctor payment URL when payment is required (patient list). */
+  payment_method?: "bank" | "wallet" | null;
+  /** Wallet URL when payment_method is wallet. */
   payment_link?: string | null;
+  doctor_iban?: string | null;
+  doctor_account_holder?: string | null;
+  doctor_national_id?: string | null;
   /** ISO country the patient consulted from (their IP at request time). */
   patient_country?: string | null;
   /** USD per credit for that country when the request was made (admin-set). */

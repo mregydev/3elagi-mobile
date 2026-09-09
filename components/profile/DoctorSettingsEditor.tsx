@@ -17,6 +17,7 @@ import { EgpPriceInput } from "@/components/EgpPriceInput";
 import { DoctorAvailabilityEditor } from "@/components/DoctorAvailabilityEditor";
 import { DoctorDigitalSignatureField } from "@/components/profile/DoctorDigitalSignatureField";
 import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
+import { DoctorPaymentMethodFields } from "@/components/profile/DoctorPaymentMethodFields";
 import { DoctorProfileHeader } from "@/components/profile/DoctorProfileHeader";
 import { DoctorSettingsSaveDock } from "@/components/profile/DoctorSettingsSaveDock";
 import { DoctorSettingsTabBar } from "@/components/profile/DoctorSettingsTabBar";
@@ -161,6 +162,8 @@ export function DoctorSettingsEditor({
     setVideoPriceUsd,
     paymentLink,
     setPaymentLink,
+    patientPaymentMethod,
+    setPatientPaymentMethod,
     tags,
     setTags,
     displayPhoto,
@@ -343,44 +346,25 @@ export function DoctorSettingsEditor({
           onVideoLocal={setVideoPriceLocal}
           videoUsd={videoPriceUsd}
           onVideoUsd={setVideoPriceUsd}
-          paymentLink={paymentLink}
-          onPaymentLink={setPaymentLink}
           disabled={saving}
           layout="comparative"
         />
       </SettingsCard>
 
-      <SettingsCard title={isRTL ? "البيانات البنكية" : "Bank account & payout"} isRTL={isRTL}>
-        <View style={fields2}>
-          <ProfileSettingsField
-            label={isRTL ? "الاسم الكامل لصاحب الحساب" : "Account holder full name"}
-            value={accountHolderFullName}
-            onChangeText={setAccountHolderFullName}
-            placeholder={isRTL ? "كما هو مسجل في البنك" : "As registered at the bank"}
-            colors={colors}
-            isRTL={isRTL}
-          />
-          <ProfileSettingsField
-            label={isRTL ? "رقم الحساب / IBAN" : "IBAN"}
-            value={iban}
-            onChangeText={setIban}
-            placeholder="EGxxxxxxxxxxxxxxxxxxxxxxxxxx"
-            autoCapitalize="characters"
-            colors={colors}
-            isRTL={isRTL}
-          />
-          <View style={spanFull}>
-            <ProfileSettingsField
-              label={isRTL ? "الرقم القومي" : "National ID"}
-              value={nationalId}
-              onChangeText={setNationalId}
-              placeholder={isRTL ? "14 رقمًا" : "14-digit national ID"}
-              keyboardType="number-pad"
-              colors={colors}
-              isRTL={isRTL}
-            />
-          </View>
-        </View>
+      <SettingsCard title={isRTL ? "طريقة استلام الدفع" : "Patient payment"} isRTL={isRTL}>
+        <DoctorPaymentMethodFields
+          method={patientPaymentMethod}
+          onMethodChange={setPatientPaymentMethod}
+          paymentLink={paymentLink}
+          onPaymentLinkChange={setPaymentLink}
+          iban={iban}
+          onIbanChange={setIban}
+          accountHolderFullName={accountHolderFullName}
+          onAccountHolderFullNameChange={setAccountHolderFullName}
+          nationalId={nationalId}
+          onNationalIdChange={setNationalId}
+          disabled={saving}
+        />
       </SettingsCard>
     </View>
   );

@@ -29,6 +29,7 @@ import { ProfileAiField } from "@/components/profile/ProfileAiField";
 import { ProfileChangePasswordField } from "@/components/profile/ProfileChangePasswordField";
 import { ProfileCountryField } from "@/components/profile/ProfileCountryField";
 import { DoctorFeesFields } from "@/components/profile/DoctorFeesFields";
+import { DoctorPaymentMethodFields } from "@/components/profile/DoctorPaymentMethodFields";
 import { ProfileLanguageField } from "@/components/profile/ProfileLanguageField";
 import { ProfileThemeField } from "@/components/profile/ProfileThemeField";
 import { ProfileNotificationsField } from "@/components/profile/ProfileNotificationsField";
@@ -130,6 +131,8 @@ export function ProfileEditor({
     setVideoPriceUsd,
     paymentLink,
     setPaymentLink,
+    patientPaymentMethod,
+    setPatientPaymentMethod,
     tags,
     setTags,
     isDoctor,
@@ -394,8 +397,6 @@ export function ProfileEditor({
                   onVideoLocal={setVideoPriceLocal}
                   videoUsd={videoPriceUsd}
                   onVideoUsd={setVideoPriceUsd}
-                  paymentLink={paymentLink}
-                  onPaymentLink={setPaymentLink}
                   disabled={saving}
                 />
               </SectionCard>
@@ -403,35 +404,22 @@ export function ProfileEditor({
 
             {isDoctor ? (
               <SectionCard
-                title={isRTL ? "البيانات البنكية" : "Bank account & payout"}
+                title={isRTL ? "طريقة استلام الدفع" : "Patient payment"}
                 colors={colors}
                 textAlign={textAlign}
               >
-                <Field
-                  label={isRTL ? "الاسم الكامل لصاحب الحساب" : "Account holder full name"}
-                  value={accountHolderFullName}
-                  onChangeText={setAccountHolderFullName}
-                  placeholder={isRTL ? "كما هو مسجل في البنك" : "As registered at the bank"}
-                  colors={colors}
-                  isRTL={isRTL}
-                />
-                <Field
-                  label={isRTL ? "رقم الحساب / IBAN" : "IBAN"}
-                  value={iban}
-                  onChangeText={setIban}
-                  placeholder="EGxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  autoCapitalize="characters"
-                  colors={colors}
-                  isRTL={isRTL}
-                />
-                <Field
-                  label={isRTL ? "الرقم القومي" : "National ID"}
-                  value={nationalId}
-                  onChangeText={setNationalId}
-                  placeholder={isRTL ? "14 رقمًا" : "14-digit national ID"}
-                  keyboardType="number-pad"
-                  colors={colors}
-                  isRTL={isRTL}
+                <DoctorPaymentMethodFields
+                  method={patientPaymentMethod}
+                  onMethodChange={setPatientPaymentMethod}
+                  paymentLink={paymentLink}
+                  onPaymentLinkChange={setPaymentLink}
+                  iban={iban}
+                  onIbanChange={setIban}
+                  accountHolderFullName={accountHolderFullName}
+                  onAccountHolderFullNameChange={setAccountHolderFullName}
+                  nationalId={nationalId}
+                  onNationalIdChange={setNationalId}
+                  disabled={saving}
                 />
               </SectionCard>
             ) : null}

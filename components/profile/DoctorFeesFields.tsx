@@ -25,8 +25,6 @@ type Props = {
   onVideoLocal: (v: string) => void;
   videoUsd: string;
   onVideoUsd: (v: string) => void;
-  paymentLink: string;
-  onPaymentLink: (v: string) => void;
   disabled?: boolean;
   /** Side-by-side local / USD cards with currency prefixes. */
   layout?: "stacked" | "comparative";
@@ -42,8 +40,6 @@ export function DoctorFeesFields({
   onVideoLocal,
   videoUsd,
   onVideoUsd,
-  paymentLink,
-  onPaymentLink,
   disabled,
   layout = "stacked",
 }: Props) {
@@ -87,19 +83,6 @@ export function DoctorFeesFields({
           isRTL={isRTL}
           isDesktop={isDesktop}
         />
-        <FeeInput
-          label={isRTL ? "رابط الدفع" : "Payment link"}
-          value={paymentLink}
-          onChangeText={onPaymentLink}
-          placeholder="https://…"
-          keyboardType="default"
-          disabled={disabled}
-        />
-        <Text style={[styles.hint, { color: PROFILE_SETTINGS.text.secondary }]}>
-          {isRTL
-            ? "يدفع المريض عبر هذا الرابط ويرفق إيصال الدفع، ثم تعتمده أنت."
-            : "Patients pay through this link, attach the receipt, and you approve it."}
-        </Text>
       </View>
     );
   }
@@ -131,19 +114,6 @@ export function DoctorFeesFields({
       </Text>
       <FeeInput label={inside} value={videoLocal} onChangeText={onVideoLocal} disabled={disabled} />
       <FeeInput label={outside} value={videoUsd} onChangeText={onVideoUsd} disabled={disabled} />
-      <FeeInput
-        label={isRTL ? "رابط الدفع" : "Payment link"}
-        value={paymentLink}
-        onChangeText={onPaymentLink}
-        placeholder="https://…"
-        keyboardType="default"
-        disabled={disabled}
-      />
-      <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-        {isRTL
-            ? "يدفع المريض عبر هذا الرابط ويرفق إيصال الدفع، ثم تعتمده أنت."
-          : "Patients pay through this link, attach the receipt, and you approve it."}
-      </Text>
     </View>
   );
 }

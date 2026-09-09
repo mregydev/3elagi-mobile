@@ -105,10 +105,12 @@ export interface PaymentActionMeta {
   payment_status?: "none" | "awaiting_payment" | "proof_submitted" | "paid";
   payment_amount?: number | null;
   payment_currency?: string | null;
-  /** The doctor's own payment link. */
+  /** bank transfer or mobile wallet URL. */
+  payment_method?: "bank" | "wallet" | null;
+  /** Wallet URL when payment_method is wallet. */
   payment_link?: string | null;
   payment_proof_url?: string | null;
-  /** Doctor bank details — shown when the patient must pay. */
+  /** Doctor bank details when payment_method is bank. */
   doctor_iban?: string | null;
   doctor_account_holder?: string | null;
   doctor_national_id?: string | null;

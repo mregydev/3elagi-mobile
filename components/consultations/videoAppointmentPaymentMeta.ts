@@ -17,7 +17,11 @@ export function toVideoAppointmentPaymentMeta(
     payment_amount: item.payment_amount ?? null,
     payment_currency: item.payment_currency ?? null,
     payment_proof_url: item.payment_proof_url ?? null,
+    payment_method: item.payment_method ?? null,
     payment_link: item.payment_link ?? null,
+    doctor_iban: item.doctor_iban ?? null,
+    doctor_account_holder: item.doctor_account_holder ?? null,
+    doctor_national_id: item.doctor_national_id ?? null,
   };
 }
 
