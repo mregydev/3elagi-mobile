@@ -7,6 +7,7 @@ import {
   Minimize,
   Minimize2,
   Plus,
+  Sparkles,
   X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -567,6 +568,14 @@ function Ask3elagiAiPanel() {
     ? {}
     : ({ behavior: "padding" as const });
 
+  const guestRemaining = Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount);
+  const guestQuotaAccent =
+    guestRemaining <= 1 ? "#ea580c" : ASK_3ELAGI_AI_FAB_RED;
+  const guestQuotaBg =
+    guestRemaining <= 1 ? "rgba(234, 88, 12, 0.12)" : "rgba(225, 29, 72, 0.09)";
+  const guestQuotaBorder =
+    guestRemaining <= 1 ? "rgba(234, 88, 12, 0.28)" : "rgba(225, 29, 72, 0.22)";
+
   return (
     <PanelShell
       {...panelShellProps}
@@ -758,17 +767,35 @@ function Ask3elagiAiPanel() {
       )}
 
       {!historyOpen && !signedIn ? (
-        <Text
+        <View
           style={[
-            styles.guestQuota,
-            { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" },
+            styles.guestQuotaWrap,
+            { alignItems: isRTL ? "flex-end" : "flex-start" },
           ]}
         >
-          {t.ai.guestMessagesLeft(
-            Math.max(0, GUEST_AI_MAX_MESSAGES - guestSentCount),
-            GUEST_AI_MAX_MESSAGES,
-          )}
-        </Text>
+          <View
+            style={[
+              styles.guestQuotaPill,
+              {
+                flexDirection: isRTL ? "row-reverse" : "row",
+                backgroundColor: guestQuotaBg,
+                borderColor: guestQuotaBorder,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.guestQuotaIcon,
+                { backgroundColor: `${guestQuotaAccent}18` },
+              ]}
+            >
+              <Sparkles size={14} color={guestQuotaAccent} />
+            </View>
+            <Text style={[styles.guestQuotaText, { color: guestQuotaAccent }]}>
+              {t.ai.guestMessagesLeft(guestRemaining, GUEST_AI_MAX_MESSAGES)}
+            </Text>
+          </View>
+        </View>
       ) : null}
 
       {!historyOpen ? (
@@ -1040,10 +1067,32 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 16,
   },
-  guestQuota: {
-    fontSize: 12,
-    fontWeight: "700",
+  guestQuotaWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  guestQuotaPill: {
+    alignItems: "center",
+    gap: 10,
     paddingHorizontal: 14,
-    paddingTop: 6,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    maxWidth: "100%",
+  },
+  guestQuotaIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  guestQuotaText: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.15,
+    flexShrink: 1,
   },
 });
