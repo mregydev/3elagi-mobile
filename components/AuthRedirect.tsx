@@ -71,10 +71,6 @@ export function AuthRedirect() {
     const isAdmin = role?.toLowerCase() === "admin";
 
     if (isAdmin) {
-      if (Platform.OS !== "web") {
-        router.replace("/welcome");
-        return;
-      }
       const isChatRoute = root === "chat";
       if (!isAdminRoute && !isChatRoute) {
         router.replace("/admin");

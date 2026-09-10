@@ -2,10 +2,15 @@ import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
 } from "react-native";
+import {
+  ASK_3ELAGI_AI_FAB_CHROME_GAP,
+  ASK_3ELAGI_AI_FAB_SIZE,
+} from "@/components/assistant/Ask3elagiAiWidget";
 import { DoctorConsultationQueue } from "@/components/home/DoctorConsultationQueue";
 import { HomeDoctorHeader } from "@/components/home/HomeDoctorHeader";
 import { HomeHeroWithTvVideo } from "@/components/home/HomeHeroWithTvVideo";
@@ -115,10 +120,13 @@ export function DoctorHomeBrowse() {
   );
 }
 
+const NATIVE_FAB_SCROLL_PAD =
+  ASK_3ELAGI_AI_FAB_SIZE + ASK_3ELAGI_AI_FAB_CHROME_GAP + 16;
+
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: {
-    paddingBottom: 24,
+    paddingBottom: Platform.OS !== "web" ? NATIVE_FAB_SCROLL_PAD : 24,
     gap: 4,
   },
 });

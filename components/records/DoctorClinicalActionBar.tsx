@@ -149,6 +149,8 @@ function ActionDropdown({
 export function DoctorClinicalActionBar({ disabled, onAction }: Props) {
   const { t, isRTL } = useI18n();
 
+  if (disabled) return null;
+
   const newEntryItems: MenuItem[] = [
     {
       key: "diagnosis",

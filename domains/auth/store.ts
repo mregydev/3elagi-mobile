@@ -100,10 +100,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const session = await authRepository.login(creds);
           const role = session.role.toLowerCase();
-          if (role === "admin" && Platform.OS !== "web") {
-            set({ loading: false });
-            throw new Error("__UNSUPPORTED_ROLE__");
-          }
           if (role !== "patient" && role !== "doctor" && role !== "admin") {
             set({ loading: false });
             throw new Error("__UNSUPPORTED_ROLE__");
@@ -128,10 +124,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const session = await authRepository.loginWithGoogleIdToken(input);
           const role = session.role.toLowerCase();
-          if (role === "admin" && Platform.OS !== "web") {
-            set({ loading: false });
-            throw new Error("__UNSUPPORTED_ROLE__");
-          }
           if (role !== "patient" && role !== "doctor" && role !== "admin") {
             set({ loading: false });
             throw new Error("__UNSUPPORTED_ROLE__");

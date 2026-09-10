@@ -735,10 +735,6 @@ export function MedicalHistoryList({
         <View style={styles.clinicalBarWrap}>
           <DoctorClinicalActionBar onAction={handleClinicalAction} />
         </View>
-      ) : !hideTopChrome && doctorView && accessToken ? (
-        <View style={[styles.clinicalBarWrap, { opacity: 0.6 }]}>
-          <DoctorClinicalActionBar disabled onAction={handleClinicalAction} />
-        </View>
       ) : null}
 
       {effectiveViewMode === "table" || isDesktop ? (

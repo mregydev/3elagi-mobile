@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react-native";
 import React from "react";
+import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
@@ -49,6 +50,7 @@ export default function TabsLayout() {
   // Profile. Doctors swap Records for Patients.
   const patientTabHref = signedIn && !isDoctor ? undefined : null;
   const doctorTabHref = signedIn && isDoctor ? undefined : null;
+  const shortTabLabels = Platform.OS !== "web";
 
   return (
     <AppSidebarProvider>
@@ -110,6 +112,7 @@ export default function TabsLayout() {
           name="documentation"
           options={{
             title: t.tabs.documentation,
+            href: guestOnlyHref,
           }}
         />
         <Tabs.Screen
@@ -149,6 +152,7 @@ export default function TabsLayout() {
           name="appointments"
           options={{
             title: t.tabs.appointments,
+            tabBarLabel: shortTabLabels ? t.tabs.tabBarSchedule : t.tabs.appointments,
             href: authOnlyHref,
             tabBarIcon: ({ color, size }) => (
               <CalendarClock color={color} size={size} />
@@ -169,6 +173,7 @@ export default function TabsLayout() {
           name="history"
           options={{
             title: t.tabs.history,
+            tabBarLabel: shortTabLabels ? t.tabs.tabBarChats : t.tabs.history,
             href: authOnlyHref,
             tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
           }}

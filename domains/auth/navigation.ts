@@ -20,7 +20,7 @@ function getForcedPostAuthRoute(
   doctorApprovalStatus: DoctorApprovalStatus | null,
 ): ForcedPostAuthRoute | null {
   const normalizedRole = role?.toLowerCase();
-  if (normalizedRole === "admin" && Platform.OS === "web") {
+  if (normalizedRole === "admin") {
     return "/admin";
   }
   if (

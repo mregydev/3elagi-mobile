@@ -173,16 +173,21 @@ export default function RootLayout() {
             <Stack.Screen name="medical/[id]" />
             <Stack.Screen name="medical/request/[id]" />
             <Stack.Screen name="admin/index" />
+            <Stack.Screen name="admin/analytics" />
+            <Stack.Screen name="admin/app-reviews" />
             <Stack.Screen name="admin/chats" />
-            <Stack.Screen name="admin/pricing" />
-            <Stack.Screen name="admin/specialities" />
-            <Stack.Screen name="admin/rag" />
             <Stack.Screen name="admin/complaints" />
             <Stack.Screen name="admin/contact-messages" />
+            <Stack.Screen name="admin/deleted-accounts" />
             <Stack.Screen name="admin/doctor-registrations" />
+            <Stack.Screen name="admin/doctor-signup" />
             <Stack.Screen name="admin/doctor-speciality-changes" />
-            <Stack.Screen name="admin/app-reviews" />
+            <Stack.Screen name="admin/doctor-welcome-email" />
+            <Stack.Screen name="admin/invited-doctors" />
             <Stack.Screen name="admin/marketing" />
+            <Stack.Screen name="admin/pricing" />
+            <Stack.Screen name="admin/rag" />
+            <Stack.Screen name="admin/specialities" />
             <Stack.Screen name="doctor-pending" />
             <Stack.Screen name="points/checkout" />
           </Stack>
