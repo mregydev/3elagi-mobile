@@ -1,3 +1,4 @@
+import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
 import {
   Bell,
@@ -16,11 +17,14 @@ import {
 } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppSidebarDrawer } from "@/components/nav/AppSidebarDrawer";
 import { PublicLandingNav } from "@/components/marketing/PublicLandingNav";
 import { WebContentColumn } from "@/components/web/WebContentColumn";
+import { WebMobileTabBar } from "@/components/web/WebMobileTabBar";
 import { WebSidebar } from "@/components/web/WebSidebar";
 import { AppSidebarProvider } from "@/contexts/AppSidebarContext";
+import { mobileWebTabBarHeight } from "@/constants/webLayout";
 import { useAiEnabled } from "@/domains/ai/aiPreference";
 import { useAuthStore } from "@/domains/auth/store";
 import { isSignedIn } from "@/domains/auth/session";
@@ -30,8 +34,11 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 
 export default function TabsLayoutWeb() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { t, isRTL } = useI18n();
   const { isMobile } = useWebLayout();
+  const bottomGap = Math.max(insets.bottom, 8);
+  const tabBarHeight = isMobile ? mobileWebTabBarHeight(insets.bottom) : 0;
   const profile = useAuthStore((s) => s.profile);
   const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -57,24 +64,26 @@ export default function TabsLayoutWeb() {
         ]}
       >
         <WebSidebar />
-        {/* Guests: full-bleed column so the landing scrollbar sits on the page
-            edge (right in English, left in Arabic via #brand-scroll CSS). */}
-        <WebContentColumn wide fluid={!signedIn} style={styles.main}>
-          {/* Mobile guests use PublicLandingNav; tablet+ guests use the sidebar. */}
-          {!signedIn && isMobile ? (
-            <View style={styles.guestNav}>
-              <PublicLandingNav />
-            </View>
-          ) : null}
-          <Tabs
-            tabBar={() => null}
-            screenOptions={{
-              headerShown: false,
-              tabBarActiveTintColor: colors.primary,
-              tabBarInactiveTintColor: colors.mutedForeground,
-              tabBarStyle: { display: "none" },
-            }}
-          >
+        <BottomTabBarHeightContext.Provider value={tabBarHeight}>
+          <View style={styles.mainColumn}>
+            {/* Guests: full-bleed column so the landing scrollbar sits on the page
+                edge (right in English, left in Arabic via #brand-scroll CSS). */}
+            <WebContentColumn wide fluid={!signedIn} style={styles.main}>
+              {/* Mobile guests use PublicLandingNav; tablet+ guests use the sidebar. */}
+              {!signedIn && isMobile ? (
+                <View style={styles.guestNav}>
+                  <PublicLandingNav />
+                </View>
+              ) : null}
+              <Tabs
+                tabBar={() => null}
+                screenOptions={{
+                  headerShown: false,
+                  tabBarActiveTintColor: colors.primary,
+                  tabBarInactiveTintColor: colors.mutedForeground,
+                  tabBarStyle: { display: "none" },
+                }}
+              >
             <Tabs.Screen
               name="index"
               options={{
@@ -231,8 +240,13 @@ export default function TabsLayoutWeb() {
                 tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
               }}
             />
-          </Tabs>
-        </WebContentColumn>
+              </Tabs>
+            </WebContentColumn>
+            {isMobile ? (
+              <WebMobileTabBar height={tabBarHeight} bottomGap={bottomGap} />
+            ) : null}
+          </View>
+        </BottomTabBarHeightContext.Provider>
       </View>
       <AppSidebarDrawer />
     </AppSidebarProvider>
@@ -241,7 +255,8 @@ export default function TabsLayoutWeb() {
 
 const styles = StyleSheet.create({
   shell: { flex: 1, minHeight: 0, overflow: "hidden" },
-  main: { minWidth: 0 },
+  mainColumn: { flex: 1, minWidth: 0, minHeight: 0 },
+  main: { flex: 1, minWidth: 0, minHeight: 0 },
   // Matches the 95% guest content width in the home scroll below it.
   guestNav: { width: "95%", alignSelf: "center" },
 });
