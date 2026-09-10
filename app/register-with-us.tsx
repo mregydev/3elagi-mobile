@@ -41,7 +41,10 @@ export default function RegisterWithUsScreen() {
 
       <KeyboardSafeScrollView
         style={styles.flex}
-        contentContainerStyle={styles.body}
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: Math.max(insets.bottom, 16) + 32 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <RegisterWithUsForm />
@@ -65,5 +68,5 @@ const styles = StyleSheet.create({
     height: 40,
   },
   title: { fontSize: 17, fontWeight: "800" },
-  body: { padding: 20, paddingBottom: 40 },
+  body: { padding: 20 },
 });
