@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  InteractionManager,
   Platform,
   Pressable,
   StyleSheet,
@@ -83,7 +84,6 @@ export const ASK_3ELAGI_AI_FAB_SIZE = 56;
 export const ASK_3ELAGI_AI_FAB_CHROME_GAP = WEB_FAB_INSET;
 /** Extra breathing room above the native bottom tab bar. */
 export const ASK_3ELAGI_AI_FAB_TAB_BAR_GAP = 14;
-
 function isProfileRoute(pathname: string | null, segments: string[]): boolean {
   return segments.includes("profile") || Boolean(pathname?.includes("/profile"));
 }
@@ -154,6 +154,7 @@ function Ask3elagiAiPanel() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const hydrated = useAuthStore((s) => s.hydrated);
   const signedIn = hydrated && isSignedIn(profile, accessToken);
+  const widgetOpen = useAsk3elagiAiWidgetStore((s) => s.open);
   const closeWidget = useAsk3elagiAiWidgetStore((s) => s.closeWidget);
   const expanded = useAsk3elagiAiWidgetStore((s) => s.expanded);
   const toggleExpanded = useAsk3elagiAiWidgetStore((s) => s.toggleExpanded);
@@ -167,6 +168,7 @@ function Ask3elagiAiPanel() {
   const assistant = useAiAssistant();
   const aiFile = useAiFileAttachment();
   const listRef = useRef<FlatList>(null);
+  const pendingSmoothScrollRef = useRef(false);
   const [guestConversations, setGuestConversations] = useState<AiConversation[]>([]);
   const [guestActiveId, setGuestActiveId] = useState<string | null>(null);
   const [guestSending, setGuestSending] = useState(false);
@@ -253,9 +255,17 @@ function Ask3elagiAiPanel() {
     return { id, messages: [] };
   }, [guestActiveId, guestConversations, persistGuestState]);
 
-  const scrollToLatest = useCallback((animated = false) => {
+  const scrollToLatest = useCallback((animated = true) => {
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  const scrollToLatestSmooth = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd({ animated: true });
+      });
     });
   }, []);
 
@@ -412,27 +422,43 @@ function Ask3elagiAiPanel() {
     setActiveAiWidgetChatId(null);
   }, [signedIn, assistant.activeId]);
 
-  // Scroll to last message when the panel opens / history finishes loading.
+  const activeConversationKey = signedIn
+    ? (assistant.activeId ?? "new")
+    : (guestActiveId ?? "guest");
+
+  // Defer one smooth scroll after open / conversation switch / history load.
   useEffect(() => {
-    if (loadingHistory) return;
-    scrollToLatest(false);
-    const t1 = setTimeout(() => scrollToLatest(false), 80);
-    const t2 = setTimeout(() => scrollToLatest(false), 250);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [
-    loadingHistory,
-    assistant.activeId,
-    messages.length,
-    scrollToLatest,
-  ]);
+    if (!widgetOpen) return;
+    pendingSmoothScrollRef.current = true;
+  }, [widgetOpen, activeConversationKey]);
 
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (!widgetOpen || loadingHistory) return;
+    pendingSmoothScrollRef.current = true;
+    const timer = setTimeout(() => {
+      if (!pendingSmoothScrollRef.current) return;
+      scrollToLatestSmooth();
+      pendingSmoothScrollRef.current = false;
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [widgetOpen, loadingHistory, activeConversationKey, scrollToLatestSmooth]);
+
+  const onChatContentSizeChange = useCallback(() => {
+    if (!widgetOpen || loadingHistory || !pendingSmoothScrollRef.current) return;
+    pendingSmoothScrollRef.current = false;
+    scrollToLatestSmooth();
+  }, [widgetOpen, loadingHistory, scrollToLatestSmooth]);
+
+  useEffect(() => {
+    if (!widgetOpen || messages.length === 0) return;
     scrollToLatest(true);
-  }, [messages.length, assistant.streaming, guestSending, scrollToLatest]);
+  }, [
+    widgetOpen,
+    messages.length,
+    assistant.streaming,
+    guestSending,
+    scrollToLatest,
+  ]);
 
   const handleSend = useCallback(
     (value: string) => {
@@ -511,7 +537,7 @@ function Ask3elagiAiPanel() {
     persistGuestState(next, nextActive);
   };
 
-  const fullScreenPanel = expanded;
+  const fullScreenPanel = isNative || expanded;
   const panelStyle = fullScreenPanel
     ? {
         top: 0,
@@ -685,31 +711,18 @@ function Ask3elagiAiPanel() {
                 <Maximize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
               )}
             </Pressable>
-          ) : (
+          ) : null}
+          {isDesktop ? (
             <Pressable
-              onPress={toggleExpanded}
+              onPress={closeWidget}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={expanded ? "Restore panel size" : "Expand panel"}
+              accessibilityLabel="Minimize"
               style={styles.iconBtn}
             >
-              {expanded ? (
-                <Minimize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-              ) : (
-                <Maximize2 size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-              )}
+              <Minimize size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
             </Pressable>
-          )}
-          <Pressable
-            onPress={closeWidget}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Minimize"
-            style={styles.iconBtn}
-          >
-            <Minimize size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
-          </Pressable>
-          {!isDesktop ? (
+          ) : (
             <Pressable
               onPress={closeWidget}
               hitSlop={10}
@@ -719,7 +732,7 @@ function Ask3elagiAiPanel() {
             >
               <X size={18} color={ASK_3ELAGI_AI_FAB_ON_RED_MUTED} />
             </Pressable>
-          ) : null}
+          )}
         </View>
       </View>
 
@@ -746,8 +759,7 @@ function Ask3elagiAiPanel() {
           keyExtractor={(item) => item.id}
           style={[styles.chatList, { backgroundColor: colors.background }]}
           contentContainerStyle={styles.chatListContent}
-          onContentSizeChange={() => scrollToLatest(false)}
-          onLayout={() => scrollToLatest(false)}
+          onContentSizeChange={onChatContentSizeChange}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           renderItem={({ item }) => (
@@ -907,10 +919,14 @@ export function Ask3elagiAiWidget() {
     addBarLift +
     profileLift +
     medicalFormLift;
-  // Bottom-right in English (LTR), bottom-left in Arabic (RTL).
-  const sideStyle = isRTL
-    ? { left: edge, right: undefined as number | undefined }
-    : { right: edge, left: undefined as number | undefined };
+  // Bottom corner above tab bar: far right in LTR, far left in RTL (Arabic).
+  const fabPositionStyle = {
+    bottom,
+    top: undefined as number | undefined,
+    ...(isRTL
+      ? { left: edge, right: undefined as number | undefined }
+      : { right: edge, left: undefined as number | undefined }),
+  };
 
   const content = (
     <View style={styles.host} pointerEvents="box-none">
@@ -921,9 +937,8 @@ export function Ask3elagiAiWidget() {
           onPress={() => openWidget(undefined, patientUserIdFromPath(pathname))}
           style={[
             iconOnlyFab ? styles.fabCircle : styles.fab,
-            sideStyle,
+            fabPositionStyle,
             {
-              bottom,
               backgroundColor: ASK_3ELAGI_AI_FAB_RED,
               shadowColor: ASK_3ELAGI_AI_FAB_RED,
             },

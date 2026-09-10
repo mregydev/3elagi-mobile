@@ -15,6 +15,7 @@ import {
 import { AppTextInput } from "@/components/AppTextInput";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { adminPagePadding } from "@/constants/adminLayout";
+import { localFeeCurrency } from "@/components/profile/DoctorFeesFields";
 import { patientCountryLabel } from "@/constants/patientCountries";
 import {
   createAdminDoctorFromRegistration,
@@ -43,6 +44,23 @@ function showCredentialsAlert(name: string, email: string, password: string) {
     return;
   }
   Alert.alert("Doctor created", message, [{ text: "OK" }]);
+}
+
+function formatRegistrationPrice(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return "Not provided";
+  return String(value);
+}
+
+function registrationPriceSummary(row: AdminDoctorRegistrationRow): string | null {
+  const parts: string[] = [];
+  const currency = localFeeCurrency(row.country);
+  if (row.price_local != null) {
+    parts.push(`${row.price_local} ${currency} local`);
+  }
+  if (row.price_usd != null) {
+    parts.push(`${row.price_usd} USD international`);
+  }
+  return parts.length ? parts.join(" · ") : null;
 }
 
 export default function AdminDoctorRegistrationsWeb() {
@@ -227,6 +245,7 @@ export default function AdminDoctorRegistrationsWeb() {
             const row = detail ?? item;
             const busy = actingId === item.id;
             const photoUrl = row.photo_url ?? item.photo_url;
+            const priceSummary = registrationPriceSummary(row);
 
             return (
               <View
@@ -263,12 +282,22 @@ export default function AdminDoctorRegistrationsWeb() {
                       {fmt(item.created_at)}
                     </Text>
                     {!open ? (
-                      <Text
-                        style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}
-                        numberOfLines={1}
-                      >
-                        {item.speciality_name_en}
-                      </Text>
+                      <>
+                        <Text
+                          style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}
+                          numberOfLines={1}
+                        >
+                          {item.speciality_name_en}
+                        </Text>
+                        {priceSummary ? (
+                          <Text
+                            style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}
+                            numberOfLines={1}
+                          >
+                            {priceSummary}
+                          </Text>
+                        ) : null}
+                      </>
                     ) : null}
                   </View>
                   <Text style={{ color: colors.primary, fontWeight: "700" }}>
@@ -335,6 +364,44 @@ export default function AdminDoctorRegistrationsWeb() {
                               </Text>
                             </>
                           ) : null}
+                        </View>
+
+                        <View
+                          style={[
+                            styles.pricingBlock,
+                            {
+                              backgroundColor: `${colors.primary}08`,
+                              borderColor: `${colors.primary}33`,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.pricingBlockTitle, { color: colors.foreground }]}>
+                            Website consultation price
+                          </Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                            Shown on the doctor's public profile — verify before creating the account.
+                          </Text>
+                          <View style={styles.pricingRows}>
+                            <View style={styles.pricingRow}>
+                              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                                Inside {patientCountryLabel(row.country, false)} (
+                                {localFeeCurrency(row.country)})
+                              </Text>
+                              <Text style={[styles.pricingValue, { color: colors.foreground }]}>
+                                {formatRegistrationPrice(row.price_local)}{" "}
+                                {row.price_local != null ? localFeeCurrency(row.country) : ""}
+                              </Text>
+                            </View>
+                            <View style={styles.pricingRow}>
+                              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                                Outside {patientCountryLabel(row.country, false)} (USD)
+                              </Text>
+                              <Text style={[styles.pricingValue, { color: colors.foreground }]}>
+                                {formatRegistrationPrice(row.price_usd)}{" "}
+                                {row.price_usd != null ? "USD" : ""}
+                              </Text>
+                            </View>
+                          </View>
                         </View>
 
                         <View style={{ gap: 6 }}>
@@ -453,6 +520,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
+  },
+  pricingBlock: {
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  pricingBlockTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  pricingRows: { gap: 10, marginTop: 4 },
+  pricingRow: { gap: 4 },
+  pricingValue: {
+    fontSize: 16,
+    fontWeight: "800",
   },
   passwordInput: {
     borderWidth: 1,

@@ -1,4 +1,4 @@
-import { Stethoscope, UserRound } from "lucide-react-native";
+import { Info, Stethoscope, UserRound } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
@@ -18,9 +18,13 @@ import { DoctorSignupMarketField } from "@/components/auth/DoctorSignupMarketFie
 import { SpecialitySelectField } from "@/components/auth/SpecialitySelectField";
 import { primaryButton, UI } from "@/constants/uiTokens";
 import {
+  buildDoctorSignupPhone,
   DEFAULT_PATIENT_COUNTRY,
+  doctorSignupDialCode,
+  patientCountryLabel,
   type DoctorSignupCountryCode,
 } from "@/constants/patientCountries";
+import { localFeeCurrency } from "@/components/profile/DoctorFeesFields";
 import { submitDoctorRegistration, type DoctorRegistrationPhoto } from "@/domains/doctorRegistration/api";
 import { hasFieldErrors } from "@/domains/auth/validation";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
@@ -36,9 +40,19 @@ type FieldErrors = {
   email?: string;
   phone?: string;
   country?: string;
+  priceLocal?: string;
+  priceUsd?: string;
   specialityId?: string;
   photo?: string;
 };
+
+function parsePositivePrice(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed.replace(/,/g, ""));
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.round(parsed * 100) / 100;
+}
 
 type Props = {
   /** Centered hero block above the fields (desktop card). */
@@ -54,8 +68,10 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
 
   const [doctorName, setDoctorName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneLocal, setPhoneLocal] = useState("");
   const [country, setCountry] = useState<DoctorSignupCountryCode>(DEFAULT_PATIENT_COUNTRY);
+  const [priceLocal, setPriceLocal] = useState("");
+  const [priceUsd, setPriceUsd] = useState("");
   const [clinicLocation, setClinicLocation] = useState("");
   const [specialityId, setSpecialityId] = useState("");
   const [photo, setPhoto] = useState<DoctorRegistrationPhoto | null>(null);
@@ -146,14 +162,34 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
     ]);
   };
 
+  const dialCode = doctorSignupDialCode(country);
+  const homeCurrency = localFeeCurrency(country);
+  const homeLabel = patientCountryLabel(country, isRTL);
+  const insidePriceLabel = isRTL
+    ? `داخل ${homeLabel} (${homeCurrency})`
+    : `Inside ${homeLabel} (${homeCurrency})`;
+  const outsidePriceLabel = isRTL
+    ? `خارج ${homeLabel} (USD)`
+    : `Outside ${homeLabel} (USD)`;
+
   const validate = (): FieldErrors => {
     const errors: FieldErrors = {};
     if (!doctorName.trim()) errors.doctorName = t.auth.fieldRequired;
     const trimmedEmail = email.trim();
     if (!trimmedEmail) errors.email = t.auth.fieldRequired;
     else if (!EMAIL_RE.test(trimmedEmail)) errors.email = t.auth.invalidEmail;
-    if (!phone.trim()) errors.phone = t.auth.fieldRequired;
     if (!country) errors.country = t.auth.doctorMarketRequired;
+    if (!phoneLocal.replace(/\D/g, "").trim()) errors.phone = t.auth.fieldRequired;
+    if (!parsePositivePrice(priceLocal)) {
+      errors.priceLocal = priceLocal.trim()
+        ? t.registerWithUs.invalidPrice
+        : t.registerWithUs.priceLocalRequired;
+    }
+    if (!parsePositivePrice(priceUsd)) {
+      errors.priceUsd = priceUsd.trim()
+        ? t.registerWithUs.invalidPrice
+        : t.registerWithUs.priceUsdRequired;
+    }
     if (!specialityId) errors.specialityId = t.auth.specialityRequiredMsg;
     if (!photo) errors.photo = t.registerWithUs.photoRequired;
     return errors;
@@ -169,18 +205,22 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       await submitDoctorRegistration({
         doctorName,
         email,
-        phone,
+        phone: buildDoctorSignupPhone(country, phoneLocal),
         country,
         specialityId,
         clinicLocation: clinicLocation.trim() || undefined,
+        priceLocal: parsePositivePrice(priceLocal)!,
+        priceUsd: parsePositivePrice(priceUsd)!,
         photo: photo!,
       });
       setSent(true);
       showSuccessToast(t.registerWithUs.sent);
       setDoctorName("");
       setEmail("");
-      setPhone("");
+      setPhoneLocal("");
       setCountry(DEFAULT_PATIENT_COUNTRY);
+      setPriceLocal("");
+      setPriceUsd("");
       setClinicLocation("");
       setSpecialityId("");
       setPhoto(null);
@@ -296,26 +336,6 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           />
         </FieldBlock>
 
-        <FieldBlock label={t.registerWithUs.phoneLabel} error={fieldErrors.phone}>
-          <AppTextInput
-            value={phone}
-            onChangeText={(value) => {
-              setPhone(value);
-              if (fieldErrors.phone) {
-                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
-              }
-            }}
-            placeholder={t.auth.phonePlaceholder}
-            keyboardType="phone-pad"
-            editable={!sending}
-            error={!!fieldErrors.phone}
-            style={[
-              styles.input,
-              inputStyle(colors, fieldErrors.phone, textAlign),
-            ]}
-          />
-        </FieldBlock>
-
         <DoctorSignupMarketField
           isRTL={isRTL}
           value={country}
@@ -328,6 +348,97 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           error={fieldErrors.country}
           disabled={sending}
         />
+
+        <FieldBlock label={t.registerWithUs.phoneLabel} error={fieldErrors.phone}>
+          <View style={[styles.phoneRow, { flexDirection: dir }]}>
+            <View
+              style={[
+                styles.phonePrefix,
+                {
+                  backgroundColor: `${colors.primary}12`,
+                  borderColor: fieldErrors.phone ? colors.destructive : colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.phonePrefixText, { color: colors.primary }]}>{dialCode}</Text>
+            </View>
+            <AppTextInput
+              value={phoneLocal}
+              onChangeText={(value) => {
+                setPhoneLocal(value.replace(/[^\d\s-]/g, ""));
+                if (fieldErrors.phone) {
+                  setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                }
+              }}
+              placeholder={t.auth.phonePlaceholder}
+              keyboardType="phone-pad"
+              editable={!sending}
+              error={!!fieldErrors.phone}
+              style={[
+                styles.phoneInput,
+                inputStyle(colors, fieldErrors.phone, textAlign),
+              ]}
+            />
+          </View>
+        </FieldBlock>
+
+        <View style={styles.pricingSection}>
+          <Text style={[styles.pricingTitle, { color: colors.foreground, textAlign }]}>
+            {t.registerWithUs.pricingTitle}
+          </Text>
+          <View
+            style={[
+              styles.pricingDisclaimer,
+              {
+                backgroundColor: `${colors.primary}10`,
+                borderColor: `${colors.primary}33`,
+                flexDirection: dir,
+              },
+            ]}
+          >
+            <Info size={18} color={colors.primary} strokeWidth={2.2} />
+            <Text
+              style={[
+                styles.pricingDisclaimerText,
+                { color: colors.foreground, textAlign },
+              ]}
+            >
+              {t.registerWithUs.pricingDisclaimer}
+            </Text>
+          </View>
+          <View style={styles.pricingFields}>
+            <PriceField
+              label={insidePriceLabel}
+              currency={homeCurrency}
+              value={priceLocal}
+              onChangeText={(value) => {
+                setPriceLocal(value);
+                if (fieldErrors.priceLocal) {
+                  setFieldErrors((prev) => ({ ...prev, priceLocal: undefined }));
+                }
+              }}
+              error={fieldErrors.priceLocal}
+              disabled={sending}
+              isRTL={isRTL}
+              textAlign={textAlign}
+            />
+            <PriceField
+              label={outsidePriceLabel}
+              currency="USD"
+              value={priceUsd}
+              onChangeText={(value) => {
+                setPriceUsd(value);
+                if (fieldErrors.priceUsd) {
+                  setFieldErrors((prev) => ({ ...prev, priceUsd: undefined }));
+                }
+              }}
+              error={fieldErrors.priceUsd}
+              disabled={sending}
+              isRTL={isRTL}
+              textAlign={textAlign}
+            />
+          </View>
+        </View>
 
         <FieldBlock label={t.registerWithUs.clinicLocationLabel}>
           <AppTextInput
@@ -378,6 +489,64 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           </Text>
         )}
       </Pressable>
+    </View>
+  );
+}
+
+function PriceField({
+  label,
+  currency,
+  value,
+  onChangeText,
+  error,
+  disabled,
+  isRTL,
+  textAlign,
+}: {
+  label: string;
+  currency: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  error?: string;
+  disabled?: boolean;
+  isRTL: boolean;
+  textAlign: "left" | "right" | "center";
+}) {
+  const colors = useColors();
+  const dir = flexRow(isRTL);
+
+  return (
+    <View style={styles.priceField}>
+      <Text style={[styles.label, { color: colors.foreground, textAlign }]}>{label}</Text>
+      <View style={[styles.priceInputRow, { flexDirection: dir }]}>
+        <View
+          style={[
+            styles.currencyPrefix,
+            {
+              backgroundColor: `${colors.primary}12`,
+              borderColor: error ? colors.destructive : colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.currencyPrefixText, { color: colors.primary }]}>{currency}</Text>
+        </View>
+        <AppTextInput
+          value={value}
+          onChangeText={onChangeText}
+          editable={!disabled}
+          placeholder="0"
+          placeholderTextColor={colors.mutedForeground}
+          keyboardType="decimal-pad"
+          error={!!error}
+          style={[
+            styles.priceInput,
+            inputStyle(colors, error, textAlign),
+          ]}
+        />
+      </View>
+      {error ? (
+        <Text style={[styles.fieldError, { color: colors.destructive, textAlign }]}>{error}</Text>
+      ) : null}
     </View>
   );
 }
@@ -484,6 +653,58 @@ const styles = StyleSheet.create({
   fieldBlock: { gap: 8 },
   label: { fontSize: 13, fontWeight: "700" },
   input: {
+    borderWidth: 1,
+    borderRadius: UI.radius.inner,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
+  },
+  phoneRow: { alignItems: "stretch", gap: 8 },
+  phonePrefix: {
+    borderWidth: 1,
+    borderRadius: UI.radius.inner,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    minWidth: 72,
+  },
+  phonePrefixText: { fontSize: 15, fontWeight: "800", textAlign: "center" },
+  phoneInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: UI.radius.inner,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
+  },
+  pricingSection: { gap: 10 },
+  pricingTitle: { fontSize: 14, fontWeight: "800" },
+  pricingDisclaimer: {
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: UI.radius.inner,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  pricingDisclaimerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "600",
+  },
+  pricingFields: { gap: 12 },
+  priceField: { gap: 8 },
+  priceInputRow: { alignItems: "stretch", gap: 8 },
+  currencyPrefix: {
+    borderWidth: 1,
+    borderRadius: UI.radius.inner,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    minWidth: 64,
+  },
+  currencyPrefixText: { fontSize: 13, fontWeight: "800", textAlign: "center" },
+  priceInput: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: UI.radius.inner,
     paddingHorizontal: 14,

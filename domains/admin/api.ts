@@ -388,6 +388,8 @@ export interface AdminDoctorRegistrationRow {
   country: string;
   clinic_location: string | null;
   photo_url: string | null;
+  price_local: number | null;
+  price_usd: number | null;
   speciality_id: string;
   speciality_name_en: string;
   speciality_name_ar: string;

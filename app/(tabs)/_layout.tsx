@@ -112,7 +112,8 @@ export default function TabsLayout() {
           name="documentation"
           options={{
             title: t.tabs.documentation,
-            href: guestOnlyHref,
+            // Drawer only on native — never a bottom-tab destination.
+            href: null,
           }}
         />
         <Tabs.Screen

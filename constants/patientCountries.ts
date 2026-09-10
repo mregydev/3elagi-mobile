@@ -33,6 +33,30 @@ export const DOCTOR_SIGNUP_COUNTRY_CODES = ["EG", "JO", "US", "GB"] as const;
 export type DoctorSignupCountryCode =
   (typeof DOCTOR_SIGNUP_COUNTRY_CODES)[number];
 
+/** International dial prefix shown on doctor signup / register-with-us phone fields. */
+export const DOCTOR_SIGNUP_DIAL_CODES: Record<DoctorSignupCountryCode, string> = {
+  EG: "+20",
+  JO: "+962",
+  US: "+1",
+  GB: "+44",
+};
+
+export function doctorSignupDialCode(
+  country: DoctorSignupCountryCode,
+): string {
+  return DOCTOR_SIGNUP_DIAL_CODES[country] ?? DOCTOR_SIGNUP_DIAL_CODES.EG;
+}
+
+/** Combine selected market dial code with local digits (strips leading 0). */
+export function buildDoctorSignupPhone(
+  country: DoctorSignupCountryCode,
+  localDigits: string,
+): string {
+  const dial = doctorSignupDialCode(country).replace(/\D/g, "");
+  const local = localDigits.replace(/\D/g, "").replace(/^0+/, "");
+  return `+${dial}${local}`;
+}
+
 export const DEFAULT_PATIENT_COUNTRY: MarketCountryCode = "EG";
 
 /** @deprecated use MARKET_COUNTRY_CODES — alias for roster filter. */

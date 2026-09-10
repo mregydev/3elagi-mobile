@@ -14,6 +14,8 @@ export async function submitDoctorRegistration(input: {
   country: string;
   specialityId: string;
   clinicLocation?: string;
+  priceLocal: number;
+  priceUsd: number;
   photo: DoctorRegistrationPhoto;
 }): Promise<void> {
   const form = new FormData();
@@ -25,6 +27,8 @@ export async function submitDoctorRegistration(input: {
   if (input.clinicLocation?.trim()) {
     form.append("clinic_location", input.clinicLocation.trim());
   }
+  form.append("price_local", String(input.priceLocal));
+  form.append("price_usd", String(input.priceUsd));
 
   if (Platform.OS === "web") {
     const res = await fetch(input.photo.uri);
