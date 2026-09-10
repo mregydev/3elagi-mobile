@@ -150,6 +150,8 @@ export default function AdminPanelWeb() {
     );
   };
 
+  const compactActionBtn = compact ? styles.actionBtnCompact : null;
+
   const renderDoctor = (doctor: AdminDoctorRow) => {
     const busy = actingId === doctor.id;
     const speciality =
@@ -199,7 +201,7 @@ export default function AdminPanelWeb() {
               onPress={() =>
                 void handleApproval(doctor.id, "approved", "Doctor approved")
               }
-              style={[styles.approveBtn, { opacity: busy ? 0.6 : 1 }]}
+              style={[styles.approveBtn, compactActionBtn, { opacity: busy ? 0.6 : 1 }]}
             >
               {busy ? (
                 <ActivityIndicator color="#fff" />
@@ -214,6 +216,7 @@ export default function AdminPanelWeb() {
               }
               style={[
                 styles.rejectBtn,
+                compactActionBtn,
                 { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 },
               ]}
             >
@@ -236,6 +239,7 @@ export default function AdminPanelWeb() {
                 }}
                 style={[
                   styles.rejectBtn,
+                  compactActionBtn,
                   { borderColor: "#ef4444", opacity: busy ? 0.6 : 1 },
                 ]}
               >
@@ -247,7 +251,7 @@ export default function AdminPanelWeb() {
                 onPress={() =>
                   void handleApproval(doctor.id, "approved", "Doctor approved")
                 }
-                style={[styles.approveBtn, { opacity: busy ? 0.6 : 1 }]}
+                style={[styles.approveBtn, compactActionBtn, { opacity: busy ? 0.6 : 1 }]}
               >
                 {busy ? (
                   <ActivityIndicator color="#fff" />
@@ -259,7 +263,7 @@ export default function AdminPanelWeb() {
             <Pressable
               disabled={busy}
               onPress={() => void handleDelete(doctor)}
-              style={[styles.deleteBtn, { opacity: busy ? 0.6 : 1 }]}
+              style={[styles.deleteBtn, compactActionBtn, { opacity: busy ? 0.6 : 1 }]}
             >
               {busy ? (
                 <ActivityIndicator color="#fff" />
@@ -334,14 +338,26 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  actionsCompact: { flexDirection: "column" },
+  actionsCompact: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    width: "100%",
+    gap: 10,
+    paddingTop: 4,
+  },
+  actionBtnCompact: {
+    width: "100%",
+    flex: 0,
+    alignSelf: "stretch",
+    paddingHorizontal: 16,
+  },
   approveBtn: {
     flex: 1,
     backgroundColor: "#10b981",
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 44,
   },
   approveText: { color: "#fff", fontWeight: "800" },
   rejectBtn: {
@@ -350,7 +366,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 44,
   },
   deleteBtn: {
     flex: 1,
@@ -358,7 +374,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 44,
   },
   deleteText: { color: "#fff", fontWeight: "800" },
 });
