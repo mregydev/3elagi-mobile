@@ -41,6 +41,13 @@ describe("isPublicWebPath", () => {
     expect(isGuestAllowedRoot("points")).toBe(false);
   });
 
+  it("keeps per-speciality doctor rosters public for guests", () => {
+    expect(isPublicWebPath("/speciality/cardiology")).toBe(true);
+    expect(isPublicWebPath("/specialties/cardiology")).toBe(true);
+    expect(isGuestAllowedRoot("speciality")).toBe(true);
+    expect(isGuestAllowedRoot("specialties")).toBe(true);
+  });
+
   it("keeps documentation public for guests", () => {
     expect(isPublicWebPath("/documentation")).toBe(true);
     expect(isPublicWebPath("/(tabs)/documentation")).toBe(true);

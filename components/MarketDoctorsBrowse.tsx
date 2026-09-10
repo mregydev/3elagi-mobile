@@ -1,6 +1,8 @@
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,6 +26,11 @@ import {
   type SpecialityDoctor,
   type SpecialityDoctorRow,
 } from "@/domains/home/api";
+import {
+  buildDoctorsDirectoryHref,
+  findSpecialityBySlug,
+  SPECIALITY_QUERY_PARAM,
+} from "@/domains/home/specialityRoutes";
 import { onDoctorRegistered } from "@/domains/presence/socket";
 import { useHardwareBackHandler } from "@/hooks/useHardwareBackHandler";
 import { useOpenDoctor } from "@/hooks/useOpenDoctor";
@@ -45,6 +52,8 @@ export function MarketDoctorsBrowse({
   const colors = useColors();
   const { isRTL } = useI18n();
   const { openDoctorProfile, startConsultationWithDoctor } = useOpenDoctor();
+  const searchParams = useLocalSearchParams<Record<string, string | string[]>>();
+  const specialtyParam = searchParams[SPECIALITY_QUERY_PARAM];
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(
     null,
@@ -73,6 +82,28 @@ export function MarketDoctorsBrowse({
   useEffect(() => {
     void loadHome();
   }, [loadHome]);
+
+  // Web: `/doctors?specialty=cardiology` opens the roster directly.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const raw = Array.isArray(specialtyParam) ? specialtyParam[0] : specialtyParam;
+    if (!raw?.trim()) {
+      setSelectedSpeciality(null);
+      setDoctors([]);
+      return;
+    }
+    const found = findSpecialityBySlug(specialities, raw);
+    if (found) {
+      setSelectedSpeciality(found);
+      setError(null);
+      return;
+    }
+    if (!loadingHome && specialities.length > 0) {
+      setSelectedSpeciality(null);
+      setDoctors([]);
+      setError(isRTL ? "التخصص غير موجود" : "Speciality not found");
+    }
+  }, [specialtyParam, specialities, loadingHome, isRTL]);
 
   useEffect(() => {
     if (!selectedSpeciality) return;
@@ -109,7 +140,19 @@ export function MarketDoctorsBrowse({
 
   // Same as the home tab: the roster is state, so hardware back needs handling
   // here or it falls through to the global handler and leaves the screen.
+  const selectSpeciality = useCallback((item: Speciality) => {
+    if (Platform.OS === "web") {
+      router.replace(buildDoctorsDirectoryHref(item) as Href);
+      return;
+    }
+    setSelectedSpeciality(item);
+  }, []);
+
   const clearSpeciality = useCallback(() => {
+    if (Platform.OS === "web") {
+      router.replace("/doctors");
+      return;
+    }
     setSelectedSpeciality(null);
     setDoctors([]);
     setError(null);
@@ -197,7 +240,7 @@ export function MarketDoctorsBrowse({
         <SpecialityGrid
           specialities={specialities}
           isRTL={isRTL}
-          onSelect={setSelectedSpeciality}
+          onSelect={selectSpeciality}
           fullHeight
         />
       )}

@@ -25,7 +25,10 @@ export function isGuestAllowedRoot(
     root === "documentation" ||
     root === "demo" ||
     // Doctor directory: browsing is public, starting a consultation still prompts.
-    root === "doctors"
+    root === "doctors" ||
+    // Per-speciality roster deep links (/speciality/cardiology, /specialties/…).
+    root === "speciality" ||
+    root === "specialties"
   ) {
     return true;
   }

@@ -90,6 +90,8 @@ export function isPublicWebPath(pathname: string): boolean {
     // Doctor directory (note: distinct from the /doctor/ profile route above).
     pathname === "/doctors" ||
     pathname.startsWith("/doctors/") ||
+    pathname.startsWith("/speciality/") ||
+    pathname.startsWith("/specialties/") ||
     pathname === "/contact" ||
     pathname.startsWith("/contact/") ||
     pathname === "/register-with-us" ||

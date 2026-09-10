@@ -63,9 +63,12 @@ import { useWebLayout } from "@/hooks/useWebLayout";
 import { flexRow } from "@/utils/rtl";
 import { AI_ATTACHMENT_ONLY_PLACEHOLDER } from "@/utils/aiMessageDisplay";
 import { MEDICAL_RECORD_ADD_BAR_HEIGHT } from "@/components/records/MedicalRecordAddBar";
-import { WEB_FAB_INSET } from "@/constants/webLayout";
 import { MEDICAL_FORM_SAVE_BAR_HEIGHT } from "@/constants/medicalFormFooter";
-import { NATIVE_TAB_BAR_HEIGHT } from "@/constants/webLayout";
+import {
+  mobileWebTabBarHeight,
+  NATIVE_TAB_BAR_HEIGHT,
+  WEB_FAB_INSET,
+} from "@/constants/webLayout";
 import { profileSaveChromeHeight } from "@/components/profile/profileSaveChrome";
 import {
   ask3elagiAiTriggerInSidebar,
@@ -86,6 +89,17 @@ export const ASK_3ELAGI_AI_FAB_CHROME_GAP = WEB_FAB_INSET;
 export const ASK_3ELAGI_AI_FAB_TAB_BAR_GAP = 14;
 function isProfileRoute(pathname: string | null, segments: string[]): boolean {
   return segments.includes("profile") || Boolean(pathname?.includes("/profile"));
+}
+
+/** Mobile web routes that render the fixed bottom tab bar. */
+function mobileWebBottomTabBarVisible(
+  pathname: string | null,
+  segments: string[],
+): boolean {
+  if (segments.includes("(tabs)")) return true;
+  if (pathname?.startsWith("/medical")) return true;
+  if (pathname && /(^|\/)chat(\/|$)/.test(pathname)) return true;
+  return false;
 }
 
 /** Records pages dock an add-record bar — lift the FAB above it on mobile. */
@@ -847,7 +861,7 @@ function Ask3elagiAiPanel() {
 export function Ask3elagiAiWidget() {
   const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
-  const { isDesktop, isTablet } = useWebLayout();
+  const { isDesktop, isTablet, isMobile } = useWebLayout();
   const pathname = usePathname();
   const segments = useSegments();
   const sidebarTrigger = ask3elagiAiTriggerInSidebar(isTablet);
@@ -907,18 +921,30 @@ export function Ask3elagiAiWidget() {
   );
   const hideFab = hideFabOnChatRoute(pathname, segments as string[]);
   const medicalFormLift = medicalFormSaveBarFabOffset(pathname);
-  // Native tab screens sit under the bottom bar; lift the FAB clear of it,
+  // Tab screens sit under the bottom bar; lift the FAB clear of it,
   // plus a gap so the two never touch (the base already covers the inset).
-  const tabBarLift =
-    Platform.OS !== "web" && (segments as string[]).includes("(tabs)")
-      ? NATIVE_TAB_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_TAB_BAR_GAP
-      : 0;
-  const bottom =
-    Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) +
-    tabBarLift +
-    addBarLift +
-    profileLift +
-    medicalFormLift;
+  const onNativeTabs =
+    Platform.OS !== "web" && (segments as string[]).includes("(tabs)");
+  const onMobileWebTabs =
+    Platform.OS === "web" &&
+    isMobile &&
+    mobileWebBottomTabBarVisible(pathname, segments as string[]);
+  const nativeTabBarLift = onNativeTabs
+    ? NATIVE_TAB_BAR_HEIGHT + ASK_3ELAGI_AI_FAB_TAB_BAR_GAP
+    : 0;
+  // Mobile web: sit just above the tab bar — its height already includes the
+  // safe-area padding, so don't also add the desktop FAB chrome inset.
+  const bottom = onMobileWebTabs
+    ? mobileWebTabBarHeight(insets.bottom) +
+      ASK_3ELAGI_AI_FAB_TAB_BAR_GAP +
+      addBarLift +
+      profileLift +
+      medicalFormLift
+    : Math.max(insets.bottom, ASK_3ELAGI_AI_FAB_CHROME_GAP) +
+      nativeTabBarLift +
+      addBarLift +
+      profileLift +
+      medicalFormLift;
   // Bottom corner above tab bar: far right in LTR, far left in RTL (Arabic).
   const fabPositionStyle = {
     bottom,

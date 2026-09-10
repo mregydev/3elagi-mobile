@@ -13,11 +13,11 @@ import {
   type SpecialityDoctor,
   type SpecialityDoctorRow,
 } from "@/domains/home/api";
+import { findSpecialityBySlug } from "@/domains/home/specialityRoutes";
 import { onDoctorRegistered } from "@/domains/presence/socket";
 import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useOpenDoctor } from "@/hooks/useOpenDoctor";
-import { matchesSlug } from "@/utils/slug";
 
 /**
  * /speciality/cardiology — the doctors of one speciality, addressable by name
@@ -40,9 +40,8 @@ export default function SpecialityDoctorsScreen() {
     setError(null);
     try {
       const all = await fetchSpecialities();
-      const found = all.find(
-        (s) => matchesSlug(name, s.nameEn, s.nameAr) || s.id === name,
-      );
+      const slug = Array.isArray(name) ? name[0] : name;
+      const found = findSpecialityBySlug(all, slug);
       if (!found) {
         setSpeciality(null);
         setDoctors([]);

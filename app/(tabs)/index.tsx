@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { promptAuthForConsultation } from "@/domains/auth/guestBrowse";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -36,6 +37,7 @@ import {
   type SpecialityDoctor,
   type SpecialityDoctorRow,
 } from "@/domains/home/api";
+import { buildSpecialityDoctorsHref } from "@/domains/home/specialityRoutes";
 import {
   getDomainMarketCountry,
 } from "@/domains/market/resolveMarketCountry";
@@ -195,6 +197,14 @@ function ChatsHomeBrowse() {
 
   const openDoctorDirectory = useCallback(() => router.push("/doctors"), []);
 
+  const selectSpeciality = useCallback((item: Speciality) => {
+    if (Platform.OS === "web") {
+      router.push(buildSpecialityDoctorsHref(item));
+      return;
+    }
+    setSelectedSpeciality(item);
+  }, []);
+
   if (isDoctor && signedIn) {
     return <DoctorHomeBrowse />;
   }
@@ -319,7 +329,7 @@ function ChatsHomeBrowse() {
           <SpecialityGrid
             specialities={specialities}
             isRTL={isRTL}
-            onSelect={setSelectedSpeciality}
+            onSelect={selectSpeciality}
           />
         </>
       )}
