@@ -38,7 +38,7 @@
       }
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "package": "com.threelagi.mobile",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [

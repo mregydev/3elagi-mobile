@@ -1,24 +1,32 @@
-import { Stethoscope } from "lucide-react-native";
+import { Stethoscope, UserRound } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { AppTextInput } from "@/components/AppTextInput";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { adminPagePadding } from "@/constants/adminLayout";
 import { patientCountryLabel } from "@/constants/patientCountries";
 import {
+  createAdminDoctorFromRegistration,
+  deleteAdminDoctorRegistration,
   fetchAdminDoctorRegistration,
   fetchAdminDoctorRegistrations,
   type AdminDoctorRegistrationRow,
 } from "@/domains/admin/api";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
-import { showErrorToast } from "@/utils/toast";
+import { confirmAction } from "@/utils/confirmAction";
+import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 function fmt(iso: string): string {
   try {
@@ -28,8 +36,20 @@ function fmt(iso: string): string {
   }
 }
 
+function showCredentialsAlert(name: string, email: string, password: string) {
+  const message = `Doctor "${name}" was created and approved.\n\nEmail: ${email}\nPassword: ${password}\n\nShare these credentials with the doctor.`;
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(message);
+    return;
+  }
+  Alert.alert("Doctor created", message, [{ text: "OK" }]);
+}
+
 export default function AdminDoctorRegistrationsWeb() {
   const colors = useColors();
+  const { width } = useWindowDimensions();
+  const pagePadding = adminPagePadding(width <= 767);
+  const compact = width <= 767;
   const accessToken = useAuthStore((s) => s.accessToken);
 
   const [items, setItems] = useState<AdminDoctorRegistrationRow[]>([]);
@@ -37,6 +57,8 @@ export default function AdminDoctorRegistrationsWeb() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, AdminDoctorRegistrationRow>>({});
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [passwords, setPasswords] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -67,7 +89,7 @@ export default function AdminDoctorRegistrationsWeb() {
         setDetails((prev) => ({ ...prev, [id]: row }));
         setItems((prev) =>
           prev.map((item) =>
-            item.id === id ? { ...item, read_at: row.read_at } : item,
+            item.id === id ? { ...item, read_at: row.read_at, photo_url: row.photo_url } : item,
           ),
         );
       } catch (e) {
@@ -78,12 +100,119 @@ export default function AdminDoctorRegistrationsWeb() {
     }
   };
 
+  const removeRequest = async (item: AdminDoctorRegistrationRow) => {
+    if (!accessToken) return;
+    const ok = await confirmAction(
+      `Remove registration request for "${item.doctor_name}"? This cannot be undone.`,
+    );
+    if (!ok) return;
+
+    setActingId(item.id);
+    try {
+      await deleteAdminDoctorRegistration(accessToken, item.id);
+      setItems((prev) => prev.filter((row) => row.id !== item.id));
+      setDetails((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      setPasswords((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      if (expanded === item.id) setExpanded(null);
+      showSuccessToast("Registration request removed");
+    } catch (e) {
+      showErrorToast("Remove failed", (e as Error).message);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const createDoctor = async (item: AdminDoctorRegistrationRow) => {
+    if (!accessToken) return;
+    const row = details[item.id] ?? item;
+    const password = passwords[item.id]?.trim();
+    if (password && password.length < 8) {
+      showErrorToast("Invalid password", "Password must be at least 8 characters.");
+      return;
+    }
+
+    const ok = await confirmAction(
+      password
+        ? `Create verified doctor account for "${row.doctor_name}" using the password you entered?`
+        : `Create verified doctor account for "${row.doctor_name}"? A temporary password will be generated.`,
+    );
+    if (!ok) return;
+
+    setActingId(item.id);
+    try {
+      const result = await createAdminDoctorFromRegistration(
+        accessToken,
+        item.id,
+        password || undefined,
+      );
+      setItems((prev) => prev.filter((row) => row.id !== item.id));
+      setDetails((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      setPasswords((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      if (expanded === item.id) setExpanded(null);
+      showSuccessToast("Doctor created and approved");
+      showCredentialsAlert(result.name, result.email, result.password);
+    } catch (e) {
+      showErrorToast("Create doctor failed", (e as Error).message);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const renderPhoto = (photoUrl: string | null | undefined, size: "thumb" | "large") => {
+    const dim = size === "thumb" ? 52 : 120;
+    if (photoUrl) {
+      return (
+        <Image
+          source={{ uri: photoUrl }}
+          style={[
+            size === "thumb" ? styles.photoThumb : styles.photoLarge,
+            { width: dim, height: dim, borderRadius: dim / 2 },
+          ]}
+          resizeMode="cover"
+        />
+      );
+    }
+    return (
+      <View
+        style={[
+          size === "thumb" ? styles.photoThumb : styles.photoLarge,
+          {
+            width: dim,
+            height: dim,
+            borderRadius: dim / 2,
+            backgroundColor: colors.muted,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <UserRound size={size === "thumb" ? 22 : 40} color={colors.mutedForeground} />
+      </View>
+    );
+  };
+
   return (
     <AdminShell
       title="Doctor registrations"
       subtitle="Doctors who requested to register and test the app."
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { padding: pagePadding }]}>
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : items.length === 0 ? (
@@ -96,6 +225,9 @@ export default function AdminDoctorRegistrationsWeb() {
             const detail = details[item.id];
             const unread = !item.read_at;
             const row = detail ?? item;
+            const busy = actingId === item.id;
+            const photoUrl = row.photo_url ?? item.photo_url;
+
             return (
               <View
                 key={item.id}
@@ -108,6 +240,7 @@ export default function AdminDoctorRegistrationsWeb() {
                 ]}
               >
                 <Pressable onPress={() => void toggle(item.id)} style={styles.cardHead}>
+                  {renderPhoto(photoUrl, "thumb")}
                   <View style={{ flex: 1, gap: 4 }}>
                     <View style={styles.titleRow}>
                       <Stethoscope size={16} color={colors.primary} />
@@ -144,60 +277,126 @@ export default function AdminDoctorRegistrationsWeb() {
                 </Pressable>
 
                 {open ? (
-                  <View style={styles.detail}>
+                  <View style={[styles.detail, { borderTopColor: colors.border }]}>
                     {loadingDetail && !detail ? (
                       <ActivityIndicator color={colors.primary} />
                     ) : (
-                      <View style={{ gap: 8 }}>
-                        {row.photo_url ? (
-                          <>
+                      <View style={{ gap: 12 }}>
+                        <View style={styles.photoBlock}>
+                          {renderPhoto(photoUrl, "large")}
+                          <View style={{ flex: 1, gap: 4 }}>
                             <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                              Profile photo
+                              Profile photo from request
                             </Text>
-                            <Image
-                              source={{ uri: row.photo_url }}
-                              style={styles.photo}
-                              resizeMode="cover"
-                            />
-                          </>
-                        ) : null}
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                          Speciality
-                        </Text>
-                        <Text style={[styles.message, { color: colors.foreground }]}>
-                          {row.speciality_name_en}
-                          {row.speciality_name_ar !== row.speciality_name_en
-                            ? ` · ${row.speciality_name_ar}`
-                            : ""}
-                        </Text>
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                          Email
-                        </Text>
-                        <Text style={{ color: colors.foreground, fontWeight: "600" }}>
-                          {row.email}
-                        </Text>
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                          Phone
-                        </Text>
-                        <Text style={{ color: colors.foreground, fontWeight: "600" }}>
-                          {row.phone}
-                        </Text>
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                          Country
-                        </Text>
-                        <Text style={{ color: colors.foreground, fontWeight: "600" }}>
-                          {patientCountryLabel(row.country, false)}
-                        </Text>
-                        {row.clinic_location ? (
-                          <>
-                            <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                              Clinic location
+                            <Text style={{ color: colors.foreground, fontWeight: "700" }}>
+                              {row.doctor_name}
                             </Text>
-                            <Text style={{ color: colors.foreground, fontWeight: "600" }}>
-                              {row.clinic_location}
+                            <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                              {row.speciality_name_en}
                             </Text>
-                          </>
-                        ) : null}
+                          </View>
+                        </View>
+
+                        <View style={{ gap: 8 }}>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                            Speciality
+                          </Text>
+                          <Text style={[styles.message, { color: colors.foreground }]}>
+                            {row.speciality_name_en}
+                            {row.speciality_name_ar !== row.speciality_name_en
+                              ? ` · ${row.speciality_name_ar}`
+                              : ""}
+                          </Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                            Email
+                          </Text>
+                          <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                            {row.email}
+                          </Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                            Phone
+                          </Text>
+                          <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                            {row.phone}
+                          </Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                            Country
+                          </Text>
+                          <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                            {patientCountryLabel(row.country, false)}
+                          </Text>
+                          {row.clinic_location ? (
+                            <>
+                              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                                Clinic location
+                              </Text>
+                              <Text style={{ color: colors.foreground, fontWeight: "600" }}>
+                                {row.clinic_location}
+                              </Text>
+                            </>
+                          ) : null}
+                        </View>
+
+                        <View style={{ gap: 6 }}>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                            Account password (optional)
+                          </Text>
+                          <AppTextInput
+                            value={passwords[item.id] ?? ""}
+                            onChangeText={(value) =>
+                              setPasswords((prev) => ({ ...prev, [item.id]: value }))
+                            }
+                            placeholder="Leave blank to auto-generate"
+                            secureTextEntry
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={[
+                              styles.passwordInput,
+                              {
+                                backgroundColor: colors.background,
+                                borderColor: colors.border,
+                                color: colors.foreground,
+                              },
+                            ]}
+                          />
+                          <Text style={{ color: colors.mutedForeground, fontSize: 11, lineHeight: 16 }}>
+                            Creates an approved doctor with this request&apos;s name, email, phone,
+                            country, clinic location, speciality, and profile photo.
+                          </Text>
+                        </View>
+
+                        <View style={[styles.actions, compact && styles.actionsCompact]}>
+                          <Pressable
+                            disabled={busy}
+                            onPress={() => void createDoctor(item)}
+                            style={[
+                              styles.createBtn,
+                              compact && styles.actionBtnCompact,
+                              { backgroundColor: colors.primary, opacity: busy ? 0.65 : 1 },
+                            ]}
+                          >
+                            {busy ? (
+                              <ActivityIndicator color={colors.primaryForeground} />
+                            ) : (
+                              <Text style={[styles.createBtnText, { color: colors.primaryForeground }]}>
+                                Create doctor from request
+                              </Text>
+                            )}
+                          </Pressable>
+                          <Pressable
+                            disabled={busy}
+                            onPress={() => void removeRequest(item)}
+                            style={[
+                              styles.removeBtn,
+                              compact && styles.actionBtnCompact,
+                              { borderColor: colors.destructive, opacity: busy ? 0.65 : 1 },
+                            ]}
+                          >
+                            <Text style={{ color: colors.destructive, fontWeight: "700" }}>
+                              Remove
+                            </Text>
+                          </Pressable>
+                        </View>
                       </View>
                     )}
                   </View>
@@ -212,7 +411,7 @@ export default function AdminDoctorRegistrationsWeb() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 24, gap: 12, paddingBottom: 40 },
+  content: { gap: 12, paddingBottom: 40 },
   card: {
     borderWidth: 1,
     borderRadius: 14,
@@ -241,13 +440,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(128,128,128,0.25)",
     paddingTop: 12,
   },
   message: { fontSize: 14, lineHeight: 20 },
-  photo: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  photoThumb: {
+    flexShrink: 0,
+  },
+  photoLarge: {
+    flexShrink: 0,
+  },
+  photoBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  actionsCompact: {
+    flexDirection: "column",
+  },
+  actionBtnCompact: {
+    width: "100%",
+  },
+  createBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 46,
+  },
+  createBtnText: {
+    fontWeight: "800",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  removeBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 46,
   },
 });

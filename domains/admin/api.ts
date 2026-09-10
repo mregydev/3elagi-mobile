@@ -415,6 +415,39 @@ export async function fetchAdminDoctorRegistration(
   );
 }
 
+export async function deleteAdminDoctorRegistration(
+  token: string,
+  id: string,
+): Promise<void> {
+  await authJson<{ ok: boolean }>(`/admin/doctor-registrations/${id}`, token, {
+    method: "DELETE",
+  });
+}
+
+export interface CreateDoctorFromRegistrationResult {
+  ok: boolean;
+  doctor_id: string | null;
+  user_id: string;
+  email: string;
+  password: string;
+  name: string;
+}
+
+export async function createAdminDoctorFromRegistration(
+  token: string,
+  id: string,
+  password?: string,
+): Promise<CreateDoctorFromRegistrationResult> {
+  return authJson<CreateDoctorFromRegistrationResult>(
+    `/admin/doctor-registrations/${id}/create-doctor`,
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(password?.trim() ? { password: password.trim() } : {}),
+    },
+  );
+}
+
 export interface AdminDoctorSpecialityChangeRow {
   id: string;
   doctor_id: string;
