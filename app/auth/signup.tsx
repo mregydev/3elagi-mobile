@@ -158,7 +158,7 @@ export default function SignupScreen() {
   const isWeb = Platform.OS === "web";
   const showTitle = true;
   const showSubtitle = !(isWeb && isDesktop);
-  const hideWebTopBar = isWeb;
+  const showWebTopBar = isWeb;
 
   const pickPhoto = () => {
     Alert.alert(t.auth.profilePhoto, t.auth.chooseSource, [
@@ -316,13 +316,12 @@ export default function SignupScreen() {
         Platform.OS === "web" && styles.screenWeb,
       ]}
     >
-      {!hideWebTopBar ? (
+      {showWebTopBar ? (
         <View
           style={[
             styles.topBar,
             {
-              // Native sits inside the auth card, which already clears the notch.
-              paddingTop: Platform.OS === "web" ? 8 : 4,
+              paddingTop: 8,
               flexDirection: dir,
             },
           ]}
@@ -676,16 +675,24 @@ export default function SignupScreen() {
         </View>
 
           <Pressable
-            onPress={() => router.replace("/auth/login")}
+            onPress={() => {
+              if (Platform.OS === "web") {
+                router.replace("/auth/login");
+                return;
+              }
+              router.replace({ pathname: "/welcome", params: { panel: "login" } });
+            }}
             style={{ paddingVertical: 8, alignItems: "center" }}
           >
             <Text style={{ color: colors.primary, fontWeight: "600" }}>
               {t.auth.hasAccountLogIn}
             </Text>
           </Pressable>
-          <View style={{ alignItems: "center" }}>
-            <AuthHomeLink />
-          </View>
+          {Platform.OS === "web" ? (
+            <View style={{ alignItems: "center" }}>
+              <AuthHomeLink />
+            </View>
+          ) : null}
         </View>
       </AuthFormBody>
     </View>

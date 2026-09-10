@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { adminPagePadding } from "@/constants/adminLayout";
 import { MarketingSectionBuilder } from "@/components/admin/MarketingSectionBuilder";
 import { MarketingEmailPreview } from "@/components/admin/MarketingEmailPreview";
 import {
@@ -27,6 +29,7 @@ import {
 } from "@/domains/admin/marketingThemes";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
+import { confirmAction } from "@/utils/confirmAction";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 const LANGUAGES: { code: MarketingEmailLanguage; label: string; hint: string }[] = [
@@ -51,6 +54,8 @@ function sectionsHaveContent(sections: MarketingEmailSection[]): boolean {
 
 export default function AdminDoctorWelcomeEmailWeb() {
   const colors = useColors();
+  const { width } = useWindowDimensions();
+  const pagePadding = adminPagePadding(width <= 767);
   const accessToken = useAuthStore((s) => s.accessToken);
   const [doctorName, setDoctorName] = useState("");
   const [email, setEmail] = useState("");
@@ -77,11 +82,9 @@ export default function AdminDoctorWelcomeEmailWeb() {
     ) => {
       if (!accessToken) return;
       if (sectionsDirtyRef.current && !force) {
-        const ok =
-          typeof window !== "undefined" &&
-          window.confirm(
-            "Replace your current email sections with the default template for this language and theme?",
-          );
+        const ok = await confirmAction(
+          "Replace your current email sections with the default template for this language and theme?",
+        );
         if (!ok) return;
       }
 
@@ -122,10 +125,10 @@ export default function AdminDoctorWelcomeEmailWeb() {
     void loadTemplate(language, theme);
   };
 
-  const resetTemplate = () => {
-    const ok =
-      typeof window === "undefined" ||
-      window.confirm("Reset email sections to the default template for this language?");
+  const resetTemplate = async () => {
+    const ok = await confirmAction(
+      "Reset email sections to the default template for this language?",
+    );
     if (!ok) return;
     void loadTemplate(language, themeColor, true);
   };
@@ -155,11 +158,9 @@ export default function AdminDoctorWelcomeEmailWeb() {
     }
 
     const langLabel = LANGUAGES.find((l) => l.code === language)?.label ?? language;
-    const confirmed =
-      typeof window !== "undefined" &&
-      window.confirm(
-        `Send the welcome email with login credentials to ${recipientEmail} in ${langLabel}?`,
-      );
+    const confirmed = await confirmAction(
+      `Send the welcome email with login credentials to ${recipientEmail} in ${langLabel}?`,
+    );
     if (!confirmed) return;
 
     setSending(true);
@@ -194,7 +195,10 @@ export default function AdminDoctorWelcomeEmailWeb() {
       title="Welcome email"
       subtitle="Send a welcome email with login credentials to a doctor whose account you already created. Enter their email and password, customize the template, then send."
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        nestedScrollEnabled={builderTab === "preview"}
+        contentContainerStyle={[styles.scroll, { padding: pagePadding }]}
+      >
         <View
           style={[
             styles.card,
@@ -336,7 +340,7 @@ export default function AdminDoctorWelcomeEmailWeb() {
               Email sections
             </Text>
             <Pressable
-              onPress={resetTemplate}
+              onPress={() => void resetTemplate()}
               style={({ pressed }) => [
                 styles.resetBtn,
                 {
@@ -451,9 +455,10 @@ export default function AdminDoctorWelcomeEmailWeb() {
 
 const styles = StyleSheet.create({
   scroll: {
-    padding: 28,
     paddingBottom: 48,
     maxWidth: 960,
+    width: "100%",
+    alignSelf: "center",
   },
   card: {
     borderWidth: 1,

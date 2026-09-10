@@ -28,12 +28,20 @@ export function GuestAuthRequiredDialog() {
   const goLogin = () => {
     // Keep pending return so login resumes the chat the guest tried to open.
     close();
-    router.push("/auth/login");
+    if (Platform.OS === "web") {
+      router.push("/auth/login");
+    } else {
+      router.push({ pathname: "/welcome", params: { panel: "login" } });
+    }
   };
 
   const goSignup = () => {
     close();
-    router.push("/auth/signup");
+    if (Platform.OS === "web") {
+      router.push("/auth/signup");
+    } else {
+      router.push({ pathname: "/welcome", params: { panel: "signup" } });
+    }
   };
 
   return (

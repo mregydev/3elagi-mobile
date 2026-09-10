@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { adminPagePadding } from "@/constants/adminLayout";
 import { MarketingSectionBuilder } from "@/components/admin/MarketingSectionBuilder";
 import { MarketingEmailPreview } from "@/components/admin/MarketingEmailPreview";
 import {
@@ -28,6 +30,7 @@ import {
 } from "@/domains/admin/marketingThemes";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
+import { confirmAction } from "@/utils/confirmAction";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 const LANGUAGES: { code: MarketingEmailLanguage; label: string; hint: string }[] = [
@@ -56,6 +59,8 @@ function sectionsHaveContent(sections: MarketingEmailSection[]): boolean {
 
 export default function AdminMarketingWeb() {
   const colors = useColors();
+  const { width } = useWindowDimensions();
+  const pagePadding = adminPagePadding(width <= 767);
   const accessToken = useAuthStore((s) => s.accessToken);
   const [recipientsText, setRecipientsText] = useState("");
   const [language, setLanguage] = useState<MarketingEmailLanguage>("en");
@@ -84,11 +89,9 @@ export default function AdminMarketingWeb() {
     ) => {
       if (!accessToken) return;
       if (sectionsDirtyRef.current && !force) {
-        const ok =
-          typeof window !== "undefined" &&
-          window.confirm(
-            "Replace your current email sections with the default template for this language and theme?",
-          );
+        const ok = await confirmAction(
+          "Replace your current email sections with the default template for this language and theme?",
+        );
         if (!ok) return;
       }
 
@@ -129,10 +132,10 @@ export default function AdminMarketingWeb() {
     void loadTemplate(language, theme);
   };
 
-  const resetTemplate = () => {
-    const ok =
-      typeof window === "undefined" ||
-      window.confirm("Reset email sections to the default template for this language?");
+  const resetTemplate = async () => {
+    const ok = await confirmAction(
+      "Reset email sections to the default template for this language?",
+    );
     if (!ok) return;
     void loadTemplate(language, themeColor, true);
   };
@@ -157,11 +160,9 @@ export default function AdminMarketingWeb() {
       recipients.length === 1
         ? recipients[0].email
         : `${recipients.length} recipients`;
-    const confirmed =
-      typeof window !== "undefined" &&
-      window.confirm(
-        `Send the doctor invitation email to ${recipientSummary} in ${langLabel}?`,
-      );
+    const confirmed = await confirmAction(
+      `Send the doctor invitation email to ${recipientSummary} in ${langLabel}?`,
+    );
     if (!confirmed) return;
 
     setSending(true);
@@ -205,7 +206,10 @@ export default function AdminMarketingWeb() {
       title="Marketing"
       subtitle="Compose and send the doctor invitation email. Add or reorder sections, paste multiple recipients, then send once."
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        nestedScrollEnabled={builderTab === "preview"}
+        contentContainerStyle={[styles.scroll, { padding: pagePadding }]}
+      >
         <View
           style={[
             styles.card,
@@ -338,7 +342,7 @@ export default function AdminMarketingWeb() {
               Email sections
             </Text>
             <Pressable
-              onPress={resetTemplate}
+              onPress={() => void resetTemplate()}
               style={({ pressed }) => [
                 styles.resetBtn,
                 {
@@ -452,9 +456,10 @@ export default function AdminMarketingWeb() {
 
 const styles = StyleSheet.create({
   scroll: {
-    padding: 28,
     paddingBottom: 48,
     maxWidth: 960,
+    width: "100%",
+    alignSelf: "center",
   },
   card: {
     borderWidth: 1,

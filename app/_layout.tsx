@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { NotificationsInboxBootstrap } from "@/components/NotificationsInboxBootstrap";
@@ -134,12 +134,42 @@ function AppRoot() {
               <Stack.Screen name="index" />
               <Stack.Screen name="welcome" />
               <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
-              <Stack.Screen name="auth/signup" options={{ presentation: "modal" }} />
-              <Stack.Screen name="auth/verify-email" options={{ presentation: "modal" }} />
-              <Stack.Screen name="auth/forgot-password" options={{ presentation: "modal" }} />
-              <Stack.Screen name="auth/reset-password" options={{ presentation: "modal" }} />
-              <Stack.Screen name="auth/choose-country" options={{ presentation: "modal" }} />
+              <Stack.Screen
+                name="auth/login"
+                options={{
+                  presentation: Platform.OS === "web" ? "modal" : "fullScreenModal",
+                }}
+              />
+              <Stack.Screen
+                name="auth/signup"
+                options={{
+                  presentation: Platform.OS === "web" ? "modal" : "fullScreenModal",
+                }}
+              />
+              <Stack.Screen
+                name="auth/verify-email"
+                options={{
+                  presentation: Platform.OS === "web" ? "modal" : "fullScreenModal",
+                }}
+              />
+              <Stack.Screen
+                name="auth/forgot-password"
+                options={{
+                  presentation: Platform.OS === "web" ? "modal" : "fullScreenModal",
+                }}
+              />
+              <Stack.Screen
+                name="auth/reset-password"
+                options={{
+                  presentation: Platform.OS === "web" ? "modal" : "fullScreenModal",
+                }}
+              />
+              <Stack.Screen
+                name="auth/choose-country"
+                options={{
+                  presentation: Platform.OS === "web" ? "modal" : "fullScreenModal",
+                }}
+              />
               <Stack.Screen name="auth/callback" />
               <Stack.Screen name="contact" />
               <Stack.Screen name="register-with-us" />

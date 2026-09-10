@@ -31,8 +31,6 @@ export function MarketingSectionBuilder({ sections, onChange, dir = "ltr" }: Pro
   const [addOpen, setAddOpen] = useState(false);
   const textAlign = dir === "rtl" ? "right" : "left";
 
-  if (Platform.OS !== "web") return null;
-
   const patch = (id: string, patchValue: Partial<MarketingEmailSection>) => {
     onChange(updateSection(sections, id, patchValue));
   };

@@ -114,6 +114,11 @@ export function WelcomeLoginForm({ onSwitchToSignup, onGoogleNoAccount }: Props)
           {t.auth.forgotPassword}
         </Text>
       </Pressable>
+      <Pressable onPress={onSwitchToSignup} style={styles.switchLink}>
+        <Text style={[styles.switchLinkText, { color: colors.primary }]}>
+          {t.auth.noAccountSignUp}
+        </Text>
+      </Pressable>
       <Pressable
         onPress={submit}
         disabled={loading}
@@ -139,11 +144,6 @@ export function WelcomeLoginForm({ onSwitchToSignup, onGoogleNoAccount }: Props)
         </LinearGradient>
       </Pressable>
       <GoogleAuthButton onAccountNotFound={onGoogleNoAccount} />
-      <Pressable onPress={onSwitchToSignup} style={styles.switchLink}>
-        <Text style={{ color: colors.primary, fontWeight: "600" }}>
-          {t.auth.noAccountSignUp}
-        </Text>
-      </Pressable>
     </View>
   );
 }
@@ -166,7 +166,12 @@ const styles = StyleSheet.create({
   },
   btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
   switchLink: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     alignItems: "center",
+  },
+  switchLinkText: {
+    fontWeight: "700",
+    fontSize: 14,
+    textAlign: "center",
   },
 });

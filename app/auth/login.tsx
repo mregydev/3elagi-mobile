@@ -45,7 +45,7 @@ export default function LoginScreen() {
   /** Desktop web: show title only (hero image carries branding). */
   const showTitle = true;
   const showSubtitle = !(isWeb && isDesktop);
-  const hideWebTopBar = isWeb;
+  const showWebTopBar = isWeb;
 
   const submit = async () => {
     const errors = validateLoginFields(email, password, t.auth);
@@ -81,13 +81,12 @@ export default function LoginScreen() {
         Platform.OS === "web" && styles.screenWeb,
       ]}
     >
-      {!hideWebTopBar ? (
+      {showWebTopBar ? (
         <View
           style={[
             styles.topBar,
             {
-              // Native sits inside the auth card, which already clears the notch.
-              paddingTop: Platform.OS === "web" ? 8 : 4,
+              paddingTop: 8,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
@@ -180,6 +179,18 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
           <Pressable
+            onPress={() =>
+              Platform.OS === "web"
+                ? router.replace("/auth/signup")
+                : router.replace({ pathname: "/welcome", params: { panel: "signup" } })
+            }
+            style={styles.switchLink}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>
+              {t.auth.noAccountSignUp}
+            </Text>
+          </Pressable>
+          <Pressable
             onPress={submit}
             disabled={loading}
             style={({ pressed }) => [
@@ -204,14 +215,6 @@ export default function LoginScreen() {
             </LinearGradient>
           </Pressable>
           <GoogleAuthButton />
-          <Pressable
-            onPress={() => router.replace("/auth/signup")}
-            style={{ paddingVertical: Platform.OS === "web" ? 8 : 4, alignItems: "center" }}
-          >
-            <Text style={{ color: colors.primary, fontWeight: "600" }}>
-              {t.auth.noAccountSignUp}
-            </Text>
-          </Pressable>
           {Platform.OS === "web" ? (
             <View style={{ alignItems: "center" }}>
               <AuthHomeLink />
@@ -246,8 +249,9 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "web" ? 32 : 24,
   },
   bodyNative: {
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 8 },
   title: { fontSize: Platform.OS === "web" ? 28 : 24, fontWeight: "800" },
@@ -267,4 +271,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   btnText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.2 },
+  switchLink: {
+    paddingVertical: 10,
+    alignItems: "center",
+  },
 });

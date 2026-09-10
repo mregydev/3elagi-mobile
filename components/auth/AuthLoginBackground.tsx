@@ -1,112 +1,180 @@
-import { BlurView } from "expo-blur";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
 import React from "react";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AuthHeroMedia } from "@/components/auth/AuthHeroMedia";
+import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
-import { Logo3elagi } from "@/components/Logo3elagi";
-import { useResolvedTheme } from "@/hooks/useColors";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useColors } from "@/hooks/useColors";
+import { useI18n } from "@/hooks/useI18n";
+import { flexRow } from "@/utils/rtl";
 
-const CARD_WIDTH_RATIO = 0.9;
-/** Breathing room between the brand mark and the card. */
-const LOGO_GAP = 6;
+const WELCOME_HERO_MOBILE = require("@/assets/images/welcome-hero-mobile.jpg");
 
 interface Props {
   children: React.ReactNode;
 }
 
 /**
- * Native auth shell — hero photo, brand mark, and a frosted card docked to the
- * bottom, shared by login, signup and the password/verification screens.
- *
- * Scrolling lives here rather than in each screen (see AuthFormBody): that lets
- * the card size itself to the form instead of carrying a fixed height, which is
- * what left dead space under short forms. A tall form grows until it fills the
- * space and then scrolls.
- * (Web keeps its own hero — see AuthLoginBackground.web.tsx.)
+ * Native auth shell — hero photo with a bottom sheet that hugs short forms
+ * and scrolls within a max height for longer ones.
  */
 export function AuthLoginBackground({ children }: Props) {
+  const colors = useColors();
+  const { t, isRTL } = useI18n();
+  const dir = flexRow(isRTL);
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const logoHeight = Math.min(48, width * 0.14);
-  // The card was frosted white regardless of theme, so in dark mode the form's
-  // light text landed on a near-white sheet.
-  const isDark = useResolvedTheme() === "dark";
+  const { height: windowHeight } = useWindowDimensions();
+  const sheetMaxHeight = Math.round(windowHeight * 0.82);
 
   return (
-    <View style={styles.page}>
-      <AuthHeroMedia overlayOpacity={0.48} />
+    <View style={styles.root}>
+      <Image
+        source={WELCOME_HERO_MOBILE}
+        style={styles.background}
+        contentFit="cover"
+        contentPosition="top center"
+        accessibilityLabel=""
+      />
 
-      <View style={[styles.brand, { paddingTop: insets.top + 4 }]}>
-        <Logo3elagi height={logoHeight} centered />
-      </View>
-
-      <KeyboardSafeScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 12 },
+      <LinearGradient
+        colors={[
+          "rgba(255,255,255,0)",
+          "rgba(255,255,255,0)",
+          "rgba(238,244,252,0.2)",
+          "rgba(255,255,255,0.5)",
         ]}
-        bottomOffset={32}
-        showsVerticalScrollIndicator={false}
+        locations={[0, 0.45, 0.72, 1]}
+        style={styles.gradient}
+        pointerEvents="none"
+      />
+
+      <View
+        style={[
+          styles.page,
+          {
+            paddingBottom: insets.bottom + 12,
+          },
+        ]}
       >
         <View
           style={[
-            styles.card,
+            styles.topBar,
+            { flexDirection: dir, paddingTop: insets.top + 4 },
+          ]}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t.auth.goBack}
+          >
+            <ArrowLeft
+              size={22}
+              color={colors.foreground}
+              style={isRTL ? { transform: [{ rotate: "180deg" }] } : undefined}
+            />
+          </Pressable>
+          <View style={styles.topBarSpacer} />
+          <ThemeToggle />
+          <AuthLanguageField />
+        </View>
+
+        <View style={styles.spacer} />
+
+        <View
+          style={[
+            styles.footerOuter,
             {
-              width: width * CARD_WIDTH_RATIO,
-              borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.6)",
+              maxHeight: sheetMaxHeight,
+              shadowColor: "#0f2744",
             },
           ]}
         >
-          {/* Frosted, not solid: the hero stays visible behind the form. */}
-          <BlurView
-            intensity={70}
-            tint={isDark ? "dark" : "light"}
-            style={StyleSheet.absoluteFill}
-          />
           <View
             style={[
-              styles.tint,
-              { backgroundColor: isDark ? "rgba(15,20,25,0.82)" : "rgba(255,255,255,0.72)" },
+              styles.footer,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+                maxHeight: sheetMaxHeight,
+              },
             ]}
-            pointerEvents="none"
-          />
-          {children}
+          >
+            <KeyboardSafeScrollView
+              style={{ maxHeight: sheetMaxHeight, flexGrow: 0, flex: 0 }}
+              contentContainerStyle={[
+                styles.footerContent,
+                { paddingBottom: Math.max(insets.bottom, 16) + 12 },
+              ]}
+              bottomOffset={32}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              {children}
+            </KeyboardSafeScrollView>
+          </View>
         </View>
-      </KeyboardSafeScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#eef4fc",
+  },
+  background: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  gradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
   page: {
     flex: 1,
-    minHeight: 0,
-    width: "100%",
-  },
-  brand: {
-    alignItems: "center",
-    paddingBottom: 4,
-  },
-  scroll: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: "transparent",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    // Docked to the bottom; a form taller than the screen pushes up and scrolls.
     justifyContent: "flex-end",
+  },
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
     alignItems: "center",
-    paddingTop: LOGO_GAP,
+    gap: 8,
+    zIndex: 2,
   },
-  card: {
+  topBarSpacer: { flex: 1 },
+  backBtn: {
+    padding: 6,
+  },
+  spacer: {
+    flex: 1,
+    minHeight: 80,
+  },
+  footerOuter: {
+    marginHorizontal: 16,
     borderRadius: 28,
-    borderWidth: 1,
-    overflow: "hidden",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 14,
+    alignSelf: "stretch",
   },
-  tint: {
-    ...StyleSheet.absoluteFillObject,
+  footer: {
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
+  footerContent: {
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    flexGrow: 0,
   },
 });

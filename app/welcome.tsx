@@ -1,9 +1,9 @@
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "@/components/KeyboardSafeScrollView";
@@ -28,11 +28,20 @@ export default function WelcomeScreen() {
   const { t, isRTL } = useI18n();
   const dir = flexRow(isRTL);
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: windowHeight } = useWindowDimensions();
+  const sheetMaxHeight = Math.round(windowHeight * 0.82);
+  const { panel: panelParam } = useLocalSearchParams<{ panel?: string | string[] }>();
   const logoHeight = Math.min(64, screenWidth * 0.18);
   const [panel, setPanel] = useState<WelcomePanel>("home");
   const [googlePrefill, setGooglePrefill] = useState<GoogleNoAccountPayload | null>(null);
   const showForm = panel !== "home";
+
+  useEffect(() => {
+    const raw = Array.isArray(panelParam) ? panelParam[0] : panelParam;
+    if (raw === "login" || raw === "signup") {
+      setPanel(raw);
+    }
+  }, [panelParam]);
 
   const handleGoogleNoAccount = (payload: GoogleNoAccountPayload) => {
     setGooglePrefill(payload);
@@ -67,13 +76,22 @@ export default function WelcomeScreen() {
       <View
         style={[
           styles.page,
+          showForm && styles.pageForm,
           {
-            paddingTop: insets.top + 4,
-            paddingBottom: insets.bottom + 8,
+            paddingBottom: showForm ? insets.bottom + 12 : insets.bottom + 8,
           },
         ]}
       >
-        <View style={[styles.topBar, { flexDirection: dir }]}>
+        <View
+          style={[
+            styles.topBar,
+            showForm && styles.topBarForm,
+            {
+              flexDirection: dir,
+              paddingTop: insets.top + 4,
+            },
+          ]}
+        >
           {showForm ? (
             <Pressable
               onPress={() => setPanel("home")}
@@ -104,19 +122,24 @@ export default function WelcomeScreen() {
           </>
         ) : null}
 
-        <View style={[styles.footerOuter, showForm && styles.footerOuterExpanded]}>
+        <View
+          style={[
+            styles.footerOuter,
+            showForm && { maxHeight: sheetMaxHeight, shadowColor: "#0f2744" },
+          ]}
+        >
           <View
             style={[
               styles.footer,
-              showForm && styles.footerExpanded,
-              showForm && { borderColor: colors.border },
+              showForm && styles.footerForm,
+              showForm && {
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+                maxHeight: sheetMaxHeight,
+              },
             ]}
           >
-            {showForm ? (
-              <View
-                style={[styles.footerSolid, { backgroundColor: colors.background }]}
-              />
-            ) : (
+            {!showForm ? (
               <>
                 <BlurView
                   intensity={85}
@@ -134,14 +157,18 @@ export default function WelcomeScreen() {
                   ]}
                 />
               </>
-            )}
+            ) : null}
 
             {showForm ? (
               <KeyboardSafeScrollView
-                style={styles.formScroll}
-                contentContainerStyle={styles.footerContent}
+                style={{ maxHeight: sheetMaxHeight, flexGrow: 0, flex: 0 }}
+                contentContainerStyle={[
+                  styles.footerContent,
+                  { paddingBottom: Math.max(insets.bottom, 16) + 12 },
+                ]}
                 bottomOffset={32}
                 showsVerticalScrollIndicator={false}
+                bounces={false}
               >
                 <Text style={[styles.formTitle, { color: colors.foreground }]}>
                   {formTitle}
@@ -241,11 +268,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
   },
+  pageForm: {
+    justifyContent: "flex-end",
+  },
   topBar: {
     paddingHorizontal: 12,
     paddingBottom: 8,
     alignItems: "center",
     gap: 8,
+  },
+  topBarForm: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
   },
   topBarSpacer: { flex: 1 },
   backBtn: {
@@ -273,23 +310,14 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 14,
   },
-  footerOuterExpanded: {
-    flex: 1,
-    marginTop: 4,
-    minHeight: 0,
-  },
   footer: {
     borderRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.55)",
   },
-  footerSolid: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  footerExpanded: {
-    flex: 1,
-    minHeight: 0,
+  footerForm: {
+    borderColor: "transparent",
   },
   footerBlur: {
     ...StyleSheet.absoluteFillObject,
@@ -297,15 +325,11 @@ const styles = StyleSheet.create({
   footerTint: {
     ...StyleSheet.absoluteFillObject,
   },
-  formScroll: {
-    flex: 1,
-    minHeight: 0,
-  },
   footerContent: {
     gap: 12,
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingTop: 18,
+    flexGrow: 0,
   },
   formTitle: {
     fontSize: 20,

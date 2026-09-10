@@ -328,11 +328,6 @@ export function AdminShell({ title, subtitle, children }: Props) {
           onRequestClose={() => setNavOpen(false)}
         >
           <View style={styles.drawerBackdrop}>
-            <Pressable
-              style={styles.drawerScrim}
-              onPress={() => setNavOpen(false)}
-              accessibilityLabel="Close menu"
-            />
             <View
               style={[
                 styles.drawerPanel,
@@ -354,6 +349,11 @@ export function AdminShell({ title, subtitle, children }: Props) {
               </Pressable>
               {sidebarBody}
             </View>
+            <Pressable
+              style={styles.drawerScrim}
+              onPress={() => setNavOpen(false)}
+              accessibilityLabel="Close menu"
+            />
           </View>
         </Modal>
       )}
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   drawerPanel: {
     width: "86%",
     maxWidth: 320,
-    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 14,
     gap: 12,
   },

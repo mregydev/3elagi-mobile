@@ -1,5 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { WebView } from "react-native-webview";
 import {
   fetchAdminDoctorWelcomePreview,
   fetchAdminInvitedDoctorPreview,
@@ -22,6 +30,22 @@ interface Props {
   previewPassword?: string;
 }
 
+/** Ensure email HTML scrolls inside the native WebView preview. */
+function prepareEmailPreviewHtml(html: string): string {
+  const headInjection =
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">' +
+    "<style>html,body{margin:0;padding:0;}body{overflow-y:auto;-webkit-overflow-scrolling:touch;}</style>";
+
+  if (/<html[\s>]/i.test(html)) {
+    if (/<head[\s>]/i.test(html)) {
+      return html.replace(/<head[^>]*>/i, (match) => `${match}${headInjection}`);
+    }
+    return html.replace(/<html[^>]*>/i, (match) => `${match}<head>${headInjection}</head>`);
+  }
+
+  return `<!DOCTYPE html><html><head>${headInjection}</head><body>${html}</body></html>`;
+}
+
 export function MarketingEmailPreview({
   accessToken,
   sections,
@@ -34,6 +58,14 @@ export function MarketingEmailPreview({
   previewPassword,
 }: Props) {
   const colors = useColors();
+  const { height: windowHeight } = useWindowDimensions();
+  const previewFrameHeight = useMemo(
+    () =>
+      Platform.OS === "web"
+        ? 640
+        : Math.max(360, Math.round(windowHeight * 0.58)),
+    [windowHeight],
+  );
   const [html, setHtml] = useState("");
   const [subject, setSubject] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +73,7 @@ export function MarketingEmailPreview({
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    if (!active || Platform.OS !== "web") return;
+    if (!active) return;
     if (!sections.length) {
       setHtml("");
       setSubject("");
@@ -72,11 +104,11 @@ export function MarketingEmailPreview({
               password: previewPassword ?? "",
             })
           : fetchAdminMarketingPreview(accessToken, {
-            sections,
-            language,
-            themeColor,
-            previewName,
-          }))
+              sections,
+              language,
+              themeColor,
+              previewName,
+            }))
         .then((result) => {
           if (requestId !== requestIdRef.current) return;
           setHtml(result.html);
@@ -105,8 +137,6 @@ export function MarketingEmailPreview({
     sections,
     themeColor,
   ]);
-
-  if (Platform.OS !== "web") return null;
 
   if (!sections.length) {
     return (
@@ -144,21 +174,41 @@ export function MarketingEmailPreview({
         <View
           style={[
             styles.frameWrap,
-            { borderColor: colors.border, backgroundColor: "#f5f7fa" },
+            {
+              borderColor: colors.border,
+              backgroundColor: "#f5f7fa",
+              height: previewFrameHeight,
+            },
           ]}
         >
-          {React.createElement("iframe", {
-            srcDoc: html,
-            title: "Marketing email preview",
-            style: {
-              width: "100%",
-              height: "100%",
-              border: "none",
-              display: "block",
-              background: "#f5f7fa",
-            },
-            sandbox: "allow-same-origin",
-          })}
+          {Platform.OS === "web" ? (
+            React.createElement("iframe", {
+              srcDoc: html,
+              title: "Marketing email preview",
+              style: {
+                width: "100%",
+                height: "100%",
+                border: "none",
+                display: "block",
+                background: "#f5f7fa",
+              },
+              sandbox: "allow-same-origin",
+            })
+          ) : (
+            <WebView
+              originWhitelist={["*"]}
+              source={{ html: prepareEmailPreviewHtml(html) }}
+              style={[styles.webView, { height: previewFrameHeight }]}
+              scrollEnabled
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              overScrollMode="always"
+              bounces
+              javaScriptEnabled
+              domStorageEnabled
+              setSupportMultipleWindows={false}
+            />
+          )}
         </View>
       ) : null}
 
@@ -187,8 +237,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     overflow: "hidden",
-    height: 640,
-    minHeight: 400,
+    minHeight: 320,
+  },
+  webView: {
+    width: "100%",
+    backgroundColor: "#f5f7fa",
   },
   empty: { fontSize: 13, lineHeight: 18, marginVertical: 12 },
   hint: { fontSize: 11, lineHeight: 16 },

@@ -194,7 +194,10 @@ export default function AdminInvitedDoctorsWeb() {
       title="Invited doctors"
       subtitle="Send a friendly invitation to a doctor whose account you already created. Enter their login details, customize the email, then send."
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        nestedScrollEnabled={builderTab === "preview"}
+        contentContainerStyle={styles.scroll}
+      >
         <View
           style={[
             styles.card,

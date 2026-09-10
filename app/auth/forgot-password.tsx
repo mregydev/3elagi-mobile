@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { AppBackButton } from "@/components/nav/AppBackButton";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -10,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { AuthFormBody } from "@/components/auth/AuthFormBody";
-import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 import { AuthLoginBackground } from "@/components/auth/AuthLoginBackground";
 import { AuthFormError, AuthFormField } from "@/components/auth/AuthFormField";
 import { authRepository } from "@/domains/auth/repository";
@@ -18,6 +16,8 @@ import { useColors } from "@/hooks/useColors";
 import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 import { showSuccessToast } from "@/utils/toast";
+import { AuthHomeLink } from "@/components/auth/AuthHomeLink";
+import { AuthLanguageField } from "@/components/auth/AuthLanguageField";
 
 export default function ForgotPasswordScreen() {
   const colors = useColors();
@@ -28,7 +28,7 @@ export default function ForgotPasswordScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const hideIntro = Platform.OS === "web" && isDesktop;
-  const hideWebTopBar = Platform.OS === "web";
+  const isNative = Platform.OS !== "web";
 
   const submit = async () => {
     const trimmed = email.trim().toLowerCase();
@@ -49,6 +49,14 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  const goBackToLogin = () => {
+    if (isNative) {
+      router.replace({ pathname: "/welcome", params: { panel: "login" } });
+      return;
+    }
+    router.replace("/auth/login");
+  };
+
   const screen = (
     <View
       style={[
@@ -57,18 +65,17 @@ export default function ForgotPasswordScreen() {
         Platform.OS === "web" && styles.screenWeb,
       ]}
     >
-      {!hideWebTopBar ? (
+      {Platform.OS === "web" ? (
         <View
           style={[
             styles.topBar,
             {
-              // Native sits inside the auth card, which already clears the notch.
-              paddingTop: Platform.OS === "web" ? 8 : 10,
+              paddingTop: 8,
               flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
-          <AppBackButton color={colors.foreground} style={{ padding: 6 }} />
+          <AuthHomeLink compact />
           <AuthLanguageField />
         </View>
       ) : null}
@@ -76,8 +83,8 @@ export default function ForgotPasswordScreen() {
         style={styles.flex}
         contentContainerStyle={[
           styles.body,
+          isNative && styles.bodyNative,
           Platform.OS === "web" && isMobile && styles.bodyMobileWeb,
-          // Desktop web may vertically center; mobile keeps content at the top.
           Platform.OS === "web" && !isMobile && styles.bodyDesktopWebCentered,
         ]}
         bottomOffset={32}
@@ -93,7 +100,7 @@ export default function ForgotPasswordScreen() {
           </>
         ) : null}
 
-        <View style={{ width: "100%", gap: 12, marginTop: hideIntro ? 0 : 28 }}>
+        <View style={[styles.form, hideIntro && styles.formNoIntro]}>
           {formError ? <AuthFormError message={formError} colors={colors} /> : null}
           {sent ? (
             <Text style={{ color: colors.foreground, textAlign: "center", lineHeight: 22 }}>
@@ -125,7 +132,6 @@ export default function ForgotPasswordScreen() {
                   styles.btn,
                   {
                     backgroundColor: loading ? colors.mutedForeground : colors.primary,
-                    marginTop: 8,
                   },
                 ]}
               >
@@ -137,11 +143,8 @@ export default function ForgotPasswordScreen() {
               </Pressable>
             </>
           )}
-          <Pressable
-            onPress={() => router.replace("/auth/login")}
-            style={{ paddingVertical: 8, alignItems: "center" }}
-          >
-            <Text style={{ color: colors.primary, fontWeight: "600" }}>
+          <Pressable onPress={goBackToLogin} style={styles.backLink}>
+            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>
               {t.auth.backToLogin}
             </Text>
           </Pressable>
@@ -155,8 +158,7 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Content-sized on native: the auth card hugs the form, the shell scrolls.
-  screen: { flexShrink: 1 },
+  screen: { flexShrink: 1, width: "100%" },
   flex: { flex: 1 },
   screenWeb: { flex: 0, width: "100%", height: "auto" },
   topBar: {
@@ -165,22 +167,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   body: {
-    paddingHorizontal: Platform.OS === "web" ? 24 : 16,
-    paddingTop: 12,
-    alignItems: "center",
-    paddingBottom: Platform.OS === "web" ? 32 : 24,
+    paddingHorizontal: Platform.OS === "web" ? 24 : 0,
+    paddingTop: Platform.OS === "web" ? 12 : 0,
+    alignItems: "stretch",
+    paddingBottom: Platform.OS === "web" ? 32 : 0,
+    width: "100%",
+  },
+  bodyNative: {
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   bodyMobileWeb: { paddingHorizontal: 16, paddingTop: 8 },
   bodyDesktopWebCentered: {
     flexGrow: 1,
     justifyContent: "center",
   },
-  title: { fontSize: 28, fontWeight: "800", textAlign: "center" },
-  sub: { fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },
+  title: {
+    fontSize: Platform.OS === "web" ? 28 : 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  sub: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  form: {
+    width: "100%",
+    gap: 12,
+    marginTop: 16,
+  },
+  formNoIntro: {
+    marginTop: 0,
+  },
   btn: {
-    paddingVertical: 14,
+    marginTop: 4,
+    paddingVertical: 15,
     borderRadius: 14,
     alignItems: "center",
   },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  backLink: {
+    paddingVertical: 12,
+    alignItems: "center",
+  },
 });
