@@ -21,6 +21,7 @@ import {
   buildDoctorSignupPhone,
   DEFAULT_PATIENT_COUNTRY,
   doctorSignupDialCode,
+  doctorSignupPhonePlaceholder,
   patientCountryLabel,
   type DoctorSignupCountryCode,
 } from "@/constants/patientCountries";
@@ -80,6 +81,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchSpecialities()
@@ -163,6 +165,12 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
   };
 
   const dialCode = doctorSignupDialCode(country);
+  const phonePlaceholder = doctorSignupPhonePlaceholder(country, {
+    eg: t.registerWithUs.phoneLocalPlaceholderEg,
+    jo: t.registerWithUs.phoneLocalPlaceholderJo,
+    us: t.registerWithUs.phoneLocalPlaceholderUs,
+    gb: t.registerWithUs.phoneLocalPlaceholderGb,
+  });
   const homeCurrency = localFeeCurrency(country);
   const homeLabel = patientCountryLabel(country, isRTL);
   const insidePriceLabel = isRTL
@@ -201,6 +209,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
     if (hasFieldErrors(errors)) return;
 
     setSending(true);
+    setSubmitError(null);
     try {
       await submitDoctorRegistration({
         doctorName,
@@ -214,6 +223,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
         photo: photo!,
       });
       setSent(true);
+      setSubmitError(null);
       showSuccessToast(t.registerWithUs.sent);
       setDoctorName("");
       setEmail("");
@@ -226,7 +236,10 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       setPhoto(null);
       setPhotoPreview(null);
     } catch (e) {
-      showErrorToast(t.registerWithUs.sendFailed, (e as Error).message);
+      const message = (e as Error).message || t.registerWithUs.sendFailed;
+      setSubmitError(message);
+      setSent(false);
+      showErrorToast(t.registerWithUs.sendFailed, message);
     } finally {
       setSending(false);
     }
@@ -260,16 +273,39 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       {sent ? (
         <View
           style={[
-            styles.successBanner,
+            styles.statusBanner,
             {
-              backgroundColor: `${colors.primary}12`,
-              borderColor: `${colors.primary}44`,
+              backgroundColor: `${colors.success}14`,
+              borderColor: `${colors.success}55`,
             },
           ]}
         >
-          <Text style={[styles.successNote, { color: colors.primary, textAlign }]}>
+          <Text style={[styles.statusBannerText, { color: colors.success, textAlign }]}>
             {t.registerWithUs.sent}
           </Text>
+        </View>
+      ) : null}
+
+      {submitError ? (
+        <View
+          style={[
+            styles.statusBanner,
+            {
+              backgroundColor: `${colors.destructive}14`,
+              borderColor: `${colors.destructive}55`,
+            },
+          ]}
+        >
+          <Text style={[styles.statusBannerTitle, { color: colors.destructive, textAlign }]}>
+            {t.registerWithUs.sendFailed}
+          </Text>
+          {submitError !== t.registerWithUs.sendFailed ? (
+            <Text
+              style={[styles.statusBannerText, { color: colors.destructive, textAlign, opacity: 0.9 }]}
+            >
+              {submitError}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -370,7 +406,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
                   setFieldErrors((prev) => ({ ...prev, phone: undefined }));
                 }
               }}
-              placeholder={t.auth.phonePlaceholder}
+              placeholder={phonePlaceholder}
               keyboardType="phone-pad"
               editable={!sending}
               error={!!fieldErrors.phone}
@@ -382,7 +418,15 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           </View>
         </FieldBlock>
 
-        <View style={styles.pricingSection}>
+        <View
+          style={[
+            styles.pricingPanel,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
           <Text style={[styles.pricingTitle, { color: colors.foreground, textAlign }]}>
             {t.registerWithUs.pricingTitle}
           </Text>
@@ -626,13 +670,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   subtitle: { flex: 1, fontSize: 14, lineHeight: 20 },
-  successBanner: {
+  statusBanner: {
     borderWidth: 1,
     borderRadius: UI.radius.inner,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 4,
   },
-  successNote: { fontSize: 14, fontWeight: "700" },
+  statusBannerTitle: { fontSize: 14, fontWeight: "800" },
+  statusBannerText: { fontSize: 14, fontWeight: "700", lineHeight: 20 },
   fields: { gap: UI.space.md },
   fieldBlockCentered: { alignItems: "center" },
   photoWrap: { alignSelf: "center" },
@@ -676,7 +722,12 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     fontSize: 15,
   },
-  pricingSection: { gap: 10 },
+  pricingPanel: {
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: UI.radius.card,
+    padding: 14,
+  },
   pricingTitle: { fontSize: 14, fontWeight: "800" },
   pricingDisclaimer: {
     alignItems: "flex-start",

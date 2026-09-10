@@ -8,10 +8,13 @@ import { useI18n } from "@/hooks/useI18n";
 import { useWebLayout } from "@/hooks/useWebLayout";
 
 /** Home currency of the doctor's market; everyone abroad pays USD. */
-export function localFeeCurrency(country?: string | null): "EGP" | "JOD" | "USD" {
+export function localFeeCurrency(
+  country?: string | null,
+): "EGP" | "JOD" | "USD" | "GBP" {
   const code = country?.trim().toUpperCase();
   if (code === "EG") return "EGP";
   if (code === "JO") return "JOD";
+  if (code === "GB") return "GBP";
   return "USD";
 }
 

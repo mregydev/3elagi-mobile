@@ -2,7 +2,7 @@
   "expo": {
     "name": "3elagi",
     "slug": "3elagi1",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "threelagi",
@@ -38,7 +38,7 @@
       }
     },
     "android": {
-      "versionCode": 4,
+      "versionCode": 5,
       "package": "com.threelagi.mobile",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [

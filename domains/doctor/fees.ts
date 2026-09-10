@@ -8,7 +8,7 @@ import { isMarketCountryCode } from "@/constants/patientCountries";
  * those markets — or anywhere else — pay the USD price. An unknown viewer
  * country counts as abroad — never quote the cheaper local rate on a guess.
  */
-export type FeeCurrency = "EGP" | "JOD" | "USD";
+export type FeeCurrency = "EGP" | "JOD" | "USD" | "GBP";
 export type ConsultationKind = "text" | "video";
 
 export interface DoctorFees {
@@ -55,6 +55,7 @@ export function localFeeCurrency(country?: string | null): FeeCurrency {
   const code = country?.trim().toUpperCase();
   if (code === "EG") return "EGP";
   if (code === "JO") return "JOD";
+  if (code === "GB") return "GBP";
   return "USD";
 }
 

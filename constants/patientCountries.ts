@@ -57,6 +57,27 @@ export function buildDoctorSignupPhone(
   return `+${dial}${local}`;
 }
 
+export function doctorSignupPhonePlaceholder(
+  country: DoctorSignupCountryCode,
+  placeholders: {
+    eg: string;
+    jo: string;
+    us: string;
+    gb: string;
+  },
+): string {
+  switch (country) {
+    case "JO":
+      return placeholders.jo;
+    case "US":
+      return placeholders.us;
+    case "GB":
+      return placeholders.gb;
+    default:
+      return placeholders.eg;
+  }
+}
+
 export const DEFAULT_PATIENT_COUNTRY: MarketCountryCode = "EG";
 
 /** @deprecated use MARKET_COUNTRY_CODES — alias for roster filter. */
