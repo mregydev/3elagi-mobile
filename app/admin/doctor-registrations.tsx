@@ -160,7 +160,7 @@ export default function AdminDoctorRegistrationsWeb() {
     const ok = await confirmAction(
       password
         ? `Create verified doctor account for "${row.doctor_name}" using the password you entered?`
-        : `Create verified doctor account for "${row.doctor_name}"? A temporary password will be generated.`,
+        : `Create verified doctor account for "${row.doctor_name}"? The default password Aa123456 will be used.`,
     );
     if (!ok) return;
 
@@ -413,7 +413,7 @@ export default function AdminDoctorRegistrationsWeb() {
                             onChangeText={(value) =>
                               setPasswords((prev) => ({ ...prev, [item.id]: value }))
                             }
-                            placeholder="Leave blank to auto-generate"
+                            placeholder="Default: Aa123456"
                             secureTextEntry
                             autoCapitalize="none"
                             autoCorrect={false}
