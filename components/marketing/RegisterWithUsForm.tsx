@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import { Info, Stethoscope, UserRound } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
@@ -37,6 +38,12 @@ import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function emailFromQueryParam(raw: string | string[] | undefined): string {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const trimmed = value?.trim().toLowerCase() ?? "";
+  return trimmed && EMAIL_RE.test(trimmed) ? trimmed : "";
+}
+
 type FieldErrors = {
   doctorName?: string;
   email?: string;
@@ -69,11 +76,12 @@ type Props = {
 export function RegisterWithUsForm({ showHero = false, style }: Props) {
   const colors = useColors();
   const { t, isRTL } = useI18n();
+  const { email: emailParam } = useLocalSearchParams<{ email?: string | string[] }>();
   const dir = flexRow(isRTL);
   const textAlign = alignText(isRTL);
 
   const [doctorName, setDoctorName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => emailFromQueryParam(emailParam));
   const [phoneLocal, setPhoneLocal] = useState("");
   const [country, setCountry] = useState<DoctorSignupCountryCode>(DEFAULT_PATIENT_COUNTRY);
   const initialFees = defaultDoctorFeeFormValues(DEFAULT_PATIENT_COUNTRY);
@@ -94,6 +102,11 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       .then(setSpecialities)
       .catch(() => setSpecialities([]));
   }, []);
+
+  useEffect(() => {
+    const fromUrl = emailFromQueryParam(emailParam);
+    if (fromUrl) setEmail(fromUrl);
+  }, [emailParam]);
 
   const pickPhoto = () => {
     if (Platform.OS === "web") {

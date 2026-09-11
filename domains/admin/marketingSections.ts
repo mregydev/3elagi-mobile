@@ -1,5 +1,11 @@
 /** Mirrors 3eyadahub-api/src/mail/marketing-email-sections.ts */
 export const REGISTER_URL = "https://www.3elagi.net/register-with-us";
+
+export function registerWithUsUrl(email?: string | null): string {
+  const trimmed = email?.trim().toLowerCase();
+  if (!trimmed) return REGISTER_URL;
+  return `${REGISTER_URL}?email=${encodeURIComponent(trimmed)}`;
+}
 export const ANDROID_APP_URL =
   "https://play.google.com/apps/internaltest/4700519020943782529";
 
@@ -60,7 +66,7 @@ export function createEmptySection(type: MarketingSectionType): MarketingEmailSe
         type,
         html: "Ready to join?",
         buttonLabel: "Register your interest",
-        buttonUrl: "https://www.3elagi.net/register-with-us",
+        buttonUrl: "{{register_url}}",
       };
     case "custom":
       return { id, type, html: "<div>Custom HTML block</div>" };
