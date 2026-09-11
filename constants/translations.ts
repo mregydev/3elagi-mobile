@@ -573,8 +573,9 @@ const en = {
     clinicLocationLabel: "Clinic location (optional)",
     clinicLocationPlaceholder: "City, address, or clinic name",
     pricingTitle: "Consultation price",
+    pricingOptional: "(optional)",
     pricingDisclaimer:
-      "These prices will be shown on your public profile on our website. Please enter accurate amounts.",
+      "These prices will be shown on your public profile on our website. Leave blank to use our standard defaults for your country.",
     priceLocalRequired: "Local price is required",
     priceUsdRequired: "International price is required",
     invalidPrice: "Enter a valid positive amount",
@@ -1624,8 +1625,9 @@ const ar: typeof en = {
     clinicLocationLabel: "موقع العيادة (اختياري)",
     clinicLocationPlaceholder: "المدينة أو العنوان أو اسم العيادة",
     pricingTitle: "سعر الاستشارة",
+    pricingOptional: "(اختياري)",
     pricingDisclaimer:
-      "ستُعرض هذه الأسعار في ملفك العام على موقعنا. يرجى إدخال مبالغ دقيقة.",
+      "ستُعرض هذه الأسعار في ملفك العام على موقعنا. اترك الحقل فارغًا لاستخدام الأسعار الافتراضية لبلدك.",
     priceLocalRequired: "السعر المحلي مطلوب",
     priceUsdRequired: "السعر الدولي مطلوب",
     invalidPrice: "أدخل مبلغًا صحيحًا أكبر من صفر",
@@ -2676,8 +2678,9 @@ const de: typeof en = {
     clinicLocationLabel: "Klinikstandort (optional)",
     clinicLocationPlaceholder: "Stadt, Adresse oder Klinikname",
     pricingTitle: "Beratungspreis",
+    pricingOptional: "(optional)",
     pricingDisclaimer:
-      "Diese Preise werden in Ihrem öffentlichen Profil auf unserer Website angezeigt. Bitte geben Sie genaue Beträge ein.",
+      "Diese Preise werden in Ihrem öffentlichen Profil auf unserer Website angezeigt. Leer lassen für unsere Standardpreise in Ihrem Land.",
     priceLocalRequired: "Lokaler Preis ist erforderlich",
     priceUsdRequired: "Internationaler Preis ist erforderlich",
     invalidPrice: "Geben Sie einen gültigen positiven Betrag ein",
@@ -3730,8 +3733,9 @@ const es: typeof en = {
     clinicLocationLabel: "Ubicación de la clínica (opcional)",
     clinicLocationPlaceholder: "Ciudad, dirección o nombre de la clínica",
     pricingTitle: "Precio de consulta",
+    pricingOptional: "(opcional)",
     pricingDisclaimer:
-      "Estos precios se mostrarán en tu perfil público en nuestro sitio web. Introduce importes exactos.",
+      "Estos precios se mostrarán en tu perfil público en nuestro sitio web. Déjalo en blanco para usar nuestros precios predeterminados de tu país.",
     priceLocalRequired: "El precio local es obligatorio",
     priceUsdRequired: "El precio internacional es obligatorio",
     invalidPrice: "Introduce un importe positivo válido",

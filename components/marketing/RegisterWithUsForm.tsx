@@ -26,6 +26,7 @@ import {
   type DoctorSignupCountryCode,
 } from "@/constants/patientCountries";
 import { localFeeCurrency } from "@/components/profile/DoctorFeesFields";
+import { defaultDoctorFeeFormValues } from "@/domains/doctor/fees";
 import { submitDoctorRegistration, type DoctorRegistrationPhoto } from "@/domains/doctorRegistration/api";
 import { hasFieldErrors } from "@/domains/auth/validation";
 import { fetchSpecialities, type Speciality } from "@/domains/home/api";
@@ -55,6 +56,10 @@ function parsePositivePrice(value: string): number | null {
   return Math.round(parsed * 100) / 100;
 }
 
+function resolveRegistrationPrice(value: string, fallback: number): number {
+  return parsePositivePrice(value) ?? fallback;
+}
+
 type Props = {
   /** Centered hero block above the fields (desktop card). */
   showHero?: boolean;
@@ -71,8 +76,9 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
   const [email, setEmail] = useState("");
   const [phoneLocal, setPhoneLocal] = useState("");
   const [country, setCountry] = useState<DoctorSignupCountryCode>(DEFAULT_PATIENT_COUNTRY);
-  const [priceLocal, setPriceLocal] = useState("");
-  const [priceUsd, setPriceUsd] = useState("");
+  const initialFees = defaultDoctorFeeFormValues(DEFAULT_PATIENT_COUNTRY);
+  const [priceLocal, setPriceLocal] = useState(initialFees.textLocal);
+  const [priceUsd, setPriceUsd] = useState(initialFees.textUsd);
   const [clinicLocation, setClinicLocation] = useState("");
   const [specialityId, setSpecialityId] = useState("");
   const [photo, setPhoto] = useState<DoctorRegistrationPhoto | null>(null);
@@ -188,15 +194,11 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
     else if (!EMAIL_RE.test(trimmedEmail)) errors.email = t.auth.invalidEmail;
     if (!country) errors.country = t.auth.doctorMarketRequired;
     if (!phoneLocal.replace(/\D/g, "").trim()) errors.phone = t.auth.fieldRequired;
-    if (!parsePositivePrice(priceLocal)) {
-      errors.priceLocal = priceLocal.trim()
-        ? t.registerWithUs.invalidPrice
-        : t.registerWithUs.priceLocalRequired;
+    if (priceLocal.trim() && !parsePositivePrice(priceLocal)) {
+      errors.priceLocal = t.registerWithUs.invalidPrice;
     }
-    if (!parsePositivePrice(priceUsd)) {
-      errors.priceUsd = priceUsd.trim()
-        ? t.registerWithUs.invalidPrice
-        : t.registerWithUs.priceUsdRequired;
+    if (priceUsd.trim() && !parsePositivePrice(priceUsd)) {
+      errors.priceUsd = t.registerWithUs.invalidPrice;
     }
     if (!specialityId) errors.specialityId = t.auth.specialityRequiredMsg;
     if (!photo) errors.photo = t.registerWithUs.photoRequired;
@@ -211,6 +213,7 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
     setSending(true);
     setSubmitError(null);
     try {
+      const defaults = defaultDoctorFeeFormValues(country);
       await submitDoctorRegistration({
         doctorName,
         email,
@@ -218,8 +221,8 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
         country,
         specialityId,
         clinicLocation: clinicLocation.trim() || undefined,
-        priceLocal: parsePositivePrice(priceLocal)!,
-        priceUsd: parsePositivePrice(priceUsd)!,
+        priceLocal: resolveRegistrationPrice(priceLocal, Number(defaults.textLocal)),
+        priceUsd: resolveRegistrationPrice(priceUsd, Number(defaults.textUsd)),
         photo: photo!,
       });
       setSent(true);
@@ -229,8 +232,9 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
       setEmail("");
       setPhoneLocal("");
       setCountry(DEFAULT_PATIENT_COUNTRY);
-      setPriceLocal("");
-      setPriceUsd("");
+      const resetFees = defaultDoctorFeeFormValues(DEFAULT_PATIENT_COUNTRY);
+      setPriceLocal(resetFees.textLocal);
+      setPriceUsd(resetFees.textUsd);
       setClinicLocation("");
       setSpecialityId("");
       setPhoto(null);
@@ -377,6 +381,9 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           value={country}
           onChange={(code) => {
             setCountry(code);
+            const fees = defaultDoctorFeeFormValues(code);
+            setPriceLocal(fees.textLocal);
+            setPriceUsd(fees.textUsd);
             if (fieldErrors.country) {
               setFieldErrors((prev) => ({ ...prev, country: undefined }));
             }
@@ -428,7 +435,10 @@ export function RegisterWithUsForm({ showHero = false, style }: Props) {
           ]}
         >
           <Text style={[styles.pricingTitle, { color: colors.foreground, textAlign }]}>
-            {t.registerWithUs.pricingTitle}
+            {t.registerWithUs.pricingTitle}{" "}
+            <Text style={{ color: colors.mutedForeground, fontWeight: "600" }}>
+              {t.registerWithUs.pricingOptional}
+            </Text>
           </Text>
           <View
             style={[
