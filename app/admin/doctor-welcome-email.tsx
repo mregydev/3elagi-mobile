@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -33,8 +33,13 @@ import {
 } from "@/domains/admin/marketingThemes";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
+import { CheckSquare, Square } from "lucide-react-native";
 import { confirmAction } from "@/utils/confirmAction";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
+
+function doctorPassword(doctor: AdminDoctorRow): string {
+  return doctor.welcome_password?.trim() || DEFAULT_DOCTOR_WELCOME_PASSWORD;
+}
 
 const LANGUAGES: { code: MarketingEmailLanguage; label: string; hint: string }[] = [
   { code: "en", label: "English", hint: "Left-to-right" },
@@ -63,10 +68,8 @@ export default function AdminDoctorWelcomeEmailWeb() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
-  const [selectedDoctorId, setSelectedDoctorId] = useState("");
-  const [doctorName, setDoctorName] = useState("");
+  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
   const [emailsText, setEmailsText] = useState("");
-  const [password, setPassword] = useState("");
   const [language, setLanguage] = useState<MarketingEmailLanguage>("en");
   const [themeColor, setThemeColor] = useState<MarketingEmailTheme>(
     DEFAULT_MARKETING_EMAIL_THEME,
@@ -79,7 +82,13 @@ export default function AdminDoctorWelcomeEmailWeb() {
   const [builderTab, setBuilderTab] = useState<BuilderTab>("edit");
   const sectionsDirtyRef = useRef(false);
 
-  const previewName = doctorName.trim() || "Doctor";
+  const selectedDoctors = useMemo(
+    () => doctors.filter((doctor) => selectedDoctorIds.includes(doctor.id)),
+    [doctors, selectedDoctorIds],
+  );
+  const previewDoctor = selectedDoctors[0];
+  const previewName = previewDoctor?.name?.trim() || "Doctor";
+  const previewPassword = previewDoctor ? doctorPassword(previewDoctor) : "";
 
   const loadTemplate = useCallback(
     async (
@@ -127,23 +136,25 @@ export default function AdminDoctorWelcomeEmailWeb() {
       .finally(() => setLoadingDoctors(false));
   }, [accessToken]);
 
-  const selectDoctor = useCallback((doctorId: string) => {
-    setSelectedDoctorId(doctorId);
-    if (!doctorId) {
-      setDoctorName("");
-      setEmailsText("");
-      setPassword("");
-      return;
-    }
-    const doctor = doctors.find((row) => row.id === doctorId);
-    if (!doctor) return;
-    setDoctorName(doctor.name);
-    setEmailsText(doctor.email?.trim() ?? "");
-    setPassword(doctor.welcome_password?.trim() || DEFAULT_DOCTOR_WELCOME_PASSWORD);
+  const toggleDoctor = useCallback((doctorId: string) => {
+    setSelectedDoctorIds((current) =>
+      current.includes(doctorId)
+        ? current.filter((id) => id !== doctorId)
+        : [...current, doctorId],
+    );
+  }, []);
+
+  const selectAllDoctors = useCallback(() => {
+    setSelectedDoctorIds(doctors.map((doctor) => doctor.id));
   }, [doctors]);
 
-  const parsedEmails = parseCommaEmails(emailsText);
-  const primaryEmail = parsedEmails[0] ?? "";
+  const clearDoctorSelection = useCallback(() => {
+    setSelectedDoctorIds([]);
+  }, []);
+
+  const extraEmails = parseCommaEmails(emailsText);
+  const primaryEmail =
+    previewDoctor?.email?.trim() || extraEmails[0] || "";
 
   const pickLanguage = (code: MarketingEmailLanguage) => {
     if (code === language) return;
@@ -172,24 +183,8 @@ export default function AdminDoctorWelcomeEmailWeb() {
   const send = async () => {
     if (!accessToken || sending) return;
 
-    const name = doctorName.trim();
-    const recipientEmails = parseCommaEmails(emailsText);
-    const loginPassword = password;
-
-    if (!selectedDoctorId) {
-      showErrorToast("Select a doctor from the list");
-      return;
-    }
-    if (!name || name.length < 2) {
-      showErrorToast("Doctor name is missing");
-      return;
-    }
-    if (!recipientEmails.length) {
-      showErrorToast("Enter at least one valid email (comma-separated for multiple)");
-      return;
-    }
-    if (!loginPassword || loginPassword.length < 6) {
-      showErrorToast("Password is missing for this doctor account");
+    if (!selectedDoctors.length) {
+      showErrorToast("Select at least one doctor");
       return;
     }
     if (!sections.length || !sectionsHaveContent(sections)) {
@@ -197,35 +192,74 @@ export default function AdminDoctorWelcomeEmailWeb() {
       return;
     }
 
+    const sendPlans = selectedDoctors
+      .map((doctor) => {
+        const accountEmail = doctor.email?.trim().toLowerCase() ?? "";
+        const emails = [
+          ...(accountEmail ? [accountEmail] : []),
+          ...extraEmails.filter((email) => email !== accountEmail),
+        ];
+        return {
+          doctor,
+          emails,
+        };
+      })
+      .filter((plan) => plan.emails.length > 0);
+
+    const missingEmailDoctors = selectedDoctors.filter(
+      (doctor) => !doctor.email?.trim() && !extraEmails.length,
+    );
+    if (missingEmailDoctors.length) {
+      showErrorToast(
+        "Missing email",
+        `${missingEmailDoctors.map((d) => d.name).join(", ")} — add an account email or extra recipients.`,
+      );
+      return;
+    }
+    if (!sendPlans.length) {
+      showErrorToast("Enter at least one valid recipient email");
+      return;
+    }
+
+    const totalRecipients = sendPlans.reduce((sum, plan) => sum + plan.emails.length, 0);
     const langLabel = LANGUAGES.find((l) => l.code === language)?.label ?? language;
-    const recipientLabel =
-      recipientEmails.length === 1
-        ? recipientEmails[0]
-        : `${recipientEmails.length} recipients (${recipientEmails.join(", ")})`;
     const confirmed = await confirmAction(
-      `Send the welcome email with login credentials to ${recipientLabel} in ${langLabel}?`,
+      `Send welcome emails for ${sendPlans.length} doctor(s) to ${totalRecipients} address(es) in ${langLabel}?`,
     );
     if (!confirmed) return;
 
     setSending(true);
     try {
-      const result = await sendAdminDoctorWelcomeEmailBatch(accessToken, {
-        name,
-        emails: recipientEmails,
-        password: loginPassword,
-        language,
-        sections,
-        themeColor,
-      });
-      if (result.sent === result.total) {
-        showSuccessToast(`Welcome email sent to ${result.sent} recipient(s)`);
+      let sentTotal = 0;
+      let failedTotal = 0;
+      const failures: string[] = [];
+
+      for (const plan of sendPlans) {
+        const result = await sendAdminDoctorWelcomeEmailBatch(accessToken, {
+          name: plan.doctor.name,
+          emails: plan.emails,
+          password: doctorPassword(plan.doctor),
+          language,
+          sections,
+          themeColor,
+        });
+        sentTotal += result.sent;
+        failedTotal += result.failed;
+        failures.push(
+          ...result.results
+            .filter((row) => !row.ok)
+            .map((row) => `${plan.doctor.name} → ${row.email}: ${row.error ?? "failed"}`),
+        );
+      }
+
+      if (failedTotal === 0) {
+        showSuccessToast(
+          `Welcome email sent for ${sendPlans.length} doctor(s) (${sentTotal} address(es))`,
+        );
       } else {
         showErrorToast(
-          `Sent ${result.sent}/${result.total}`,
-          result.results
-            .filter((row) => !row.ok)
-            .map((row) => `${row.email}: ${row.error ?? "failed"}`)
-            .join("; "),
+          `Sent ${sentTotal}, failed ${failedTotal}`,
+          failures.join("; "),
         );
       }
     } catch (e) {
@@ -263,114 +297,114 @@ export default function AdminDoctorWelcomeEmailWeb() {
             Login credentials
           </Text>
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Pick a doctor — name and password are filled from the account. Add comma-separated
-            emails to send the same welcome message to multiple addresses.
+            Select one or more doctors. Each receives their own name and password. Optional
+            extra emails are added for every selected doctor.
           </Text>
 
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            Doctor
-          </Text>
+          <View style={styles.doctorToolbar}>
+            <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>
+              Doctors ({selectedDoctors.length} selected)
+            </Text>
+            <View style={styles.doctorToolbarActions}>
+              <Pressable onPress={selectAllDoctors}>
+                <Text style={[styles.linkAction, { color: colors.primary }]}>Select all</Text>
+              </Pressable>
+              <Pressable onPress={clearDoctorSelection}>
+                <Text style={[styles.linkAction, { color: colors.mutedForeground }]}>
+                  Clear
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
           {loadingDoctors ? (
             <ActivityIndicator color={colors.primary} style={{ alignSelf: "flex-start" }} />
-          ) : Platform.OS === "web" ? (
-            <select
-              value={selectedDoctorId}
-              onChange={(event) => selectDoctor(event.target.value)}
-              style={{
-                width: "100%",
-                borderRadius: 12,
-                border: `1px solid ${colors.border}`,
-                backgroundColor: colors.background,
-                color: colors.foreground,
-                padding: "12px 14px",
-                fontSize: 14,
-              }}
-            >
-              <option value="">Select a doctor…</option>
-              {doctors.map((doctor) => (
-                <option key={doctor.id} value={doctor.id}>
-                  {doctor.name}
-                  {doctor.email ? ` (${doctor.email})` : ""}
-                </option>
-              ))}
-            </select>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorPicker}>
+            <ScrollView
+              nestedScrollEnabled
+              style={[
+                styles.doctorCheckboxList,
+                { borderColor: colors.border, backgroundColor: colors.background },
+              ]}
+            >
               {doctors.map((doctor) => {
-                const active = selectedDoctorId === doctor.id;
+                const checked = selectedDoctorIds.includes(doctor.id);
                 return (
                   <Pressable
                     key={doctor.id}
-                    onPress={() => selectDoctor(doctor.id)}
-                    style={[
-                      styles.doctorChip,
+                    onPress={() => toggleDoctor(doctor.id)}
+                    style={({ pressed }) => [
+                      styles.doctorCheckboxRow,
                       {
-                        borderColor: active ? colors.primary : colors.border,
-                        backgroundColor: active ? `${colors.primary}14` : colors.background,
+                        borderBottomColor: colors.border,
+                        backgroundColor: pressed
+                          ? colors.muted
+                          : checked
+                            ? `${colors.primary}08`
+                            : "transparent",
                       },
                     ]}
                   >
-                    <Text
-                      style={{
-                        color: active ? colors.primary : colors.foreground,
-                        fontWeight: active ? "800" : "600",
-                        fontSize: 13,
-                      }}
-                    >
-                      {doctor.name}
-                    </Text>
+                    {checked ? (
+                      <CheckSquare size={20} color={colors.primary} />
+                    ) : (
+                      <Square size={20} color={colors.mutedForeground} />
+                    )}
+                    <View style={styles.doctorCheckboxText}>
+                      <Text
+                        style={[
+                          styles.doctorCheckboxName,
+                          { color: colors.foreground, fontWeight: checked ? "800" : "600" },
+                        ]}
+                      >
+                        {doctor.name}
+                      </Text>
+                      <Text style={[styles.doctorCheckboxMeta, { color: colors.mutedForeground }]}>
+                        {doctor.email?.trim() || "No email on file"}
+                        {" · "}
+                        {doctorPassword(doctor)}
+                      </Text>
+                    </View>
                   </Pressable>
                 );
               })}
             </ScrollView>
           )}
 
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            Doctor name
-          </Text>
-          <AppTextInput
-            value={doctorName}
-            editable={false}
-            placeholder="Select a doctor above"
-            autoCapitalize="words"
-            style={[...inputStyle, styles.readonlyInput]}
-          />
+          {selectedDoctors.length ? (
+            <View
+              style={[
+                styles.selectedSummary,
+                { borderColor: colors.border, backgroundColor: `${colors.primary}08` },
+              ]}
+            >
+              {selectedDoctors.map((doctor) => (
+                <Text
+                  key={doctor.id}
+                  style={[styles.selectedSummaryRow, { color: colors.foreground }]}
+                >
+                  {doctor.name} — {doctor.email?.trim() || "no email"} — {doctorPassword(doctor)}
+                </Text>
+              ))}
+            </View>
+          ) : null}
 
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            Email(s)
+            Extra email(s) for all selected (optional)
           </Text>
           <AppTextInput
             value={emailsText}
             onChangeText={setEmailsText}
-            placeholder="doctor@example.com, assistant@clinic.com"
+            placeholder="assistant@clinic.com, admin@clinic.com"
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
             multiline
             style={[...inputStyle, styles.emailsInput]}
           />
-          {parsedEmails.length > 1 ? (
+          {extraEmails.length ? (
             <Text style={[styles.label, { color: colors.mutedForeground }]}>
-              {parsedEmails.length} recipients detected
-            </Text>
-          ) : null}
-
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            Password
-          </Text>
-          <AppTextInput
-            value={password}
-            editable={false}
-            placeholder="Select a doctor above"
-            autoCapitalize="none"
-            autoCorrect={false}
-            secureTextEntry
-            style={[...inputStyle, styles.readonlyInput]}
-          />
-          {selectedDoctorId && !doctors.find((d) => d.id === selectedDoctorId)?.welcome_password ? (
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>
-              Using default password — only accounts created after this update store the exact
-              password.
+              {extraEmails.length} extra address(es) will be added for each selected doctor
             </Text>
           ) : null}
 
@@ -543,7 +577,7 @@ export default function AdminDoctorWelcomeEmailWeb() {
               themeColor={themeColor}
               previewName={previewName}
               previewEmail={primaryEmail}
-              previewPassword={password}
+              previewPassword={previewPassword}
               previewKind="doctor-welcome"
               active={builderTab === "preview"}
             />
@@ -568,7 +602,8 @@ export default function AdminDoctorWelcomeEmailWeb() {
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={[styles.sendBtnText, { color: colors.primaryForeground }]}>
-                Send welcome email{parsedEmails.length > 1 ? ` (${parsedEmails.length})` : ""}
+                Send welcome email
+                {selectedDoctors.length > 1 ? ` (${selectedDoctors.length} doctors)` : ""}
               </Text>
             )}
           </Pressable>
@@ -623,16 +658,56 @@ const styles = StyleSheet.create({
     minHeight: 72,
     textAlignVertical: "top",
   },
-  doctorPicker: {
-    maxHeight: 44,
-    marginBottom: 4,
+  doctorToolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 8,
   },
-  doctorChip: {
+  doctorToolbarActions: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  linkAction: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  doctorCheckboxList: {
     borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: 12,
+    overflow: "hidden",
+    maxHeight: 320,
+  },
+  doctorCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginRight: 8,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  doctorCheckboxText: {
+    flex: 1,
+    gap: 2,
+  },
+  doctorCheckboxName: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  doctorCheckboxMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  selectedSummary: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
+  },
+  selectedSummaryRow: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   langRow: {
     flexDirection: "row",
