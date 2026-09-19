@@ -5,12 +5,12 @@ export function buildDefaultWhatsAppInviteMessage(
   senderName: string,
 ): string {
   const doctor = doctorName.trim() || "الدكتور";
-  const sender = senderName.trim() || "فريق 3elagi";
+  const sender = senderName.trim() || "الفريق";
 
   return [
     `مرحباً دكتور ${doctor}،`,
     "",
-    `معك *${sender}*.`,
+    `معك *${sender}* من *3elagi*.`,
     "",
     "أدعوك للانضمام إلى *3elagi* — منصة طبية عن بُعد للمرضى من منطقة الخليج والشرق الأوسط.",
     "",
