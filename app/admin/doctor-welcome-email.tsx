@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { AppTextInput } from "@/components/AppTextInput";
+import { AdminDoctorMultiSelect } from "@/components/admin/AdminDoctorMultiSelect";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { adminPagePadding } from "@/constants/adminLayout";
 import { MarketingSectionBuilder } from "@/components/admin/MarketingSectionBuilder";
@@ -33,7 +34,6 @@ import {
 } from "@/domains/admin/marketingThemes";
 import { useAuthStore } from "@/domains/auth/store";
 import { useColors } from "@/hooks/useColors";
-import { CheckSquare, Square } from "lucide-react-native";
 import { confirmAction } from "@/utils/confirmAction";
 import { showErrorToast, showSuccessToast } from "@/utils/toast";
 
@@ -135,22 +135,6 @@ export default function AdminDoctorWelcomeEmailWeb() {
       )
       .finally(() => setLoadingDoctors(false));
   }, [accessToken]);
-
-  const toggleDoctor = useCallback((doctorId: string) => {
-    setSelectedDoctorIds((current) =>
-      current.includes(doctorId)
-        ? current.filter((id) => id !== doctorId)
-        : [...current, doctorId],
-    );
-  }, []);
-
-  const selectAllDoctors = useCallback(() => {
-    setSelectedDoctorIds(doctors.map((doctor) => doctor.id));
-  }, [doctors]);
-
-  const clearDoctorSelection = useCallback(() => {
-    setSelectedDoctorIds([]);
-  }, []);
 
   const extraEmails = parseCommaEmails(emailsText);
   const primaryEmail =
@@ -297,79 +281,17 @@ export default function AdminDoctorWelcomeEmailWeb() {
             Login credentials
           </Text>
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Select one or more doctors. Each receives their own name and password. Optional
-            extra emails are added for every selected doctor.
+            Search and select doctors from the dropdown. Each receives their own name and
+            password. Optional extra emails are added for every selected doctor.
           </Text>
 
-          <View style={styles.doctorToolbar}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>
-              Doctors ({selectedDoctors.length} selected)
-            </Text>
-            <View style={styles.doctorToolbarActions}>
-              <Pressable onPress={selectAllDoctors}>
-                <Text style={[styles.linkAction, { color: colors.primary }]}>Select all</Text>
-              </Pressable>
-              <Pressable onPress={clearDoctorSelection}>
-                <Text style={[styles.linkAction, { color: colors.mutedForeground }]}>
-                  Clear
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {loadingDoctors ? (
-            <ActivityIndicator color={colors.primary} style={{ alignSelf: "flex-start" }} />
-          ) : (
-            <ScrollView
-              nestedScrollEnabled
-              style={[
-                styles.doctorCheckboxList,
-                { borderColor: colors.border, backgroundColor: colors.background },
-              ]}
-            >
-              {doctors.map((doctor) => {
-                const checked = selectedDoctorIds.includes(doctor.id);
-                return (
-                  <Pressable
-                    key={doctor.id}
-                    onPress={() => toggleDoctor(doctor.id)}
-                    style={({ pressed }) => [
-                      styles.doctorCheckboxRow,
-                      {
-                        borderBottomColor: colors.border,
-                        backgroundColor: pressed
-                          ? colors.muted
-                          : checked
-                            ? `${colors.primary}08`
-                            : "transparent",
-                      },
-                    ]}
-                  >
-                    {checked ? (
-                      <CheckSquare size={20} color={colors.primary} />
-                    ) : (
-                      <Square size={20} color={colors.mutedForeground} />
-                    )}
-                    <View style={styles.doctorCheckboxText}>
-                      <Text
-                        style={[
-                          styles.doctorCheckboxName,
-                          { color: colors.foreground, fontWeight: checked ? "800" : "600" },
-                        ]}
-                      >
-                        {doctor.name}
-                      </Text>
-                      <Text style={[styles.doctorCheckboxMeta, { color: colors.mutedForeground }]}>
-                        {doctor.email?.trim() || "No email on file"}
-                        {" · "}
-                        {doctorPassword(doctor)}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
+          <AdminDoctorMultiSelect
+            doctors={doctors}
+            selectedIds={selectedDoctorIds}
+            onChange={setSelectedDoctorIds}
+            loading={loadingDoctors}
+            label={`Doctors (${selectedDoctors.length} selected)`}
+          />
 
           {selectedDoctors.length ? (
             <View
@@ -657,47 +579,6 @@ const styles = StyleSheet.create({
   emailsInput: {
     minHeight: 72,
     textAlignVertical: "top",
-  },
-  doctorToolbar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginTop: 8,
-  },
-  doctorToolbarActions: {
-    flexDirection: "row",
-    gap: 14,
-  },
-  linkAction: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  doctorCheckboxList: {
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: "hidden",
-    maxHeight: 320,
-  },
-  doctorCheckboxRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  doctorCheckboxText: {
-    flex: 1,
-    gap: 2,
-  },
-  doctorCheckboxName: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  doctorCheckboxMeta: {
-    fontSize: 12,
-    lineHeight: 17,
   },
   selectedSummary: {
     borderWidth: 1,
