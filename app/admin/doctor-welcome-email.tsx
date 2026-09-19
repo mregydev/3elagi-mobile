@@ -16,10 +16,14 @@ import { MarketingSectionBuilder } from "@/components/admin/MarketingSectionBuil
 import { MarketingEmailPreview } from "@/components/admin/MarketingEmailPreview";
 import {
   fetchAdminDoctorWelcomeTemplate,
-  sendAdminDoctorWelcomeEmail,
+  fetchAdminDoctors,
+  sendAdminDoctorWelcomeEmailBatch,
+  type AdminDoctorRow,
   type MarketingEmailLanguage,
   type MarketingEmailTheme,
 } from "@/domains/admin/api";
+import { DEFAULT_DOCTOR_WELCOME_PASSWORD } from "@/domains/admin/constants";
+import { parseCommaEmails } from "@/domains/admin/parseCommaList";
 import type { MarketingEmailSection } from "@/domains/admin/marketingSections";
 import {
   DEFAULT_MARKETING_EMAIL_THEME,
@@ -57,8 +61,11 @@ export default function AdminDoctorWelcomeEmailWeb() {
   const { width } = useWindowDimensions();
   const pagePadding = adminPagePadding(width <= 767);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [doctorName, setDoctorName] = useState("");
-  const [email, setEmail] = useState("");
+  const [emailsText, setEmailsText] = useState("");
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState<MarketingEmailLanguage>("en");
   const [themeColor, setThemeColor] = useState<MarketingEmailTheme>(
@@ -109,6 +116,35 @@ export default function AdminDoctorWelcomeEmailWeb() {
     void loadTemplate(language, themeColor, true);
   }, [accessToken]);
 
+  useEffect(() => {
+    if (!accessToken) return;
+    setLoadingDoctors(true);
+    fetchAdminDoctors(accessToken)
+      .then((rows) => setDoctors(rows))
+      .catch((e) =>
+        showErrorToast(e instanceof Error ? e.message : "Failed to load doctors"),
+      )
+      .finally(() => setLoadingDoctors(false));
+  }, [accessToken]);
+
+  const selectDoctor = useCallback((doctorId: string) => {
+    setSelectedDoctorId(doctorId);
+    if (!doctorId) {
+      setDoctorName("");
+      setEmailsText("");
+      setPassword("");
+      return;
+    }
+    const doctor = doctors.find((row) => row.id === doctorId);
+    if (!doctor) return;
+    setDoctorName(doctor.name);
+    setEmailsText(doctor.email?.trim() ?? "");
+    setPassword(doctor.welcome_password?.trim() || DEFAULT_DOCTOR_WELCOME_PASSWORD);
+  }, [doctors]);
+
+  const parsedEmails = parseCommaEmails(emailsText);
+  const primaryEmail = parsedEmails[0] ?? "";
+
   const pickLanguage = (code: MarketingEmailLanguage) => {
     if (code === language) return;
     setLanguage(code);
@@ -137,19 +173,23 @@ export default function AdminDoctorWelcomeEmailWeb() {
     if (!accessToken || sending) return;
 
     const name = doctorName.trim();
-    const recipientEmail = email.trim().toLowerCase();
+    const recipientEmails = parseCommaEmails(emailsText);
     const loginPassword = password;
 
-    if (!name || name.length < 2) {
-      showErrorToast("Enter the doctor's name (at least 2 characters)");
+    if (!selectedDoctorId) {
+      showErrorToast("Select a doctor from the list");
       return;
     }
-    if (!recipientEmail || !recipientEmail.includes("@")) {
-      showErrorToast("Enter a valid email address");
+    if (!name || name.length < 2) {
+      showErrorToast("Doctor name is missing");
+      return;
+    }
+    if (!recipientEmails.length) {
+      showErrorToast("Enter at least one valid email (comma-separated for multiple)");
       return;
     }
     if (!loginPassword || loginPassword.length < 6) {
-      showErrorToast("Enter the account password (at least 6 characters)");
+      showErrorToast("Password is missing for this doctor account");
       return;
     }
     if (!sections.length || !sectionsHaveContent(sections)) {
@@ -158,22 +198,36 @@ export default function AdminDoctorWelcomeEmailWeb() {
     }
 
     const langLabel = LANGUAGES.find((l) => l.code === language)?.label ?? language;
+    const recipientLabel =
+      recipientEmails.length === 1
+        ? recipientEmails[0]
+        : `${recipientEmails.length} recipients (${recipientEmails.join(", ")})`;
     const confirmed = await confirmAction(
-      `Send the welcome email with login credentials to ${recipientEmail} in ${langLabel}?`,
+      `Send the welcome email with login credentials to ${recipientLabel} in ${langLabel}?`,
     );
     if (!confirmed) return;
 
     setSending(true);
     try {
-      const result = await sendAdminDoctorWelcomeEmail(accessToken, {
+      const result = await sendAdminDoctorWelcomeEmailBatch(accessToken, {
         name,
-        email: recipientEmail,
+        emails: recipientEmails,
         password: loginPassword,
         language,
         sections,
         themeColor,
       });
-      showSuccessToast(`Welcome email sent to ${result.email}`);
+      if (result.sent === result.total) {
+        showSuccessToast(`Welcome email sent to ${result.sent} recipient(s)`);
+      } else {
+        showErrorToast(
+          `Sent ${result.sent}/${result.total}`,
+          result.results
+            .filter((row) => !row.ok)
+            .map((row) => `${row.email}: ${row.error ?? "failed"}`)
+            .join("; "),
+        );
+      }
     } catch (e) {
       showErrorToast(e instanceof Error ? e.message : "Failed to send email");
     } finally {
@@ -209,45 +263,116 @@ export default function AdminDoctorWelcomeEmailWeb() {
             Login credentials
           </Text>
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            These are inserted into the email template as {"{{email}}"} and {"{{password}}"}.
+            Pick a doctor — name and password are filled from the account. Add comma-separated
+            emails to send the same welcome message to multiple addresses.
           </Text>
+
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+            Doctor
+          </Text>
+          {loadingDoctors ? (
+            <ActivityIndicator color={colors.primary} style={{ alignSelf: "flex-start" }} />
+          ) : Platform.OS === "web" ? (
+            <select
+              value={selectedDoctorId}
+              onChange={(event) => selectDoctor(event.target.value)}
+              style={{
+                width: "100%",
+                borderRadius: 12,
+                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.background,
+                color: colors.foreground,
+                padding: "12px 14px",
+                fontSize: 14,
+              }}
+            >
+              <option value="">Select a doctor…</option>
+              {doctors.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.name}
+                  {doctor.email ? ` (${doctor.email})` : ""}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorPicker}>
+              {doctors.map((doctor) => {
+                const active = selectedDoctorId === doctor.id;
+                return (
+                  <Pressable
+                    key={doctor.id}
+                    onPress={() => selectDoctor(doctor.id)}
+                    style={[
+                      styles.doctorChip,
+                      {
+                        borderColor: active ? colors.primary : colors.border,
+                        backgroundColor: active ? `${colors.primary}14` : colors.background,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: active ? colors.primary : colors.foreground,
+                        fontWeight: active ? "800" : "600",
+                        fontSize: 13,
+                      }}
+                    >
+                      {doctor.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
 
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
             Doctor name
           </Text>
           <AppTextInput
             value={doctorName}
-            onChangeText={setDoctorName}
-            placeholder="Dr. Ahmed Hassan"
+            editable={false}
+            placeholder="Select a doctor above"
             autoCapitalize="words"
-            style={inputStyle}
+            style={[...inputStyle, styles.readonlyInput]}
           />
 
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            Email
+            Email(s)
           </Text>
           <AppTextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="doctor@example.com"
+            value={emailsText}
+            onChangeText={setEmailsText}
+            placeholder="doctor@example.com, assistant@clinic.com"
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
-            style={inputStyle}
+            multiline
+            style={[...inputStyle, styles.emailsInput]}
           />
+          {parsedEmails.length > 1 ? (
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>
+              {parsedEmails.length} recipients detected
+            </Text>
+          ) : null}
 
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
             Password
           </Text>
           <AppTextInput
             value={password}
-            onChangeText={setPassword}
-            placeholder="Password to include in the email"
+            editable={false}
+            placeholder="Select a doctor above"
             autoCapitalize="none"
             autoCorrect={false}
             secureTextEntry
-            style={inputStyle}
+            style={[...inputStyle, styles.readonlyInput]}
           />
+          {selectedDoctorId && !doctors.find((d) => d.id === selectedDoctorId)?.welcome_password ? (
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>
+              Using default password — only accounts created after this update store the exact
+              password.
+            </Text>
+          ) : null}
 
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
             Email language
@@ -417,7 +542,7 @@ export default function AdminDoctorWelcomeEmailWeb() {
               language={language}
               themeColor={themeColor}
               previewName={previewName}
-              previewEmail={email.trim()}
+              previewEmail={primaryEmail}
               previewPassword={password}
               previewKind="doctor-welcome"
               active={builderTab === "preview"}
@@ -443,7 +568,7 @@ export default function AdminDoctorWelcomeEmailWeb() {
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={[styles.sendBtnText, { color: colors.primaryForeground }]}>
-                Send welcome email
+                Send welcome email{parsedEmails.length > 1 ? ` (${parsedEmails.length})` : ""}
               </Text>
             )}
           </Pressable>
@@ -490,6 +615,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontFamily: Platform.OS === "web" ? "inherit" : undefined,
+  },
+  readonlyInput: {
+    opacity: 0.92,
+  },
+  emailsInput: {
+    minHeight: 72,
+    textAlignVertical: "top",
+  },
+  doctorPicker: {
+    maxHeight: 44,
+    marginBottom: 4,
+  },
+  doctorChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 8,
   },
   langRow: {
     flexDirection: "row",

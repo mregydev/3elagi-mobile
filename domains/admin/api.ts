@@ -19,6 +19,7 @@ export interface AdminDoctorRow {
   consultation_price?: number | null;
   message_price?: number | null;
   speciality?: { id: string; name_en: string; name_ar: string } | null;
+  welcome_password?: string | null;
 }
 
 export interface AdminRagSourceRow {
@@ -688,6 +689,28 @@ export async function sendAdminDoctorWelcomeEmail(
 ): Promise<{ ok: boolean; email: string }> {
   return authJson<{ ok: boolean; email: string }>(
     "/admin/doctor-welcome/send",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export interface SendDoctorWelcomeEmailBatchResult {
+  ok: boolean;
+  sent: number;
+  failed: number;
+  total: number;
+  results: Array<{ email: string; ok: boolean; error?: string }>;
+}
+
+export async function sendAdminDoctorWelcomeEmailBatch(
+  token: string,
+  input: Omit<AdminDoctorWelcomeEmailInput, "email"> & { emails: string[] },
+): Promise<SendDoctorWelcomeEmailBatchResult> {
+  return authJson<SendDoctorWelcomeEmailBatchResult>(
+    "/admin/doctor-welcome/send-batch",
     token,
     {
       method: "POST",

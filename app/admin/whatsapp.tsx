@@ -16,9 +16,8 @@ import { adminContentMaxWidth, adminPagePadding } from "@/constants/adminLayout"
 import {
   buildDefaultWhatsAppInviteMessage,
   buildWhatsAppUrl,
-  isValidWhatsAppPhone,
-  normalizeWhatsAppPhone,
   parseWhatsAppFormatting,
+  parseWhatsAppRecipients,
   wrapTextSelection,
 } from "@/domains/admin/whatsappMessage";
 import { useColors } from "@/hooks/useColors";
@@ -98,24 +97,31 @@ export default function AdminWhatsAppPage() {
   const contentMaxWidth = adminContentMaxWidth(compact);
 
   const messageInputRef = useRef<TextInput>(null);
-  const [phone, setPhone] = useState("");
+  const [phonesText, setPhonesText] = useState("");
   const [senderName, setSenderName] = useState("");
-  const [doctorName, setDoctorName] = useState("");
+  const [doctorNamesText, setDoctorNamesText] = useState("");
   const [message, setMessage] = useState(() =>
     buildDefaultWhatsAppInviteMessage("", ""),
   );
   const [messageDirty, setMessageDirty] = useState(false);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [showLoginReminder, setShowLoginReminder] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [pendingQueue, setPendingQueue] = useState<
+    Array<{ label: string; url: string }>
+  >([]);
+  const [pendingIndex, setPendingIndex] = useState(0);
 
-  const normalizedPhone = useMemo(() => normalizeWhatsAppPhone(phone), [phone]);
-  const phoneLooksValid = isValidWhatsAppPhone(normalizedPhone);
+  const recipients = useMemo(
+    () => parseWhatsAppRecipients(doctorNamesText, phonesText),
+    [doctorNamesText, phonesText],
+  );
+
+  const firstDoctorName = recipients[0]?.doctorName ?? doctorNamesText.split(",")[0]?.trim() ?? "";
 
   useEffect(() => {
     if (messageDirty) return;
-    setMessage(buildDefaultWhatsAppInviteMessage(doctorName, senderName));
-  }, [doctorName, senderName, messageDirty]);
+    setMessage(buildDefaultWhatsAppInviteMessage(firstDoctorName, senderName));
+  }, [firstDoctorName, senderName, messageDirty]);
 
   const applyFormatting = useCallback(
     (wrapper: [string, string]) => {
@@ -136,9 +142,9 @@ export default function AdminWhatsAppPage() {
   );
 
   const resetMessage = useCallback(() => {
-    setMessage(buildDefaultWhatsAppInviteMessage(doctorName, senderName));
+    setMessage(buildDefaultWhatsAppInviteMessage(firstDoctorName, senderName));
     setMessageDirty(false);
-  }, [doctorName, senderName]);
+  }, [firstDoctorName, senderName]);
 
   const openWhatsApp = useCallback(async (url: string) => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -154,38 +160,55 @@ export default function AdminWhatsAppPage() {
   }, []);
 
   const handleSend = useCallback(() => {
-    const digits = normalizeWhatsAppPhone(phone);
-    if (!isValidWhatsAppPhone(digits)) {
-      showErrorToast(
-        "Invalid phone number",
-        "Enter the full number with country code (e.g. 966501234567).",
-      );
-      return;
-    }
     if (!senderName.trim()) {
       showErrorToast("Missing sender name", "Enter your name as the sender.");
       return;
     }
-    if (!doctorName.trim()) {
-      showErrorToast("Missing doctor name", "Enter the doctor's name.");
+    if (!recipients.length) {
+      showErrorToast(
+        "Invalid recipients",
+        "Enter comma-separated doctor names and phone numbers with country codes.",
+      );
       return;
     }
-    if (!message.trim()) {
+    if (!message.trim() && !messageDirty) {
       showErrorToast("Empty message", "Write a message before sending.");
       return;
     }
 
-    const url = buildWhatsAppUrl(digits, message);
-    setPendingUrl(url);
+    const queue = recipients.map((recipient) => {
+      const body = messageDirty
+        ? message
+        : buildDefaultWhatsAppInviteMessage(recipient.doctorName, senderName);
+      return {
+        label: `${recipient.doctorName} (${recipient.normalizedPhone})`,
+        url: buildWhatsAppUrl(recipient.normalizedPhone, body),
+      };
+    });
+
+    setPendingQueue(queue);
+    setPendingIndex(0);
     setShowLoginReminder(true);
-  }, [phone, senderName, doctorName, message]);
+  }, [senderName, recipients, message, messageDirty]);
 
   const confirmOpenWhatsApp = useCallback(() => {
-    if (!pendingUrl) return;
-    void openWhatsApp(pendingUrl);
+    const current = pendingQueue[pendingIndex];
+    if (!current) return;
+    void openWhatsApp(current.url);
+    if (pendingIndex + 1 < pendingQueue.length) {
+      setPendingIndex((index) => index + 1);
+      return;
+    }
     setShowLoginReminder(false);
-    setPendingUrl(null);
-  }, [openWhatsApp, pendingUrl]);
+    setPendingQueue([]);
+    setPendingIndex(0);
+  }, [openWhatsApp, pendingIndex, pendingQueue]);
+
+  const cancelWhatsAppQueue = useCallback(() => {
+    setShowLoginReminder(false);
+    setPendingQueue([]);
+    setPendingIndex(0);
+  }, []);
 
   return (
     <AdminShell
@@ -214,17 +237,39 @@ export default function AdminWhatsAppPage() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recipient</Text>
           <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            Use +20…, 0020…, 2010…, or local 01… (Egypt). We strip + and 00 automatically
-            for WhatsApp.
+            Comma-separated lists — pair by order: first name with first number, etc. Phones
+            accept +20…, 0020…, or local 01… (Egypt).
+          </Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+            Doctor name(s)
           </Text>
           <AppTextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="e.g. +20 106 942 2355 or 01069422355"
+            value={doctorNamesText}
+            onChangeText={setDoctorNamesText}
+            placeholder="Dr Ahmed, Dr Sara"
+            placeholderTextColor={colors.mutedForeground}
+            style={[
+              styles.input,
+              {
+                color: colors.foreground,
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+              },
+            ]}
+          />
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+            Phone number(s)
+          </Text>
+          <AppTextInput
+            value={phonesText}
+            onChangeText={setPhonesText}
+            placeholder="+20 106 942 2355, +966 50 123 4567"
             keyboardType="phone-pad"
             placeholderTextColor={colors.mutedForeground}
+            multiline
             style={[
               styles.input,
+              styles.multiLineInput,
               {
                 color: colors.foreground,
                 borderColor: colors.border,
@@ -232,31 +277,22 @@ export default function AdminWhatsAppPage() {
               },
             ]}
           />
-          {normalizedPhone ? (
-            <Text
-              style={[
-                styles.normalizedPhone,
-                { color: phoneLooksValid ? colors.primary : "#dc2626" },
-              ]}
-            >
-              WhatsApp will use: {normalizedPhone}
-              {!phoneLooksValid ? " (check country code)" : ""}
+          {recipients.length ? (
+            <View style={[styles.recipientList, { borderColor: colors.border }]}>
+              {recipients.map((recipient) => (
+                <Text
+                  key={`${recipient.normalizedPhone}-${recipient.doctorName}`}
+                  style={[styles.recipientRow, { color: colors.foreground }]}
+                >
+                  {recipient.doctorName} → {recipient.normalizedPhone}
+                </Text>
+              ))}
+            </View>
+          ) : phonesText.trim() ? (
+            <Text style={[styles.normalizedPhone, { color: "#dc2626" }]}>
+              No valid phone numbers detected — check country codes.
             </Text>
           ) : null}
-          <AppTextInput
-            value={doctorName}
-            onChangeText={setDoctorName}
-            placeholder="Doctor name"
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.input,
-              {
-                color: colors.foreground,
-                borderColor: colors.border,
-                backgroundColor: colors.background,
-              },
-            ]}
-          />
           <AppTextInput
             value={senderName}
             onChangeText={setSenderName}
@@ -336,7 +372,9 @@ export default function AdminWhatsAppPage() {
           ]}
         >
           <MessageCircle size={18} color="#fff" />
-          <Text style={styles.primaryBtnText}>Open in WhatsApp</Text>
+          <Text style={styles.primaryBtnText}>
+            Open in WhatsApp{recipients.length > 1 ? ` (${recipients.length})` : ""}
+          </Text>
           <ExternalLink size={16} color="#fff" />
         </Pressable>
       </ScrollView>
@@ -355,18 +393,29 @@ export default function AdminWhatsAppPage() {
             <Text style={[styles.modalBody, { color: colors.mutedForeground }]}>
               {WHATSAPP_LOGIN_HINT}
             </Text>
+            {pendingQueue[pendingIndex] ? (
+              <Text style={[styles.modalRecipient, { color: colors.foreground }]}>
+                {pendingQueue.length > 1
+                  ? `Recipient ${pendingIndex + 1} of ${pendingQueue.length}: `
+                  : "Recipient: "}
+                {pendingQueue[pendingIndex].label}
+              </Text>
+            ) : null}
             <View style={styles.modalActions}>
               <Pressable
-                onPress={() => {
-                  setShowLoginReminder(false);
-                  setPendingUrl(null);
-                }}
+                onPress={cancelWhatsAppQueue}
                 style={[styles.modalSecondaryBtn, { borderColor: colors.border }]}
               >
                 <Text style={{ color: colors.foreground, fontWeight: "700" }}>Cancel</Text>
               </Pressable>
               <Pressable onPress={confirmOpenWhatsApp} style={styles.modalPrimaryBtn}>
-                <Text style={styles.primaryBtnText}>Continue to WhatsApp</Text>
+                <Text style={styles.primaryBtnText}>
+                  {pendingIndex + 1 < pendingQueue.length
+                    ? `Open & next (${pendingIndex + 1}/${pendingQueue.length})`
+                    : pendingQueue.length > 1
+                      ? `Open last (${pendingQueue.length}/${pendingQueue.length})`
+                      : "Continue to WhatsApp"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -417,9 +466,28 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === "web" ? 10 : 12,
     fontSize: 15,
   },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  multiLineInput: {
+    minHeight: 72,
+    textAlignVertical: "top",
+  },
   normalizedPhone: {
     fontSize: 13,
     fontWeight: "700",
+    lineHeight: 18,
+  },
+  recipientList: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+  },
+  recipientRow: {
+    fontSize: 13,
     lineHeight: 18,
   },
   messageHeader: {
@@ -519,6 +587,11 @@ const styles = StyleSheet.create({
   modalBody: {
     fontSize: 14,
     lineHeight: 21,
+  },
+  modalRecipient: {
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 19,
   },
   modalActions: {
     flexDirection: "row",

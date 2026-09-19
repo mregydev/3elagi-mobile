@@ -97,6 +97,41 @@ export function parseWhatsAppFormatting(text: string): WhatsAppFormattedSegment[
   return segments.length ? segments : [{ text }];
 }
 
+export type WhatsAppRecipient = {
+  doctorName: string;
+  phone: string;
+  normalizedPhone: string;
+};
+
+/** Pair comma-separated doctor names with comma-separated phone numbers by index. */
+export function parseWhatsAppRecipients(
+  namesRaw: string,
+  phonesRaw: string,
+): WhatsAppRecipient[] {
+  const names = parseCommaList(namesRaw);
+  const phoneParts = parseCommaList(phonesRaw);
+  if (!phoneParts.length) return [];
+
+  const recipients: WhatsAppRecipient[] = [];
+  for (let i = 0; i < phoneParts.length; i += 1) {
+    const normalizedPhone = normalizeWhatsAppPhone(phoneParts[i]);
+    if (!isValidWhatsAppPhone(normalizedPhone)) continue;
+    recipients.push({
+      doctorName: names[i]?.trim() || names[0]?.trim() || "الدكتور",
+      phone: phoneParts[i],
+      normalizedPhone,
+    });
+  }
+  return recipients;
+}
+
+function parseCommaList(raw: string): string[] {
+  return raw
+    .split(/[,;\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function wrapTextSelection(
   text: string,
   selection: { start: number; end: number },
