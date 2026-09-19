@@ -197,7 +197,7 @@ function AppRoot() {
               <Stack.Screen name="admin/doctor-signup" />
               <Stack.Screen name="admin/doctor-speciality-changes" />
               <Stack.Screen name="admin/doctor-welcome-email" />
-              <Stack.Screen name="admin/invited-doctors" />
+              <Stack.Screen name="admin/whatsapp" />
               <Stack.Screen name="admin/marketing" />
               <Stack.Screen name="admin/pricing" />
               <Stack.Screen name="admin/rag" />

@@ -8,13 +8,13 @@ import {
   Mail,
   Megaphone,
   Menu,
+  MessageCircle,
   MessageSquare,
   BarChart3,
   Send,
   Star,
   Stethoscope,
   Trash2,
-  UserCheck,
   UserPlus,
   X,
 } from "lucide-react-native";
@@ -51,7 +51,7 @@ type AdminNavKey =
   | "rag"
   | "complaints"
   | "marketing"
-  | "invitedDoctors"
+  | "whatsapp"
   | "deletedAccounts"
   | "analytics";
 
@@ -74,6 +74,12 @@ const NAV: {
     href: "/admin/doctor-welcome-email",
     Icon: Send,
   },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    href: "/admin/whatsapp",
+    Icon: MessageCircle,
+  },
   { key: "chats", label: "Chats", href: "/admin/chats", Icon: MessageSquare },
   {
     key: "contact",
@@ -86,12 +92,6 @@ const NAV: {
     label: "Marketing",
     href: "/admin/marketing",
     Icon: Megaphone,
-  },
-  {
-    key: "invitedDoctors",
-    label: "Invited doctors",
-    href: "/admin/invited-doctors",
-    Icon: UserCheck,
   },
   {
     key: "doctorRegistrations",
@@ -147,6 +147,7 @@ const NAV: {
 function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/doctor-signup")) return "doctorSignup";
   if (pathname.includes("/admin/doctor-welcome-email")) return "doctorWelcomeEmail";
+  if (pathname.includes("/admin/whatsapp")) return "whatsapp";
   if (pathname.includes("/admin/chats")) return "chats";
   if (pathname.includes("/admin/contact-messages")) return "contact";
   if (pathname.includes("/admin/doctor-registrations")) return "doctorRegistrations";
@@ -157,7 +158,6 @@ function activeKey(pathname: string): AdminNavKey {
   if (pathname.includes("/admin/rag")) return "rag";
   if (pathname.includes("/admin/complaints")) return "complaints";
   if (pathname.includes("/admin/marketing")) return "marketing";
-  if (pathname.includes("/admin/invited-doctors")) return "invitedDoctors";
   if (pathname.includes("/admin/deleted-accounts")) return "deletedAccounts";
   if (pathname.includes("/admin/analytics")) return "analytics";
   return "doctors";
