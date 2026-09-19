@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   Scissors,
   Smile,
+  Salad,
   Sparkles,
   Stethoscope,
   Venus,
@@ -38,6 +39,7 @@ const SPECIALITY_IMAGES: Record<string, ImageSourcePropType> = {
   Gynaecology: require("@/assets/images/specialities/gynaecology.png"),
   Nutritionist: require("@/assets/images/specialities/nutritionist.png"),
   ENT: require("@/assets/images/specialities/ent.png"),
+  Gastroenterology: require("@/assets/images/specialities/gastroenterology.png"),
 };
 
 /** Accent color + Lucide fallback + local illustration per speciality. */
@@ -107,6 +109,11 @@ const SPECIALITY_VISUALS: Record<string, SpecialityVisual> = {
     color: "#dc2626",
     image: SPECIALITY_IMAGES.ENT,
     imageResizeMode: "cover",
+  },
+  Gastroenterology: {
+    icon: Salad,
+    color: "#ea580c",
+    image: SPECIALITY_IMAGES.Gastroenterology,
   },
 };
 
