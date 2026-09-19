@@ -109,6 +109,9 @@ export default function AdminWhatsAppPage() {
   const [showLoginReminder, setShowLoginReminder] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 
+  const normalizedPhone = useMemo(() => normalizeWhatsAppPhone(phone), [phone]);
+  const phoneLooksValid = isValidWhatsAppPhone(normalizedPhone);
+
   useEffect(() => {
     if (messageDirty) return;
     setMessage(buildDefaultWhatsAppInviteMessage(doctorName, senderName));
@@ -211,12 +214,13 @@ export default function AdminWhatsAppPage() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recipient</Text>
           <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            Include country code without + (e.g. 966501234567, 201012345678).
+            Use +20…, 0020…, 2010…, or local 01… (Egypt). We strip + and 00 automatically
+            for WhatsApp.
           </Text>
           <AppTextInput
             value={phone}
             onChangeText={setPhone}
-            placeholder="Phone number"
+            placeholder="e.g. +20 106 942 2355 or 01069422355"
             keyboardType="phone-pad"
             placeholderTextColor={colors.mutedForeground}
             style={[
@@ -228,6 +232,17 @@ export default function AdminWhatsAppPage() {
               },
             ]}
           />
+          {normalizedPhone ? (
+            <Text
+              style={[
+                styles.normalizedPhone,
+                { color: phoneLooksValid ? colors.primary : "#dc2626" },
+              ]}
+            >
+              WhatsApp will use: {normalizedPhone}
+              {!phoneLooksValid ? " (check country code)" : ""}
+            </Text>
+          ) : null}
           <AppTextInput
             value={doctorName}
             onChangeText={setDoctorName}
@@ -401,6 +416,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === "web" ? 10 : 12,
     fontSize: 15,
+  },
+  normalizedPhone: {
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
   },
   messageHeader: {
     flexDirection: "row",

@@ -22,9 +22,30 @@ export function buildDefaultWhatsAppInviteMessage(
   ].join("\n");
 }
 
-/** Digits only — wa.me expects country code without + or leading zeros. */
+/**
+ * Normalize for wa.me — digits only, no + or 00 prefix.
+ * Accepts +20…, 0020…, or local 01… (Egypt) / 07… (Jordan).
+ */
 export function normalizeWhatsAppPhone(raw: string): string {
-  return raw.replace(/\D/g, "");
+  let digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+
+  // 00201069422355 → 201069422355 (strip international 00 prefix)
+  while (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  }
+
+  // Local Egypt mobile: 01069422355 → 201069422355
+  if (digits.startsWith("0") && digits.length === 11 && digits[1] === "1") {
+    digits = `20${digits.slice(1)}`;
+  }
+
+  // Local Jordan mobile: 079xxxxxxx → 96279xxxxxxx
+  if (digits.startsWith("0") && digits.length === 10 && digits[1] === "7") {
+    digits = `962${digits.slice(1)}`;
+  }
+
+  return digits;
 }
 
 export function isValidWhatsAppPhone(digits: string): boolean {
